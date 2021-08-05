@@ -1,18 +1,20 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 # This is the first pre-processing tool that turns HEC-RAS 1D modeling into
 # flood inundation mapping products.  This routine takes the HEC-RAS models
 # in a given directory and creates attributed shapefiles of the stream
 # centerline and cross sections
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.04.06
+# Last revised - 2021.08.03
 #
 # PreProcessing - Part 1 of 3
 
 import re
 import pandas as pd
+import geopandas as gpd
+
+import time
+
+import argparse
 
 import win32com.client
 # windows component object model for interaction with HEC-RAS API
@@ -27,29 +29,8 @@ import numpy as np
 import os.path
 from os import path
 
-import geopandas as gpd
-
 from shapely.geometry import LineString
 from shapely.ops import split, linemerge
-
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~
-# INPUT
-
-# projection of the HEC-RAS models
-STR_CRS_MODEL = "EPSG:26915"
-
-# path containing the HEC-RAS files
-STR_PATH_RAS_FILES = r'E:\X-IowaFloodCenter\DataIn\rock_valley_USACE\rock_valley'
-
-# path to write shapefile
-STR_PATH_TO_OUTPUT = r'E:\X-IowaFloodCenter\RockValley_PreProcess' + '\\'
-
-str_path_to_output_streams = STR_PATH_TO_OUTPUT + 'stream_LN_from_ras.shp'
-
-str_path_to_output_cross_sections = STR_PATH_TO_OUTPUT + \
-    'cross_section_LN_from_ras.shp'
-# ~~~~~~~~~~~~~~~~~~~~~~~~
 
 # ************************
 
@@ -308,7 +289,6 @@ def fn_geodataframe_stream_centerline(str_path_hecras_project_fn):
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^
 
-
 def fn_get_active_flow(str_path_hecras_project_fn):
     # Fuction - gets the path of the active geometry HDF file
 
@@ -495,53 +475,178 @@ def fn_cut_stream_downstream(gdf_return_stream_fn, df_xs_fn):
     return gdf_return_stream_fn
 # ssssssssssssssssssssssss
 
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
+# Print iterations progress
+def fn_print_progress_bar (iteration,
+                           total,
+                           prefix = '', suffix = '',
+                           decimals = 1,
+                           length = 100, fill = '█',
+                           printEnd = "\r"):
+    """
+    from: https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
+    Call in a loop to create terminal progress bar
+    Keyword arguments:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        length      - Optional  : character length of bar (Int)
+        fill        - Optional  : bar fill character (Str)
+        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   
 
-# *****MAIN******
-# get a list of all HEC-RAS prj files in a directory
-# TODO - 2021.03.08 - this assumes no prj is a shapefile
-# projection in this directory
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if __name__ == '__main__':
 
-list_files = []
+    
+    parser = argparse.ArgumentParser(description='============ SHAPEFILES FROM HEC-RAS DIRECTORY ============')
+    
+    parser.add_argument('-i',
+                        dest = "str_ras_path_arg",
+                        help=r'path containing the HEC-RAS files: Example C:\HEC\ras_folder',
+                        required=True,
+                        metavar='DIR',
+                        type=str)
 
-for root, dirs, files in os.walk(STR_PATH_RAS_FILES):
-    for file in files:
-        if file.endswith(".prj") or file.endswith(".PRJ"):
-            # Note the case sensitive issue
-            str_file_path = os.path.join(root, file)
-            list_files.append(str_file_path)
+    parser.add_argument('-o',
+                        dest = "str_shp_out_arg",
+                        help=r'path to write shapefile: Example C:\HEC\ras2fim_precrocess',
+                        required=True,
+                        metavar='DIR',
+                        type=str)
+    
+    parser.add_argument('-p',
+                    dest = "str_crs_arg",
+                    help=r'projection of HEC-RAS models: Example EPSG:26915',
+                    required=True,
+                    metavar='STRING',
+                    type=str)
 
-list_geodataframes_stream = []
-list_geodataframes_cross_sections = []
+    args = vars(parser.parse_args())
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    # ~~~~~~~~~~~~~~~~~~~~~~~~
+    # INPUT
+    
+    print(" ")
+    print("+=================================================================+")
+    print("|    STREAM AND CROSS SECTION SHAPEFILES FROM HEC-RAS DIRECTORY   |")
+    print("|     Created by Andy Carter, PE of the National Water Center     |")
+    print("+-----------------------------------------------------------------+")
 
-for ras_path in list_files:
-    print(ras_path)
-    gdf_return_stream = fn_geodataframe_stream_centerline(ras_path)
+    STR_PATH_RAS_FILES = args['str_ras_path_arg']
+    print("  ---(i) INPUT PATH: " + STR_PATH_RAS_FILES)
+    
+    STR_PATH_TO_OUTPUT = args['str_shp_out_arg']
+    print("  ---(o) OUTPUT PATH: " + STR_PATH_TO_OUTPUT)
+    STR_PATH_TO_OUTPUT += '\\'
+    
+    STR_CRS_MODEL = args['str_crs_arg']
+    print("  ---(p) MODEL PROJECTION: " + STR_CRS_MODEL)
+    
+    str_path_to_output_streams = STR_PATH_TO_OUTPUT + 'stream_LN_from_ras.shp'
+    
+    str_path_to_output_cross_sections = STR_PATH_TO_OUTPUT + \
+        'cross_section_LN_from_ras.shp'
+    # ~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    # *****MAIN******
+    # get a list of all HEC-RAS prj files in a directory
+    # TODO - 2021.03.08 - this assumes no prj is a shapefile
+    # projection in this directory
+    
+    list_files = []
+    
+    for root, dirs, files in os.walk(STR_PATH_RAS_FILES):
+        for file in files:
+            if file.endswith(".prj") or file.endswith(".PRJ"):
+                # Note the case sensitive issue
+                str_file_path = os.path.join(root, file)
+                list_files.append(str_file_path)
+    
+    #-----
+    # checking to see if 'prj' files are not binary and 
+    # valid HEC-RAS prj files.  This should exclude all other
+    # prj files
+    
+    textchars = bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})
+    is_binary_string = lambda bytes: bool(bytes.translate(None, textchars))
+    
+    str_check = 'Current Plan'
+    list_files_valid_prj = []
+    
+    for str_file_path in list_files:
+        if not is_binary_string(open(str_file_path, 'rb').read(1024)):
+            file_prj = open(str_file_path, "r")
+            b_found_match = False
+    
+            for line in file_prj:
+                if str_check in line:
+                    b_found_match = True
+                    break
+            if b_found_match:
+                list_files_valid_prj.append(str_file_path)
+            file_prj.close()
+    #-----
+    
+    list_geodataframes_stream = []
+    list_geodataframes_cross_sections = []
+    l = len(list_files_valid_prj)
+    
+    fn_print_progress_bar(0, l,
+                          prefix = 'Reading HEC-RAS output' ,
+                          suffix = 'Complete', length = 24)
+    i = 0
+    
+    for ras_path in list_files_valid_prj:
+        #print(ras_path)
+        gdf_return_stream = fn_geodataframe_stream_centerline(ras_path)
+    
+        df_flows = fn_get_flow_dataframe(fn_get_active_flow(ras_path))
+        df_xs = fn_geodataframe_cross_sections(ras_path)
+    
+        # Fix interpolated cross section names (ends with *)
+        for index, row in df_xs.iterrows():
+            str_check = row['stream_stn']
+            if str_check[-1] == "*":
+                # Overwrite the value to remove '*'
+                df_xs.at[index, 'stream_stn'] = str_check[:-1]
+    
+        df_xs['stream_stn'] = df_xs['stream_stn'].astype(float)
+        gdf_xs_flows = fn_gdf_append_xs_with_max_flow(df_xs, df_flows)
+    
+        gdf_return_stream = fn_cut_stream_downstream(gdf_return_stream, df_xs)
+    
+        list_geodataframes_stream.append(gdf_return_stream)
+        list_geodataframes_cross_sections.append(gdf_xs_flows)
+        
+        time.sleep(0.1)
+        i += 1
+        fn_print_progress_bar(i, l,
+                              prefix = 'Reading HEC-RAS output',
+                              suffix = 'Complete', length = 24)
+    
+    # Create GeoDataframe of the streams and cross sections
+    gdf_aggregate_streams = gpd.GeoDataFrame(
+        pd.concat(list_geodataframes_stream, ignore_index=True))
+    
+    gdf_aggregate_cross_section = gpd.GeoDataFrame(pd.concat(
+        list_geodataframes_cross_sections, ignore_index=True))
+    
+    # Create shapefiles of the streams and cross sections
+    gdf_aggregate_streams.to_file(str_path_to_output_streams)
+    gdf_aggregate_cross_section.to_file(str_path_to_output_cross_sections)
 
-    df_flows = fn_get_flow_dataframe(fn_get_active_flow(ras_path))
-    df_xs = fn_geodataframe_cross_sections(ras_path)
-
-    # Fix interpolated cross section names (ends with *)
-    for index, row in df_xs.iterrows():
-        str_check = row['stream_stn']
-        if str_check[-1] == "*":
-            # Overwrite the value to remove '*'
-            df_xs.at[index, 'stream_stn'] = str_check[:-1]
-
-    df_xs['stream_stn'] = df_xs['stream_stn'].astype(float)
-    gdf_xs_flows = fn_gdf_append_xs_with_max_flow(df_xs, df_flows)
-
-    gdf_return_stream = fn_cut_stream_downstream(gdf_return_stream, df_xs)
-
-    list_geodataframes_stream.append(gdf_return_stream)
-    list_geodataframes_cross_sections.append(gdf_xs_flows)
-
-# Create GeoDataframe of the streams and cross sections
-gdf_aggregate_streams = gpd.GeoDataFrame(
-    pd.concat(list_geodataframes_stream, ignore_index=True))
-
-gdf_aggregate_cross_section = gpd.GeoDataFrame(pd.concat(
-    list_geodataframes_cross_sections, ignore_index=True))
-
-# Create shapefiles of the streams and cross sections
-gdf_aggregate_streams.to_file(str_path_to_output_streams)
-gdf_aggregate_cross_section.to_file(str_path_to_output_cross_sections)
+    print(" ") 
+    print('SHAPEFILES CREATED')
+    print("====================================================================")
