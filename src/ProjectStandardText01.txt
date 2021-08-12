@@ -1,6 +1,3 @@
-Current Plan=p01
-Default Exp/Contr=0.3,0.1
-English Units
 Geom File=g01
 Flow File=f01
 Plan File=p01
