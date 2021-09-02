@@ -6,7 +6,7 @@
 # Created by: Andy Carter, PE
 # Last revised - 2021.08.03
 #
-# PreProcessing - Part 1 of 3
+# PreProcessing - Part 1 of 2
 
 import re
 import pandas as pd
@@ -513,21 +513,21 @@ if __name__ == '__main__':
     
     parser.add_argument('-i',
                         dest = "str_ras_path_arg",
-                        help=r'path containing the HEC-RAS files: Example C:\HEC\ras_folder',
+                        help=r'REQUIRED: path containing the HEC-RAS files: Example C:\HEC\ras_folder',
                         required=True,
                         metavar='DIR',
                         type=str)
 
     parser.add_argument('-o',
                         dest = "str_shp_out_arg",
-                        help=r'path to write shapefile: Example C:\HEC\ras2fim_precrocess',
+                        help=r'REQUIRED: path to write shapefile: Example C:\HEC\ras2fim_precrocess',
                         required=True,
                         metavar='DIR',
                         type=str)
     
     parser.add_argument('-p',
                     dest = "str_crs_arg",
-                    help=r'projection of HEC-RAS models: Example EPSG:26915',
+                    help=r'REQUIRED: projection of HEC-RAS models: Example EPSG:26915',
                     required=True,
                     metavar='STRING',
                     type=str)

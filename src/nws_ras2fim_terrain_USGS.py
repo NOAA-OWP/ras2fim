@@ -22,7 +22,7 @@
 #   FORMAT=GeoTiff
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.08.04
+# Last revised - 2021.08.31
 #
 # Uses the 'usgs_wcs' conda environment
 
@@ -151,21 +151,21 @@ if __name__ == '__main__':
     
     parser.add_argument('-i',
                         dest = "input",
-                        help='path to the input shapefile (polygons)',
+                        help=r'REQUIRED: path to the input shapefile (polygons) Example: C:\shapefiles\area.shp',
                         required=True,
                         metavar='FILE',
                         type=lambda x: is_valid_file(parser, x))
-    '''
+
     parser.add_argument('-o',
                         dest = "str_output_dir",
-                        help='directory to write DEM files: Default is current directory',
-                        required=False,
+                        help=r'REQUIRED: directory to write DEM files Example: Example: D:\terrain',
+                        required=True,
                         metavar='DIR',
                         type=str)
-    '''
+
     parser.add_argument('-r',
                     dest = "int_res",
-                    help='requested sample resolution (meters): Default=3',
+                    help='OPTIONAL: requested sample resolution (meters): Default=3',
                     required=False,
                     default=3,
                     metavar='INTEGER',
@@ -173,7 +173,7 @@ if __name__ == '__main__':
     
     parser.add_argument('-b',
                 dest = "int_buffer",
-                help='buffer for each polygon (meters): Default=300',
+                help='OPTIONAL: buffer for each polygon (meters): Default=300',
                 required=False,
                 default=300,
                 metavar='INTEGER',
@@ -181,7 +181,7 @@ if __name__ == '__main__':
     
     parser.add_argument('-t',
                     dest = "int_tile",
-                    help='requested tile dimensions (meters): Default=1500',
+                    help='OPTIONAL: requested tile dimensions (meters): Default=1500',
                     required=False,
                     default=1500,
                     metavar='INTEGER',
@@ -189,7 +189,7 @@ if __name__ == '__main__':
     
     parser.add_argument('-v',
                 dest = "b_tile",
-                help='create vertical data in feet: Default=True',
+                help='OPTIONAL: create vertical data in feet: Default=True',
                 required=False,
                 default=True,
                 metavar='T/F',
@@ -197,7 +197,7 @@ if __name__ == '__main__':
     
     parser.add_argument('-f',
                 dest = "str_field_name",
-                help='unique field from input shapefile used for DEM name',
+                help='OPTIONAL: unique field from input shapefile used for DEM name',
                 required=False,
                 metavar='STRING',
                 type=str)
@@ -205,20 +205,14 @@ if __name__ == '__main__':
     args = vars(parser.parse_args())
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # input polygon shapefile
-    STR_AOI_SHP_PATH = str(os.getcwd()) + "\\" + str(args['input'])
+    #STR_AOI_SHP_PATH = str(os.getcwd()) + "\\" + str(args['input'])
+    STR_AOI_SHP_PATH = str(args['input'])
     
     # output path
-    STR_OUTPUT_PATH = str(os.getcwd()) + "\\"
-    '''
-    if args['str_output_dir'] == None:
-        STR_OUTPUT_PATH = os.getcwd()
-    else:
-        # check if this if directory exists
-        if os.path.isdir(args['str_output_dir']):
-            STR_OUTPUT_PATH = str(args['str_output_dir'])
-        else:
-            STR_OUTPUT_PATH = str(os.getcwd()) + "\\" + str(args['str_output_dir'])
-    '''
+    #STR_OUTPUT_PATH = str(os.getcwd()) + "\\"
+    STR_OUTPUT_PATH = str(args['str_output_dir'] + "\\")
+
+
     print(" ")
     print("+=================================================================+")
     print("|                   USGS TERRAIN FROM SHAPEFILE                   |")
@@ -227,27 +221,27 @@ if __name__ == '__main__':
 
     
     print("  ---(i) INPUT PATH: " + STR_AOI_SHP_PATH)
-    #print("---(o) output path: " + STR_OUTPUT_PATH)
+    print("  ---(o) OUTPUT PATH: " + STR_OUTPUT_PATH)
     
     # requested return resolution in lambert units (meters)
     INT_RESOLUTION = args['int_res']
-    print("  ---(r) resolution: " + str(INT_RESOLUTION) + " meters")
+    print("  ---[r]   Optional: RESOLUTION: " + str(INT_RESOLUTION) + " meters")
     
     # buffer of the input polygon in lambert units (meters)
     FLT_BUFFER = args['int_buffer']
-    print("  ---(b) buffer: " + str(FLT_BUFFER) + " meters") 
+    print("  ---[b]   Optional: BUFFER: " + str(FLT_BUFFER) + " meters") 
     
     # requested tile size in lambert units (meters)
     INT_TILE_X = INT_TILE_Y = args['int_tile']
-    print("  ---(t) tile size: " + str(INT_TILE_X) + " meters") 
+    print("  ---[t]   Optional: TILE SIZE: " + str(INT_TILE_X) + " meters") 
 
     # requested tile size in lambert units (meters)
     B_CONVERT_TO_VERT_FT = args['b_tile']
-    print("  ---(v) vertical in feet: " + str(B_CONVERT_TO_VERT_FT)) 
+    print("  ---[v]   Optional: VERTICAL IN FEET: " + str(B_CONVERT_TO_VERT_FT)) 
 
     # requested tile size in lambert units (meters)
     STR_FIELD_TO_LABEL = args['str_field_name']
-    print("  ---(f) field name: " + str(STR_FIELD_TO_LABEL)) 
+    print("  ---[f]   Optional: FIELD NAME: " + str(STR_FIELD_TO_LABEL)) 
 
     print("===================================================================")
     

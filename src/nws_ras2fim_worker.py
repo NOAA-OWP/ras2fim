@@ -1,9 +1,18 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Aug 10 20:13:40 2021
+# Create flood inundation data from HEC-RAS
+#
+# Purpose:
+# Create flood inundation rasters and supporting InFRM data from the
+# preprocessed HEC-RAS geospatial 1D data.  This is a worker script
+# that is used for Multi-processing.  This is where the "heavy lifting"
+# is perfromed
+#
+# Created by: Andy Carter, PE
+# Created: 2021-08-12
+# Last revised - 2021.09.01
+#
+# Uses the 'ras2fim' conda environment
+# ************************************************************
 
-@author: civil
-"""
 import pandas as pd
 import geopandas as gpd
 
@@ -36,15 +45,20 @@ import h5py
 # h5py for extracting data from the RAS geometry
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-STR_ROOT_OUTPUT_DIRECTORY = r'D:\Crap\test2'
+STR_ROOT_OUTPUT_DIRECTORY = r'E:\X-ras2fim-test\ras_output'
 
 # Input - desired HUC 8
 STR_HUC8 = "10170204"
 
-STR_INPUT_FOLDER = r"D:\Crap\conflation"
+STR_INPUT_FOLDER = r"E:\X-ras2fim-test\pre_2_output"
 
-STR_PATH_TO_PROJECTION = r'D:\Crap\cross_section_LN_from_ras.prj' # for xml create
-STR_PATH_TO_TERRAIN = r'D:\Crap\hecras_terrain' # for xml create
+STR_PATH_TO_PROJECTION = r'E:\X-ras2fim-test\pre_2_output\10170204_ble_streams_ln.prj' # for xml create
+STR_PATH_TO_TERRAIN = r'E:\X-ras2fim-test\hecras_terrain' # for xml create
+
+# Path to the standard plan file text
+STR_PLAN_MIDDLE_PATH = r"C:\Users\civil\test1\ras2fim\src\PlanStandardText01.txt"
+STR_PLAN_FOOTER_PATH = r"C:\Users\civil\test1\ras2fim\src\PlanStandardText02.txt"
+STR_PROJECT_FOOTER_PATH = r"C:\Users\civil\test1\ras2fim\src\ProjectStandardText01.txt"
 
 INT_XS_BUFFER = 2   # Number of XS to add upstream and downstream
 # of the segmented 
@@ -70,12 +84,6 @@ FLT_BUFFER = 15
 
 # output flood map raster resolution - 3 meters
 INT_DESIRED_RESOLUTION = 3
-
-# Path to the standard plan file text
-STR_PLAN_MIDDLE_PATH = r"E:\X-NWS\XX-Standard_Inputs\PlanStandardText01.txt"
-STR_PLAN_FOOTER_PATH = r"E:\X-NWS\XX-Standard_Inputs\PlanStandardText02.txt"
-
-STR_PROJECT_FOOTER_PATH = r"E:\X-NWS\XX-Standard_Inputs\ProjectStandardText01.txt"
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~
 def fn_get_features(gdf, int_poly_index):
@@ -147,6 +155,34 @@ def fn_format_flow_values(list_flow):
     return (str_all_flows)
 # ********************************
 
+# .................................
+def fn_append_error(str_f_id_fn,
+                    str_geom_path_fn,
+                    str_huc12_fn,
+                    str_directory_fn):
+    
+    # creates a csv file of the errors found during processing
+    str_error_path = str_directory_fn + r'\error_found.csv'
+    
+    # if file exists then open it
+    if os.path.exists(str_error_path):
+        # open the csv
+        df_error = pd.read_csv(str_error_path, index_col=0)
+        # add the record to the file
+        ds_series = pd.Series([str_f_id_fn, str_geom_path_fn, str_huc12_fn],
+                             index=['feature_id', 'geom_path', 'huc_12'])
+        df_error = df_error.append(ds_series, ignore_index=True)
+    else:
+        # create the file and append new row
+        df_error = pd.DataFrame([[str_f_id_fn, str_geom_path_fn, str_huc12_fn]],
+                                columns=['feature_id', 'geom_path', 'huc_12'])
+    
+    # write out the file
+    df_error.to_csv(str_error_path)
+    # close the dataframe
+    del df_error
+# .................................
+
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 def fn_create_rating_curve(list_int_step_flows_fn,
                            list_step_profiles_fn,
@@ -211,7 +247,9 @@ def fn_create_rating_curve(list_int_step_flows_fn,
     plt.savefig(str_rating_image_path,
                 dpi=300,
                 bbox_inches="tight")
-    plt.close
+    
+    plt.cla()
+    plt.close('all')
 
     # Create CSV for the rating curve
     if b_is_metric_rating:
@@ -883,7 +921,7 @@ def fn_create_hecras_files(str_feature_id,
     flt_ds_xs = flt_min_range
     flt_us_xs = flt_max_range
 
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+       #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # determine the project file for the requested HEC-RAS geom
     # read the prj and determine the units 
     # "SI Units" or "English Units"
@@ -935,8 +973,8 @@ def fn_create_hecras_files(str_feature_id,
     for index, row in df_items.iterrows():
         str_item_header = "Type RM Length L Ch R = " + str(row['Type'])
         str_item_header += ',' + str(str(row['Station']))
-        str_item_header += ',' + str(str(row['LOB']))
-        str_item_header += ',' + str(str(row['Channel']))
+        # 2021.09.01 - Just up to the XS name (as the
+        # interpolated values have a '*' at the end of the cross section)
 
         # Find the requested item
         pattern = re.compile(str_item_header)
@@ -974,7 +1012,8 @@ def fn_create_hecras_files(str_feature_id,
                 list_start_blankline.append(match.start())
 
             #ignore blank lines that are in the last 30 characters
-            int_max_space = len(str_remainder) - 30
+            int_max_space = len(str_remainder) - 5
+            #int_max_space = len(str_remainder)
 
             for i in list_start_blankline:
                 if i > int_max_space:
@@ -982,13 +1021,108 @@ def fn_create_hecras_files(str_feature_id,
 
             # the last item in the list_start_blankline is assumed to be the end
             # of that item
-            int_end_position = int_start_position + list_start_blankline[-1]
+
+            # TODO - 2021.08.31 Error line below - MAC
+            # TODO - IndexError: list index out of range
+            if len(list_start_blankline) > 0:
+                int_end_position = int_start_position + list_start_blankline[-1]
+            else:
+                int_end_position = int_start_position + int_max_space
 
         df_start_stop_item = df_start_stop_item.append({'start': int_start_position,
                                                         'end': int_end_position},
                                                        ignore_index=True) 
     df_item_limits = pd.concat([df_items, df_start_stop_item], axis=1, join="inner")
+    
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # All text up to the first cross section - Header of the Geom File
+    str_header = file_contents[0:df_item_limits.iloc[0]['start']]
 
+    # Rename the geometry data - edit the first line
+    pattern = re.compile(r'Geom Title=.*')
+    geom_matches = pattern.finditer(str_header)
+
+    for match in geom_matches:
+        str_header = str_header[match.end()+1:(len(str_header))]
+        str_header = "Geom Title=BLE_" + str_feature_id + '\n' + str_header
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    # -------------------------------------
+    # Create file footer
+    # From end marker of last cross section to end of file
+    str_footer = file_contents[(df_item_limits.iloc[-1]['end']):(len(file_contents))]
+    # -------------------------------------
+
+    # .....................................
+    # Create the HEC-RAS Geomerty file
+    str_geom = str_header
+
+    # Determine the items (XS, bridge, inline) within the valid range
+    int_first_index = -1
+    int_last_index = -1
+
+    b_found_first_index = False
+    
+    #---------------
+    # Clean up the interpolated cross section
+    for index, row in df_item_limits.iterrows():
+        # if there is a star in the cross section name
+        if '*' in row['Station']:
+            str_replace = row['Station']
+            list_found = re.findall(r"[-+]?\d*\.\d+|\d+", str_replace)
+            str_replace = list_found[0]
+            df_item_limits.at[index, 'Station'] = str_replace
+    #---------------      
+    
+    for index, row in df_item_limits.iterrows():
+        if float(row['Station']) >= flt_ds_xs:
+            if float(row['Station']) <= flt_us_xs:
+                if not b_found_first_index:
+                    int_first_index = index
+                    b_found_first_index = True
+                int_last_index = index
+
+    if int_first_index > -1 and int_last_index > -1:
+        # Get the upstream Cross section plus a index buffer
+        if (int_first_index - INT_XS_BUFFER) >= 0:
+            int_first_index -= INT_XS_BUFFER
+
+            # pad upstream until item is a cross section (not bridge, inline, etc.)
+            while int(df_item_limits.iloc[int_first_index]['Type']) != 1 or int_first_index == 0:
+                int_first_index -= 1
+        else:
+            int_first_index = 0
+
+        # Get the downstream cross section plus a index buffer
+        if (int_last_index + INT_XS_BUFFER) < len(df_item_limits):
+            int_last_index += INT_XS_BUFFER
+
+            # pad downstream until item is a cross section (not bridge, inline, etc.)
+            # revised 2021.08.10
+            while int(df_item_limits.iloc[int_last_index]['Type']) != 1 or int_last_index == len(df_item_limits) - 2:
+                int_last_index += 1
+
+        else:
+            # revised 2021.08.10
+            int_last_index = len(df_item_limits)
+
+        # get the name of the upstream cross section
+        str_xs_upstream = df_item_limits.iloc[int_first_index]['Station']
+
+        for index, row in df_item_limits.iterrows():
+            if (index >= int_first_index) and (index <= int_last_index):
+                str_geom += file_contents[(row['start']):(row['end'])]
+                str_geom += "\n\n"
+
+        str_geom += str_footer
+
+        # Write the requested file
+        file = open(str_output_filepath + "\\" + str_feature_id + '.g01', "w")
+        file.write(str_geom)
+        file.close()
+        
+    # .....................................
+    
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # All text up to the first cross section - Header of the Geom File
     str_header = file_contents[0:df_item_limits.iloc[0]['start']]
@@ -1047,7 +1181,7 @@ def fn_create_hecras_files(str_feature_id,
 
         else:
             # revised 2021.08.10
-            int_last_index = len(df_item_limits) - 1
+            int_last_index = len(df_item_limits)
 
         # get the name of the upstream cross section
         str_xs_upstream = df_item_limits.iloc[int_first_index]['Station']
@@ -1213,6 +1347,45 @@ def fn_main_hecras(record_requested_stream):
     str_geom_path = str(record_requested_stream[4])
     str_huc12 = str(record_requested_stream[5])
     
+    
+    # Parse the settings variables from the tuple sent from the main script
+    tpl_settings  = record_requested_stream[6]
+    
+    # -------
+    global STR_HUC8
+    global STR_INPUT_FOLDER
+    global STR_ROOT_OUTPUT_DIRECTORY
+    global STR_PATH_TO_PROJECTION
+    global STR_PATH_TO_TERRAIN
+    global STR_PLAN_MIDDLE_PATH
+    global STR_PROJECT_FOOTER_PATH
+    global FLT_INTERVAL
+    global INT_DESIRED_RESOLUTION
+    global INT_XS_BUFFER
+    global IS_CREATE_MAPS
+    global INT_NUMBER_OF_STEPS
+    global INT_STARTING_FLOW
+    global FLT_MAX_MULTIPLY
+    global FLT_BUFFER
+    
+    
+    STR_HUC8 = tpl_settings[0]
+    STR_INPUT_FOLDER = tpl_settings[1]
+    STR_ROOT_OUTPUT_DIRECTORY = tpl_settings[2]
+    STR_PATH_TO_PROJECTION = tpl_settings[3]
+    STR_PATH_TO_TERRAIN = tpl_settings[4]
+    STR_PLAN_MIDDLE_PATH = tpl_settings[5]
+    STR_PROJECT_FOOTER_PATH = tpl_settings[6]
+    FLT_INTERVAL = tpl_settings[7]
+    INT_DESIRED_RESOLUTION = tpl_settings[8]
+    INT_XS_BUFFER = tpl_settings[9]
+    IS_CREATE_MAPS = tpl_settings[10]
+    INT_NUMBER_OF_STEPS = tpl_settings[11]
+    INT_STARTING_FLOW = tpl_settings[12]
+    FLT_MAX_MULTIPLY = tpl_settings[13]
+    FLT_BUFFER = tpl_settings[14]
+    # -------
+    
     flt_max_q = flt_max_q * FLT_MAX_MULTIPLY
     int_max_q = int(flt_max_q)
     
@@ -1233,7 +1406,7 @@ def fn_main_hecras(record_requested_stream):
         # sometimes the HEC-RAS model
         # does not run (example: duplicate points)
 
-        river = fn_create_hecras_files(str_feature_id,str_geom_path,flt_ds_xs,flt_us_xs,int_max_q,str_hecras_path_to_create)
+        river = fn_create_hecras_files(str_feature_id, str_geom_path, flt_ds_xs, flt_us_xs, int_max_q, str_hecras_path_to_create)
 
         # ----- REMOVE -----
         IS_CREATE_MAPS = False
@@ -1250,9 +1423,7 @@ def fn_main_hecras(record_requested_stream):
                 print("Delete Error: " + str_feature_id)
 
     except:
-        print("HEC-RAS Error: " + str_geom_path)
-        # TODO - append to error list - 2021.08.10
+        #print("HEC-RAS Error: " + str_geom_path)
+        fn_append_error(str_feature_id, str_geom_path, str_huc12, STR_ROOT_OUTPUT_DIRECTORY)
 
-    print('Complete')
-    
     return(str_feature_id)

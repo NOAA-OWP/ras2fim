@@ -9,7 +9,7 @@
 # Created by: Andy Carter, PE
 # Last revised - 2021.08.03
 #
-# PreProcessing - Part 2 of 3
+# PreProcessing - Part 2 of 2
 
 import geopandas as gpd
 import pandas as pd
@@ -78,28 +78,28 @@ if __name__ == '__main__':
     
     parser.add_argument('-w',
                         dest = "str_huc8_arg",
-                        help='HUC-8 watershed that is being evaluated: Example: 10170204',
+                        help='REQUIRED: HUC-8 watershed that is being evaluated: Example: 10170204',
                         required=True,
                         metavar='STRING',
                         type=str)
     
     parser.add_argument('-i',
                         dest = "str_shp_in_arg",
-                        help=r'Directory containing stream and cross section shapefiles:  Example: D:\ras_shapes',
+                        help=r'REQUIRED: Directory containing stream and cross section shapefiles:  Example: D:\ras_shapes',
                         required=True,
                         metavar='DIR',
                         type=str)
     
     parser.add_argument('-o',
                         dest = "str_shp_out_arg",
-                        help=r'path to write output files: Example: D:\conflation_output',
+                        help=r'REQUIRED: path to write output files: Example: D:\conflation_output',
                         required=True,
                         metavar='DIR',
                         type=str)
     
     parser.add_argument('-n',
                         dest = "str_nation_arg",
-                        help=r'path to national datasets: Example: E:\X-NWS\X-National_Datasets',
+                        help=r'REQUIRED: path to national datasets: Example: E:\X-NWS\X-National_Datasets',
                         required=True,
                         metavar='DIR',
                         type=str)
@@ -123,7 +123,7 @@ if __name__ == '__main__':
     STR_BLE_SHP_DIR = args['str_shp_in_arg']
     print("  ---(i) BLE INPUT SHP DIRECTORY: " + STR_BLE_SHP_DIR)
     
-    # note the files names are hardcoded in 1 of 3
+    # note the files names are hardcoded in 1 of 2
     STR_BLE_STREAM_LN = STR_BLE_SHP_DIR + '\\' + 'stream_LN_from_ras.shp'
     STR_BLE_CROSS_SECTION_LN = STR_BLE_SHP_DIR + '\\' + 'cross_section_LN_from_ras.shp'
     
@@ -139,7 +139,7 @@ if __name__ == '__main__':
     
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~
     INT_DISTANCE_DELTA = 67   # distance between points in ble projection units
-    INT_DISTANCE_DELTA = 1000   # distance between points in ble projection units
+    INT_DISTANCE_DELTA = 100   # distance between points in ble projection units
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     # Input - projection of the base level engineering models
