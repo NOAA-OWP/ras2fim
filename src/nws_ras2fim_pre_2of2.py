@@ -11,6 +11,8 @@
 #
 # PreProcessing - Part 2 of 2
 
+# Uses the 'ras2fim' conda environment
+
 import geopandas as gpd
 import pandas as pd
 from geopandas.tools import sjoin
@@ -139,7 +141,6 @@ if __name__ == '__main__':
     
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~
     INT_DISTANCE_DELTA = 67   # distance between points in ble projection units
-    INT_DISTANCE_DELTA = 100   # distance between points in ble projection units
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     # Input - projection of the base level engineering models
@@ -188,9 +189,6 @@ if __name__ == '__main__':
     # path of the shapefile to write
     str_huc8_filepath = STR_OUT_PATH + '\\' + str(list_huc8[0]) + "_huc_12_ar.shp"
     
-    # write the shapefile
-    gdf_huc8_only_ble_prj.to_file(str_huc8_filepath)
-    
     
     # Overlay the BLE streams (from the HEC-RAS models) to the HUC_12 shapefile
     
@@ -206,6 +204,22 @@ if __name__ == '__main__':
     
     # write the shapefile
     gdf_ble_streams_intersect.to_file(str_filepath_ble_stream)
+    
+    # ---- Area shapefile of just the HUC_12s that have streams
+    # create an array of HUC_12 watersheds that have streams within them
+    arr_huc_12_only_with_stream = gdf_ble_streams_intersect.HUC_12.unique()
+    
+    # convert the array to a pandas dataframe
+    df_huc_12_only_with_stream = pd.DataFrame(arr_huc_12_only_with_stream, columns = ['HUC_12'])
+    
+    # merge the dataframe and geodataframe to get only polygons that have streams
+    gdf_huc_12_only_with_stream = pd.merge(gdf_huc8_only_ble_prj,
+                                           df_huc_12_only_with_stream,
+                                           on='HUC_12', how='inner')
+    
+    # write the area watershed shapefile
+    gdf_huc_12_only_with_stream.to_file(str_huc8_filepath)
+    # ----
     
     # Get the NWM stream centerlines from the provided geopackage
     
@@ -394,7 +408,7 @@ if __name__ == '__main__':
     del gdf_points_snap_to_ble['wkt_geom']
     
     # write the shapefile
-    str_filepath_ble_points = STR_OUT_PATH + "\\" + str(list_huc8[0]) + "ble_snap_pionts_PT.shp"
+    str_filepath_ble_points = STR_OUT_PATH + "\\" + str(list_huc8[0]) + "ble_snap_points_PT.shp"
     
     gdf_points_snap_to_ble.to_file(str_filepath_ble_points)
     

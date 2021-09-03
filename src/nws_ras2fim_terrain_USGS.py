@@ -24,7 +24,7 @@
 # Created by: Andy Carter, PE
 # Last revised - 2021.08.31
 #
-# Uses the 'usgs_wcs' conda environment
+# Uses the 'ras2fim' conda environment
 
 # ************************************************************
 import argparse

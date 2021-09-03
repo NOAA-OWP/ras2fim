@@ -32,6 +32,8 @@ from os import path
 from shapely.geometry import LineString
 from shapely.ops import split, linemerge
 
+# Uses the 'ras2fim' conda environment
+
 # ************************
 
 
