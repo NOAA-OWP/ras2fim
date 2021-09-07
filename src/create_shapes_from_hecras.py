@@ -505,38 +505,10 @@ def fn_print_progress_bar (iteration,
     # Print New Line on Complete
     if iteration == total: 
         print()
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if __name__ == '__main__':
-
-    
-    parser = argparse.ArgumentParser(description='============ SHAPEFILES FROM HEC-RAS DIRECTORY ============')
-    
-    parser.add_argument('-i',
-                        dest = "str_ras_path_arg",
-                        help=r'REQUIRED: path containing the HEC-RAS files: Example C:\HEC\ras_folder',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
-
-    parser.add_argument('-o',
-                        dest = "str_shp_out_arg",
-                        help=r'REQUIRED: path to write shapefile: Example C:\HEC\ras2fim_precrocess',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
-    
-    parser.add_argument('-p',
-                    dest = "str_crs_arg",
-                    help=r'REQUIRED: projection of HEC-RAS models: Example EPSG:26915',
-                    required=True,
-                    metavar='STRING',
-                    type=str)
-
-    args = vars(parser.parse_args())
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg):
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     # INPUT
     
@@ -546,14 +518,15 @@ if __name__ == '__main__':
     print("|     Created by Andy Carter, PE of the National Water Center     |")
     print("+-----------------------------------------------------------------+")
 
-    STR_PATH_RAS_FILES = args['str_ras_path_arg']
+    # TODO - not contants - lower case - 2021.09.07
+    STR_PATH_RAS_FILES = str_ras_path_arg
     print("  ---(i) INPUT PATH: " + STR_PATH_RAS_FILES)
     
-    STR_PATH_TO_OUTPUT = args['str_shp_out_arg']
+    STR_PATH_TO_OUTPUT = str_shp_out_arg
     print("  ---(o) OUTPUT PATH: " + STR_PATH_TO_OUTPUT)
     STR_PATH_TO_OUTPUT += '\\'
     
-    STR_CRS_MODEL = args['str_crs_arg']
+    STR_CRS_MODEL = str_crs_arg
     print("  ---(p) MODEL PROJECTION: " + STR_CRS_MODEL)
     
     str_path_to_output_streams = STR_PATH_TO_OUTPUT + 'stream_LN_from_ras.shp'
@@ -649,4 +622,41 @@ if __name__ == '__main__':
 
     print(" ") 
     print('SHAPEFILES CREATED')
-    print("====================================================================")
+    print("====================================================================") 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if __name__ == '__main__':
+
+    
+    parser = argparse.ArgumentParser(description='============ SHAPEFILES FROM HEC-RAS DIRECTORY ============')
+    
+    parser.add_argument('-i',
+                        dest = "str_ras_path_arg",
+                        help=r'REQUIRED: path containing the HEC-RAS files: Example C:\HEC\ras_folder',
+                        required=True,
+                        metavar='DIR',
+                        type=str)
+
+    parser.add_argument('-o',
+                        dest = "str_shp_out_arg",
+                        help=r'REQUIRED: path to write shapefile: Example C:\HEC\ras2fim_precrocess',
+                        required=True,
+                        metavar='DIR',
+                        type=str)
+    
+    parser.add_argument('-p',
+                    dest = "str_crs_arg",
+                    help=r'REQUIRED: projection of HEC-RAS models: Example EPSG:26915',
+                    required=True,
+                    metavar='STRING',
+                    type=str)
+
+    args = vars(parser.parse_args())
+    
+    str_ras_path_arg = args['str_ras_path_arg']
+    str_shp_out_arg = args['str_shp_out_arg']
+    str_crs_arg = args['str_crs_arg']
+    
+    fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
