@@ -102,7 +102,7 @@ def fn_get_active_geom(str_path_hecras_project_fn2):
 # @@@@@@@@@@@@@@@@@@@@@@@@
 
 
-def fn_geodataframe_cross_sections(str_path_hecras_project_fn):
+def fn_geodataframe_cross_sections(str_path_hecras_project_fn, STR_CRS_MODEL):
     # Fuction - Creates a GeoDataFrame of the cross sections for the
     # HEC-RAS geometry file in the active plan
 
@@ -204,7 +204,7 @@ def fn_geodataframe_cross_sections(str_path_hecras_project_fn):
 # ++++++++++++++++++++++++
 
 
-def fn_geodataframe_stream_centerline(str_path_hecras_project_fn):
+def fn_geodataframe_stream_centerline(str_path_hecras_project_fn, STR_CRS_MODEL):
     # Function - Creates a GeodataFrame of the HEC-RAS stream centerline
     # for the geometry file in the active plan
 
@@ -583,10 +583,10 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     
     for ras_path in list_files_valid_prj:
         #print(ras_path)
-        gdf_return_stream = fn_geodataframe_stream_centerline(ras_path)
+        gdf_return_stream = fn_geodataframe_stream_centerline(ras_path, STR_CRS_MODEL)
     
         df_flows = fn_get_flow_dataframe(fn_get_active_flow(ras_path))
-        df_xs = fn_geodataframe_cross_sections(ras_path)
+        df_xs = fn_geodataframe_cross_sections(ras_path, STR_CRS_MODEL)
     
         # Fix interpolated cross section names (ends with *)
         for index, row in df_xs.iterrows():
