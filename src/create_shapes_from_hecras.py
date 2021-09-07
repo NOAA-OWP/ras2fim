@@ -564,8 +564,6 @@ if __name__ == '__main__':
     
     # *****MAIN******
     # get a list of all HEC-RAS prj files in a directory
-    # TODO - 2021.03.08 - this assumes no prj is a shapefile
-    # projection in this directory
     
     list_files = []
     
