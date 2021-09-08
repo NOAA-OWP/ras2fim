@@ -8,11 +8,32 @@
 
 from create_shapes_from_hecras import fn_create_shapes_from_hecras
 from conflate_hecras_to_nwm import fn_conflate_hecras_to_nwm
+from get_usgs_dem_from_shape import fn_get_usgs_dem_from_shape
 
 import argparse
 import os
 
-def fn_run_ras2fim(str_ras_path_arg, str_out_arg, str_crs_arg):
+# $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+# $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+def fn_run_ras2fim(str_huc8_arg,
+                   str_ras_path_arg,
+                   str_out_arg,
+                   str_crs_arg,
+                   b_is_feet,
+                   str_nation_arg):
+    
     # print out the user inputed variables
     # TODO - 2021.09.07
     
@@ -25,8 +46,8 @@ def fn_run_ras2fim(str_ras_path_arg, str_out_arg, str_crs_arg):
     if not os.path.exists(str_out_arg):
         os.mkdir(str_out_arg)
     
+    # ---- Step 1: create_shapes_from_hecras ----
     # create a folder for the shapefiles from hec-ras
-    
     str_shapes_from_hecras_dir = os.path.join(str_out_arg, "shapes_from_hecras") 
     if not os.path.exists(str_shapes_from_hecras_dir):
         os.mkdir(str_shapes_from_hecras_dir)
@@ -35,9 +56,10 @@ def fn_run_ras2fim(str_ras_path_arg, str_out_arg, str_crs_arg):
     fn_create_shapes_from_hecras(str_ras_path_arg,
                                  str_shapes_from_hecras_dir,
                                  str_crs_arg)
-    
-    
-    # do whatever needed to create folders and determine variables
+    # -------------------------------------------
+
+    # ------ Step 2: conflate_hecras_to_nwm -----    
+    # do whatever is needed to create folders and determine variables
     str_shapes_from_conflation_dir = os.path.join(str_out_arg, "shapes_from_conflation")
     if not os.path.exists(str_shapes_from_conflation_dir):
         os.mkdir(str_shapes_from_conflation_dir)
@@ -47,10 +69,42 @@ def fn_run_ras2fim(str_ras_path_arg, str_out_arg, str_crs_arg):
                               str_shapes_from_hecras_dir, 
                               str_shapes_from_conflation_dir,
                               str_nation_arg)
+    # -------------------------------------------
+
+    # ------ Step 3: get_usgs_dem_from_shape ----    
+    # create folder
+
+    str_area_shp_name = str_huc8_arg + "_huc_12_ar.shp"
+    str_input_path = os.path.join(str_shapes_from_conflation_dir, str_area_shp_name)
+    
+    # create output folder
+    str_terrain_from_usgs_dir = os.path.join(str_out_arg, "terrain_from_usgs")
+    if not os.path.exists(str_terrain_from_usgs_dir):
+        os.mkdir(str_terrain_from_usgs_dir)
+    
+    # *** variables set - raster terrain harvesting ***
+    int_res = 3
+    int_buffer = 300
+    int_tile = 1500
+    # ***
+    
+    # field name is from the National watershed boundary dataset (WBD)
+    str_field_name = "HUC_12"
+    
+    # run the third script (conflate_hecras_to_nwm)
+    fn_get_usgs_dem_from_shape(str_input_path,
+                               str_terrain_from_usgs_dir,
+                               int_res,
+                               int_buffer,
+                               int_tile,
+                               b_is_feet,
+                               str_field_name)
+    # -------------------------------------------    
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='============ RUN RAS2FIM FOR A HEC_RAS DATASET (HUC8) ============')
+    parser = argparse.ArgumentParser(description='============ RUN RAS2FIM FOR A HEC-RAS DATASET (HUC8) ============')
     
     parser.add_argument('-w',
                         dest = "str_huc8_arg",
@@ -80,6 +134,14 @@ if __name__ == '__main__':
                         metavar='STRING',
                         type=str)
     
+    parser.add_argument('-v',
+                        dest = "b_is_feet",
+                        help='REQUIRED: create vertical data in feet: Default=True',
+                        required=False,
+                        default=True,
+                        metavar='T/F',
+                        type=str2bool)
+    
     parser.add_argument('-n',
                         dest = "str_nation_arg",
                         help=r'REQUIRED: path to national datasets: Example: E:\X-NWS\X-National_Datasets',
@@ -93,6 +155,7 @@ if __name__ == '__main__':
     str_ras_path_arg = args['str_ras_path_arg']
     str_out_arg = args['str_out_arg']
     str_crs_arg = args['str_crs_arg']
+    b_is_feet = args['b_is_feet']
     str_nation_arg = args['str_nation_arg']
     
-    fn_run_ras2fim(str_ras_path_arg, str_out_arg, str_crs_arg)
+    fn_run_ras2fim(str_huc8_arg, str_ras_path_arg, str_out_arg, str_crs_arg, b_is_feet, str_nation_arg)

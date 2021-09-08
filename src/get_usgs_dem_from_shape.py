@@ -144,74 +144,21 @@ def fn_print_progress_bar (iteration,
         print()
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if __name__ == '__main__':
 
-    
-    parser = argparse.ArgumentParser(description='=================== USGS TERRAIN FROM SHAPEFILE ===================')
-    
-    parser.add_argument('-i',
-                        dest = "input",
-                        help=r'REQUIRED: path to the input shapefile (polygons) Example: C:\shapefiles\area.shp',
-                        required=True,
-                        metavar='FILE',
-                        type=lambda x: is_valid_file(parser, x))
 
-    parser.add_argument('-o',
-                        dest = "str_output_dir",
-                        help=r'REQUIRED: directory to write DEM files Example: Example: D:\terrain',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
-
-    parser.add_argument('-r',
-                    dest = "int_res",
-                    help='OPTIONAL: requested sample resolution (meters): Default=3',
-                    required=False,
-                    default=3,
-                    metavar='INTEGER',
-                    type=int)
+def fn_get_usgs_dem_from_shape(str_input_path,
+                               str_output_dir,
+                               int_res,
+                               int_buffer,
+                               int_tile,
+                               b_is_feet,
+                               str_field_name):
     
-    parser.add_argument('-b',
-                dest = "int_buffer",
-                help='OPTIONAL: buffer for each polygon (meters): Default=300',
-                required=False,
-                default=300,
-                metavar='INTEGER',
-                type=int)
-    
-    parser.add_argument('-t',
-                    dest = "int_tile",
-                    help='OPTIONAL: requested tile dimensions (meters): Default=1500',
-                    required=False,
-                    default=1500,
-                    metavar='INTEGER',
-                    type=int)
-    
-    parser.add_argument('-v',
-                dest = "b_tile",
-                help='OPTIONAL: create vertical data in feet: Default=True',
-                required=False,
-                default=True,
-                metavar='T/F',
-                type=str2bool)
-    
-    parser.add_argument('-f',
-                dest = "str_field_name",
-                help='OPTIONAL: unique field from input shapefile used for DEM name',
-                required=False,
-                metavar='STRING',
-                type=str)
-    
-    args = vars(parser.parse_args())
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # input polygon shapefile
-    #STR_AOI_SHP_PATH = str(os.getcwd()) + "\\" + str(args['input'])
-    STR_AOI_SHP_PATH = str(args['input'])
+    STR_AOI_SHP_PATH = str_input_path
     
     # output path
-    #STR_OUTPUT_PATH = str(os.getcwd()) + "\\"
-    STR_OUTPUT_PATH = str(args['str_output_dir'] + "\\")
+    STR_OUTPUT_PATH = str_output_dir
 
 
     print(" ")
@@ -225,23 +172,23 @@ if __name__ == '__main__':
     print("  ---(o) OUTPUT PATH: " + STR_OUTPUT_PATH)
     
     # requested return resolution in lambert units (meters)
-    INT_RESOLUTION = args['int_res']
+    INT_RESOLUTION = int_res
     print("  ---[r]   Optional: RESOLUTION: " + str(INT_RESOLUTION) + " meters")
     
     # buffer of the input polygon in lambert units (meters)
-    FLT_BUFFER = args['int_buffer']
+    FLT_BUFFER = int_buffer
     print("  ---[b]   Optional: BUFFER: " + str(FLT_BUFFER) + " meters") 
     
     # requested tile size in lambert units (meters)
-    INT_TILE_X = INT_TILE_Y = args['int_tile']
+    INT_TILE_X = INT_TILE_Y = int_tile
     print("  ---[t]   Optional: TILE SIZE: " + str(INT_TILE_X) + " meters") 
 
     # requested tile size in lambert units (meters)
-    B_CONVERT_TO_VERT_FT = args['b_tile']
+    B_CONVERT_TO_VERT_FT = b_is_feet
     print("  ---[v]   Optional: VERTICAL IN FEET: " + str(B_CONVERT_TO_VERT_FT)) 
 
     # requested tile size in lambert units (meters)
-    STR_FIELD_TO_LABEL = args['str_field_name']
+    STR_FIELD_TO_LABEL = str_field_name
     print("  ---[f]   Optional: FIELD NAME: " + str(STR_FIELD_TO_LABEL)) 
 
     print("===================================================================")
@@ -501,3 +448,82 @@ if __name__ == '__main__':
     print(" ") 
     print('ALL AREAS COMPLETE')
     print("====================================================================")
+    
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if __name__ == '__main__':
+
+    
+    parser = argparse.ArgumentParser(description='=================== USGS TERRAIN FROM SHAPEFILE ===================')
+    
+    parser.add_argument('-i',
+                        dest = "str_input_path",
+                        help=r'REQUIRED: path to the input shapefile (polygons) Example: C:\shapefiles\area.shp',
+                        required=True,
+                        metavar='FILE',
+                        type=lambda x: is_valid_file(parser, x))
+
+    parser.add_argument('-o',
+                        dest = "str_output_dir",
+                        help=r'REQUIRED: directory to write DEM files Example: Example: D:\terrain',
+                        required=True,
+                        metavar='DIR',
+                        type=str)
+
+    parser.add_argument('-r',
+                        dest = "int_res",
+                        help='OPTIONAL: requested sample resolution (meters): Default=3',
+                        required=False,
+                        default=3,
+                        metavar='INTEGER',
+                        type=int)
+    
+    parser.add_argument('-b',
+                        dest = "int_buffer",
+                        help='OPTIONAL: buffer for each polygon (meters): Default=300',
+                        required=False,
+                        default=300,
+                        metavar='INTEGER',
+                        type=int)
+    
+    parser.add_argument('-t',
+                        dest = "int_tile",
+                        help='OPTIONAL: requested tile dimensions (meters): Default=1500',
+                        required=False,
+                        default=1500,
+                        metavar='INTEGER',
+                        type=int)
+    
+    parser.add_argument('-v',
+                        dest = "b_is_feet",
+                        help='OPTIONAL: create vertical data in feet: Default=True',
+                        required=False,
+                        default=True,
+                        metavar='T/F',
+                        type=str2bool)
+    
+    parser.add_argument('-f',
+                        dest = "str_field_name",
+                        help='OPTIONAL: unique field from input shapefile used for DEM name',
+                        required=False,
+                        metavar='STRING',
+                        type=str)
+    
+    args = vars(parser.parse_args())
+    
+    str_input_path = args['str_input_path']
+    str_output_dir = args['str_output_dir']
+    int_res = args['int_res']
+    int_buffer = args['int_buffer']
+    int_tile = args['int_tile']
+    b_is_feet = args['b_is_feet']
+    str_field_name = args['str_field_name']
+    
+    fn_get_usgs_dem_from_shape(str_input_path,
+                               str_output_dir,
+                               int_res,
+                               int_buffer,
+                               int_tile,
+                               b_is_feet,
+                               str_field_name)
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

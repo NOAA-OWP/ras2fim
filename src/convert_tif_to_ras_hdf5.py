@@ -19,6 +19,7 @@
 # out="C:\Path\Terrain.hdf"
 # "C:\inputs\file1.tif" "C:\inputs\file2.tif" [...]
 #
+# ras2fim - Fourth pre-processing script
 # Uses the 'ras2fim' conda environment
 
 # ************************************************************
