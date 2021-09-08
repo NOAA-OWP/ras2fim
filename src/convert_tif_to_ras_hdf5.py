@@ -1,7 +1,7 @@
 # Create HEC-RAS terrain files (HDF5) from GeoTIFFs
 #
 # Purpose:
-# Note that this uses a CLI to the RasProcess.exe in HEC-RAS 6.0 beta 3.
+# Note that this uses a CLI to the RasProcess.exe in HEC-RAS 6.0.
 # This will need access to the cooresponding and support files
 # (dll, exe, etc...).  As this is a CLI call it will run async with this
 # script.
@@ -11,7 +11,7 @@
 #
 # Created by: Andy Carter, PE
 # Created: 2021-08.05
-# Last revised - 2021.08.05
+# Last revised - 2021.09.08
 #
 # Sample:  RasProcess.exe CreateTerrain
 # units=feet stitch=true
@@ -88,52 +88,12 @@ def fn_print_progress_bar (iteration,
         print()
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='==== CONVERT TERRAIN GeoTIFFS TO HEC-RAS TERRAINS (HDF5) ===')
-    
-    parser.add_argument('-r',
-                        dest = "str_hec_path",
-                        help=r'REQUIRED: path to HEC-RAS 6.0 RasProcess.exe: Example: "C:\Program Files (x86)\HEC\HEC-RAS\6.0" (wrap in quotes)',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
-    
-    
-    parser.add_argument('-i',
-                        dest = "str_geotiff_dir",
-                        help=r'REQUIRED: directory containing the geotiffs to convert:  Example: D:\terrain',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
-    
-    parser.add_argument('-o',
-                        dest = "str_dir_to_write_hdf5",
-                        help=r'REQUIRED: path to write output files: Example: D:\hecras_terrain',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
-    
-    parser.add_argument('-p',
-                        dest = "str_projection",
-                        help=r'REQUIRED: projection file of output coordinate zone: D:\conflation\10170204_huc_12_ar.prj',
-                        required=True,
-                        metavar='FILE PATH',
-                        type=str)
-    
-    parser.add_argument('-v',
-                        dest = "b_in_feet",
-                        help='OPTIONAL: create vertical data in feet: Default=True',
-                        required=False,
-                        default=True,
-                        metavar='T/F',
-                        type=str2bool)
-    
-    
-    args = vars(parser.parse_args())
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
+def fn_convert_tif_to_ras_hdf5(str_hec_path,
+                               str_geotiff_dir,
+                               str_dir_to_write_hdf5,
+                               str_projection,
+                               b_in_feet):
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     # INPUT
     
@@ -145,26 +105,26 @@ if __name__ == '__main__':
     
     # path to the directory that contains RasProcess and associated dll
     
-    STR_HEC_RAS_6_PATH = args['str_hec_path']
+    STR_HEC_RAS_6_PATH = str_hec_path
     print("  ---(r) HEC-RAS PATH: " + str(STR_HEC_RAS_6_PATH))
     
     #STR_HEC_RAS_6_PATH = r'C:\Program Files (x86)\HEC\HEC-RAS\6.0'
     STR_HEC_RAS_6_PATH += r'\RasProcess.exe'
     
     # path to walk to file geotiffs
-    STR_CONVERT_FILEPATH = args['str_geotiff_dir']
+    STR_CONVERT_FILEPATH = str_geotiff_dir
     print("  ---(i) GEOTIFF INPUT PATH: " + str(STR_CONVERT_FILEPATH))
     
     # path to walk to file geotiffs
-    STR_RAS_TERRAIN_OUT = args['str_dir_to_write_hdf5']
+    STR_RAS_TERRAIN_OUT = str_dir_to_write_hdf5
     print("  ---(o) DIRECTORY TO WRITE TERRAIN HDF5: " + str(STR_RAS_TERRAIN_OUT))
     
     # path to walk to file geotiffs
-    STR_PRJ_FILE = args['str_projection']
+    STR_PRJ_FILE = str_projection
     print("  ---(p) PROJECTION TO WRITE DEMS: " + str(STR_PRJ_FILE))
     
     # 
-    B_CONVERT_TO_VERT_FT = args['b_in_feet']
+    B_CONVERT_TO_VERT_FT = b_in_feet
     print("  ---[v]   Optional: VERTICAL IN FEET: " + str(B_CONVERT_TO_VERT_FT))
     
     print("===================================================================")
@@ -223,3 +183,60 @@ if __name__ == '__main__':
         print('Errors when processing - Check output')
     
     print("===================================================================")
+    
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='==== CONVERT TERRAIN GeoTIFFS TO HEC-RAS TERRAINS (HDF5) ===')
+    
+    parser.add_argument('-r',
+                        dest = "str_hec_path",
+                        help=r'REQUIRED: path to HEC-RAS 6.0 RasProcess.exe: Example: "C:\Program Files (x86)\HEC\HEC-RAS\6.0" (wrap in quotes)',
+                        required=True,
+                        metavar='DIR',
+                        type=str)
+    
+    
+    parser.add_argument('-i',
+                        dest = "str_geotiff_dir",
+                        help=r'REQUIRED: directory containing the geotiffs to convert:  Example: D:\terrain',
+                        required=True,
+                        metavar='DIR',
+                        type=str)
+    
+    parser.add_argument('-o',
+                        dest = "str_dir_to_write_hdf5",
+                        help=r'REQUIRED: path to write output files: Example: D:\hecras_terrain',
+                        required=True,
+                        metavar='DIR',
+                        type=str)
+    
+    parser.add_argument('-p',
+                        dest = "str_projection",
+                        help=r'REQUIRED: projection file of output coordinate zone: D:\conflation\10170204_huc_12_ar.prj',
+                        required=True,
+                        metavar='FILE PATH',
+                        type=str)
+    
+    parser.add_argument('-v',
+                        dest = "b_in_feet",
+                        help='OPTIONAL: create vertical data in feet: Default=True',
+                        required=False,
+                        default=True,
+                        metavar='T/F',
+                        type=str2bool)
+    
+    args = vars(parser.parse_args())
+    
+    str_hec_path = args['str_hec_path']
+    str_geotiff_dir = args['str_geotiff_dir']
+    str_dir_to_write_hdf5 = args['str_dir_to_write_hdf5']
+    str_projection = args['str_projection']
+    b_in_feet = args['b_in_feet']
+
+    fn_convert_tif_to_ras_hdf5(str_hec_path,
+                               str_geotiff_dir,
+                               str_dir_to_write_hdf5,
+                               str_projection,
+                               b_in_feet)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
