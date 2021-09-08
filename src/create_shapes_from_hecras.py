@@ -4,9 +4,10 @@
 # centerline and cross sections
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.08.03
+# Last revised - 2021.09.07
 #
-# PreProcessing - Part 1 of 2
+# ras2fim - First pre-processing script
+# Uses the 'ras2fim' conda environment
 
 import re
 import pandas as pd
@@ -56,9 +57,8 @@ def fn_open_hecras(str_ras_project_path):
     hec.QuitRas()   # close HEC-RAS
 # ************************
 
+
 # $$$$$$$$$$$$$$$$$$$$$$$$
-
-
 def fn_get_active_geom(str_path_hecras_project_fn2):
     # Fuction - gets the path of the active geometry HDF file
 
@@ -99,9 +99,8 @@ def fn_get_active_geom(str_path_hecras_project_fn2):
     return str_path_to_current_geom
 # $$$$$$$$$$$$$$$$$$$$$$$$
 
+
 # @@@@@@@@@@@@@@@@@@@@@@@@
-
-
 def fn_geodataframe_cross_sections(str_path_hecras_project_fn, STR_CRS_MODEL):
     # Fuction - Creates a GeoDataFrame of the cross sections for the
     # HEC-RAS geometry file in the active plan
@@ -201,9 +200,9 @@ def fn_geodataframe_cross_sections(str_path_hecras_project_fn, STR_CRS_MODEL):
     return gdf_cross_sections
 # @@@@@@@@@@@@@@@@@@@@@@@@
 
+
+
 # ++++++++++++++++++++++++
-
-
 def fn_geodataframe_stream_centerline(str_path_hecras_project_fn, STR_CRS_MODEL):
     # Function - Creates a GeodataFrame of the HEC-RAS stream centerline
     # for the geometry file in the active plan
@@ -289,8 +288,8 @@ def fn_geodataframe_stream_centerline(str_path_hecras_project_fn, STR_CRS_MODEL)
     return gdf_streams
 # ++++++++++++++++++++++++
 
-# ^^^^^^^^^^^^^^^^^^^^^^^^
 
+# ^^^^^^^^^^^^^^^^^^^^^^^^
 def fn_get_active_flow(str_path_hecras_project_fn):
     # Fuction - gets the path of the active geometry HDF file
 
@@ -335,9 +334,8 @@ def fn_get_active_flow(str_path_hecras_project_fn):
     return str_path_to_current_flow
 # ^^^^^^^^^^^^^^^^^^^^^^^^
 
+
 # &&&&&&&&&&&&&&&&&&&&&&&&
-
-
 def fn_get_flow_dataframe(str_path_hecras_flow_fn):
     # Get pandas dataframe of the flows in the active plan's flow file
 
@@ -409,9 +407,8 @@ def fn_get_flow_dataframe(str_path_hecras_flow_fn):
     return(df)
 # &&&&&&&&&&&&&&&&&&&&&&&&
 
+
 # ````````````````````````
-
-
 def fn_gdf_append_xs_with_max_flow(df_xs_fn, df_flows_fn):
     # Function - for a list of cross sections, determine the maximum flow
     # and return as a pandas dataframe

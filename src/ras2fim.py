@@ -11,7 +11,15 @@ import argparse
 import os
 
 def fn_run_ras2fim(str_ras_path_arg, str_out_arg, str_crs_arg):
-    # create a output foilder
+    # print out the user inputed variables
+    # TODO - 2021.09.07
+    
+    # create an output folder
+    # TODO - 2021.09.07
+    # check if this folder exists and has HEC-RAS files
+    
+    # Do you want to overwrite the previous output if exists?
+    
     if not os.path.exists(str_out_arg):
         os.mkdir(str_out_arg)
     
@@ -23,9 +31,14 @@ def fn_run_ras2fim(str_ras_path_arg, str_out_arg, str_crs_arg):
     
     # run the first script (create_shapes_from_hecras)
     fn_create_shapes_from_hecras(str_ras_path_arg, str_shapes_from_hecras_dir, str_crs_arg)
+    
+    
+    # do whatever needed to create folders and determine variables
+    # run the second script (xxxxxxxxxxxxxxxx)
+    
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='============ SHAPEFILES FROM HEC-RAS DIRECTORY ============')
+    parser = argparse.ArgumentParser(description='============ RUN RAS2FIM FOR A HEC_RAS DATASET (HUC8) ============')
     
     parser.add_argument('-i',
                         dest = "str_ras_path_arg",

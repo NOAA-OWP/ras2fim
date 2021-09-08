@@ -1,16 +1,12 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 # This is the second pre-processing tool that turns HEC-RAS 1D modeling into
 # flood inundation mapping products.  This routine is used to conflate the
 # national water model streams (feature_id) to the models provided in the
 # supplied HEC-RAS files
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.08.03
+# Last revised - 2021.09.08
 #
-# PreProcessing - Part 2 of 2
-
+# ras2fim - Second pre-processing script
 # Uses the 'ras2fim' conda environment
 
 import geopandas as gpd
