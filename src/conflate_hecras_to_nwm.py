@@ -68,43 +68,8 @@ def fn_print_progress_bar (iteration,
         print()
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if __name__ == '__main__':
 
-    
-    parser = argparse.ArgumentParser(description='===== CONFLATE HEC-RAS TO NATIONAL WATER MODEL STREAMS =====')
-    
-    parser.add_argument('-w',
-                        dest = "str_huc8_arg",
-                        help='REQUIRED: HUC-8 watershed that is being evaluated: Example: 10170204',
-                        required=True,
-                        metavar='STRING',
-                        type=str)
-    
-    parser.add_argument('-i',
-                        dest = "str_shp_in_arg",
-                        help=r'REQUIRED: Directory containing stream and cross section shapefiles:  Example: D:\ras_shapes',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
-    
-    parser.add_argument('-o',
-                        dest = "str_shp_out_arg",
-                        help=r'REQUIRED: path to write output files: Example: D:\conflation_output',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
-    
-    parser.add_argument('-n',
-                        dest = "str_nation_arg",
-                        help=r'REQUIRED: path to national datasets: Example: E:\X-NWS\X-National_Datasets',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
-    
-    args = vars(parser.parse_args())
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
+def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str_nation_arg):
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     # INPUT
     
@@ -115,20 +80,20 @@ if __name__ == '__main__':
     print("+-----------------------------------------------------------------+")
     
     
-    STR_HUC8 = args['str_huc8_arg']
+    STR_HUC8 = str_huc8_arg
     print("  ---(w) HUC-8: " + STR_HUC8)
     
-    STR_BLE_SHP_DIR = args['str_shp_in_arg']
+    STR_BLE_SHP_DIR = str_shp_in_arg
     print("  ---(i) BLE INPUT SHP DIRECTORY: " + STR_BLE_SHP_DIR)
     
     # note the files names are hardcoded in 1 of 2
     STR_BLE_STREAM_LN = STR_BLE_SHP_DIR + '\\' + 'stream_LN_from_ras.shp'
     STR_BLE_CROSS_SECTION_LN = STR_BLE_SHP_DIR + '\\' + 'cross_section_LN_from_ras.shp'
     
-    STR_OUT_PATH = args['str_shp_out_arg']
+    STR_OUT_PATH = str_shp_out_arg
     print("  ---(o) OUTPUT DIRECTORY: " + STR_OUT_PATH)
     
-    STR_NATIONAL_DATASET_PATH = args['str_nation_arg']
+    STR_NATIONAL_DATASET_PATH = str_nation_arg
     print("  ---(n) NATIONAL DATASET LOCATION: " + STR_NATIONAL_DATASET_PATH)
     
     # ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -587,3 +552,47 @@ if __name__ == '__main__':
     print()
     print('COMPLETE')
     print("+=================================================================+")
+    
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if __name__ == '__main__':
+
+    
+    parser = argparse.ArgumentParser(description='===== CONFLATE HEC-RAS TO NATIONAL WATER MODEL STREAMS =====')
+    
+    parser.add_argument('-w',
+                        dest = "str_huc8_arg",
+                        help='REQUIRED: HUC-8 watershed that is being evaluated: Example: 10170204',
+                        required=True,
+                        metavar='STRING',
+                        type=str)
+    
+    parser.add_argument('-i',
+                        dest = "str_shp_in_arg",
+                        help=r'REQUIRED: Directory containing stream and cross section shapefiles:  Example: D:\ras_shapes',
+                        required=True,
+                        metavar='DIR',
+                        type=str)
+    
+    parser.add_argument('-o',
+                        dest = "str_shp_out_arg",
+                        help=r'REQUIRED: path to write output files: Example: D:\conflation_output',
+                        required=True,
+                        metavar='DIR',
+                        type=str)
+    
+    parser.add_argument('-n',
+                        dest = "str_nation_arg",
+                        help=r'REQUIRED: path to national datasets: Example: E:\X-NWS\X-National_Datasets',
+                        required=True,
+                        metavar='DIR',
+                        type=str)
+    
+    args = vars(parser.parse_args())
+    
+    str_huc8_arg = args['str_huc8_arg']
+    str_shp_in_arg = args['str_shp_in_arg']
+    str_shp_out_arg = args['str_shp_out_arg']
+    str_nation_arg = args['str_nation_arg']
+    
+    fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str_nation_arg)
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
