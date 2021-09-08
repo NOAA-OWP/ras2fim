@@ -19,7 +19,7 @@ import argparse
 
 import win32com.client
 # windows component object model for interaction with HEC-RAS API
-# This routine uses RAS507.HECRASController (HEC-RAS v5.0.7 must be
+# This routine uses RAS60.HECRASController (HEC-RAS v6.0.0 must be
 # installed on this machine prior to execution)
 
 import h5py
@@ -33,15 +33,13 @@ from os import path
 from shapely.geometry import LineString
 from shapely.ops import split, linemerge
 
-# Uses the 'ras2fim' conda environment
-
 # ************************
 
 
 def fn_open_hecras(str_ras_project_path):
     # Function - runs HEC-RAS (active plan) and closes the file
 
-    hec = win32com.client.Dispatch("RAS507.HECRASController")
+    hec = win32com.client.Dispatch("RAS60.HECRASController")
     hec.ShowRas()
 
     # opening HEC-RAS

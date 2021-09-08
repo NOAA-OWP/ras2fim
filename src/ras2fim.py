@@ -36,13 +36,26 @@ def fn_run_ras2fim(str_huc8_arg,
                    str_nation_arg,
                    str_hec_path):
     
-    # print out the user inputed variables
-    # TODO - 2021.09.07
+    print(" ")
+    print("+=================================================================+")
+    print("|          RUN RAS2FIM FOR A HEC-RAS 1-D DATASET (HUC8)           |")
+    print("|     Created by Andy Carter, PE of the National Water Center     |")
+    print("+-----------------------------------------------------------------+")
+    
+    print("  ---(r) HUC 8 WATERSHED: " + str(str_huc8_arg))
+    print("  ---(i) PATH TO HEC-RAS: " + str(str_ras_path_arg))
+    print("  ---(o) OUTPUT DIRECTORY: " + str(str_out_arg))
+    print("  ---(p) PROJECTION OF HEC-RAS MODELS: " + str(str_crs_arg))
+    print("  ---(v) VERTICAL IN FEET: " + str(b_is_feet))    
+    print("  ---(n) PATH TO NATIONAL DATASETS: " + str(str_nation_arg))     
+    print("  ---(r) PATH TO HEC-RAS v6.0: " + str(str_hec_path))
+    
+    print("===================================================================")
+    
     
     # create an output folder
     # TODO - 2021.09.07
     # check if this folder exists and has HEC-RAS files
-    
     # Do you want to overwrite the previous output if exists?
     
     if not os.path.exists(str_out_arg):
@@ -189,6 +202,6 @@ if __name__ == '__main__':
     str_crs_arg = args['str_crs_arg']
     b_is_feet = args['b_is_feet']
     str_nation_arg = args['str_nation_arg']
-    sstr_hec_path = args['str_hec_path']
+    str_hec_path = args['str_hec_path']
     
     fn_run_ras2fim(str_huc8_arg, str_ras_path_arg, str_out_arg, str_crs_arg, b_is_feet, str_nation_arg, str_hec_path)
