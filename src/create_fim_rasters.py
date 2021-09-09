@@ -22,8 +22,7 @@ import time
 import sys
 
 # ras2fim python worker for multiprocessing
-# TODO - rename the worker below - 2021.09.09
-import nws_ras2fim_worker
+import worker_fim_rasters
 # ************************************************************
 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
@@ -224,8 +223,7 @@ def fn_create_fim_rasters(str_desired_huc8,
         list_of_lists_df_streams = df_streams_huc12_mod1.values.tolist()
 
         if len(list_of_lists_df_streams) > 0:
-            output = p.map(nws_ras2fim_worker.fn_main_hecras,list_of_lists_df_streams)
-            # TODO - rename the worker above - 2021.09.09 - MAC
+            output = p.map(worker_fim_rasters.fn_main_hecras,list_of_lists_df_streams)
         
     print(" ") 
     print('ALL AREAS COMPLETE')
