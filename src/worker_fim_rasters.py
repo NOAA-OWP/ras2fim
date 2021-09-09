@@ -1,4 +1,4 @@
-# Create flood inundation data from HEC-RAS
+# Create flood inundation data from HEC-RAS - 1D
 #
 # Purpose:
 # Create flood inundation rasters and supporting InFRM data from the
@@ -8,7 +8,7 @@
 #
 # Created by: Andy Carter, PE
 # Created: 2021-08-12
-# Last revised - 2021.09.01
+# Last revised - 2021.09.09
 #
 # Uses the 'ras2fim' conda environment
 # ************************************************************
@@ -30,7 +30,7 @@ from scipy.interpolate import interp1d
 
 import win32com.client
 # windows component object model for interaction with HEC-RAS API
-# This routine uses RAS507.HECRASController (HEC-RAS v5.0.7 must be
+# This routine uses RAS60.HECRASController (HEC-RAS v6.0.0 must be
 # installed on this machine prior to execution
 
 import rasterio
@@ -723,7 +723,7 @@ def fn_clip_convert_dems(list_step_profiles_dem_fn,
 # ...........................
 def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn):
 
-    hec = win32com.client.Dispatch("RAS507.HECRASController")
+    hec = win32com.client.Dispatch("RAS60.HECRASController")
     #hec.ShowRas()
 
     hec.Project_Open(str_ras_projectpath)   # opening HEC-RAS
@@ -1407,21 +1407,6 @@ def fn_main_hecras(record_requested_stream):
         # does not run (example: duplicate points)
 
         river = fn_create_hecras_files(str_feature_id, str_geom_path, flt_ds_xs, flt_us_xs, int_max_q, str_hecras_path_to_create)
-
-        # ----- REMOVE -----
-        IS_CREATE_MAPS = False
-        # ------------------
-        if IS_CREATE_MAPS:
-            # delete the RAS_Mapper Output folder
-            # and all the created files (DEM GeoTiffs and Shapefiles)
-
-            str_rasmapper_foldertodelete = str_hecras_path_to_create + '\\BLE_' + str_feature_id
-
-            try:
-                shutil.rmtree(str_rasmapper_foldertodelete)
-            except OSError as e:
-                print("Delete Error: " + str_feature_id)
-
     except:
         #print("HEC-RAS Error: " + str_geom_path)
         fn_append_error(str_feature_id, str_geom_path, str_huc12, STR_ROOT_OUTPUT_DIRECTORY)

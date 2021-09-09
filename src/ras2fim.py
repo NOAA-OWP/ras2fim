@@ -1,7 +1,7 @@
 # Place holder - revise!!!!!
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.09.07
+# Last revised - 2021.09.09
 #
 # Main code for ras2fim
 
@@ -10,6 +10,7 @@ from create_shapes_from_hecras import fn_create_shapes_from_hecras
 from conflate_hecras_to_nwm import fn_conflate_hecras_to_nwm
 from get_usgs_dem_from_shape import fn_get_usgs_dem_from_shape
 from convert_tif_to_ras_hdf5 import fn_convert_tif_to_ras_hdf5
+from create_fim_rasters import fn_create_fim_rasters
 
 import argparse
 import os
@@ -51,7 +52,7 @@ def fn_run_ras2fim(str_huc8_arg,
     print("  ---(r) PATH TO HEC-RAS v6.0: " + str(str_hec_path))
     
     print("===================================================================")
-    
+    print(" ")
     
     # create an output folder
     # TODO - 2021.09.07
@@ -137,6 +138,35 @@ def fn_run_ras2fim(str_huc8_arg,
                                str_projection_path,
                                b_is_feet)
     # -------------------------------------------
+    
+    # ------ Step 5: create_fim_rasters ----- 
+    
+    # folder of tifs created in third script (get_usgs_dem_from_shape)
+    # str_terrain_from_usgs_dir
+    
+    # create a converted terrain folder
+    str_fim_out_dir = os.path.join(str_out_arg, "hecras_output")
+    if not os.path.exists(str_fim_out_dir):
+        os.mkdir(str_fim_out_dir)
+    
+    # path to standard input (PlanStandardText01.txt, PlanStandardText02.txt, ProjectStandardText01.txt )
+    str_std_input_path = os.getcwd() # assumed as in directory executing script
+    
+    # *** variables set - raster terrain harvesting ***
+    flt_interval = 0.2 # vertical step of average depth (recommended - 0.2m and 0.5ft)
+    flt_out_resolution = 3 # output depth raster resolution - meters
+    # ***
+    
+    fn_create_fim_rasters(str_huc8_arg,
+                          str_shapes_from_conflation_dir,
+                          str_fim_out_dir,
+                          str_projection_path,
+                          str_hecras_terrain_dir,
+                          str_std_input_path,
+                          flt_interval,
+                          flt_out_resolution)
+    # -------------------------------------------
+    
     
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    
 

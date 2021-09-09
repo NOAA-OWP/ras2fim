@@ -7,7 +7,7 @@
 #
 # Created by: Andy Carter, PE
 # Created: 2021-08-12
-# Last revised - 2021.08.30
+# Last revised - 2021.09.09
 #
 # Uses the 'ras2fim' conda environment
 # ************************************************************
@@ -22,6 +22,7 @@ import time
 import sys
 
 # ras2fim python worker for multiprocessing
+# TODO - rename the worker below - 2021.09.09
 import nws_ras2fim_worker
 # ************************************************************
 
@@ -55,73 +56,15 @@ def fn_print_progress_bar (iteration,
         print()
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   
 
+def fn_create_fim_rasters(str_desired_huc8,
+                          str_input_folder,
+                          str_output_folder,
+                          str_projection_path,
+                          str_terrain_path,
+                          str_std_input_path,
+                          flt_interval,
+                          flt_out_resolution):
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if __name__ == '__main__':
-    
-    parser = argparse.ArgumentParser(description='================ NWM RASTER LIBRARY FROM HEC-RAS ==================')
-    
-    parser.add_argument('-w',
-                        dest = "str_desired_huc8",
-                        help=r'REQUIRED: the desired huc-8 watershed: Example:  10170204',
-                        required=True,
-                        metavar='STRING',
-                        type=str)
-
-    parser.add_argument('-i',
-                        dest = "str_input_folder",
-                        help=r'REQUIRED: directory containing pre-processed (2 of 2) data: Example: D:\pre_2_output',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
-    
-    parser.add_argument('-o',
-                        dest = "str_output_folder",
-                        help=r'REQUIRED: path to write ras2fim output files: Example: D:\ras_output',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
-    
-    parser.add_argument('-p',
-                        dest = "str_projection_path",
-                        help=r'REQUIRED: path the to the projection file: Example: D:\pre_2_output\10170204_ble_streams_ln.prj',
-                        required=True,
-                        metavar='FILE',
-                        type=str)
-    
-    parser.add_argument('-t',
-                        dest = "str_terrain_path",
-                        help=r'REQUIRED: path the to hdf5 terrain: Example: D:\hecras_terrain',
-                        required=True,
-                        metavar='FILE',
-                        type=str)
-    
-    parser.add_argument('-s',
-                        dest = "str_std_input_path",
-                        help=r'  OPTIONAL: path the to the standard inputs: Example: C:\Users\civil\test1\ras2fim\src : Default: working directory',
-                        required=False,
-                        default=os.getcwd(),
-                        metavar='FILE',
-                        type=str)
-    
-    parser.add_argument('-z',
-                        dest = "flt_interval",
-                        help=r'  OPTIONAL: elvation interval of output grids: Example: 0.5 : Default: 0.2',
-                        required=False,
-                        default=0.2,
-                        metavar='FLOAT',
-                        type=float)
-    
-    parser.add_argument('-r',
-                        dest = "flt_out_resolution",
-                        help=r'  OPTIONAL: resolution of output grids: Example: 1.5 : Default: 3.0',
-                        required=False,
-                        default=3.0,
-                        metavar='FLOAT',
-                        type=float)
-    
-    args = vars(parser.parse_args())
-    # --------------------------------
     # Hard coded constants for this routine
     
     INT_XS_BUFFER = 2   # Number of XS to add upstream and downstream
@@ -152,22 +95,22 @@ if __name__ == '__main__':
     print("|   Created by Andy Carter, PE of the National Water Center       |")
     print("+-----------------------------------------------------------------+")
 
-    STR_HUC8 = args['str_desired_huc8']
+    STR_HUC8 = str_desired_huc8
     print("  ---(w) HUC-8 WATERSHED: " + STR_HUC8)
 
-    STR_INPUT_FOLDER = args['str_input_folder']
+    STR_INPUT_FOLDER = str_input_folder
     print("  ---(i) INPUT PATH: " + STR_INPUT_FOLDER)
     
-    STR_ROOT_OUTPUT_DIRECTORY = args['str_output_folder']
+    STR_ROOT_OUTPUT_DIRECTORY = str_output_folder
     print("  ---(o) OUTPUT PATH: " + STR_ROOT_OUTPUT_DIRECTORY)
     
-    STR_PATH_TO_PROJECTION = args['str_projection_path']
+    STR_PATH_TO_PROJECTION = str_projection_path
     print("  ---(p) PROJECTION PATH: " + STR_PATH_TO_PROJECTION)
     
-    STR_PATH_TO_TERRAIN = args['str_terrain_path']
+    STR_PATH_TO_TERRAIN = str_terrain_path
     print("  ---(t) TERRAIN PATH: " + STR_PATH_TO_TERRAIN)
     
-    STR_PATH_TO_STANDARD_INPUT = args['str_std_input_path']
+    STR_PATH_TO_STANDARD_INPUT = str_std_input_path
     print("  ---[s]   Optional: STANDARD INPUT PATH: " + STR_PATH_TO_STANDARD_INPUT)
     
     # Path to the standard plan file text
@@ -175,10 +118,10 @@ if __name__ == '__main__':
     STR_PLAN_FOOTER_PATH = STR_PATH_TO_STANDARD_INPUT + r"\PlanStandardText02.txt"
     STR_PROJECT_FOOTER_PATH = STR_PATH_TO_STANDARD_INPUT + r"\ProjectStandardText01.txt"
     
-    FLT_INTERVAL = args['flt_interval']
+    FLT_INTERVAL = flt_interval
     print("  ---[z]   Optional: OUTPUT ELEVATION STEP: " + str(FLT_INTERVAL))
     
-    INT_DESIRED_RESOLUTION = args['flt_out_resolution']
+    INT_DESIRED_RESOLUTION = flt_out_resolution
     print("  ---[r]   Optional: OUTPUT RASTER RESOLUTION: " + str(INT_DESIRED_RESOLUTION))
     
     print("===================================================================")
@@ -282,9 +225,94 @@ if __name__ == '__main__':
 
         if len(list_of_lists_df_streams) > 0:
             output = p.map(nws_ras2fim_worker.fn_main_hecras,list_of_lists_df_streams)
-        
-        #print(str_huc12 + ": " + str(len(list_of_lists_df_streams)) + " runs")
+            # TODO - rename the worker above - 2021.09.09 - MAC
         
     print(" ") 
     print('ALL AREAS COMPLETE')
     print("====================================================================")
+    
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if __name__ == '__main__':
+    
+    parser = argparse.ArgumentParser(description='================ NWM RASTER LIBRARY FROM HEC-RAS ==================')
+    
+    parser.add_argument('-w',
+                        dest = "str_desired_huc8",
+                        help=r'REQUIRED: the desired huc-8 watershed: Example:  10170204',
+                        required=True,
+                        metavar='STRING',
+                        type=str)
+
+    parser.add_argument('-i',
+                        dest = "str_input_folder",
+                        help=r'REQUIRED: directory containing pre-processed (2 of 2) data: Example: D:\pre_2_output',
+                        required=True,
+                        metavar='DIR',
+                        type=str)
+    
+    parser.add_argument('-o',
+                        dest = "str_output_folder",
+                        help=r'REQUIRED: path to write ras2fim output files: Example: D:\ras_output',
+                        required=True,
+                        metavar='DIR',
+                        type=str)
+    
+    parser.add_argument('-p',
+                        dest = "str_projection_path",
+                        help=r'REQUIRED: path the to the projection file: Example: D:\pre_2_output\10170204_ble_streams_ln.prj',
+                        required=True,
+                        metavar='FILE',
+                        type=str)
+    
+    parser.add_argument('-t',
+                        dest = "str_terrain_path",
+                        help=r'REQUIRED: path the to hdf5 terrain: Example: D:\hecras_terrain',
+                        required=True,
+                        metavar='FILE',
+                        type=str)
+    
+    parser.add_argument('-s',
+                        dest = "str_std_input_path",
+                        help=r'  OPTIONAL: path the to the standard inputs: Example: C:\Users\civil\test1\ras2fim\src : Default: working directory',
+                        required=False,
+                        default=os.getcwd(),
+                        metavar='FILE',
+                        type=str)
+    
+    parser.add_argument('-z',
+                        dest = "flt_interval",
+                        help=r'  OPTIONAL: elvation interval of output grids: Example: 0.5 : Default: 0.2',
+                        required=False,
+                        default=0.2,
+                        metavar='FLOAT',
+                        type=float)
+    
+    parser.add_argument('-r',
+                        dest = "flt_out_resolution",
+                        help=r'  OPTIONAL: resolution of output grids: Example: 1.5 : Default: 3.0',
+                        required=False,
+                        default=3.0,
+                        metavar='FLOAT',
+                        type=float)
+    
+    args = vars(parser.parse_args())
+    # --------------------------------
+    
+    str_desired_huc8 = args['str_desired_huc8']
+    str_input_folder = args['str_input_folder']
+    str_output_folder = args['str_output_folder']
+    str_projection_path = args['str_projection_path']
+    str_terrain_path = args['str_terrain_path']
+    str_std_input_path = args['str_std_input_path']
+    flt_interval = args['flt_interval']
+    flt_out_resolution = args['flt_out_resolution']
+    
+    fn_create_fim_rasters(str_desired_huc8,
+                          str_input_folder,
+                          str_output_folder,
+                          str_projection_path,
+                          str_terrain_path,
+                          str_std_input_path,
+                          flt_interval,
+                          flt_out_resolution)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
