@@ -98,9 +98,9 @@ def fn_run_ras2fim(str_huc8_arg,
         os.mkdir(str_terrain_from_usgs_dir)
     
     # *** variables set - raster terrain harvesting ***
-    int_res = 3
-    int_buffer = 300
-    int_tile = 1500
+    int_res = 3 # resolution of the downloaded terrain (meters)
+    int_buffer = 300 # buffer distance for each watershed shp
+    int_tile = 1500 # tile size requested from USGS WCS
     # ***
     
     # field name is from the National watershed boundary dataset (WBD)
@@ -142,7 +142,7 @@ def fn_run_ras2fim(str_huc8_arg,
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='============ RUN RAS2FIM FOR A HEC-RAS DATASET (HUC8) ============')
+    parser = argparse.ArgumentParser(description='========== RUN RAS2FIM FOR A HEC-RAS 1-D DATASET (HUC8) ==========')
     
     parser.add_argument('-w',
                         dest = "str_huc8_arg",
