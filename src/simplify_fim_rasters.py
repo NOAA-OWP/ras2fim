@@ -8,7 +8,7 @@
 #
 # Created by: Andy Carter, PE
 # Created: 2021-08-23
-# Last revised - 2021-08-24
+# Last revised - 2021-09-09
 #
 # Uses the 'ras2fim' conda environment
 # ************************************************************
@@ -94,7 +94,11 @@ def fn_print_progress_bar (iteration,
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
 
 # **********************************
-def fn_create_grid(str_polygon_path, str_file_to_create_path, str_dem_path):
+def fn_create_grid(str_polygon_path,
+                   str_file_to_create_path,
+                   str_dem_path,
+                   str_output_crs,
+                   flt_desired_res):
     # function to create InFRM compliant dems
     # args:
     #   str_polygon_path = path to boundary polygon from HEC-RAS
@@ -120,7 +124,7 @@ def fn_create_grid(str_polygon_path, str_file_to_create_path, str_dem_path):
         #xds_clipped = rxr.open_rasterio(str_dem_path,masked=True,).rio.clip(coords, from_disk=True)
 
         # reproject the DEM to the requested CRS
-        xds_clipped_reproject = xds_clipped.rio.reproject(STR_OUTPUT_CRS)
+        xds_clipped_reproject = xds_clipped.rio.reproject(str_output_crs)
 
         # change the depth values to integers representing 1/10th interval steps
         # Example - a cell value of 25 = a depth of 2.5 units (feet or meters)
@@ -135,7 +139,7 @@ def fn_create_grid(str_polygon_path, str_file_to_create_path, str_dem_path):
         # using the merge on a single raster to allow for user supplied
         # raster resolution of the output
         xds_clipped_desired_res = rxr.merge.merge_arrays(xds_clipped_reproject_scaled,
-                                                         res=(FLT_DESIRED_RES),
+                                                         res=(flt_desired_res),
                                                          nodata=(65535))
 
         # compress and write out raster as unsigned 16 bit integer - InFRM compliant
@@ -144,36 +148,9 @@ def fn_create_grid(str_polygon_path, str_file_to_create_path, str_dem_path):
                                               dtype="uint16")
 # **********************************
 
-if __name__ == '__main__':
-
-    
-    parser = argparse.ArgumentParser(description='===== CREATE SIMPLIFIED FLOOD DEPTH RASTER FILES (TIF) =====')
-
-    parser.add_argument('-i',
-                        dest = "str_input_dir",
-                        help=r'directory containing RAS2FIM output:  Example: C:\HUC_10170204',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
-    
-    parser.add_argument('-r',
-                        dest = "flt_resolution",
-                        help='resolution of output raster (crs units): Default=3',
-                        required=False,
-                        default=3,
-                        metavar='FLOAT',
-                        type=float)
-    
-    parser.add_argument('-p',
-                        dest = "str_output_crs",
-                        help='output coordinate reference zone: Default=EPSG:3857',
-                        required=False,
-                        default="EPSG:3857",
-                        metavar='STRING',
-                        type=str)
-
-    args = vars(parser.parse_args())
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def fn_simplify_fim_rasters(str_input_dir,
+                            flt_resolution,
+                            str_output_crs):
 
     print(" ")
     print("+=================================================================+")
@@ -181,16 +158,16 @@ if __name__ == '__main__':
     print("|   Created by Andy Carter, PE of the National Water Center       |")
     print("+-----------------------------------------------------------------+")
 
-    STR_MAP_OUTPUT = args['str_input_dir']
-    print("  ---(i) input path: " + str(STR_MAP_OUTPUT))
+    STR_MAP_OUTPUT = str_input_dir
+    print("  ---(i) INPUT PATH: " + str(STR_MAP_OUTPUT))
     
     # output interval of the flood depth raster - in CRS units
-    FLT_DESIRED_RES = args['flt_resolution']
-    print("  ---(r) resolution: " + str(FLT_DESIRED_RES)) 
+    FLT_DESIRED_RES = flt_resolution
+    print("  ---[r]   Optional: RESOLUTION: " + str(FLT_DESIRED_RES)) 
     
     # requested tile size in lambert units (meters)
-    STR_OUTPUT_CRS = args['str_output_crs']
-    print("  ---(p) projection output: " + str(STR_OUTPUT_CRS)) 
+    STR_OUTPUT_CRS = str_output_crs
+    print("  ---[p]   Optional: PROJECTION OF OUTPUT: " + str(STR_OUTPUT_CRS)) 
 
     print("===================================================================")
 
@@ -292,7 +269,9 @@ if __name__ == '__main__':
         # TODO - multiprocess the conversion
         fn_create_grid(row['shapefile_path'],
                        row['file_to_create_path'],
-                       row['current_dem_path'])
+                       row['current_dem_path'],
+                       STR_OUTPUT_CRS,
+                       FLT_DESIRED_RES)
         int_count += 1
         
         fn_print_progress_bar(int_count, l, prefix = str_prefix, suffix = 'Complete', length = 28)
@@ -300,3 +279,42 @@ if __name__ == '__main__':
     print(" ") 
     print('COMPLETE')
     print("====================================================================")
+    
+if __name__ == '__main__':
+
+    
+    parser = argparse.ArgumentParser(description='===== CREATE SIMPLIFIED FLOOD DEPTH RASTER FILES (TIF) =====')
+
+    parser.add_argument('-i',
+                        dest = "str_input_dir",
+                        help=r'REQUIRED: directory containing RAS2FIM output:  Example: C:\HUC_10170204',
+                        required=True,
+                        metavar='DIR',
+                        type=str)
+    
+    parser.add_argument('-r',
+                        dest = "flt_resolution",
+                        help='OPTIONAL: resolution of output raster (crs units): Default=3',
+                        required=False,
+                        default=3,
+                        metavar='FLOAT',
+                        type=float)
+    
+    parser.add_argument('-p',
+                        dest = "str_output_crs",
+                        help='OPTIONAL: output coordinate reference zone: Default=EPSG:3857',
+                        required=False,
+                        default="EPSG:3857",
+                        metavar='STRING',
+                        type=str)
+
+    args = vars(parser.parse_args())
+    
+    str_input_dir = args['str_input_dir']
+    flt_resolution = args['flt_resolution']
+    str_output_crs = args['str_output_crs']
+    
+    fn_simplify_fim_rasters(str_input_dir,
+                            flt_resolution,
+                            str_output_crs)
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

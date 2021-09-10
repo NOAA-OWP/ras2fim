@@ -45,20 +45,20 @@ import h5py
 # h5py for extracting data from the RAS geometry
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-STR_ROOT_OUTPUT_DIRECTORY = r'E:\X-ras2fim-test\ras_output'
+STR_ROOT_OUTPUT_DIRECTORY = r'G:\X-test-20210909\output_folder'
 
 # Input - desired HUC 8
 STR_HUC8 = "10170204"
 
-STR_INPUT_FOLDER = r"E:\X-ras2fim-test\pre_2_output"
+STR_INPUT_FOLDER = r"G:\X-test-20210909\output_folder\shapes_from_conflation"
 
-STR_PATH_TO_PROJECTION = r'E:\X-ras2fim-test\pre_2_output\10170204_ble_streams_ln.prj' # for xml create
-STR_PATH_TO_TERRAIN = r'E:\X-ras2fim-test\hecras_terrain' # for xml create
+STR_PATH_TO_PROJECTION = r'G:\X-test-20210909\output_folder\shapes_from_conflation\10170204_ble_streams_ln.prj' # for xml create
+STR_PATH_TO_TERRAIN = r'G:\X-test-20210909\output_folder\hecras_terrain' # for xml create
 
 # Path to the standard plan file text
-STR_PLAN_MIDDLE_PATH = r"C:\Users\civil\test1\ras2fim\src\PlanStandardText01.txt"
-STR_PLAN_FOOTER_PATH = r"C:\Users\civil\test1\ras2fim\src\PlanStandardText02.txt"
-STR_PROJECT_FOOTER_PATH = r"C:\Users\civil\test1\ras2fim\src\ProjectStandardText01.txt"
+STR_PLAN_MIDDLE_PATH = r"C:\Users\civil\dev\ras2fim\src\PlanStandardText01.txt"
+STR_PLAN_FOOTER_PATH = r"C:\Users\civil\dev\ras2fim\src\PlanStandardText02.txt"
+STR_PROJECT_FOOTER_PATH = r"C:\Users\civil\dev\ras2fim\src\ProjectStandardText01.txt"
 
 INT_XS_BUFFER = 2   # Number of XS to add upstream and downstream
 # of the segmented 
@@ -507,218 +507,6 @@ def fn_create_study_area(str_polygon_path_fn, str_feature_id_poly_fn):
     gdf_flood_depth_envelope.to_file(str_output_path)
 # """"""""""""""""""""""""""
 
-# ``````````````````````````
-def fn_clip_convert_dems(list_step_profiles_dem_fn,
-                         str_path_to_hecras_prj,
-                         b_is_metric_dems):
-
-    # Function convert RAS Mapper DEMs to InFRM compliant rasters
-
-    # ............
-    # Get the feature_id and the path to create
-    list_path = str_path_to_hecras_prj.split(os.sep)
-    str_feature_id = str(list_path[-3])
-    
-    # Drive path
-    str_path_to_create = list_path[0] + "\\"
-    # path excluding file name and last folder
-    for i in range(1, len(list_path) - 2):
-        str_path_to_create += list_path[i] + "\\"
-    str_path_to_create = str_path_to_create[:-2]
-    
-    str_hecras_path_to_create = str_path_to_create + "\\HEC-RAS"
-    
-    # get from output directory - Example: HUC_123456789012
-    str_huc12 = str(list_path[-4])
-    # remove the 'HUC_' header
-    str_huc12 = str_huc12[4:] 
-    # ............
-
-    # Folder to store the depth grids
-    str_depthgrid_path_to_create = str_path_to_create + '\\Depth_Grids'
-    os.makedirs(str_depthgrid_path_to_create, exist_ok=True)
-
-    str_output_raster_path = str_depthgrid_path_to_create
-    '''
-    # TODO - Error caused by rounding of profile list - 2021.04.05
-
-    str_polygon_path = str_hecras_path_to_create + '\\' + "BLE_" + str_feature_id + '\\'
-
-    if b_is_metric_dems:
-        str_polygon_path += 'Inundation Boundary (' + str(list_step_profiles_dem_fn[-1]) + 'm Value_0).shp'
-    else:
-        str_polygon_path += 'Inundation Boundary (' + str(list_step_profiles_dem_fn[-1]) + 'ft Value_0).shp'
-
-    # Create the study area polyline shapefile
-    fn_create_study_area(str_polygon_path, str_feature_id)
-
-    for i in list_step_profiles_dem_fn:
-
-        # ...3585434\HEC-RAS\BLE_3585434\Depth (32.0ft).121002010109.tif
-
-        str_raster_path = str_hecras_path_to_create + '\\' + "BLE_" + str_feature_id + '\\'
-
-        if b_is_metric_dems:
-            str_raster_path += 'Depth (' + str(i) + 'm).' + str_huc12 + '.tif'
-        else:
-            str_raster_path += 'Depth (' + str(i) + 'ft).' + str_huc12 + '.tif'
-
-        # HEC-RAS sometimes does not create a raster
-
-        if os.path.isfile(str_raster_path):
-            
-            # Read the overall Depth raster
-            src = rasterio.open(str_raster_path)
-            # Copy the metadata of the src terrain data
-            out_meta = src.meta.copy()
-
-            # Read the shapefils using geopandas
-            gdf_flood_depth = gpd.read_file(str_polygon_path)
-
-            # Buffer the shapefile
-            gdf_flood_buffer = gdf_flood_depth.buffer(FLT_BUFFER, 8)
-            gdf_flood_depth_envelope = gdf_flood_buffer.envelope
-
-            # TODO - future work - mask the raster to remove islands and noise - 2021.08.12
-
-            # currently requests the first polygon in the geometry
-            coords = fn_get_features(gdf_flood_depth_envelope, 0)
-
-            # Clip the raster with Polygon
-            out_img, out_transform = mask(dataset=src,
-                                          shapes=coords,
-                                          crop=True)
-
-            # Metadata for the clipped image
-            # This uses the out_image height and width
-            out_meta.update({"driver": "GTiff",
-                             "height": out_img.shape[1],
-                             "width": out_img.shape[2],
-                             "transform": out_transform, })
-
-            str_current_avg_depth = str(int(i * 10 // 1))
-
-            str_output_raster_name = str_feature_id + '-'
-            + str_current_avg_depth + '.tif'
-
-            str_output_raster_path = str_depthgrid_path_to_create
-            str_output_raster_path += '\\' + str_output_raster_name
-
-            with rasterio.open(str_output_raster_path,
-                               "w",
-                               **out_meta) as dest:
-                dest.write(out_img)
-
-            src2 = rasterio.open(str_output_raster_path)
-            with rasterio.open(str_output_raster_path) as src2:
-                depth = src2.read()
-
-            # create numpy array 'a'
-            a = depth
-
-            # content deposition to reset the invalid cells to null of -9999
-            a[depth <= 0.1] = -9999
-
-            with rasterio.open(str_output_raster_path,
-                               'w',
-                               **out_meta) as dest:
-                dest.write(a)
-
-            # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            # reprojecting raster
-
-            # input_raster = gdal.Open(str_output_raster_path)
-            # warp = gdal.Warp(str_output_raster_path,
-            # input_raster,dstSRS='EPSG:3857')
-            # warp = None # Closes the files
-
-            # TODO -removed the rasterio re-projection - 2021.08.12 - MAC
-            # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            # downsampling the raster
-            
-            if b_is_metric_dems:
-                int_resolution = INT_DESIRED_RESOLUTION
-            else:
-                int_resolution = INT_DESIRED_RESOLUTION * 3.2808
-            
-            with rasterio.open(str_output_raster_path) as src4:
-                t = src4.transform
-                scale = (int_resolution / t.a)
-
-                # rescale the metadata
-                transform = Affine(t.a * scale,
-                                   t.b,
-                                   t.c,
-                                   t.d,
-                                   t.e * scale,
-                                   t.f)
-
-                height = int(src4.height // scale)
-                width = int(src4.width // scale)
-
-                profile = src4.profile
-                profile.update(transform=transform,
-                               driver='GTiff',
-                               height=height,
-                               width=width)
-                # Note changed order of indexes, arrays are band,
-                # row, col order not row, col, band
-                data = src4.read(
-                        out_shape=(src4.count, height, width),
-                        resampling=Resampling.nearest,
-                    )
-
-                with rasterio.open(str_output_raster_path,
-                                   'w',
-                                   **profile) as dataset:
-                    dataset.write(data)
-            # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            # Create a numpy array of the rounded up values
-            with rasterio.open(str_output_raster_path) as src5:
-                values = src5.read()
-
-            values = ((values * 10) + 0.5)
-
-            # create numpy array 'a'
-            a = values
-
-            # content deposition to reset the null cells to 65535
-            a[values < 1] = 65535
-
-            # convert numpy datatype to unsigned 16 bit integer
-            b = a.astype('uint16')
-
-            # change the null value and the datatype
-            with rasterio.open(str_output_raster_path) as src6:
-                t = src6.transform
-
-                # rescale the metadata
-                transform = Affine(t.a,
-                                   t.b,
-                                   t.c,
-                                   t.d,
-                                   t.e,
-                                   t.f)
-                height = src6.height
-                width = src6.width
-
-                profile = src6.profile
-                profile.update(dtype='uint16',
-                               nodata=65535,
-                               compress='lzw')
-
-                # Note changed order of indexes, arrays are band,
-                # row, col order not row, col, band
-                data = src6.read(
-                        out_shape=(src6.count, height, width)
-                    )
-
-                with rasterio.open(str_output_raster_path,
-                                   'w',
-                                   **profile) as dataset:
-                    dataset.write(b)
-    '''
-# ``````````````````````````
 
 # ...........................
 def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn):
@@ -886,15 +674,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn):
         hec.QuitRas()  # close HEC-RAS
         
         '''
-        # *************************************************
-        # clip and convert the DEM files
-        if IS_CREATE_MAPS:
-            fn_clip_convert_dems(list_step_profiles,
-                                 str_ras_projectpath,
-                                 b_is_geom_metric_fn)
-        # *************************************************
         
-
         # *************************************************
         # creates the model limits boundary polylines
         fn_create_inundation_limits(str_feature_id,

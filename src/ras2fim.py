@@ -1,9 +1,21 @@
-# Place holder - revise!!!!!
+# This is the main orchistration script for "ras2fim".  It attempts to convert
+# geospatial 1D HEC-RAS models into a set of flood innundation mapping (fim)
+# library of rasters with a cooresponding syntetic rating curve for a
+# correponding National Water Model (NWM) reach segment.
+#
+# This script needs seven (7) other scripts to complete the process
+# [create_shapes_from_hecras, conflate_hecras_to_nwm, get_usgs_dem_from_shape,
+# convert_tif_to_ras_hdf5, create_fim_rasters, worker_fim_raster,
+# simplify_fim_rasters]
+#
+# This is built to run on a Windows machine and requires that HEC-RAS v6.0
+# be installed prior to execution.
 #
 # Created by: Andy Carter, PE
 # Last revised - 2021.09.09
 #
 # Main code for ras2fim
+# Uses the 'ras2fim' conda environment
 
 
 from create_shapes_from_hecras import fn_create_shapes_from_hecras
@@ -11,6 +23,7 @@ from conflate_hecras_to_nwm import fn_conflate_hecras_to_nwm
 from get_usgs_dem_from_shape import fn_get_usgs_dem_from_shape
 from convert_tif_to_ras_hdf5 import fn_convert_tif_to_ras_hdf5
 from create_fim_rasters import fn_create_fim_rasters
+from simplify_fim_rasters import fn_simplify_fim_rasters
 
 import argparse
 import os
@@ -99,10 +112,11 @@ def fn_run_ras2fim(str_huc8_arg,
         os.mkdir(str_terrain_from_usgs_dir)
     
     # *** variables set - raster terrain harvesting ***
+    # ==============================================
     int_res = 3 # resolution of the downloaded terrain (meters)
     int_buffer = 300 # buffer distance for each watershed shp
     int_tile = 1500 # tile size requested from USGS WCS
-    # ***
+    # ==============================================
     
     # field name is from the National watershed boundary dataset (WBD)
     str_field_name = "HUC_12"
@@ -153,9 +167,10 @@ def fn_run_ras2fim(str_huc8_arg,
     str_std_input_path = os.getcwd() # assumed as in directory executing script
     
     # *** variables set - raster terrain harvesting ***
+    # ==============================================
     flt_interval = 0.2 # vertical step of average depth (recommended - 0.2m and 0.5ft)
     flt_out_resolution = 3 # output depth raster resolution - meters
-    # ***
+    # ==============================================
     
     fn_create_fim_rasters(str_huc8_arg,
                           str_shapes_from_conflation_dir,
@@ -167,6 +182,16 @@ def fn_run_ras2fim(str_huc8_arg,
                           flt_out_resolution)
     # -------------------------------------------
     
+    # ------ Step 6: simplify fim rasters -----
+    # ==============================================
+    flt_resolution_depth_grid = 3
+    str_output_crs = "EPSG:3857"
+    # ==============================================
+    
+    fn_simplify_fim_rasters(str_fim_out_dir,
+                            flt_resolution_depth_grid,
+                            str_output_crs)
+
     
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    
 

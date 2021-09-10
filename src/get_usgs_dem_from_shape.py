@@ -27,6 +27,7 @@
 # ras2fim - Third pre-processing script
 # Uses the 'ras2fim' conda environment
 
+
 # ************************************************************
 import argparse
 import os
@@ -48,6 +49,7 @@ from multiprocessing.pool import ThreadPool
 import rioxarray as rxr
 
 import time
+import warnings
 # ************************************************************
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -154,6 +156,9 @@ def fn_get_usgs_dem_from_shape(str_input_path,
                                b_is_feet,
                                str_field_name):
     
+    # supress all warnings
+    warnings.filterwarnings("ignore", category=UserWarning )
+    
     # input polygon shapefile
     STR_AOI_SHP_PATH = str_input_path
     
@@ -201,6 +206,9 @@ def fn_get_usgs_dem_from_shape(str_input_path,
     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     # create output directory
     os.makedirs(STR_OUTPUT_PATH, exist_ok=True)
+    
+    # into the folder
+    STR_OUTPUT_PATH += '\\'
     
     # read the "area of interest" shapefile in to geopandas dataframe
     gdf_aoi_prj = gpd.read_file(STR_AOI_SHP_PATH)
