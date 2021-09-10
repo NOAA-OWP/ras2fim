@@ -138,7 +138,8 @@ def fn_create_fim_rasters(str_desired_huc8,
                  INT_NUMBER_OF_STEPS,
                  INT_STARTING_FLOW,
                  FLT_MAX_MULTIPLY,
-                 FLT_BUFFER)
+                 FLT_BUFFER,
+                 STR_PLAN_FOOTER_PATH)
 
     
     list_huc8 = []

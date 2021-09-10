@@ -45,45 +45,25 @@ import h5py
 # h5py for extracting data from the RAS geometry
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-STR_ROOT_OUTPUT_DIRECTORY = r'G:\X-test-20210909\output_folder'
+# Note: settings from tuple that is the last item in the incoming 'record_requested_stream'
 
-# Input - desired HUC 8
-STR_HUC8 = "10170204"
+# str_huc8 = tpl_settings[0]
+# str_input_folder = tpl_settings[1]
+# str_root_output_directory = tpl_settings[2]
+# str_path_to_projection = tpl_settings[3]
+# str_path_to_terrain = tpl_settings[4]
+# str_plan_middle_path = tpl_settings[5]
+# str_project_footer_path = tpl_settings[6]
+# flt_interval = tpl_settings[7]
+# int_desired_resolution = tpl_settings[8]
+# int_xs_buffer = tpl_settings[9]
+# is_create_maps = tpl_settings[10]
+# int_number_of_steps = tpl_settings[11]
+# int_starting_flow = tpl_settings[12]
+# flt_max_multiply = tpl_settings[13]
+# flt_buffer = tpl_settings[14]
+# str_plan_footer_path = tpl_settings[15]
 
-STR_INPUT_FOLDER = r"G:\X-test-20210909\output_folder\shapes_from_conflation"
-
-STR_PATH_TO_PROJECTION = r'G:\X-test-20210909\output_folder\shapes_from_conflation\10170204_ble_streams_ln.prj' # for xml create
-STR_PATH_TO_TERRAIN = r'G:\X-test-20210909\output_folder\hecras_terrain' # for xml create
-
-# Path to the standard plan file text
-STR_PLAN_MIDDLE_PATH = r"C:\Users\civil\dev\ras2fim\src\PlanStandardText01.txt"
-STR_PLAN_FOOTER_PATH = r"C:\Users\civil\dev\ras2fim\src\PlanStandardText02.txt"
-STR_PROJECT_FOOTER_PATH = r"C:\Users\civil\dev\ras2fim\src\ProjectStandardText01.txt"
-
-INT_XS_BUFFER = 2   # Number of XS to add upstream and downstream
-# of the segmented 
-
-# Constant - Toggle the Creation of RAS Map products
-IS_CREATE_MAPS = True
-
-# Constant - number of flood depth profiles to run on the first pass
-INT_NUMBER_OF_STEPS = 75
-
-# Constant - Starting flow for the first pass of the HEC-RAS simulation
-INT_STARTING_FLOW = 1
-
-# Constant - Desired average depth interval
-FLT_INTERVAL = 0.2
-
-# Constant - Maximum flow multiplier
-# up-scales the maximum flow from input
-FLT_MAX_MULTIPLY = 1.2
-
-# Constant - buffer of dem around floodplain envelope
-FLT_BUFFER = 15
-
-# output flood map raster resolution - 3 meters
-INT_DESIRED_RESOLUTION = 3
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~
 def fn_get_features(gdf, int_poly_index):
@@ -356,7 +336,12 @@ def fn_create_flow_file_second_pass(str_ras_project_fn,
 def fn_create_ras_mapper_xml(str_feature_id_fn,
                              str_ras_projectpath_fn,
                              list_step_profiles_xml_fn,
-                             b_is_metric_xml_fn):
+                             b_is_metric_xml_fn,
+                             tpl_settings):
+    
+    # get settings from tpl_settings
+    str_path_to_projection = tpl_settings[3]
+    str_path_to_terrain = tpl_settings[4]
 
     # Function to create the RASMapper XML and add the requested DEM's to be created
     
@@ -373,7 +358,7 @@ def fn_create_ras_mapper_xml(str_feature_id_fn,
     str_ras_mapper_file = r'<RASMapper>' + '\n'
     str_ras_mapper_file += r'  <Version>2.0.0</Version>' + '\n'
 
-    str_ras_mapper_file += r'  <RASProjectionFilename Filename="' + STR_PATH_TO_PROJECTION + r'" />' + '\n'
+    str_ras_mapper_file += r'  <RASProjectionFilename Filename="' + str_path_to_projection + r'" />' + '\n'
 
     str_ras_mapper_file += r'  <Geometries Checked="True" Expanded="True">' + '\n'
 
@@ -453,7 +438,7 @@ def fn_create_ras_mapper_xml(str_feature_id_fn,
 
     str_ras_mapper_file += r'    <Layer Name="' + str_huc12 + r'" Type="TerrainLayer" Checked="True" Filename="'
 
-    str_ras_mapper_file += STR_PATH_TO_TERRAIN + '\\' + str_huc12 + r'.hdf">' + '\n'
+    str_ras_mapper_file += str_path_to_terrain + '\\' + str_huc12 + r'.hdf">' + '\n'
 
     str_ras_mapper_file += r'    </Layer>' + '\n'
     str_ras_mapper_file += r'  </Terrains>' + '\n'
@@ -466,7 +451,10 @@ def fn_create_ras_mapper_xml(str_feature_id_fn,
 # +++++++++++++++++++++++++
 
 # """"""""""""""""""""""""""
-def fn_create_study_area(str_polygon_path_fn, str_feature_id_poly_fn):
+def fn_create_study_area(str_polygon_path_fn, str_feature_id_poly_fn, tpl_settings):
+    
+    # get settings from the tpl_settings
+    flt_buffer = tpl_settings[14] 
 
     # Function to create the study limits shapefile (polyline)
 
@@ -483,7 +471,7 @@ def fn_create_study_area(str_polygon_path_fn, str_feature_id_poly_fn):
     gdf_inputshape = gpd.read_file(str_polygon_path_fn)
 
     # Buffer the shapefile
-    gdf_flood_buffer = gdf_inputshape.buffer(FLT_BUFFER, 8)
+    gdf_flood_buffer = gdf_inputshape.buffer(flt_buffer, 8)
     gdf_flood_depth_envelope = gdf_flood_buffer.envelope
 
     gdf_flood_depth_envelope = gdf_flood_depth_envelope.to_crs(dst_crs_1)
@@ -507,9 +495,14 @@ def fn_create_study_area(str_polygon_path_fn, str_feature_id_poly_fn):
     gdf_flood_depth_envelope.to_file(str_output_path)
 # """"""""""""""""""""""""""
 
-
 # ...........................
-def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn):
+def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn, tpl_settings):
+    
+    # get settings from tpl_settings
+    flt_interval = tpl_settings[7]
+    int_number_of_steps = tpl_settings[11]
+    int_starting_flow = tpl_settings[12]
+    
 
     hec = win32com.client.Dispatch("RAS60.HECRASController")
     #hec.ShowRas()
@@ -542,10 +535,10 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn):
     # Create a list of the simulated flows
     list_flow_steps = []
 
-    int_delta_flow_step = int(int_peak_flow // (INT_NUMBER_OF_STEPS - 2))
+    int_delta_flow_step = int(int_peak_flow // (int_number_of_steps - 2))
 
-    for i in range(INT_NUMBER_OF_STEPS):
-        list_flow_steps.append((i*int_delta_flow_step) + INT_STARTING_FLOW)
+    for i in range(int_number_of_steps):
+        list_flow_steps.append((i*int_delta_flow_step) + int_starting_flow )
     # ----------------------------------
 
     # **********************************
@@ -553,7 +546,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn):
     list_avg_depth = []
     # **********************************
 
-    for int_prof in range(INT_NUMBER_OF_STEPS):
+    for int_prof in range(int_number_of_steps):
 
         # NumPy array for max depth
         tab_max_depth = np.empty([NNod], dtype=float)
@@ -600,16 +593,16 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn):
     f = interp1d(list_avg_depth, list_flow_steps)
 
     # Get the max value of the Averge Depth List
-    int_max_depth = int(max(list_avg_depth) // FLT_INTERVAL)
+    int_max_depth = int(max(list_avg_depth) // flt_interval)
 
     # Get the min value of Average Depth List
-    int_min_depth = int((min(list_avg_depth) // FLT_INTERVAL) + 1)
+    int_min_depth = int((min(list_avg_depth) // flt_interval) + 1)
 
     list_step_profiles = []
 
     # Create a list of the profiles at desired increments
     for i in range(int_max_depth - int_min_depth + 1):
-        int_depth_interval = (i + int_min_depth) * FLT_INTERVAL
+        int_depth_interval = (i + int_min_depth) * flt_interval
 
         # round this to nearest 1/10th
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -658,7 +651,8 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn):
         fn_create_ras_mapper_xml(str_feature_id,
                                  str_ras_projectpath,
                                  list_step_profiles,
-                                 b_is_geom_metric_fn)
+                                 b_is_geom_metric_fn,
+                                 tpl_settings)
         # *************************************************
 
         # Run HEC-RAS with the new flow data
@@ -696,12 +690,22 @@ def fn_create_hecras_files(str_feature_id,
                            flt_min_range,
                            flt_max_range,
                            int_max_flow,
-                           str_output_filepath):
+                           str_output_filepath,
+                           tpl_settings):
 
     flt_ds_xs = flt_min_range
     flt_us_xs = flt_max_range
+    
+    # get settings from tpl_settings
+    str_plan_middle_path = tpl_settings[5]
+    str_project_footer_path = tpl_settings[6]
+    int_xs_buffer = tpl_settings[9]
+    is_create_maps = tpl_settings[10]
+    int_number_of_steps = tpl_settings[11]
+    int_starting_flow = tpl_settings[12]
+    str_plan_footer_path = tpl_settings[15]
 
-       #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # determine the project file for the requested HEC-RAS geom
     # read the prj and determine the units 
     # "SI Units" or "English Units"
@@ -864,8 +868,8 @@ def fn_create_hecras_files(str_feature_id,
 
     if int_first_index > -1 and int_last_index > -1:
         # Get the upstream Cross section plus a index buffer
-        if (int_first_index - INT_XS_BUFFER) >= 0:
-            int_first_index -= INT_XS_BUFFER
+        if (int_first_index - int_xs_buffer) >= 0:
+            int_first_index -= int_xs_buffer
 
             # pad upstream until item is a cross section (not bridge, inline, etc.)
             while int(df_item_limits.iloc[int_first_index]['Type']) != 1 or int_first_index == 0:
@@ -874,8 +878,8 @@ def fn_create_hecras_files(str_feature_id,
             int_first_index = 0
 
         # Get the downstream cross section plus a index buffer
-        if (int_last_index + INT_XS_BUFFER) < len(df_item_limits):
-            int_last_index += INT_XS_BUFFER
+        if (int_last_index + int_xs_buffer) < len(df_item_limits):
+            int_last_index += int_xs_buffer
 
             # pad downstream until item is a cross section (not bridge, inline, etc.)
             # revised 2021.08.10
@@ -941,8 +945,8 @@ def fn_create_hecras_files(str_feature_id,
 
     if int_first_index > -1 and int_last_index > -1:
         # Get the upstream Cross section plus a index buffer
-        if (int_first_index - INT_XS_BUFFER) >= 0:
-            int_first_index -= INT_XS_BUFFER
+        if (int_first_index - int_xs_buffer) >= 0:
+            int_first_index -= int_xs_buffer
 
             # pad upstream until item is a cross section (not bridge, inline, etc.)
             while int(df_item_limits.iloc[int_first_index]['Type']) != 1 or int_first_index == 0:
@@ -951,8 +955,8 @@ def fn_create_hecras_files(str_feature_id,
             int_first_index = 0
 
         # Get the downstream cross section plus a index buffer
-        if (int_last_index + INT_XS_BUFFER) < len(df_item_limits):
-            int_last_index += INT_XS_BUFFER
+        if (int_last_index + int_xs_buffer) < len(df_item_limits):
+            int_last_index += int_xs_buffer
 
             # pad downstream until item is a cross section (not bridge, inline, etc.)
             # revised 2021.08.10
@@ -1012,12 +1016,12 @@ def fn_create_hecras_files(str_feature_id,
 
     str_flowfile += "END FILE DESCRIPTION:" + '\n'
 
-    str_flowfile += "Number of Profiles= " + str(INT_NUMBER_OF_STEPS) + '\n'
+    str_flowfile += "Number of Profiles= " + str(int_number_of_steps) + '\n'
 
     # get a list of the first pass flows
-    list_firstflows = fn_create_firstpass_flowlist(INT_STARTING_FLOW,
+    list_firstflows = fn_create_firstpass_flowlist(int_starting_flow,
                                                    int_max_flow,
-                                                   INT_NUMBER_OF_STEPS)
+                                                   int_number_of_steps)
 
     str_flowfile += fn_create_profile_names(list_firstflows, 'cms') + '\n'
     # Note - 2021.03.20 - cms is hard coded in above line
@@ -1028,7 +1032,7 @@ def fn_create_hecras_files(str_feature_id,
 
     str_flowfile += fn_format_flow_values(list_firstflows) + '\n'
 
-    for i in range(INT_NUMBER_OF_STEPS):
+    for i in range(int_number_of_steps):
         str_flowfile += "Boundary for River Rch & Prof#="
 
         str_flowfile += str_river + "," + str_reach + ", " + str(i+1) + '\n'
@@ -1062,20 +1066,20 @@ def fn_create_hecras_files(str_feature_id,
     # To map the requested Depth Grids
 
     # read the plan middle input file
-    with open(STR_PLAN_MIDDLE_PATH) as f:
+    with open(str_plan_middle_path) as f:
         file_contents = f.read()
     str_planfile += file_contents
 
     # To map the requested Depth Grids
     # Set to 'Run RASMapper=0 ' to not create requested DEMs
     # Set to 'Run RASMapper=-1 ' to create requested DEMs
-    if IS_CREATE_MAPS:
+    if is_create_maps:
         str_planfile += '\n' + r'Run RASMapper=-1 ' + '\n'
     else:
         str_planfile += '\n' + r'Run RASMapper=0 ' + '\n'
 
     # read the plan footer input file
-    with open(STR_PLAN_FOOTER_PATH) as f:
+    with open(str_plan_footer_path) as f:
         file_contents = f.read()
     str_planfile += file_contents
 
@@ -1100,7 +1104,7 @@ def fn_create_hecras_files(str_feature_id,
         str_projectfile += 'English Units' + '\n'
 
     # read the project footer input file
-    with open(STR_PROJECT_FOOTER_PATH) as f:
+    with open(str_project_footer_path) as f:
         file_contents = f.read()
     str_projectfile += file_contents
 
@@ -1112,7 +1116,7 @@ def fn_create_hecras_files(str_feature_id,
     str_ras_projectpath = (str_output_filepath + "\\" + str_feature_id + '.prj')
 
     #######################
-    fn_run_hecras(str_ras_projectpath, int_max_flow, b_is_geom_metric)
+    fn_run_hecras(str_ras_projectpath, int_max_flow, b_is_geom_metric, tpl_settings)
     #######################
 
     return (str_river)
@@ -1131,45 +1135,35 @@ def fn_main_hecras(record_requested_stream):
     # Parse the settings variables from the tuple sent from the main script
     tpl_settings  = record_requested_stream[6]
     
+    # Note: settings from tuple that is the last item in the incoming 'record_requested_stream'
+
+    # str_huc8 = tpl_settings[0]
+    # str_input_folder = tpl_settings[1]
+    # str_root_output_directory = tpl_settings[2]
+    # str_path_to_projection = tpl_settings[3]
+    # str_path_to_terrain = tpl_settings[4]
+    # str_plan_middle_path = tpl_settings[5]
+    # str_project_footer_path = tpl_settings[6]
+    # flt_interval = tpl_settings[7]
+    # int_desired_resolution = tpl_settings[8]
+    # int_xs_buffer = tpl_settings[9]
+    # is_create_maps = tpl_settings[10]
+    # int_number_of_steps = tpl_settings[11]
+    # int_starting_flow = tpl_settings[12]
+    # flt_max_multiply = tpl_settings[13]
+    # flt_buffer = tpl_settings[14]
+    # str_plan_footer_path = tpl_settings[15]
+    
     # -------
-    global STR_HUC8
-    global STR_INPUT_FOLDER
-    global STR_ROOT_OUTPUT_DIRECTORY
-    global STR_PATH_TO_PROJECTION
-    global STR_PATH_TO_TERRAIN
-    global STR_PLAN_MIDDLE_PATH
-    global STR_PROJECT_FOOTER_PATH
-    global FLT_INTERVAL
-    global INT_DESIRED_RESOLUTION
-    global INT_XS_BUFFER
-    global IS_CREATE_MAPS
-    global INT_NUMBER_OF_STEPS
-    global INT_STARTING_FLOW
-    global FLT_MAX_MULTIPLY
-    global FLT_BUFFER
+    # get settings from tpl_settings
+    str_root_output_directory = tpl_settings[2]
+    flt_max_multiply = tpl_settings[13]
     
     
-    STR_HUC8 = tpl_settings[0]
-    STR_INPUT_FOLDER = tpl_settings[1]
-    STR_ROOT_OUTPUT_DIRECTORY = tpl_settings[2]
-    STR_PATH_TO_PROJECTION = tpl_settings[3]
-    STR_PATH_TO_TERRAIN = tpl_settings[4]
-    STR_PLAN_MIDDLE_PATH = tpl_settings[5]
-    STR_PROJECT_FOOTER_PATH = tpl_settings[6]
-    FLT_INTERVAL = tpl_settings[7]
-    INT_DESIRED_RESOLUTION = tpl_settings[8]
-    INT_XS_BUFFER = tpl_settings[9]
-    IS_CREATE_MAPS = tpl_settings[10]
-    INT_NUMBER_OF_STEPS = tpl_settings[11]
-    INT_STARTING_FLOW = tpl_settings[12]
-    FLT_MAX_MULTIPLY = tpl_settings[13]
-    FLT_BUFFER = tpl_settings[14]
-    # -------
-    
-    flt_max_q = flt_max_q * FLT_MAX_MULTIPLY
+    flt_max_q = flt_max_q * flt_max_multiply
     int_max_q = int(flt_max_q)
     
-    str_root_folder_to_create = STR_ROOT_OUTPUT_DIRECTORY + '\\HUC_' + str_huc12
+    str_root_folder_to_create = str_root_output_directory + '\\HUC_' + str_huc12
     
     # create a folder for each feature_id
     str_path_to_create = str_root_folder_to_create + '\\' + str_feature_id
@@ -1186,9 +1180,9 @@ def fn_main_hecras(record_requested_stream):
         # sometimes the HEC-RAS model
         # does not run (example: duplicate points)
 
-        river = fn_create_hecras_files(str_feature_id, str_geom_path, flt_ds_xs, flt_us_xs, int_max_q, str_hecras_path_to_create)
+        river = fn_create_hecras_files(str_feature_id, str_geom_path, flt_ds_xs, flt_us_xs, int_max_q, str_hecras_path_to_create, tpl_settings)
     except:
         #print("HEC-RAS Error: " + str_geom_path)
-        fn_append_error(str_feature_id, str_geom_path, str_huc12, STR_ROOT_OUTPUT_DIRECTORY)
+        fn_append_error(str_feature_id, str_geom_path, str_huc12, str_root_output_directory)
 
     return(str_feature_id)
