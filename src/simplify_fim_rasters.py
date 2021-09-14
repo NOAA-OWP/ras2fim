@@ -263,6 +263,8 @@ def fn_simplify_fim_rasters(str_input_dir,
     print(' ')
     
     str_prefix = "Converting " + str(len(df_grids_to_convert)) + " grids"
+    
+    # TODO - what if there are none - 2021.09.14
     fn_print_progress_bar(0, l, prefix = str_prefix , suffix = 'Complete', length = 28)
     
     for index, row in df_grids_to_convert.iterrows():

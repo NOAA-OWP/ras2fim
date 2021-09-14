@@ -369,7 +369,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     del gdf_points_snap_to_ble['wkt_geom']
     
     # write the shapefile
-    str_filepath_ble_points = STR_OUT_PATH + "\\" + str(list_huc8[0]) + "ble_snap_points_PT.shp"
+    str_filepath_ble_points = STR_OUT_PATH + "\\" + str(list_huc8[0]) + "_ble_snap_points_PT.shp"
     
     gdf_points_snap_to_ble.to_file(str_filepath_ble_points)
     

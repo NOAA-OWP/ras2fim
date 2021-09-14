@@ -163,6 +163,139 @@ def fn_append_error(str_f_id_fn,
     del df_error
 # .................................
 
+# '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+def fn_calculate_terrain_stats(str_geom_hdf_path,
+                               str_projection_path,
+                               str_shp_out_path,
+                               str_terrain_path):
+
+    hf = h5py.File(str_geom_hdf_path, 'r')
+
+    # XY points of the plan view of the cross section
+    arr_xs_points = hf.get('Geometry/Cross Sections/Polyline Points')
+    arr_xs_points = np.array(arr_xs_points)
+    
+    # number of points per plan view cross section
+    arr_pnts_per_xs = hf.get('Geometry/Cross Sections/Polyline Parts')
+    arr_pnts_per_xs = np.array(arr_pnts_per_xs)
+    
+    # Attribute data of the cross section (reach, river, etc...)
+    arr_xs_attrib = hf.get('Geometry/Cross Sections/Attributes')
+    arr_xs_attrib = np.array(arr_xs_attrib)
+    
+    # number of points per cross section profile
+    arr_xs_profile_num_points = hf.get('Geometry/Cross Sections/Station Elevation Info')
+    arr_xs_profile_num_points = np.array(arr_xs_profile_num_points)
+    
+    # cross section station/ elevation values
+    arr_xs_station_elev = hf.get('Geometry/Cross Sections/Station Elevation Values')
+    arr_xs_station_elev = np.array(arr_xs_station_elev)
+
+    hf.close()
+    
+    # Create an empty geopandas GeoDataFrame
+    gdf_sta_elev_pnts = gpd.GeoDataFrame()
+    
+    gdf_sta_elev_pnts['geometry'] = None
+    gdf_sta_elev_pnts['xs'] = None
+    gdf_sta_elev_pnts['station'] = None
+    gdf_sta_elev_pnts['ras_elev'] = None
+    gdf_sta_elev_pnts['ras_path'] = None
+    
+    gdf_prj = gpd.read_file(str_projection_path)
+    gdf_sta_elev_pnts.crs = str(gdf_prj.crs)
+    
+    int_pnt = 0
+    int_start_xs_pnt = 0
+
+    for i in range(len(arr_pnts_per_xs)):
+        str_current_xs = str(arr_xs_attrib[i][2].decode('UTF-8'))
+        
+        # -------------------------------------------
+        #get a list of the plan cross section points
+        int_pnts_in_plan_xs = arr_pnts_per_xs[i][1]
+        int_end_xs_pnt = int_start_xs_pnt + int_pnts_in_plan_xs - 1
+        
+        list_line_points_x = []
+        list_line_points_y = []
+        
+        for j in range(int_start_xs_pnt, int_end_xs_pnt + 1):
+            list_line_points_x.append(arr_xs_points[j][0])
+            list_line_points_y.append(arr_xs_points[j][1])
+            
+        list_xs_points = [xy for xy in zip(list_line_points_x,list_line_points_y)]
+        geom_xs_linestring = LineString(list_xs_points)
+        int_start_xs_pnt = int_end_xs_pnt + 1
+        
+        # ````````````````````````````````````````````````
+        #get a list of the station - elevation points
+        int_prof_xs_start_pnt = arr_xs_profile_num_points[i][0]
+        int_prof_pnts_in_xs = arr_xs_profile_num_points[i][1]
+        int_prof_xs_end_pnt = int_prof_xs_start_pnt + int_prof_pnts_in_xs
+        
+        list_xs_station = []
+        list_xs_elevation = []
+        
+        for pnt_index in range(int_prof_xs_start_pnt, int_prof_xs_end_pnt):
+            list_xs_station.append(arr_xs_station_elev[pnt_index][0])
+            list_xs_elevation.append(arr_xs_station_elev[pnt_index][1])
+        
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # write the points to a point shapefile
+        int_index = 0
+        for sta in list_xs_station:
+            # use shapely to interpolate the point location on XS line from station
+            geom_interp_pnt = geom_xs_linestring.interpolate(sta)
+            flt_elev = list_xs_elevation[int_index]
+    
+            # add this point to a geopandas dataframe
+            gdf_sta_elev_pnts.loc[int_pnt, 'geometry'] = geom_interp_pnt
+            gdf_sta_elev_pnts.loc[int_pnt, 'xs'] = str_current_xs
+            gdf_sta_elev_pnts.loc[int_pnt, 'station'] = sta.item() # item() to convert from numpy value
+            gdf_sta_elev_pnts.loc[int_pnt, 'ras_elev'] = flt_elev.item() # item() to convert from numpy value
+            
+            int_index += 1
+            int_pnt += 1
+    
+    gdf_sta_elev_pnts['ras_path'] = str_geom_hdf_path
+    
+    # create two new fields for coordinates
+    gdf_sta_elev_pnts['x'] = gdf_sta_elev_pnts.geometry.x
+    gdf_sta_elev_pnts['y'] = gdf_sta_elev_pnts.geometry.y
+    
+    coords =[(x,y) for x,y in zip(gdf_sta_elev_pnts.x, gdf_sta_elev_pnts.y)]
+    
+    # Sample the raster at every point location and store values in GeoDataFrame
+    with rasterio.open(str_terrain_path) as terrain_src:
+        gdf_sta_elev_pnts['dem_elev'] = [x[0] for x in terrain_src.sample(coords)]
+    
+    # delete the 'x' and 'y' fields from gdf
+    del gdf_sta_elev_pnts['x']
+    del gdf_sta_elev_pnts['y']
+    
+    # create difference in elevation value
+    gdf_sta_elev_pnts['diff_elev'] = gdf_sta_elev_pnts['ras_elev'] - gdf_sta_elev_pnts['dem_elev']
+    
+    # recast variables to 'float32'
+    gdf_sta_elev_pnts['station'] = pd.to_numeric(gdf_sta_elev_pnts['station'], downcast="float")
+    gdf_sta_elev_pnts['ras_elev'] = pd.to_numeric(gdf_sta_elev_pnts['ras_elev'], downcast="float")
+    gdf_sta_elev_pnts['dem_elev'] = pd.to_numeric(gdf_sta_elev_pnts['dem_elev'], downcast="float")
+    gdf_sta_elev_pnts['diff_elev'] = pd.to_numeric(gdf_sta_elev_pnts['diff_elev'], downcast="float")
+    
+    # calculate statistics
+    int_count = len(gdf_sta_elev_pnts)
+    flt_max_difference = gdf_sta_elev_pnts['diff_elev'].max()
+    flt_min_difference = gdf_sta_elev_pnts['diff_elev'].min()
+    flt_mean_difference = gdf_sta_elev_pnts['diff_elev'].mean()
+    flt_rmse_difference = ((gdf_sta_elev_pnts.ras_elev - gdf_sta_elev_pnts.dem_elev) ** 2).mean() ** .5
+
+    gdf_sta_elev_pnts.to_file(str_shp_out_path)
+    
+    tup_stats = (int_count, flt_max_difference, flt_min_difference, flt_mean_difference, flt_rmse_difference)
+    return(tup_stats)
+    
+# '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 def fn_create_rating_curve(list_int_step_flows_fn,
                            list_step_profiles_fn,
@@ -667,8 +800,37 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn, tpl_s
 
         hec.QuitRas()  # close HEC-RAS
         
-        '''
+        # *************************************
+        # Calculate the terrain statistics
+        str_path_to_projection = tpl_settings[3]
+        str_path_to_terrain = tpl_settings[4]
+        str_huc_8 = tpl_settings[0]
         
+        # format variables for the fn_calculate_terrain_stats
+        str_geom_hdf_path = str_ras_projectpath[:-4] + '.g01.hdf'
+        
+        str_projection_path = str_path_to_projection[:-4] + '.shp'
+        
+        tpl_geom_path_split = os.path.split(str_geom_hdf_path)
+        str_shp_out_path = tpl_geom_path_split[0] + '\\terrain_check'
+        if not os.path.exists(str_shp_out_path):
+            os.mkdir(str_shp_out_path)
+        
+        str_terrain_filename = str_huc_8 + "." + str_huc_8 + '.tif'
+        str_terrain_path = str_path_to_terrain + '\\' + str_terrain_filename
+        
+        str_shp_out_path = str_shp_out_path + '\\' + str_feature_id + "_ras_xs_model_PT.shp"
+        
+        print(str_geom_hdf_path)
+        print(str_projection_path)
+        print(str_shp_out_path)
+        print(str_terrain_path)
+        
+        tpl_return_stats = fn_calculate_terrain_stats(str_geom_hdf_path, str_projection_path, str_shp_out_path, str_terrain_path)
+        print(str_feature_id + ":" + str(tpl_return_stats))
+        # *************************************
+        
+    '''
         # *************************************************
         # creates the model limits boundary polylines
         fn_create_inundation_limits(str_feature_id,

@@ -3,7 +3,7 @@
 # library of rasters with a cooresponding syntetic rating curve for a
 # correponding National Water Model (NWM) reach segment.
 #
-# This script needs seven (7) other scripts to complete the process
+# This script needs other scripts to complete the process
 # [create_shapes_from_hecras, conflate_hecras_to_nwm, get_usgs_dem_from_shape,
 # convert_tif_to_ras_hdf5, create_fim_rasters, worker_fim_raster,
 # simplify_fim_rasters]
@@ -48,7 +48,8 @@ def fn_run_ras2fim(str_huc8_arg,
                    str_crs_arg,
                    b_is_feet,
                    str_nation_arg,
-                   str_hec_path):
+                   str_hec_path,
+                   int_step):
     
     print(" ")
     print("+=================================================================+")
@@ -63,6 +64,7 @@ def fn_run_ras2fim(str_huc8_arg,
     print("  ---(v) VERTICAL IN FEET: " + str(b_is_feet))    
     print("  ---(n) PATH TO NATIONAL DATASETS: " + str(str_nation_arg))     
     print("  ---(r) PATH TO HEC-RAS v6.0: " + str(str_hec_path))
+    print("  ---[s] Optional: Step to start: " + str(int_step))
     
     print("===================================================================")
     print(" ")
@@ -77,27 +79,29 @@ def fn_run_ras2fim(str_huc8_arg,
     
     # ---- Step 1: create_shapes_from_hecras ----
     # create a folder for the shapefiles from hec-ras
-    str_shapes_from_hecras_dir = os.path.join(str_out_arg, "shapes_from_hecras") 
+    str_shapes_from_hecras_dir = os.path.join(str_out_arg, "01_shapes_from_hecras") 
     if not os.path.exists(str_shapes_from_hecras_dir):
         os.mkdir(str_shapes_from_hecras_dir)
     
     # run the first script (create_shapes_from_hecras)
-    fn_create_shapes_from_hecras(str_ras_path_arg,
-                                 str_shapes_from_hecras_dir,
-                                 str_crs_arg)
+    if int_step <= 1:
+        fn_create_shapes_from_hecras(str_ras_path_arg,
+                                     str_shapes_from_hecras_dir,
+                                     str_crs_arg)
     # -------------------------------------------
 
     # ------ Step 2: conflate_hecras_to_nwm -----    
     # do whatever is needed to create folders and determine variables
-    str_shapes_from_conflation_dir = os.path.join(str_out_arg, "shapes_from_conflation")
+    str_shapes_from_conflation_dir = os.path.join(str_out_arg, "02_shapes_from_conflation")
     if not os.path.exists(str_shapes_from_conflation_dir):
         os.mkdir(str_shapes_from_conflation_dir)
     
     # run the second script (conflate_hecras_to_nwm)
-    fn_conflate_hecras_to_nwm(str_huc8_arg, 
-                              str_shapes_from_hecras_dir, 
-                              str_shapes_from_conflation_dir,
-                              str_nation_arg)
+    if int_step <= 2:
+        fn_conflate_hecras_to_nwm(str_huc8_arg, 
+                                  str_shapes_from_hecras_dir, 
+                                  str_shapes_from_conflation_dir,
+                                  str_nation_arg)
     # -------------------------------------------
 
     # ------ Step 3: get_usgs_dem_from_shape ----    
@@ -107,7 +111,7 @@ def fn_run_ras2fim(str_huc8_arg,
     str_input_path = os.path.join(str_shapes_from_conflation_dir, str_area_shp_name)
     
     # create output folder
-    str_terrain_from_usgs_dir = os.path.join(str_out_arg, "terrain_from_usgs")
+    str_terrain_from_usgs_dir = os.path.join(str_out_arg, "03_terrain_from_usgs")
     if not os.path.exists(str_terrain_from_usgs_dir):
         os.mkdir(str_terrain_from_usgs_dir)
     
@@ -122,13 +126,14 @@ def fn_run_ras2fim(str_huc8_arg,
     str_field_name = "HUC_12"
     
     # run the third script (conflate_hecras_to_nwm)
-    fn_get_usgs_dem_from_shape(str_input_path,
-                               str_terrain_from_usgs_dir,
-                               int_res,
-                               int_buffer,
-                               int_tile,
-                               b_is_feet,
-                               str_field_name)
+    if int_step <= 3:
+        fn_get_usgs_dem_from_shape(str_input_path,
+                                   str_terrain_from_usgs_dir,
+                                   int_res,
+                                   int_buffer,
+                                   int_tile,
+                                   b_is_feet,
+                                   str_field_name)
     # -------------------------------------------
 
     # ------ Step 4: convert_tif_to_ras_hdf5 ----- 
@@ -138,19 +143,19 @@ def fn_run_ras2fim(str_huc8_arg,
     # str_terrain_from_usgs_dir
     
     # create a converted terrain folder
-    str_hecras_terrain_dir = os.path.join(str_out_arg, "hecras_terrain")
+    str_hecras_terrain_dir = os.path.join(str_out_arg, "04_hecras_terrain")
     if not os.path.exists(str_hecras_terrain_dir):
         os.mkdir(str_hecras_terrain_dir)
         
     str_area_prj_name = str_huc8_arg + "_huc_12_ar.prj"
     str_projection_path = os.path.join(str_shapes_from_conflation_dir, str_area_prj_name)
     
-
-    fn_convert_tif_to_ras_hdf5(str_hec_path,
-                               str_terrain_from_usgs_dir,
-                               str_hecras_terrain_dir,
-                               str_projection_path,
-                               b_is_feet)
+    if int_step <= 4:
+        fn_convert_tif_to_ras_hdf5(str_hec_path,
+                                   str_terrain_from_usgs_dir,
+                                   str_hecras_terrain_dir,
+                                   str_projection_path,
+                                   b_is_feet)
     # -------------------------------------------
     
     # ------ Step 5: create_fim_rasters ----- 
@@ -159,7 +164,7 @@ def fn_run_ras2fim(str_huc8_arg,
     # str_terrain_from_usgs_dir
     
     # create a converted terrain folder
-    str_fim_out_dir = os.path.join(str_out_arg, "hecras_output")
+    str_fim_out_dir = os.path.join(str_out_arg, "05_hecras_output")
     if not os.path.exists(str_fim_out_dir):
         os.mkdir(str_fim_out_dir)
     
@@ -172,14 +177,15 @@ def fn_run_ras2fim(str_huc8_arg,
     flt_out_resolution = 3 # output depth raster resolution - meters
     # ==============================================
     
-    fn_create_fim_rasters(str_huc8_arg,
-                          str_shapes_from_conflation_dir,
-                          str_fim_out_dir,
-                          str_projection_path,
-                          str_hecras_terrain_dir,
-                          str_std_input_path,
-                          flt_interval,
-                          flt_out_resolution)
+    if int_step <= 5:
+        fn_create_fim_rasters(str_huc8_arg,
+                              str_shapes_from_conflation_dir,
+                              str_fim_out_dir,
+                              str_projection_path,
+                              str_hecras_terrain_dir,
+                              str_std_input_path,
+                              flt_interval,
+                              flt_out_resolution)
     # -------------------------------------------
     
     # ------ Step 6: simplify fim rasters -----
@@ -188,9 +194,10 @@ def fn_run_ras2fim(str_huc8_arg,
     str_output_crs = "EPSG:3857"
     # ==============================================
     
-    fn_simplify_fim_rasters(str_fim_out_dir,
-                            flt_resolution_depth_grid,
-                            str_output_crs)
+    if int_step <= 6:
+        fn_simplify_fim_rasters(str_fim_out_dir,
+                                flt_resolution_depth_grid,
+                                str_output_crs)
 
     
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    
@@ -248,6 +255,14 @@ if __name__ == '__main__':
                         required=True,
                         metavar='DIR',
                         type=str)
+    
+    parser.add_argument('-s',
+                        dest = "int_step",
+                        help=r'OPTIONAL: step to start ras2fim: Default: 1',
+                        required=False,
+                        default=1,
+                        metavar='INT',
+                        type=int)
 
     args = vars(parser.parse_args())
     
@@ -258,5 +273,6 @@ if __name__ == '__main__':
     b_is_feet = args['b_is_feet']
     str_nation_arg = args['str_nation_arg']
     str_hec_path = args['str_hec_path']
+    int_step = args['int_step']
     
-    fn_run_ras2fim(str_huc8_arg, str_ras_path_arg, str_out_arg, str_crs_arg, b_is_feet, str_nation_arg, str_hec_path)
+    fn_run_ras2fim(str_huc8_arg, str_ras_path_arg, str_out_arg, str_crs_arg, b_is_feet, str_nation_arg, str_hec_path, int_step)
