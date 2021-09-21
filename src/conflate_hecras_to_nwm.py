@@ -4,7 +4,7 @@
 # supplied HEC-RAS files
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.09.08
+# Last revised - 2021.09.20
 #
 # ras2fim - Second pre-processing script
 # Uses the 'ras2fim' conda environment
@@ -13,10 +13,12 @@ import geopandas as gpd
 import pandas as pd
 from geopandas.tools import sjoin
 
+from functools import partial
+
 import argparse
 
 from shapely import wkt
-from shapely.geometry import LineString, Point, mapping
+from shapely.geometry import Point, mapping
 
 import xarray as xr
 # may need to pip install netcdf4 for xarray
@@ -25,16 +27,36 @@ import numpy as np
 from fiona import collection
 from fiona.crs import from_epsg
 
-import time
+import multiprocessing as mp
+from multiprocessing import Pool
 
+import tqdm
+
+from time import sleep
 
 # $$$$$$$$$$$$$$$$$$$$$$
-def wkt_loads(x):
+def fn_wkt_loads(x):
     try:
         return wkt.loads(x)
     except Exception:
         return None
 # $$$$$$$$$$$$$$$$$$$$$$
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def fn_snap_point(shply_line, list_of_df_row):
+    
+    #int_index, int_feature_id, str_huc12, shp_point = list_of_df_row
+    int_index, shp_point, int_feature_id, str_huc12  = list_of_df_row
+    
+    point_project_wkt = shply_line.interpolate(shply_line.project(shp_point)).wkt
+    
+    list_col_names = ['feature_id', 'str_huc_12', 'geometry_wkt']
+    df = pd.DataFrame([[int_feature_id, str_huc12, point_project_wkt]], columns=list_col_names)
+    
+    sleep(0.03) # this allows the tqdm progress bar to update
+    
+    return df
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
 # Print iterations progress
@@ -69,6 +91,30 @@ def fn_print_progress_bar (iteration,
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  
 
 
+# -----------------------------------
+def fn_create_gdf_of_points(tpl_request):
+    # function to create and return a geoDataframe from a list of shapely points
+    
+    str_feature_id = tpl_request[0]
+    str_huc_12 = tpl_request[1]
+    list_of_points = tpl_request[2]
+    
+    # Create an empty dataframe
+    df_points_nwm = pd.DataFrame(columns=['geometry'])
+    
+    # create new geodataframe
+    for point in list_of_points:
+        df_points_nwm = df_points_nwm.append({'geometry': point},ignore_index=True)
+    
+    # convert dataframe to geodataframe
+    gdf_points_nwm = gpd.GeoDataFrame(df_points_nwm, geometry='geometry')
+    
+    gdf_points_nwm['feature_id'] = str_feature_id
+    gdf_points_nwm['huc_12'] = str_huc_12
+    
+    return(gdf_points_nwm)
+# -----------------------------------
+
 def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str_nation_arg):
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     # INPUT
@@ -80,34 +126,35 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     print("+-----------------------------------------------------------------+")
     
     
-    STR_HUC8 = str_huc8_arg
-    print("  ---(w) HUC-8: " + STR_HUC8)
+    str_huc8 = str_huc8_arg
+    print("  ---(w) HUC-8: " + str_huc8)
     
-    STR_BLE_SHP_DIR = str_shp_in_arg
-    print("  ---(i) BLE INPUT SHP DIRECTORY: " + STR_BLE_SHP_DIR)
+    str_ble_shp_dir = str_shp_in_arg
+    print("  ---(i) HEC-RAS INPUT SHP DIRECTORY: " + str_ble_shp_dir)
     
     # note the files names are hardcoded in 1 of 2
-    STR_BLE_STREAM_LN = STR_BLE_SHP_DIR + '\\' + 'stream_LN_from_ras.shp'
-    STR_BLE_CROSS_SECTION_LN = STR_BLE_SHP_DIR + '\\' + 'cross_section_LN_from_ras.shp'
+    str_ble_stream_ln = str_ble_shp_dir + '\\' + 'stream_LN_from_ras.shp'
+    STR_BLE_CROSS_SECTION_LN = str_ble_shp_dir + '\\' + 'cross_section_LN_from_ras.shp'
     
     STR_OUT_PATH = str_shp_out_arg
     print("  ---(o) OUTPUT DIRECTORY: " + STR_OUT_PATH)
     
-    STR_NATIONAL_DATASET_PATH = str_nation_arg
-    print("  ---(n) NATIONAL DATASET LOCATION: " + STR_NATIONAL_DATASET_PATH)
+    str_national_dataset_path = str_nation_arg
+    print("  ---(n) NATIONAL DATASET LOCATION: " + str_national_dataset_path)
     
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     # distance to buffer around modeled stream centerlines
-    INT_BUFFER_DIST = 300
+    int_buffer_dist = 300
+    # ~~~~~~~~~~~~~~~~~~~~~~~~
     
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    INT_DISTANCE_DELTA = 67   # distance between points in ble projection units
+    int_distance_delta = 50   # distance between points in hec-ras projection units
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     # Input - projection of the base level engineering models
     # get this string from the input shapefiles of the stream
-    gdf_stream = gpd.read_file(STR_BLE_STREAM_LN)
-    BLE_PRJ = str(gdf_stream.crs)
+    gdf_stream = gpd.read_file(str_ble_stream_ln)
+    ble_prj = str(gdf_stream.crs)
 
     # Note that this routine requires three (3) national datasets.
     # (1) the NHD Watershed Boundary dataset
@@ -115,17 +162,17 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     # (3) the National water model recurrance flows
     
     # Input - Watershed boundary data geopackage
-    str_wbd_geopkg_path = STR_NATIONAL_DATASET_PATH + '\\' + 'NHDPlusV21_WBD.gpkg'
+    str_wbd_geopkg_path = str_national_dataset_path + '\\' + 'NHDPlusV21_WBD.gpkg'
     
     # Input - National Water Model stream lines geopackage
-    str_nwm_flowline_geopkg_path = STR_NATIONAL_DATASET_PATH + '\\' + 'nwm_flows.gpkg'
+    str_nwm_flowline_geopkg_path = str_national_dataset_path + '\\' + 'nwm_flows.gpkg'
     
     # Input - Recurrance Intervals netCDF
-    str_netcdf_path = STR_NATIONAL_DATASET_PATH + '\\' + 'nwm_v20_recurrence_flows.nc'
+    str_netcdf_path = str_national_dataset_path + '\\' + 'nwm_v20_recurrence_flows.nc'
     
     # Geospatial projections
-    wgs = "epsg:4326"
-    lambert = "epsg:3857"
+    # wgs = "epsg:4326" - not needed
+    # lambert = "epsg:3857" - not needed
     nwm_prj = "ESRI:102039"
     # ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -140,12 +187,12 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     gdf_ndgplusv21_wbd = gpd.read_file(str_wbd_geopkg_path)
     
     list_huc8 = []
-    list_huc8.append(STR_HUC8)
+    list_huc8.append(str_huc8)
     
     # get only the polygons in the given HUC_8
     gdf_huc8_only = gdf_ndgplusv21_wbd.query("HUC_8==@list_huc8")
     gdf_huc8_only_nwm_prj = gdf_huc8_only.to_crs(nwm_prj)
-    gdf_huc8_only_ble_prj = gdf_huc8_only.to_crs(BLE_PRJ)
+    gdf_huc8_only_ble_prj = gdf_huc8_only.to_crs(ble_prj)
     
     # path of the shapefile to write
     str_huc8_filepath = STR_OUT_PATH + '\\' + str(list_huc8[0]) + "_huc_12_ar.shp"
@@ -154,7 +201,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     # Overlay the BLE streams (from the HEC-RAS models) to the HUC_12 shapefile
     
     # read the ble streams
-    gdf_ble_streams = gpd.read_file(STR_BLE_STREAM_LN)
+    gdf_ble_streams = gpd.read_file(str_ble_stream_ln)
     
     # clip the BLE streams to the watersheds (HUC-12)
     gdf_ble_streams_intersect = gpd.overlay(
@@ -220,7 +267,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     gdf_streams_huc_only.crs = gdf_stream.crs
     
     # project the nwm streams to the ble projecion
-    gdf_streams_nwm_bleprj = gdf_streams_huc_only.to_crs(BLE_PRJ)
+    gdf_streams_nwm_bleprj = gdf_streams_huc_only.to_crs(ble_prj)
     
     # Create an empty dataframe
     df_points_nwm = pd.DataFrame(columns=['geometry', 'feature_id', 'huc_12'])
@@ -239,39 +286,34 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     
     # Get the total number of points requesting
     total_points = 0
-    
+    list_points_aggregate = []
+    print("+-----------------------------------------------------------------+")
     for index, row in gdf_streams_nwm_explode.iterrows():
         str_current_linestring = row['geometry']
-        distances = np.arange(0, str_current_linestring.length, INT_DISTANCE_DELTA)
+        distances = np.arange(0, str_current_linestring.length, int_distance_delta)
         points = [str_current_linestring.interpolate(distance) for distance in distances] + [str_current_linestring.boundary[1]]
         total_points += len(points)
     
-    print("+-----------------------------------------------------------------+")
-    fn_print_progress_bar(0, total_points,
-                  prefix = 'Creating Points on NWM Streams' ,
-                  suffix = 'Complete', length = 18)
-
-    for index, row in gdf_streams_nwm_explode.iterrows():
-        str_current_linestring = row['geometry']
-        distances = np.arange(0, str_current_linestring.length, INT_DISTANCE_DELTA)
-        points = [str_current_linestring.interpolate(distance) for distance in distances] + [str_current_linestring.boundary[1]]
+        tpl_request = (row['feature_id'], row['huc12'], points)
+        list_points_aggregate.append(tpl_request)
     
-        for i in points:
-            int_count += 1
-            df_points_nwm = df_points_nwm.append({'geometry': i,
-                                                  'feature_id': row['feature_id'],
-                                                  'huc_12': row['huc12']},
-                                                 ignore_index=True)
+    # create a pool of processors
+    num_processors = (mp.cpu_count() - 1)
+    p = Pool(processes = num_processors)
     
-            fn_print_progress_bar(int_count, total_points,
-                                  prefix = 'Creating Points on NWM Streams' ,
-                                  suffix = 'Complete', length = 18)
-            
-    # convert dataframe to geodataframe
-    gdf_points_nwm = gpd.GeoDataFrame(df_points_nwm, geometry='geometry')
+    l = len(list_points_aggregate)
     
-    # Set the crs of the new geodataframe
-    gdf_points_nwm.crs = gdf_streams_nwm_bleprj.crs
+    list_gdf_points_all_lines = list(tqdm.tqdm(p.imap(fn_create_gdf_of_points, list_points_aggregate),
+                                           total = l,
+                                           desc='Points on lines',
+                                           bar_format = "{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+                                           ncols=67 ))
+    
+    p.close()
+    p.join()
+    
+    gdf_points_nwm = gpd.GeoDataFrame(pd.concat(list_gdf_points_all_lines, ignore_index=True))
+    gdf_points_nwm = gdf_points_nwm.set_crs(ble_prj)
     
     # path of the shapefile to write
     str_filepath_nwm_points = STR_OUT_PATH + '\\' + str(list_huc8[0]) + "_nwm_points_PT.shp"
@@ -282,7 +324,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
     # read in the model stream shapefile
-    gdf_segments = gpd.read_file(STR_BLE_STREAM_LN)
+    gdf_segments = gpd.read_file(str_ble_stream_ln)
     
     # create merged geometry of all streams
     shply_line = gdf_segments.geometry.unary_union
@@ -296,19 +338,19 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     print("+-----------------------------------------------------------------+")
     print("Buffering stream centerlines ~ 60 sec")
     # buffer the merged stream ceterlines - distance to find valid conflation point
-    buff = shply_line.buffer(INT_BUFFER_DIST)
+    shp_buff = shply_line.buffer(int_buffer_dist)
     
     # convert shapely to geoDataFrame
-    buff = gpd.GeoDataFrame(geometry=[buff])
+    gdf_buff = gpd.GeoDataFrame(geometry=[shp_buff])
     
     # set the CRS of buff
-    buff = buff.set_crs(BLE_PRJ)
+    gdf_buff = gdf_buff.set_crs(gdf_segments.crs)
     
     # spatial join - points in polygon
-    points_in_poly = sjoin(gdf_points, buff, how='left')
+    gdf_points_in_poly = sjoin(gdf_points, gdf_buff, how='left')
     
     # drop all points that are not within polygon
-    gdf_points_within_buffer = points_in_poly.dropna()
+    gdf_points_within_buffer = gdf_points_in_poly.dropna()
     
     # need to reindex the returned geoDataFrame
     gdf_points_within_buffer = gdf_points_within_buffer.reset_index()
@@ -316,57 +358,29 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     # delete the index_right field
     del gdf_points_within_buffer['index_right']
     
-    # Create an empty dataframe
-    df_points_snap_to_ble = pd.DataFrame(
-        columns=['wkt_geom', 'feature_id', 'huc_12'])
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # Snap the points along the National Water Model
-    # streams (within the buffer) to the nearest modeled
-    # HEC-RAS stream
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    # TODO - can this be run in parallel for speed? 2021.04.02
-    # Estimated Time - One min for every 800 points
-    
-    int_count = 0
     total_points = len(gdf_points_within_buffer)
-
+    
+    df_points_within_buffer = pd.DataFrame(gdf_points_within_buffer)
+    # TODO - 2021.09.21 - create a new df that has only the variables needed in the desired order
+    list_dataframe_args_snap = df_points_within_buffer.values.tolist()
+    
     print("+-----------------------------------------------------------------+")
-    fn_print_progress_bar(int_count, total_points,
-                  prefix = 'Snapping Points:' ,
-                  suffix = 'Complete', length = 24)
+    p = mp.Pool(processes = (mp.cpu_count() - 1))
     
-    for index, row in gdf_points_within_buffer.iterrows():
-        int_count += 1
+    list_df_points_projected = list(tqdm.tqdm(p.imap(partial(fn_snap_point, shply_line), list_dataframe_args_snap),
+                                          total = total_points,
+                                          desc='Snap Points',
+                                          bar_format = "{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+                                          ncols=67))
     
-        fn_print_progress_bar(int_count, total_points,
-                              prefix = 'Snapping Points:' ,
-                              suffix = 'Complete', length = 24)
+    p.close()
+    p.join()
     
-        nwm_point = row['geometry']
+    gdf_points_snap_to_ble = gpd.GeoDataFrame(pd.concat(list_df_points_projected, ignore_index=True))
     
-        point_project_wkt = (
-            shply_line.interpolate(shply_line.project(nwm_point)).wkt)
-    
-        df_points_snap_to_ble = df_points_snap_to_ble.append(
-            {'wkt_geom': point_project_wkt,
-             'feature_id': row['feature_id'],
-             'huc_12': row['huc_12']},
-            ignore_index=True)
-    
-    df_points_snap_to_ble['geometry'] = df_points_snap_to_ble.wkt_geom.apply(wkt_loads)
-    df_points_snap_to_ble = df_points_snap_to_ble.dropna(subset=['geometry'])
-    
-    # convert dataframe to geodataframe
-    gdf_points_snap_to_ble = gpd.GeoDataFrame(df_points_snap_to_ble,
-                                              geometry='geometry')
-    
-    # Set the crs of the new geodataframe
-    gdf_points_snap_to_ble.crs = gdf_segments.crs
-    
-    # delete the wkt_geom field
-    del gdf_points_snap_to_ble['wkt_geom']
+    gdf_points_snap_to_ble['geometry'] = gdf_points_snap_to_ble.geometry_wkt.apply(fn_wkt_loads)
+    gdf_points_snap_to_ble = gdf_points_snap_to_ble.dropna(subset=['geometry'])
+    gdf_points_snap_to_ble = gdf_points_snap_to_ble.set_crs(gdf_segments.crs)
     
     # write the shapefile
     str_filepath_ble_points = STR_OUT_PATH + "\\" + str(list_huc8[0]) + "_ble_snap_points_PT.shp"
@@ -474,9 +488,9 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
             with collection(str_xs_on_feature_id_pt,
                             "w",
                             "ESRI Shapefile",
-                            schema, crs=from_epsg(BLE_PRJ[5:])) as output:
+                            schema, crs=from_epsg(ble_prj[5:])) as output:
                 # ~~~~~~~~~~~~~~~~~~~~
-                # Slice BLE_PRJ to remove the "epsg:"
+                # Slice ble_prj to remove the "epsg:"
                 # ~~~~~~~~~~~~~~~~~~~~
     
                 for i in points.geoms:
@@ -523,7 +537,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     print("+-----------------------------------------------------------------+")
     print("Creating Quality Control Output")
     
-    str_str_qc_csv_File = STR_OUT_PATH + "\\" + STR_HUC8 + "_stream_qc.csv"
+    str_str_qc_csv_File = STR_OUT_PATH + "\\" + str_huc8 + "_stream_qc.csv"
     df_summary_data.to_csv(str_str_qc_csv_File)
     
     gdf_nwm_stream_lines = gpd.read_file(str_filepath_nwm_stream)
@@ -541,7 +555,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     gdf_non_match = gdf_non_match[(gdf_non_match._merge != 'both')]
     
     # path of the shapefile to write
-    str_filepath_nwm_stream = STR_OUT_PATH + '\\' + STR_HUC8 + "_no_match_nwm_lines.shp"
+    str_filepath_nwm_stream = STR_OUT_PATH + '\\' + str_huc8 + "_no_match_nwm_lines.shp"
     
     # delete the wkt_geom field
     del gdf_non_match['_merge']

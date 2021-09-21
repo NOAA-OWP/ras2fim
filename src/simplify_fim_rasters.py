@@ -8,7 +8,7 @@
 #
 # Created by: Andy Carter, PE
 # Created: 2021-08-23
-# Last revised - 2021-09-09
+# Last revised - 2021-09-20
 #
 # Uses the 'ras2fim' conda environment
 # ************************************************************
@@ -20,6 +20,10 @@ import geopandas as gpd
 
 import rioxarray as rxr
 from rioxarray import merge
+
+import multiprocessing as mp
+import tqdm
+from time import sleep
 
 import argparse
 # ************************************************************
@@ -63,47 +67,18 @@ def fn_unique_list(list_input):
     return(list_unique)
 # ---------------------------------
 
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
-# Print iterations progress
-def fn_print_progress_bar (iteration,
-                           total,
-                           prefix = '', suffix = '',
-                           decimals = 1,
-                           length = 100, fill = '█',
-                           printEnd = "\r"):
-    """
-    from: https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
-    Call in a loop to create terminal progress bar
-    Keyword arguments:
-        iteration   - Required  : current iteration (Int)
-        total       - Required  : total iterations (Int)
-        prefix      - Optional  : prefix string (Str)
-        suffix      - Optional  : suffix string (Str)
-        decimals    - Optional  : positive number of decimals in percent complete (Int)
-        length      - Optional  : character length of bar (Int)
-        fill        - Optional  : bar fill character (Str)
-        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
-    """
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
-    # Print New Line on Complete
-    if iteration == total: 
-        print()
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
-
 # **********************************
-def fn_create_grid(str_polygon_path,
-                   str_file_to_create_path,
-                   str_dem_path,
-                   str_output_crs,
-                   flt_desired_res):
+def fn_create_grid(list_of_df_row):
     # function to create InFRM compliant dems
     # args:
-    #   str_polygon_path = path to boundary polygon from HEC-RAS
-    #   str_file_to_create_path = path to of the file to create
-    #   str_dem_path = path of the dem that needs to be converted
+    #   list_of_df_row = list of a single row in dataframe that contains:
+    #     str_polygon_path = path to boundary polygon from HEC-RAS
+    #     str_file_to_create_path = path to of the file to create
+    #     str_dem_path = path of the dem that needs to be converted
+    #     str_output_crs = coordinate ref system of the output raster
+    #     flt_desired_res = coordinate ref system of the output raster
+    
+    str_polygon_path, str_file_to_create_path, str_dem_path, str_output_crs, flt_desired_res = list_of_df_row
     
     # read in the HEC-RAS generatated polygon of the last elevation step
     gdf_flood_limits = gpd.read_file(str_polygon_path)
@@ -146,8 +121,13 @@ def fn_create_grid(str_polygon_path,
         xds_clipped_desired_res.rio.to_raster(str_file_to_create_path,
                                               compress='lzw',
                                               dtype="uint16")
+        
+        sleep(0.01) # this allows the tqdm progress bar to update
+        
+        return 1
 # **********************************
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def fn_simplify_fim_rasters(str_input_dir,
                             flt_resolution,
                             str_output_crs):
@@ -171,7 +151,7 @@ def fn_simplify_fim_rasters(str_input_dir,
 
     print("===================================================================")
 
-    # get a list of all tifs in the iprovided input directory
+    # get a list of all tifs in the provided input directory
     list_raster_dem = fn_filelist(STR_MAP_OUTPUT, ('.TIF', '.tif'))
     
     # create a list of the path to the found tifs
@@ -256,32 +236,33 @@ def fn_simplify_fim_rasters(str_input_dir,
                 #no shapefile in the dem path found
                 b_nothing = True
                 
-    int_count = 0
-    
-    # Initial call to print 0% progress
     l = len(df_grids_to_convert)
-    print(' ')
-    
-    str_prefix = "Converting " + str(len(df_grids_to_convert)) + " grids"
-    
-    # TODO - what if there are none - 2021.09.14
-    fn_print_progress_bar(0, l, prefix = str_prefix , suffix = 'Complete', length = 28)
-    
-    for index, row in df_grids_to_convert.iterrows():
-        # TODO - multiprocess the conversion
-        fn_create_grid(row['shapefile_path'],
-                       row['file_to_create_path'],
-                       row['current_dem_path'],
-                       STR_OUTPUT_CRS,
-                       FLT_DESIRED_RES)
-        int_count += 1
+    if l > 0:
+        # add additional columns to the pandas dataframe prior to passing to the
+        # multi-processing
+        df_grids_to_convert['output_crs'] = STR_OUTPUT_CRS
+        df_grids_to_convert['desired_res'] = FLT_DESIRED_RES
         
-        fn_print_progress_bar(int_count, l, prefix = str_prefix, suffix = 'Complete', length = 28)
+        list_dataframe_args = df_grids_to_convert.values.tolist()
+        
+        print("+-----------------------------------------------------------------+")
+        p = mp.Pool(processes = (mp.cpu_count() - 1))
+        
+        list_return_values = list(tqdm.tqdm(p.imap(fn_create_grid, list_dataframe_args),
+                                            total = l,
+                                            desc='Convert Grids',
+                                            bar_format = "{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+                                            ncols=65))
+        
+        p.close()
+        p.join()
 
     print(" ") 
     print('COMPLETE')
     print("====================================================================")
-    
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
 if __name__ == '__main__':
 
     

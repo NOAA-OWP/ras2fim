@@ -6,7 +6,7 @@
 # resolution.  Tiles are merged into a single DEM for each polygon.  The
 # final DEMs are converted to the requested polygon coordinate reference 
 # system (CRS).  Vertical values are convereted to feet as default, but
-# can be taoggled to meters if needed. GeoTiffs are written and can be
+# can be toggled to meters if needed. GeoTiffs are written and can be
 # named after a unique field in the input shapefile.
 #
 # While the USGS may have high resolution terrain (1m), the WCS will 

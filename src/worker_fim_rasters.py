@@ -804,7 +804,6 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn, tpl_s
         # Calculate the terrain statistics
         str_path_to_projection = tpl_settings[3]
         str_path_to_terrain = tpl_settings[4]
-        str_huc_8 = tpl_settings[0]
         
         # format variables for the fn_calculate_terrain_stats
         str_geom_hdf_path = str_ras_projectpath[:-4] + '.g01.hdf'
@@ -816,18 +815,20 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn, tpl_s
         if not os.path.exists(str_shp_out_path):
             os.mkdir(str_shp_out_path)
         
-        str_terrain_filename = str_huc_8 + "." + str_huc_8 + '.tif'
+        # get HUC12 from the file path of str_geom_hdf_path
+        str_normalized_path = os.path.normpath(str_geom_hdf_path)
+        list_path_components = str_normalized_path.split(os.sep)
+        str_huc_12 = list_path_components[-4][4:]
+        
+        str_terrain_filename = str_huc_12 + "." + str_huc_12 + '.tif'
         str_terrain_path = str_path_to_terrain + '\\' + str_terrain_filename
         
         str_shp_out_path = str_shp_out_path + '\\' + str_feature_id + "_ras_xs_model_PT.shp"
         
-        print(str_geom_hdf_path)
-        print(str_projection_path)
-        print(str_shp_out_path)
-        print(str_terrain_path)
-        
         tpl_return_stats = fn_calculate_terrain_stats(str_geom_hdf_path, str_projection_path, str_shp_out_path, str_terrain_path)
         print(str_feature_id + ":" + str(tpl_return_stats))
+        
+        # TODO - add these values to a dataframe and then save as csv - MAC - 2021.09.14
         # *************************************
         
     '''
