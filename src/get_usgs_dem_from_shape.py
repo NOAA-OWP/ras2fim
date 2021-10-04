@@ -22,7 +22,7 @@
 #   FORMAT=GeoTiff
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.09.08
+# Last revised - 2021.10.04
 #
 # ras2fim - Third pre-processing script
 # Uses the 'ras2fim' conda environment
@@ -195,7 +195,7 @@ def fn_get_usgs_dem_from_shape(str_input_path,
     # requested tile size in lambert units (meters)
     STR_FIELD_TO_LABEL = str_field_name
     print("  ---[f]   Optional: FIELD NAME: " + str(STR_FIELD_TO_LABEL)) 
-
+    
     print("===================================================================")
     
     # overlap of the requested tiles in lambert units (meters)

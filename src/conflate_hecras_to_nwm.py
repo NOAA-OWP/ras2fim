@@ -18,7 +18,7 @@ from functools import partial
 import argparse
 
 from shapely import wkt
-from shapely.geometry import Point, mapping
+from shapely.geometry import Point, mapping, MultiLineString
 
 import xarray as xr
 # may need to pip install netcdf4 for xarray
@@ -112,11 +112,13 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     # distance to buffer around modeled stream centerlines
-    int_buffer_dist = 300
+    int_buffer_dist = 600
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    int_distance_delta = 50   # distance between points in hec-ras projection units
+    # TODO - 2021.09.21 - this should be 50 if meters and 150 if feet
+    # too small a value creates long buffering times
+    int_distance_delta = 150   # distance between points in hec-ras projection units
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     # Input - projection of the base level engineering models
@@ -267,18 +269,18 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     
     # create a pool of processors
     num_processors = (mp.cpu_count() - 1)
-    p = Pool(processes = num_processors)
+    pool = Pool(processes = num_processors)
     
     l = len(list_points_aggregate)
     
-    list_gdf_points_all_lines = list(tqdm.tqdm(p.imap(fn_create_gdf_of_points, list_points_aggregate),
+    list_gdf_points_all_lines = list(tqdm.tqdm(pool.imap(fn_create_gdf_of_points, list_points_aggregate),
                                            total = l,
                                            desc='Points on lines',
                                            bar_format = "{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
                                            ncols=67 ))
     
-    p.close()
-    p.join()
+    pool.close()
+    pool.join()
     
     gdf_points_nwm = gpd.GeoDataFrame(pd.concat(list_gdf_points_all_lines, ignore_index=True))
     gdf_points_nwm = gdf_points_nwm.set_crs(ble_prj)
@@ -293,6 +295,27 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     
     # read in the model stream shapefile
     gdf_segments = gpd.read_file(str_ble_stream_ln)
+    
+    # Simplify geom by 4.5 tolerance and rewrite the
+    # geom to eliminate streams with too may verticies
+    
+    flt_tolerance = 4.5 # tolerance for simplifcation of HEC-RAS stream centerlines
+    
+    for index, row in gdf_segments.iterrows():
+        shp_geom = row['geometry']
+        str_geom_wkt = shp_geom.wkt
+        if str_geom_wkt[0:4]  == "LINE":
+            shp_simplified_line = shp_geom.simplify(flt_tolerance, preserve_topology=False)
+            gdf_segments.at[index, 'geometry'] = shp_simplified_line
+        else:
+            # is a multilinestring
+            list_lines = []
+            for shp_line in shp_geom:
+                shp_line_simple = shp_line.simplify(flt_tolerance, preserve_topology=False)
+                list_lines.append(list(shp_line_simple.coords))
+            shp_simplified_line = MultiLineString(list_lines)
+            # TODO - 2021.09.22 - handle the multilinestring - ignored for now
+            #gdf_lines.at[index, 'geometry'] = shp_simplified_line
     
     # create merged geometry of all streams
     shply_line = gdf_segments.geometry.unary_union

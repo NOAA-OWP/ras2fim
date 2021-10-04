@@ -4,7 +4,7 @@
 # centerline and cross sections
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.09.07
+# Last revised - 2021.10.04
 #
 # ras2fim - First pre-processing script
 # Uses the 'ras2fim' conda environment
@@ -14,6 +14,7 @@ import pandas as pd
 import geopandas as gpd
 
 import time
+from time import sleep
 
 import argparse
 
@@ -30,6 +31,9 @@ import numpy as np
 import os.path
 from os import path
 
+import multiprocessing as mp
+from multiprocessing import Pool
+
 from shapely.geometry import LineString
 from shapely.ops import split, linemerge
 
@@ -40,7 +44,7 @@ def fn_open_hecras(str_ras_project_path):
     # Function - runs HEC-RAS (active plan) and closes the file
 
     hec = win32com.client.Dispatch("RAS60.HECRASController")
-    hec.ShowRas()
+    #hec.ShowRas()
 
     # opening HEC-RAS
     hec.Project_Open(str_ras_project_path)
@@ -53,6 +57,7 @@ def fn_open_hecras(str_ras_project_path):
     v1, NMsg, TabMsg, v2 = hec.Compute_CurrentPlan(NMsg, TabMsg, block)
 
     hec.QuitRas()   # close HEC-RAS
+    
 # ************************
 
 
@@ -238,6 +243,12 @@ def fn_geodataframe_stream_centerline(str_path_hecras_project_fn, STR_CRS_MODEL)
     # Get the name of the river and reach
     list_river_name = []
     list_reach_name = []
+    
+    # ********************************
+    # TODO - 2021.09.21 - 0d array
+    # some hdf files do not have Geometry/River Centerlines/Attributes
+    # ********************************
+    
     for row in n3:
         list_river_name.append(row[0])
         list_reach_name.append(row[1])
@@ -528,6 +539,8 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     
     str_path_to_output_cross_sections = STR_PATH_TO_OUTPUT + \
         'cross_section_LN_from_ras.shp'
+    
+    print("+-----------------------------------------------------------------+")
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     
     # *****MAIN******
@@ -567,6 +580,29 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
             file_prj.close()
     #-----
     
+    # Run all the HEC-RAS models that do not have the geom HDF files
+    list_models_to_compute = []
+    
+    for str_prj in list_files:
+        str_path_to_geom_hdf = fn_get_active_geom(str_prj) + '.hdf'
+        if  not path.exists(str_path_to_geom_hdf):
+            # the hdf file does not exist - add to list of models to compute
+            list_models_to_compute.append(str_prj)
+    
+    if len(list_models_to_compute) > 0:
+        print('Compute HEC-RAS Models: ' + str(len(list_models_to_compute)))
+        
+        # create a pool of processors
+        num_processors = (mp.cpu_count() - 1)
+        p = Pool(processes = num_processors)
+        
+        # multi-process the HEC-RAS calculation of these models
+        p.map(fn_open_hecras,list_models_to_compute)
+        
+        p.close()
+        p.join()
+    #-----    
+    
     list_geodataframes_stream = []
     list_geodataframes_cross_sections = []
     l = len(list_files_valid_prj)
@@ -598,7 +634,7 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
         list_geodataframes_stream.append(gdf_return_stream)
         list_geodataframes_cross_sections.append(gdf_xs_flows)
         
-        time.sleep(0.1)
+        time.sleep(0.03)
         i += 1
         fn_print_progress_bar(i, l,
                               prefix = 'Reading HEC-RAS output',
