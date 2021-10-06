@@ -32,6 +32,8 @@ import os
 import time
 import datetime
 
+b_terrain_check_only = False
+
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 def str2bool(v):
     if isinstance(v, bool):
@@ -189,7 +191,7 @@ def fn_run_ras2fim(str_huc8_arg,
     
     # *** variables set - raster terrain harvesting ***
     # ==============================================
-    flt_interval = 0.2 # vertical step of average depth (recommended - 0.2m and 0.5ft)
+    flt_interval = 0.5 # vertical step of average depth (recommended - 0.2m and 0.5ft)
     flt_out_resolution = 3 # output depth raster resolution - meters
     # ==============================================
     
@@ -201,7 +203,8 @@ def fn_run_ras2fim(str_huc8_arg,
                               str_hecras_terrain_dir,
                               str_std_input_path,
                               flt_interval,
-                              flt_out_resolution)
+                              flt_out_resolution,
+                              b_terrain_check_only)
     # -------------------------------------------
     
     # ------ Step 6: simplify fim rasters -----

@@ -461,6 +461,7 @@ def fn_get_usgs_dem_from_shape(str_input_path,
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == '__main__':
 
+    flt_start_run = time.time()
     
     parser = argparse.ArgumentParser(description='=================== USGS TERRAIN FROM SHAPEFILE ===================')
     
@@ -534,4 +535,10 @@ if __name__ == '__main__':
                                int_tile,
                                b_is_feet,
                                str_field_name)
+    
+    flt_end_run = time.time()
+    flt_time_pass = (flt_end_run - flt_start_run) // 1
+    time_pass = datetime.timedelta(seconds=flt_time_pass)
+    
+    print('Compute Time: ' + str(time_pass))
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

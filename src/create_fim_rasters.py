@@ -25,6 +25,19 @@ import sys
 import worker_fim_rasters
 # ************************************************************
 
+# $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+# $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
 # Print iterations progress
 def fn_print_progress_bar (iteration,
@@ -55,6 +68,7 @@ def fn_print_progress_bar (iteration,
         print()
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   
 
+
 def fn_create_fim_rasters(str_desired_huc8,
                           str_input_folder,
                           str_output_folder,
@@ -62,7 +76,8 @@ def fn_create_fim_rasters(str_desired_huc8,
                           str_terrain_path,
                           str_std_input_path,
                           flt_interval,
-                          flt_out_resolution):
+                          flt_out_resolution,
+                          b_terrain_check_only):
 
     # Hard coded constants for this routine
     
@@ -110,7 +125,7 @@ def fn_create_fim_rasters(str_desired_huc8,
     print("  ---(t) TERRAIN PATH: " + STR_PATH_TO_TERRAIN)
     
     STR_PATH_TO_STANDARD_INPUT = str_std_input_path
-    print("  ---[s]   Optional: STANDARD INPUT PATH: " + STR_PATH_TO_STANDARD_INPUT)
+    print("  ---[s]   Optional: Standard Input Path: " + STR_PATH_TO_STANDARD_INPUT)
     
     # Path to the standard plan file text
     STR_PLAN_MIDDLE_PATH = STR_PATH_TO_STANDARD_INPUT + r'\PlanStandardText01.txt'
@@ -118,10 +133,13 @@ def fn_create_fim_rasters(str_desired_huc8,
     STR_PROJECT_FOOTER_PATH = STR_PATH_TO_STANDARD_INPUT + r"\ProjectStandardText01.txt"
     
     FLT_INTERVAL = flt_interval
-    print("  ---[z]   Optional: OUTPUT ELEVATION STEP: " + str(FLT_INTERVAL))
+    print("  ---[z]   Optional: Output Elevation Step: " + str(FLT_INTERVAL))
     
     INT_DESIRED_RESOLUTION = flt_out_resolution
-    print("  ---[r]   Optional: OUTPUT RASTER RESOLUTION: " + str(INT_DESIRED_RESOLUTION))
+    print("  ---[r]   Optional: Output Raster Resolution: " + str(INT_DESIRED_RESOLUTION))
+    
+    INT_DESIRED_RESOLUTION = flt_out_resolution
+    print("  ---[c]   Optional: Terrain Check Only: " + str(b_terrain_check_only))
     
     print("===================================================================")
     
@@ -139,7 +157,8 @@ def fn_create_fim_rasters(str_desired_huc8,
                  INT_STARTING_FLOW,
                  FLT_MAX_MULTIPLY,
                  FLT_BUFFER,
-                 STR_PLAN_FOOTER_PATH)
+                 STR_PLAN_FOOTER_PATH,
+                 b_terrain_check_only)
 
     
     list_huc8 = []
@@ -265,7 +284,7 @@ if __name__ == '__main__':
     
     parser.add_argument('-t',
                         dest = "str_terrain_path",
-                        help=r'REQUIRED: path the to hdf5 terrain: Example: D:\hecras_terrain',
+                        help=r'REQUIRED: path the to hdf5 terrain: Example: D:\04_hecras_terrain',
                         required=True,
                         metavar='FILE',
                         type=str)
@@ -280,9 +299,9 @@ if __name__ == '__main__':
     
     parser.add_argument('-z',
                         dest = "flt_interval",
-                        help=r'  OPTIONAL: elvation interval of output grids: Example: 0.5 : Default: 0.2',
+                        help=r'  OPTIONAL: elevation interval of output grids: Example: 0.2 : Default: 0.5',
                         required=False,
-                        default=0.2,
+                        default=0.5,
                         metavar='FLOAT',
                         type=float)
     
@@ -293,6 +312,14 @@ if __name__ == '__main__':
                         default=3.0,
                         metavar='FLOAT',
                         type=float)
+    
+    parser.add_argument('-c',
+                        dest = "b_terrain_check_only",
+                        help='OPTIONAL: check terrain only-skip HEC-RAS simulation and mapping: Default=False',
+                        required=False,
+                        default=False,
+                        metavar='T/F',
+                        type=str2bool)
     
     args = vars(parser.parse_args())
     # --------------------------------
@@ -305,6 +332,7 @@ if __name__ == '__main__':
     str_std_input_path = args['str_std_input_path']
     flt_interval = args['flt_interval']
     flt_out_resolution = args['flt_out_resolution']
+    b_terrain_check_only = args['b_terrain_check_only']
     
     fn_create_fim_rasters(str_desired_huc8,
                           str_input_folder,
@@ -313,5 +341,6 @@ if __name__ == '__main__':
                           str_terrain_path,
                           str_std_input_path,
                           flt_interval,
-                          flt_out_resolution)
+                          flt_out_resolution,
+                          b_terrain_check_only)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
