@@ -2,11 +2,13 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
-## x.y.z - YYYY-MM-DD
+## 1.0.0 - 2021.11.10 - Initial Release
+
+## X.X.X - 20YY.YY.YY - Held for future release
 
 ### Added
 
-- Lorem ipsum dolor sit amet
+- Held for future release
 
 ### Deprecated
 
