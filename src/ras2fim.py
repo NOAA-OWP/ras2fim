@@ -12,7 +12,7 @@
 # be installed prior to execution.
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.10.04
+# Last revised - 2021.10.18
 #
 # Main code for ras2fim
 # Uses the 'ras2fim' conda environment
@@ -25,6 +25,7 @@ from clip_dem_from_shape import fn_cut_dems_from_shapes
 from convert_tif_to_ras_hdf5 import fn_convert_tif_to_ras_hdf5
 from create_fim_rasters import fn_create_fim_rasters
 from simplify_fim_rasters import fn_simplify_fim_rasters
+from calculate_all_terrain_stats import fn_calculate_all_terrain_stats
 
 import argparse
 import os
@@ -217,12 +218,22 @@ def fn_run_ras2fim(str_huc8_arg,
         fn_simplify_fim_rasters(str_fim_out_dir,
                                 flt_resolution_depth_grid,
                                 str_output_crs)
+    # ----------------------------------------
+    
+
+    # ------ Step 7: calculate terrain statistics -----
+    if int_step <= 7:
+        fn_calculate_all_terrain_stats(str_fim_out_dir)
+    # -------------------------------------------------
 
     flt_end_run_ras2fim = time.time()
     flt_time_pass_ras2fim = (flt_end_run_ras2fim - flt_start_run_ras2fim) // 1
     time_pass_ras2fim = datetime.timedelta(seconds=flt_time_pass_ras2fim)
     
     print('Total Compute Time: ' + str(time_pass_ras2fim))
+    
+    
+    
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    
 
 

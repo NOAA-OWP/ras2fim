@@ -1237,8 +1237,6 @@ def fn_main_hecras(record_requested_stream):
     
     #river = fn_create_hecras_files(str_feature_id, str_geom_path, flt_ds_xs, flt_us_xs, int_max_q, str_hecras_path_to_create, tpl_settings)
     
-    river = fn_create_hecras_files(str_feature_id, str_geom_path, flt_ds_xs, flt_us_xs, int_max_q, str_hecras_path_to_create, tpl_settings)
-    '''
     # create the HEC-RAS truncated models
     try:
         # sometimes the HEC-RAS model
@@ -1248,5 +1246,5 @@ def fn_main_hecras(record_requested_stream):
     except:
         #print("HEC-RAS Error: " + str_geom_path)
         fn_append_error(str_feature_id, str_geom_path, str_huc12, str_root_output_directory)
-    '''
-    return(str_feature_id)
+    
+    #return(str_feature_id)

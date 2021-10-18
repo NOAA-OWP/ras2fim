@@ -76,7 +76,7 @@ def fn_create_grid(list_of_df_row):
     #     str_file_to_create_path = path to of the file to create
     #     str_dem_path = path of the dem that needs to be converted
     #     str_output_crs = coordinate ref system of the output raster
-    #     flt_desired_res = coordinate ref system of the output raster
+    #     flt_desired_res = resolution of the output raster
     
     str_polygon_path, str_file_to_create_path, str_dem_path, str_output_crs, flt_desired_res = list_of_df_row
     
