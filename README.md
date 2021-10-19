@@ -15,6 +15,7 @@
 **Overview**:
 
 ![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/ras2fim_overview.png)
+![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/ras2fim_sample_output.png)
 
 
 ## Dependencies
