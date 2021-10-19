@@ -1,5 +1,5 @@
 # RAS2FIM
-## <i>Creation of Flood Inundation raster libraries and rating curves from HEC-RAS models </i>
+## <i>Creation of flood inundation raster libraries and rating curves from HEC-RAS models </i>
    
 <img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/ras2fim_logo_20211018.png" align="right"
      alt="ras2fim logo" width="160" height="160">
