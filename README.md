@@ -31,7 +31,9 @@ Sample - List file prior to download:  `aws s3 ls s3://noaa-nws-owp-fim/hand_fim
 3.  National Water Model to Watershed Boundary Lookup `aws s3 cp s3://noaa-nws-owp-fim/ras2fim/national_inputs/nwm_wbd_lookup.nc nwm_wbd_lookup.nc --request-payer requester`<br><br>
 
 ### Install HEC-RAS verion 6.0
-These RAS2FIM scripts are written to utilize the computational engine and supporting APIs from the U.S Army Corp of Engineers' [Hydrologic Engineering Center's River Analysis System {HEC-RAS}](https://www.hec.usace.army.mil/software/hec-ras/).  Download and install **HEC-RAS version 6.0** to your local machine.  <br><br>The install package can be downloaded [here](https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.20/HEC-RAS_60_Setup.exe) or [from the USACE website](https://www.hec.usace.army.mil/software/hec-ras/download.aspx).
+These RAS2FIM scripts are written to utilize the computational engine and supporting APIs from the U.S Army Corp of Engineers' [Hydrologic Engineering Center's River Analysis System {HEC-RAS}](https://www.hec.usace.army.mil/software/hec-ras/).  Download and install **HEC-RAS version 6.0** to your local machine.  <br><br>The install package can be downloaded [here](https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.20/HEC-RAS_60_Setup.exe) or [from the USACE website](https://www.hec.usace.army.mil/software/hec-ras/download.aspx).<br><br>
+
+Once installed, **open HEC-RAS on that machine** to ensure that it will function on that machine and will be usable by the RAS2FIM scripts.  Close HEC-RAS.
 ## Dependencies
 
 Describe any dependencies that must be installed for this software to work.
