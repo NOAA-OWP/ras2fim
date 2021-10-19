@@ -39,7 +39,7 @@
 * [HEC-RAS Version 6.0](https://www.hec.usace.army.mil/software/hec-ras/download.aspx)
 * [Anaconda](https://www.anaconda.com/products/individual)
 * National datasets - See "Prior to Running the Code" section
-* Runs on a Windows OS only!
+* Runs on a Windows OS only -Tested on Windows 10
 
 ## Installation
 
