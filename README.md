@@ -14,7 +14,7 @@
 
 **Screenshot**: If the software has visual components, place a screenshot after the description; e.g.,
 
-![](https://raw.githubusercontent.com/NOAA-OWP/owp-open-source-project-template/master/doc/Screenshot.png)
+![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/ras2fim_overview.png)
 
 
 ## Dependencies
