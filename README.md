@@ -43,9 +43,7 @@
 
 ## Installation
 
-Detailed instructions on how to install, configure, and get the project running.
-This should be frequently tested to ensure reliability. Alternatively, link to
-a separate [INSTALL](INSTALL.md) document.
+Detailed instructions on cloning the git-hub repository, setting up an anaconda environment and running the main ras2fim script is in a separate [INSTALL](INSTALL.md) document
 
 ## Configuration
 
