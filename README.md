@@ -18,22 +18,20 @@
 
 ## Prior to Running the Code
 ### Input Data
-There are three (3) **"National Datasets"** that will need to be downloaded locally prior to running the RAS2FIM code.  These input data can be found in an Amazon S3 Bucket hosted by [Earth Science Information Partners (ESIP)](https://www.esipfed.org/). These data can be accessed using the AWS Command Line Interface CLI tools.  This S3 Bucket (`s3://noaa-nws-owp-fim`) is set up as a "Requester Pays" bucket. Read more about what that means [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html).<br>
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/esip-logo.png" align="right" alt="esip logo" height="50">There are three (3) **"National Datasets"** that will need to be downloaded locally prior to running the RAS2FIM code.  These input data can be found in an Amazon S3 Bucket hosted by [Earth Science Information Partners (ESIP)](https://www.esipfed.org/). These data can be accessed using the AWS Command Line Interface CLI tools.  This S3 Bucket (`s3://noaa-nws-owp-fim`) is set up as a "Requester Pays" bucket. Read more about what that means [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html).<br>
 ### Configuring the AWS CLI
 1. [Install AWS CLI tools](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
 2. [Configure AWS CLI tools](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
 
 ### Get National Datasets
-Sample - List file prior to download:  `aws s3 ls s3://noaa-nws-owp-fim/hand_fim/fim_3_0_21_0/inputs/wbd/WBD_National.gpkg --request-payer requester`
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> Sample - List file prior to download:  `aws s3 ls s3://noaa-nws-owp-fim/hand_fim/fim_3_0_21_0/inputs/wbd/WBD_National.gpkg --request-payer requester`
 
 1.  Watershed Boundary Dataset (WBD) `aws s3 cp s3://noaa-nws-owp-fim/hand_fim/fim_3_0_21_0/inputs/wbd/WBD_National.gpkg WBD_National.gpkg --request-payer requester`<br><br>
 2.  National Water Model (NWM) Flowline Hydrofabric: `aws s3 cp s3://noaa-nws-owp-fim/hand_fim/fim_3_0_21_0/inputs/nwm_hydrofabric/nwm_flows.gpkg nwm_flows.gpkg --request-payer requester`<br><br>
 3.  National Water Model to Watershed Boundary Lookup `aws s3 cp s3://noaa-nws-owp-fim/ras2fim/national_inputs/nwm_wbd_lookup.nc nwm_wbd_lookup.nc --request-payer requester`<br><br>
 
 ### Install HEC-RAS verion 6.0
-These RAS2FIM scripts are written to utilize the computational engine and supporting APIs from the U.S Army Corp of Engineers' [Hydrologic Engineering Center's River Analysis System {HEC-RAS}](https://www.hec.usace.army.mil/software/hec-ras/).  Download and install **HEC-RAS version 6.0** to your local machine.  <br><br>The install package can be downloaded [here](https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.20/HEC-RAS_60_Setup.exe) or [from the USACE website](https://www.hec.usace.army.mil/software/hec-ras/download.aspx).<br><br>
-
-Once installed, **open HEC-RAS on that machine** to ensure that it will function on that machine and will be usable by the RAS2FIM scripts.  Close HEC-RAS.
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/RAS_logo.png" align="right" alt="hec-ras logo" height="80">These RAS2FIM scripts are written to utilize the computational engine and supporting APIs from the U.S Army Corp of Engineers' [Hydrologic Engineering Center's River Analysis System {HEC-RAS}](https://www.hec.usace.army.mil/software/hec-ras/).  Download and install **HEC-RAS version 6.0** to your local machine.  <br><br>The install package can be downloaded [here](https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.20/HEC-RAS_60_Setup.exe) or [from the USACE website](https://www.hec.usace.army.mil/software/hec-ras/download.aspx).Once installed, **open HEC-RAS on that machine** to ensure that it will function on that machine and will be usable by the RAS2FIM scripts.  Close HEC-RAS.
 ## Dependencies
 
 Describe any dependencies that must be installed for this software to work.
