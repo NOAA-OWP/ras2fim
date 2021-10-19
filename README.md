@@ -77,9 +77,6 @@ If you have questions, concerns, bug reports, etc, please file an issue in this 
 
 NOAA's National Water Center welcomes anyone to contribute to the RAS2FIM repository to improve flood inundation mapping capabilities. Please contact Brad Bates (bradford.bates@noaa.gov) or Fernando Salas (fernando.salas@noaa.gov) to get started.
 
-General instructions on _how_ to contribute should be stated with a link to [CONTRIBUTING](CONTRIBUTING.md).
-
-
 ----
 
 ## Open source licensing info
