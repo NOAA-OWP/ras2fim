@@ -13,11 +13,21 @@
 
 
 **Overview**:
-
 ![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/ras2fim_overview.png)
 ![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/ras2fim_sample_output.png)
 
+## Prior to Running the Code
+### Input Data
+There are three (3) **"National Datasets"** that will need to be downloaded locally prior to running the RAS2FIM code.  These input data can be found in an Amazon S3 Bucket hosted by [Earth Science Information Partners (ESIP)](https://www.esipfed.org/). These data can be accessed using the AWS Command Line Interface CLI tools.  This S3 Bucket (`s3://noaa-nws-owp-fim`) is set up as a "Requester Pays" bucket. Read more about what that means [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html).<br>
+### Configuring the AWS CLI
+1. [Install AWS CLI tools](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
+2. [Configure AWS CLI tools](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
 
+### Get National Datasets
+1.  Watershed Boundary Dataset (WBD)
+     - List file on AWS: `aws s3 ls s3://noaa-nws-owp-fim/hand_fim/fim_3_0_21_0/inputs/wbd/WBD_National.gpkg --request-payer requester`
+3.
+4.
 ## Dependencies
 
 Describe any dependencies that must be installed for this software to work.
