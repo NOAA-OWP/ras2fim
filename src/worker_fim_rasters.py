@@ -8,7 +8,7 @@
 #
 # Created by: Andy Carter, PE
 # Created: 2021-08-12
-# Last revised - 2021.09.09
+# Last revised - 2021.10.19
 #
 # Uses the 'ras2fim' conda environment
 # ************************************************************
@@ -18,7 +18,6 @@ import geopandas as gpd
 
 import os
 import re
-import shutil
 import numpy as np
 
 from datetime import date
@@ -41,10 +40,6 @@ from rasterio.enums import Resampling
 
 from shapely.geometry import LineString
 
-import h5py
-# h5py for extracting data from the RAS geometry
-
-from calculate_terrain_stats import fn_calculate_terrain_stats
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # Note: settings from tuple that is the last item in the incoming 'record_requested_stream'
@@ -1128,50 +1123,7 @@ def fn_create_hecras_files(str_feature_id,
 
     str_ras_projectpath = (str_output_filepath + "\\" + str_feature_id + '.prj')
 
-    #######################
-    # always run the terrain statistics
-    
-    # Calculate the terrain statistics
-    str_path_to_projection = tpl_settings[3]
-    str_path_to_terrain = tpl_settings[4]
-        
-    # format variables for the fn_calculate_terrain_stats
-    # remove '.prj' and add 'g01.hdf'
-    str_geom_hdf_path = str_ras_projectpath[:-4] + '.g01.hdf'
-        
-    str_projection_path = str_path_to_projection[:-4] + '.shp'
-        
-    '''
-    tpl_geom_path_split = os.path.split(str_geom_hdf_path)
-    str_shp_out_path = tpl_geom_path_split[0] + '\\terrain_check'
-    if not os.path.exists(str_shp_out_path):
-        os.mkdir(str_shp_out_path)
-    '''
-    
-    # get HUC12 from the file path of str_geom_hdf_path
-    str_normalized_path = os.path.normpath(str_geom_hdf_path)
-    list_path_components = str_normalized_path.split(os.sep)
-    str_huc_12 = list_path_components[-4][4:]
-        
-    str_terrain_filename = str_huc_12 + "." + str_huc_12 + '.tif'
-    str_terrain_path = str_path_to_terrain + '\\' + str_terrain_filename
-    
-    '''
-    str_shp_out_path = str_shp_out_path + '\\' + str_feature_id + "_ras_xs_model_PT.shp"
-    '''
-    
-    # TODO - add these values to a dataframe and then save as csv - MAC - 2021.09.14
-    # TODO - as the model has not executed - it can not find a g01.hdf - 2021.10.05
-    ###############
-    #pd_series_stats = fn_calculate_terrain_stats(str_geom_hdf_path, str_projection_path, str_terrain_path)
-    
-    # add in the feature_id to the data series
-    #pd_series_stats.append(pd.Series([str_feature_id], index=['feature_id']))
-    ##############
-    
-    # TODO - can add logic to not run if terrain stats are in violation
-    # of some threshold - MAC - 2021.10.04
-    
+
     b_terrain_check_only = tpl_settings[16]
     if not b_terrain_check_only:
         # run the hec-ras model 
