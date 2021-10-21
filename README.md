@@ -31,23 +31,19 @@
 3.  National Water Model to Watershed Boundary Lookup `aws s3 cp s3://noaa-nws-owp-fim/ras2fim/national_inputs/nwm_wbd_lookup.nc nwm_wbd_lookup.nc --request-payer requester`<br><br>
 
 ### Install HEC-RAS verion 6.0
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/RAS_logo.png" align="right" alt="hec-ras logo" height="80">These RAS2FIM scripts are written to utilize the computational engine and supporting APIs from the U.S Army Corp of Engineers' [Hydrologic Engineering Center's River Analysis System {HEC-RAS}](https://www.hec.usace.army.mil/software/hec-ras/).  Download and install **HEC-RAS version 6.0** to your local machine.  <br><br>The install package can be downloaded [here](https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.20/HEC-RAS_60_Setup.exe) or [from the USACE website](https://www.hec.usace.army.mil/software/hec-ras/download.aspx).Once installed, **open HEC-RAS on that machine** to ensure that it will function on that machine and will be usable by the RAS2FIM scripts.  Close HEC-RAS.
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/RAS_logo.png" align="right" alt="hec-ras logo" height="80">These RAS2FIM scripts are written to utilize the computational engine and supporting APIs from the U.S Army Corp of Engineers' [Hydrologic Engineering Center's River Analysis System {HEC-RAS}](https://www.hec.usace.army.mil/software/hec-ras/).  Download and install **HEC-RAS version 6.0** to your local machine.  Note: **the version (6.0) matters!**<br><br>The install package can be downloaded [here](https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.20/HEC-RAS_60_Setup.exe) or [from the USACE website](https://www.hec.usace.army.mil/software/hec-ras/download.aspx).Once installed, **open HEC-RAS on that machine** to ensure that it will function on that machine and will be usable by the RAS2FIM scripts.  Close HEC-RAS.
 
 ----
 ## Dependencies
 
 * [HEC-RAS Version 6.0](https://www.hec.usace.army.mil/software/hec-ras/download.aspx)
-* [Anaconda](https://www.anaconda.com/products/individual)
-* National datasets - See "Prior to Running the Code" section
+* [Anaconda](https://www.anaconda.com/products/individual) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) for Windows
+* National datasets - from AWS - See "Prior to Running the Code" section
 * Runs on a Windows OS only -Tested on Windows 10
 
 ## Installation
 
 Detailed instructions on cloning the git-hub repository, setting up an anaconda environment and running the main ras2fim script is in a separate [INSTALL](INSTALL.md) document
-
-## Configuration
-
-If the software is configurable, describe it in detail, either here or in other documentation to which you link.
 
 ## Usage
 
