@@ -132,13 +132,13 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     # (3) the National water model recurrance flows
     
     # Input - Watershed boundary data geopackage
-    str_wbd_geopkg_path = str_national_dataset_path + '\\' + 'NHDPlusV21_WBD.gpkg'
+    str_wbd_geopkg_path = str_national_dataset_path + '\\' + 'WBD_National.gpkg'
     
     # Input - National Water Model stream lines geopackage
     str_nwm_flowline_geopkg_path = str_national_dataset_path + '\\' + 'nwm_flows.gpkg'
     
     # Input - Recurrance Intervals netCDF
-    str_netcdf_path = str_national_dataset_path + '\\' + 'nwm_v20_recurrence_flows.nc'
+    str_netcdf_path = str_national_dataset_path + '\\' + 'nwm_wbd_lookup.nc'
     
     # Geospatial projections
     # wgs = "epsg:4326" - not needed
