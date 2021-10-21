@@ -192,7 +192,11 @@ def fn_run_ras2fim(str_huc8_arg,
     
     # *** variables set - raster terrain harvesting ***
     # ==============================================
-    flt_interval = 0.5 # vertical step of average depth (recommended - 0.2m and 0.5ft)
+    if b_is_feet:
+        flt_interval = 0.5 # vertical step of average depth (0.5ft)
+    else:
+        flt_interval = 0.2 # vertical step of average depth (0.2m)
+        
     flt_out_resolution = 3 # output depth raster resolution - meters
     # ==============================================
     
