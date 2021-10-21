@@ -6,13 +6,13 @@
 # This script needs other scripts to complete the process
 # [create_shapes_from_hecras, conflate_hecras_to_nwm, get_usgs_dem_from_shape,
 # clip_dem_from_shape, convert_tif_to_ras_hdf5, create_fim_rasters, 
-# worker_fim_raster, simplify_fim_rasters]
+# worker_fim_raster, simplify_fim_rasters, calculate_all_terrain_stats]
 #
 # This is built to run on a Windows machine and requires that HEC-RAS v6.0
 # be installed prior to execution.
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.10.18
+# Last revised - 2021.10.21
 #
 # Main code for ras2fim
 # Uses the 'ras2fim' conda environment
@@ -56,8 +56,7 @@ def fn_run_ras2fim(str_huc8_arg,
                    b_is_feet,
                    str_nation_arg,
                    str_hec_path,
-                   str_terrain_override,
-                   int_step):
+                   str_terrain_override):
     
     flt_start_run_ras2fim = time.time()
     
@@ -75,7 +74,6 @@ def fn_run_ras2fim(str_huc8_arg,
     print("  ---(n) PATH TO NATIONAL DATASETS: " + str(str_nation_arg))     
     print("  ---(r) PATH TO HEC-RAS v6.0: " + str(str_hec_path))
     print("  ---[t] Optional: Terrain to Utilize" + str(str_terrain_override))
-    print("  ---[s] Optional: Step to start: " + str(int_step))
     
     print("===================================================================")
     print(" ")
@@ -84,6 +82,8 @@ def fn_run_ras2fim(str_huc8_arg,
     # TODO - 2021.09.07
     # check if this folder exists and has HEC-RAS files
     # Do you want to overwrite the previous output if exists?
+    
+    int_step = 0
     
     if not os.path.exists(str_out_arg):
         os.mkdir(str_out_arg)
@@ -298,14 +298,6 @@ if __name__ == '__main__':
                         metavar='PATH',
                         type=str)
     
-    parser.add_argument('-s',
-                        dest = "int_step",
-                        help=r'OPTIONAL: step to start ras2fim: Default: 1',
-                        required=False,
-                        default=1,
-                        metavar='INT',
-                        type=int)
-
     args = vars(parser.parse_args())
     
     str_huc8_arg = args['str_huc8_arg']
@@ -316,7 +308,6 @@ if __name__ == '__main__':
     str_nation_arg = args['str_nation_arg']
     str_hec_path = args['str_hec_path']
     str_terrain_override = args['str_terrain_override']
-    int_step = args['int_step']
     
     fn_run_ras2fim(str_huc8_arg,
                    str_ras_path_arg,
@@ -325,5 +316,4 @@ if __name__ == '__main__':
                    b_is_feet,
                    str_nation_arg,
                    str_hec_path,
-                   str_terrain_override,
-                   int_step)
+                   str_terrain_override)
