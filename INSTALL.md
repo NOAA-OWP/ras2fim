@@ -37,8 +37,11 @@ conda activate ras2fim
 ![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_activate.png)
 
 ### Step 7:
-Change directory to the source `src` folder.<br>
-```
-conda activate ras2fim
-```
+Change directories into the source `src` folder.<br>
 ![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_src.png)
+
+### Step 8:
+Run the `ras2fim.py` within the `ras2fim` conda environment with a help flag `-h` to verify that everything was installed.<br>
+```
+python ras2fim.py -h
+```
