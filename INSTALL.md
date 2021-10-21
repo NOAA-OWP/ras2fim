@@ -5,9 +5,23 @@ We recommend that you set up a Anaconda/Python environment for developing `ras2f
 Below are instructions for building a separate development environment for using the `ras2fim` package using the [Conda](http://conda.pydata.org/docs/index.html) package management system.
 
 ### Step 1:
-Download and Install [Anaconda](https://www.anaconda.com/products/individual) to your machine.<br>
+Download and Install [git](https://git-scm.com/downloads) to your Windows machine.<br>
 
 ### Step 2:
-Clone a copy of the `ras2fim` repository on to your local machine.<br>
+Download and Install [Anaconda](https://www.anaconda.com/products/individual) to your machine.<br>
 
+### Step 3:
+Clone a copy of the `ras2fim` repository on to your local machine.<br>
+```
     git clone https://github.com/NOAA-OWP/ras2fim.git
+```
+### Step 4:
+Open an **Anaconda Prompt** and navigate to the cloned directory.  Your path may vary.<br>
+![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_prompt.png)
+
+### Step 5:
+In the Anaconda Promt, create the `ras2fim` conda environment.<br>
+```
+conda env create -f environment.yml
+```
+![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_create_env.png)
