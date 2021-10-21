@@ -55,9 +55,13 @@ Detailed instructions on cloning the git-hub repository, setting up an anaconda 
 
 ## Usage
 
-With the (1) ras2fim anaconda environment created and (2) the ras2fim git-hub folder cloned, Show users how to use the software.
-Be specific.
-Use appropriate formatting when showing code snippets.
+With the (1) ras2fim anaconda environment created and (2) the ras2fim git-hub folder cloned, `ras2fim` python scripts are within the `src` folder.  The main scripts is titled `ras2fim.py`.  **All scripts have a helper flag of `-h`**.  It is recommended that you run the script with the helper flag first to determine the required input. <br><br>
+![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_python_run.png)
+<br><br>
+Note: For this script there are **seven (7) required** inputs and one (1) optional input.  While this input string will greatly vary on your machine, provided is a sample input string to execute the `ras2fim.py` script.
+```
+python ras2fim.py -w 10170204 -i C:\HEC\output_folder -p EPSG:26915 -p False -n E:\X-NWS\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.0"
+```
 
 ## How to test the software
 
