@@ -45,3 +45,4 @@ Run the `ras2fim.py` within the `ras2fim` conda environment with a help flag `-h
 ```
 python ras2fim.py -h
 ```
+![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_python_run.png)
