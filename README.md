@@ -37,17 +37,13 @@
 ## Dependencies
 
 * [HEC-RAS Version 6.0](https://www.hec.usace.army.mil/software/hec-ras/download.aspx)
-* [Anaconda](https://www.anaconda.com/products/individual)
-* National datasets - See "Prior to Running the Code" section
+* [Anaconda](https://www.anaconda.com/products/individual) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) for Windows
+* National datasets - from AWS - See "Prior to Running the Code" section
 * Runs on a Windows OS only -Tested on Windows 10
 
 ## Installation
 
 Detailed instructions on cloning the git-hub repository, setting up an anaconda environment and running the main ras2fim script is in a separate [INSTALL](INSTALL.md) document
-
-## Configuration
-
-If the software is configurable, describe it in detail, either here or in other documentation to which you link.
 
 ## Usage
 
