@@ -42,7 +42,7 @@ This download will include the following files:
 <img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/RAS_logo.png" align="right" alt="hec-ras logo" height="80">These RAS2FIM scripts are written to utilize the computational engine and supporting APIs from the U.S Army Corp of Engineers' [Hydrologic Engineering Center's River Analysis System {HEC-RAS}](https://www.hec.usace.army.mil/software/hec-ras/).  Download and install **HEC-RAS version 6.0** to your local machine.  Note: **the version (6.0) matters!**<br><br>The install package can be downloaded [here](https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.20/HEC-RAS_60_Setup.exe) or [from the USACE website](https://www.hec.usace.army.mil/software/hec-ras/download.aspx).Once installed, **open HEC-RAS on that machine** to accept the terrms and conditions and ensure that it will function on that machine prior to running any RAS2FIM scripts.  Close HEC-RAS.
 
 ### (3) Clone the Git-hub repository
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/Git_logo.png" align="right" alt="hec-ras logo" height="80"> Install `git` onto your Windows machine.  Clone this ras2fim reporitory on to your Windows machine.
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/Git_logo.png" align="right" alt="git logo" height="80"> Install `git` onto your Windows machine.  Clone this ras2fim reporitory on to your Windows machine.
 ```
 git clone https://github.com/NOAA-OWP/ras2fim.git
 ```
@@ -58,6 +58,7 @@ git clone https://github.com/NOAA-OWP/ras2fim.git
 ## Installation
 
 ### (4) Create an new anaconda environment
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/Conda-Logo.jpg" align="right" alt="conda logo" height="80"><br>
 Detailed instructions on setting up an anaconda environment and running the main ras2fim script is in a this separate [INSTALL](INSTALL.md) document
 
 ## Usage
