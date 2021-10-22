@@ -23,7 +23,7 @@
 1. [Install AWS CLI tools](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
 2. [Configure AWS CLI tools](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
 
-### Get AWS Folder - National Datasets
+### (1) Get AWS Folder - National Datasets
 <img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> List folder prior to download:  
 ```
 aws s3 ls s3://noaa-nws-owp-fim/ras2fim/national-datasets --request-payer requester
@@ -38,8 +38,14 @@ This download will include the following files:
 3.  National Water Model to Watershed Boundary Lookup: nwm_wbd_lookup.nc (372 Mb)
 <br><br>
 
-### Install HEC-RAS verion 6.0
+### (2) Install HEC-RAS verion 6.0
 <img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/RAS_logo.png" align="right" alt="hec-ras logo" height="80">These RAS2FIM scripts are written to utilize the computational engine and supporting APIs from the U.S Army Corp of Engineers' [Hydrologic Engineering Center's River Analysis System {HEC-RAS}](https://www.hec.usace.army.mil/software/hec-ras/).  Download and install **HEC-RAS version 6.0** to your local machine.  Note: **the version (6.0) matters!**<br><br>The install package can be downloaded [here](https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.20/HEC-RAS_60_Setup.exe) or [from the USACE website](https://www.hec.usace.army.mil/software/hec-ras/download.aspx).Once installed, **open HEC-RAS on that machine** to accept the terrms and conditions and ensure that it will function on that machine prior to running any RAS2FIM scripts.  Close HEC-RAS.
+
+### (3) Clone the Git-hub repository
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/Git_logo.png" align="right" alt="hec-ras logo" height="80"> Clone this ras2fim reporitory on to your Windows machine.
+```
+git clone https://github.com/NOAA-OWP/ras2fim.git
+```
 
 ----
 ## Dependencies
