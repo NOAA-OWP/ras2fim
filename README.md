@@ -28,14 +28,14 @@
 ```
 aws s3 ls s3://noaa-nws-owp-fim/ras2fim/national-datasets --request-payer requester
 ```
-Download National Datasets:
+Download National Datasets: (3.82 Gb)
 ```
 aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/national-datasets X-National_Datasets --request-payer requester
 ```
 This download will include the following files:
-1.  Watershed Boundary Dataset (WBD) 
-2.  National Water Model (NWM) Flowline Hydrofabric
-3.  National Water Model to Watershed Boundary Lookup
+1.  Watershed Boundary Dataset (WBD): WBD_National.gpkg (1.65 Gb)
+2.  National Water Model (NWM) Flowline Hydrofabric: nwm_flows.gpkg (1.80 Gb)
+3.  National Water Model to Watershed Boundary Lookup: nwm_wbd_lookup.nc (372 Mb)
 <br><br>
 
 ### Install HEC-RAS verion 6.0
