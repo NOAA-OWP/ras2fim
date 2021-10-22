@@ -59,7 +59,7 @@ git clone https://github.com/NOAA-OWP/ras2fim.git
 
 ### (4) Create an new anaconda environment
 <img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/Conda-Logo.jpg" align="right" alt="conda logo" height="80"><br>
-Detailed instructions on setting up an anaconda environment and running the main ras2fim script is in a this separate [INSTALL](docs/INSTALL.md) document
+Detailed instructions on setting up an anaconda environment and running the main ras2fim script is in a this separate [INSTALL](doc/INSTALL.md) document
 
 ## Usage
 
@@ -98,7 +98,7 @@ NOAA's National Water Center welcomes anyone to contribute to the RAS2FIM reposi
 ----
 
 ## Open source licensing info
-1. [TERMS](docs/TERMS.md)
+1. [TERMS](doc/TERMS.md)
 2. [LICENSE](LICENSE)
 
 
