@@ -73,11 +73,22 @@ python ras2fim.py -w 10170204 -i C:\HEC\output_folder -p EPSG:26915 -p False -n 
 
 ## How to test the software
 
-If the software includes automated tests, detail how to run those tests.
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> A sample input and output folder is provided for testing the application. From an AWS S3 bucket, a `sample-dataset` folder is provided.  It includes both sample input and sample output data.
+
+<br><br>List folder prior to download:  
+```
+aws s3 ls s3://noaa-nws-owp-fim/ras2fim/sample-datasets --request-payer requester
+```
+Download Sample Input and Output datasets: (212 Mb)
+```
+aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/sample-datasets sample-datasets --request-payer requester
+```
+<br><br>
+A video, showing the use of these sample data with the `ras2fim` scripts is provided.
 
 ## Known Issues & Getting Help
 
-Please see the issue tracker on GitHub and the Ras2Fim Wiki for known issues and getting help.
+Please see the issue tracker on GitHub and the Ras2Fim Wiki **{coming soon}** for known issues and getting help.
 
 ## Getting involved
 
