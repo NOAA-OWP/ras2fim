@@ -75,7 +75,7 @@ python ras2fim.py -w 10170204 -i C:\HEC\output_folder -p EPSG:26915 -p False -n 
 
 <img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> A sample input and output folder is provided for testing the application. From an AWS S3 bucket, a `sample-dataset` folder is provided.  It includes both sample input and sample output data.
 
-<br><br>List folder prior to download:  
+List folder prior to download:  
 ```
 aws s3 ls s3://noaa-nws-owp-fim/ras2fim/sample-datasets --request-payer requester
 ```
@@ -83,7 +83,6 @@ Download Sample Input and Output datasets: (212 Mb)
 ```
 aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/sample-datasets sample-datasets --request-payer requester
 ```
-<br><br>
 A video, showing the use of these sample data with the `ras2fim` scripts is provided.
 
 ## Known Issues & Getting Help
@@ -105,6 +104,16 @@ NOAA's National Water Center welcomes anyone to contribute to the RAS2FIM reposi
 
 ## Credits and references
 
-1. Projects that inspired you
-2. Related projects
-3. Books, papers, talks, or other sources that have meaningful impact or influence on this project
+1. [Office of Water Prediction (OWP)](https://water.noaa.gov/)
+2. [Goodell, C. R. (2014). Breaking the Hec-Ras Code: A User’s Guide to Automating Hec-Ras. H2ls.](https://www.kleinschmidtgroup.com/breaking-the-hec-ras-code-2/)
+3. [Executive Summary, & Guidance, S. (n.d.). InFRM Flood Decision Support Toolbox. Usgs.Gov. Retrieved October 22, 2021](https://webapps.usgs.gov/infrm/pubs/FDST%20Map%20Submission%20Guidelines%20_vDec20.pdf)
+4. [Collete, A. (2013). Python and HDF5: Unlocking Scientific Data. O’Reilly Media.](https://www.oreilly.com/library/view/python-and-hdf5/9781491944981/)
+5. [Board on Earth Sciences and Resources/Mapping Science Committee, Committee on FEMA Flood Maps, Mapping Science Committee, Board on Earth Sciences & Resources, Water Science and Technology Board, Division on Earth and Life Studies, & National Research Council. (2009). Mapping the zone: Improving flood map accuracy. National Academies Press.](https://www.amazon.com/Mapping-Zone-Improving-Resilience-Preparedness/dp/0309130573)
+6. [Dysarz, Tomasz. (2018). Application of Python Scripting Techniques for Control and Automation of HEC-RAS Simulations. Water. 10. 1382. 10.3390/w10101382. ](https://www.mdpi.com/2073-4441/10/10/1382)
+7. [User’s Manual. (n.d.). River Analysis System. Army.Mil.](https://www.hec.usace.army.mil/software/hec-ras/documentation/HEC-RAS_6.0_Users_Manual.pdf)
+
+**Special Thanks to:** Cam Ackerman (US Army Corp of Engineers), Kristine Blickenstaff (US Geological Survey), Chris Goodell (Kleinschmidt Associates), RoseMarie Klee (Texas Department of Transportation), David Maidment (University of Texas), Saul Nuccitelli (Texas Water Development Board), Paola Passalacqua (University of Texas), Jason Stocker (US Geological Survey), Justin Terry (Harris County Flood Control District)
+
+
+
+
