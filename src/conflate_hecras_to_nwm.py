@@ -4,7 +4,7 @@
 # supplied HEC-RAS files
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.09.20
+# Last revised - 2021.10.24
 #
 # ras2fim - Second pre-processing script
 # Uses the 'ras2fim' conda environment
@@ -33,6 +33,9 @@ from multiprocessing import Pool
 import tqdm
 
 from time import sleep
+import time
+import datetime
+import warnings
 
 # $$$$$$$$$$$$$$$$$$$$$$
 def fn_wkt_loads(x):
@@ -84,8 +87,13 @@ def fn_create_gdf_of_points(tpl_request):
 # -----------------------------------
 
 def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str_nation_arg):
+    # supress all warnings
+    warnings.filterwarnings("ignore", category=UserWarning )
+    
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     # INPUT
+    
+    flt_start_conflate_hecras_to_nwm = time.time()
     
     print(" ")
     print("+=================================================================+")
@@ -556,6 +564,12 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     
     print()
     print('COMPLETE')
+    
+    flt_end_create_shapes_from_hecras = time.time()
+    flt_time_pass_conflate_hecras_to_nwm = (flt_end_create_shapes_from_hecras - flt_start_conflate_hecras_to_nwm) // 1
+    time_pass_conflate_hecras_to_nwm = datetime.timedelta(seconds=flt_time_pass_conflate_hecras_to_nwm)
+    print('Compute Time: ' + str(time_pass_conflate_hecras_to_nwm))
+    
     print("+=================================================================+")
     
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

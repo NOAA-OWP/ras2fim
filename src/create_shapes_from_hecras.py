@@ -4,7 +4,7 @@
 # centerline and cross sections
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.10.04
+# Last revised - 2021.10.24
 #
 # ras2fim - First pre-processing script
 # Uses the 'ras2fim' conda environment
@@ -14,6 +14,7 @@ import pandas as pd
 import geopandas as gpd
 
 import time
+import datetime
 from time import sleep
 
 import argparse
@@ -515,8 +516,10 @@ def fn_print_progress_bar (iteration,
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg):
+
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     # INPUT
+    flt_start_create_shapes_from_hecras = time.time()
     
     print(" ")
     print("+=================================================================+")
@@ -653,6 +656,11 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
 
     print(" ") 
     print('SHAPEFILES CREATED')
+    flt_end_create_shapes_from_hecras = time.time()
+    flt_time_pass_create_shapes_from_hecras = (flt_end_create_shapes_from_hecras - flt_start_create_shapes_from_hecras) // 1
+    time_pass_create_shapes_from_hecras = datetime.timedelta(seconds=flt_time_pass_create_shapes_from_hecras)
+    print('Compute Time: ' + str(time_pass_create_shapes_from_hecras))
+    
     print("====================================================================") 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -6,7 +6,7 @@
 # compute a file containing all the statistics data. (mean, median, std, etc.)
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.10.14
+# Last revised - 2021.10.24
 #
 # Uses the 'ras2fim' conda environment
 

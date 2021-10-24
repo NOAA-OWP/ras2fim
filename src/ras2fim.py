@@ -134,9 +134,9 @@ def fn_run_ras2fim(str_huc8_arg,
     int_tile = 1500 # tile size requested from USGS WCS
     # ==============================================
     
-    # run the third script (conflate_hecras_to_nwm)
+    # run the third script 
     if int_step <= 3:
-        if str_terrain_override == "None Specified-using USGS WCS":
+        if str_terrain_override == " None Specified - using USGS WCS":
             # create terrain from the USGS WCS
             fn_get_usgs_dem_from_shape(str_input_path,
                                        str_terrain_from_usgs_dir,

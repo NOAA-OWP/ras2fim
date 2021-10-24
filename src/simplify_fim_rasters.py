@@ -8,7 +8,7 @@
 #
 # Created by: Andy Carter, PE
 # Created: 2021-08-23
-# Last revised - 2021-09-20
+# Last revised - 2021-10-24
 #
 # Uses the 'ras2fim' conda environment
 # ************************************************************
@@ -24,6 +24,10 @@ from rioxarray import merge
 import multiprocessing as mp
 import tqdm
 from time import sleep
+
+import time
+import datetime
+
 
 import argparse
 # ************************************************************
@@ -131,6 +135,8 @@ def fn_create_grid(list_of_df_row):
 def fn_simplify_fim_rasters(str_input_dir,
                             flt_resolution,
                             str_output_crs):
+    
+    flt_start_simplify_fim = time.time()
 
     print(" ")
     print("+=================================================================+")
@@ -259,6 +265,12 @@ def fn_simplify_fim_rasters(str_input_dir,
 
     print(" ") 
     print('COMPLETE')
+    
+    flt_end_simplify_fim = time.time()
+    flt_time_simplify_fim = (flt_end_simplify_fim - flt_start_simplify_fim) // 1
+    time_pass_simplify_fim = datetime.timedelta(seconds=flt_time_simplify_fim)
+    print('Compute Time: ' + str(time_pass_simplify_fim))
+    
     print("====================================================================")
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

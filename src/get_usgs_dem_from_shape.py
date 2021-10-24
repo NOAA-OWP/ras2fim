@@ -22,9 +22,9 @@
 #   FORMAT=GeoTiff
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.10.04
+# Last revised - 2021.10.24
 #
-# ras2fim - Third pre-processing script
+# ras2fim - Third pre-processing script (if no terrain provided)
 # Uses the 'ras2fim' conda environment
 
 
@@ -49,6 +49,7 @@ from multiprocessing.pool import ThreadPool
 import rioxarray as rxr
 
 import time
+import datetime
 import warnings
 # ************************************************************
 
@@ -155,6 +156,8 @@ def fn_get_usgs_dem_from_shape(str_input_path,
                                int_tile,
                                b_is_feet,
                                str_field_name):
+    
+    flt_start_get_usgs_dem = time.time()
     
     # supress all warnings
     warnings.filterwarnings("ignore", category=UserWarning )
@@ -455,6 +458,12 @@ def fn_get_usgs_dem_from_shape(str_input_path,
     
     print(" ") 
     print('ALL AREAS COMPLETE')
+    
+    flt_end_get_usgs_dem = time.time()
+    flt_time_get_usgs_dem = (flt_end_get_usgs_dem - flt_start_get_usgs_dem) // 1
+    time_get_usgs_dem = datetime.timedelta(seconds=flt_time_get_usgs_dem)
+    print('Compute Time: ' + str(time_get_usgs_dem))
+    
     print("====================================================================")
     
 

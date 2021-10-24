@@ -7,7 +7,7 @@
 #
 # Created by: Andy Carter, PE
 # Created: 2021-08-12
-# Last revised - 2021.09.09
+# Last revised - 2021.10.24
 #
 # Uses the 'ras2fim' conda environment
 # ************************************************************
@@ -20,6 +20,7 @@ import argparse
 
 import time
 import sys
+import datetime
 
 # ras2fim python worker for multiprocessing
 import worker_fim_rasters
@@ -78,6 +79,8 @@ def fn_create_fim_rasters(str_desired_huc8,
                           flt_interval,
                           flt_out_resolution,
                           b_terrain_check_only):
+    
+    flt_start_create_fim = time.time()
 
     # Hard coded constants for this routine
     
@@ -247,6 +250,12 @@ def fn_create_fim_rasters(str_desired_huc8,
         
     print(" ") 
     print('ALL AREAS COMPLETE')
+    
+    flt_end_create_fim = time.time()
+    flt_time_create_fim = (flt_end_create_fim - flt_start_create_fim) // 1
+    time_pass_create_fim = datetime.timedelta(seconds=flt_time_create_fim)
+    print('Compute Time: ' + str(time_pass_create_fim))
+    
     print("====================================================================")
     
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

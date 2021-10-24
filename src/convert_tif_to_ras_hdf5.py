@@ -10,8 +10,8 @@
 # hdf5 terrains per directions from Cam Ackerman - 2021.03.31
 #
 # Created by: Andy Carter, PE
-# Created: 2021-08.05
-# Last revised - 2021.09.08
+# Created: 2021.08.05
+# Last revised - 2021.10.24
 #
 # Sample:  RasProcess.exe CreateTerrain
 # units=feet stitch=true
@@ -26,6 +26,9 @@
 import os
 import subprocess
 import argparse
+
+import time
+import datetime
 # ************************************************************
 
 # -------------------------------------------------------
@@ -96,6 +99,7 @@ def fn_convert_tif_to_ras_hdf5(str_hec_path,
                                b_in_feet):
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     # INPUT
+    flt_start_convert_tif = time.time()
     
     print(" ")
     print("+=================================================================+")
@@ -181,6 +185,11 @@ def fn_convert_tif_to_ras_hdf5(str_hec_path,
         print('All terrains processed successfully')
     else:
         print('Errors when processing - Check output')
+    
+    flt_end_convert_tif = time.time()
+    flt_time_convert_tif = (flt_end_convert_tif - flt_start_convert_tif) // 1
+    time_pass_convert_tif = datetime.timedelta(seconds=flt_time_convert_tif)
+    print('Compute Time: ' + str(time_pass_convert_tif))
     
     print("===================================================================")
     
