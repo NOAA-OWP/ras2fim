@@ -416,6 +416,8 @@ def fn_get_usgs_dem_from_shape(str_input_path,
         # Write the updated DEM to the specified file path
         with rasterio.open(str_out_tiff_path, "w", **out_meta) as dest:
             dest.write(mosaic)
+            
+        #TODO - File is used by another process error - 2021.10.24
     
         # remove the downloaded tiles
         int_count = 0

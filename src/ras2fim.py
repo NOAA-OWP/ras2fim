@@ -298,7 +298,7 @@ if __name__ == '__main__':
                         dest = "str_terrain_override",
                         help=r'OPTIONAL: path to DEM/VRT to use for mapping: Example: G:\x-fathom\vrt\texas_fathom_20211001.vrt',
                         required=False,
-                        default='None Specified-using USGS WCS',
+                        default=' None Specified - using USGS WCS',
                         metavar='PATH',
                         type=str)
     
