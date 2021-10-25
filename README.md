@@ -57,7 +57,7 @@ git clone https://github.com/NOAA-OWP/ras2fim.git
 
 ## Installation
 
-### (4) Create an new anaconda environment
+### (4) Create a new anaconda environment
 <img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/Conda-Logo.jpg" align="right" alt="conda logo" height="80"><br>
 Detailed instructions on setting up an anaconda environment and running the main ras2fim script is in a this separate [INSTALL](doc/INSTALL.md) document
 
