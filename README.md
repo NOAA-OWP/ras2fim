@@ -85,7 +85,7 @@ aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/sample-datasets sample-datas
 ```
 A video, showing the use of these sample data with the `ras2fim` scripts is provided.
 
-[![Starting with ras2fim](https://img.youtube.com/vi/lzYfoCIh3Jw/0.jpg)](https://www.youtube.com/watch?v=lzYfoCIh3Jw)
+[![Starting with ras2fim](https://img.youtube.com/vi/TDDTRSUplVA/0.jpg)](https://www.youtube.com/watch?v=TDDTRSUplVA)
 
 ## Known Issues & Getting Help
 
