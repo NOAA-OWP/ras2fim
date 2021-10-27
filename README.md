@@ -68,7 +68,7 @@ With the (1) ras2fim anaconda environment created and (2) the ras2fim git-hub fo
 <br><br>
 Note: For this script there are **seven (7) required** inputs and one (1) optional input.  While this input string will greatly vary on your machine, provided is a sample input string to execute the `ras2fim.py` script.
 ```
-python ras2fim.py -w 10170204 -i C:\HEC\output_folder -p EPSG:26915 -v False -n E:\X-NWS\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.0"
+python ras2fim.py -w 10170204 -i C:\HEC\input_folder -o C:\HEC\output_folder -p EPSG:26915 -v False -n E:\X-NWS\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.0"
 ```
 
 ## How to test the software
