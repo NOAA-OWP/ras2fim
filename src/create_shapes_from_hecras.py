@@ -4,7 +4,7 @@
 # centerline and cross sections
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.10.24
+# Last revised - 2021.10.27
 #
 # ras2fim - First pre-processing script
 # Uses the 'ras2fim' conda environment
@@ -465,21 +465,26 @@ def fn_cut_stream_downstream(gdf_return_stream_fn, df_xs_fn):
 
     # split and return a GeoCollection
     result = split(stream_line, xs_line)
-
-    # Now merge the upstream line with the first segment of the downstream line
-
-    # get first segment of the downstream line
-    new_line = LineString([result[1].coords[0], result[1].coords[1]])
-
-    # create a list of the stream line and the first segment
-    # of the next downstream line
-    lines = [result[0], new_line]
-
-    # merge the lines
-    shp_merged_lines = linemerge(lines)
-
-    # Revise the geometry with the first line (assumed upstream)
-    gdf_return_stream_fn['geometry'][0] = shp_merged_lines
+    
+    # the last cross section may be at the last stream point - 2021.10.27
+    # get a list of items in the returned GeoCollection
+    list_wkt_lines = [item for item in result]
+    
+    if len(list_wkt_lines) > 1:
+        # Now merge the upstream line with the first segment of the downstream line
+    
+        # get first segment of the downstream line
+        new_line = LineString([result[1].coords[0], result[1].coords[1]])
+    
+        # create a list of the stream line and the first segment
+        # of the next downstream line
+        lines = [result[0], new_line]
+    
+        # merge the lines
+        shp_merged_lines = linemerge(lines)
+    
+        # Revise the geometry with the first line (assumed upstream)
+        gdf_return_stream_fn['geometry'][0] = shp_merged_lines
 
     return gdf_return_stream_fn
 # ssssssssssssssssssssssss
