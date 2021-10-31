@@ -4,7 +4,7 @@
 # centerline and cross sections
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.10.27
+# Last revised - 2021.10.31
 #
 # ras2fim - First pre-processing script
 # Uses the 'ras2fim' conda environment
@@ -143,17 +143,42 @@ def fn_geodataframe_cross_sections(str_path_hecras_project_fn, STR_CRS_MODEL):
     list_river_name = []
     list_reach_name = []
     list_station = []
-    for row in n3:
-        list_river_name.append(row[0])
-        list_reach_name.append(row[1])
-        # Need to check for interpolated cross section
-        # They end with a star
-        str_xs_name = row[2]
-        if str_xs_name[-1] == "*":
-            # cross section is interpolated
-            str_xs_name = str_xs_name[:-1]
-        list_station.append(str_xs_name)
-
+    
+    # Older geom hdf5 files do not have data in Geometry/Cross Sections/Attributes
+    
+    if n3.ndim > 0:
+        # cross sections are in new hdf geom format
+        for row in n3:
+            list_river_name.append(row[0])
+            list_reach_name.append(row[1])
+            # Need to check for interpolated cross section
+            # They end with a star
+            str_xs_name = row[2]
+            if str_xs_name[-1] == "*":
+                # cross section is interpolated
+                str_xs_name = str_xs_name[:-1]
+            list_station.append(str_xs_name)
+    else:
+        # older hdf5 geom format
+        n3_river_name = hf.get('Geometry/Cross Sections/River Names')
+        n3_river_name = np.array(n3_river_name)
+        for str_rivername in n3_river_name:
+            list_river_name.append(str_rivername)
+        
+        n3_reach_name = hf.get('Geometry/Cross Sections/Reach Names')
+        n3_reach_name = np.array(n3_reach_name)
+        for str_reachname in n3_reach_name:
+            list_reach_name.append(str_reachname)
+        
+        n3_stations = hf.get('Geometry/Cross Sections/River Stations')
+        n3_stations = np.array(n3_stations)
+        for str_station in n3_stations:
+            str_xs_name = str_station
+            if str_xs_name[-1] == "*":
+                # cross section is interpolated
+                str_xs_name = str_xs_name[:-1]
+            list_station.append(str_xs_name)
+        
     # Get a list of the points
     list_line_points_x = []
     list_line_points_y = []
@@ -222,7 +247,6 @@ def fn_geodataframe_stream_centerline(str_path_hecras_project_fn, STR_CRS_MODEL)
         fn_open_hecras(str_path_hecras_project_fn)
         hf = h5py.File(str_path_to_geom_hdf, 'r')
 
-    # get data from HEC-RAS hdf5 files
 
     # XY points of the stream centerlines
     n1 = hf.get('Geometry/River Centerlines/Polyline Points')
@@ -232,27 +256,48 @@ def fn_geodataframe_stream_centerline(str_path_hecras_project_fn, STR_CRS_MODEL)
     n2 = hf.get('Geometry/River Centerlines/Polyline Parts')
     n2 = np.array(n2)
 
+    # Get the name of the river and reach
+    list_river_name = []
+    list_reach_name = []
+    
     # Attribute data of the streams (reach, river, etc...)
     n3 = hf.get('Geometry/River Centerlines/Attributes')
     n3 = np.array(n3)
+    
+    # TODO - MAC - 2021.10.31
+    # Possible error with multiple rivers / reaches in older hdf5 geom
+    
+    if n3.ndim == 0:
+        # some hdf files do not have Geometry/River Centerlines/Attributes
+        # This is due to differences in the HEC-RAS versioning
+        # Try an older hdf5 format for geom
+        n3_reach = hf.get('Geometry/River Centerlines/Reach Names')
+        n3_reach = np.array(n3_reach)
+        
+        n3_river = hf.get('Geometry/River Centerlines/River Names')
+        n3_river = np.array(n3_river)
+        
+        # reach from older format
+        if n3_reach.ndim == 0:
+            list_reach_name.append('Unknown-not-found')
+        else:
+            list_reach_name.append(n3_reach[0])
+        
+        # river from older format
+        if n3_river.ndim == 0:
+            list_river_name.append('Unknown-not-found')
+        else:
+            list_river_name.append(n3_river[0])
+    else:
+        for row in n3:
+            list_river_name.append(row[0])
+            list_reach_name.append(row[1])
+        
 
     # Create a list of  number of points per each stream line
     list_points_per_stream_line = []
     for row in n2:
         list_points_per_stream_line.append(row[1])
-
-    # Get the name of the river and reach
-    list_river_name = []
-    list_reach_name = []
-    
-    # ********************************
-    # TODO - 2021.09.21 - 0d array
-    # some hdf files do not have Geometry/River Centerlines/Attributes
-    # ********************************
-    
-    for row in n3:
-        list_river_name.append(row[0])
-        list_reach_name.append(row[1])
 
     # Get a list of the points
     list_line_points_x = []
@@ -285,7 +330,7 @@ def fn_geodataframe_stream_centerline(str_path_hecras_project_fn, STR_CRS_MODEL)
 
         # Write the River and Reach - these are numpy bytes and need to be
         # converted to strings
-        # Note - RAS trruncates these values in the g01 and HDF files
+        # Note - RAS truncates these values in the g01 and HDF files
         gdf_streams.loc[i, 'river'] = list_river_name[i].decode('UTF-8')
         gdf_streams.loc[i, 'reach'] = list_reach_name[i].decode('UTF-8')
 
