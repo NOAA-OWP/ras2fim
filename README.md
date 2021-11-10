@@ -13,8 +13,8 @@
 
 
 **Overview**:
-![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/ras2fim_overview.png)
-![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/ras2fim_sample_output.png)
+![](https://github.com/NOAA-OWP/ras2fim/blob/main/doc/ras2fim_overview.png)
+![](https://github.com/NOAA-OWP/ras2fim/blob/main/doc/ras2fim_sample_output.png)
 
 ## Prior to Running the Code
 ### Input Data
@@ -24,7 +24,7 @@
 2. [Configure AWS CLI tools](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
 
 ### (1) Get AWS Folder - National Datasets
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> List folder prior to download:  
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> List folder prior to download:  
 ```
 aws s3 ls s3://noaa-nws-owp-fim/ras2fim/national-datasets --request-payer requester
 ```
