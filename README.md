@@ -1,7 +1,7 @@
-# RAS2FIM <img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/ras2fim_agency_20211018.png" align="right" alt="ras2fim agency" height="80"> <br> <br>
+# RAS2FIM <img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/ras2fim_agency_20211018.png" align="right" alt="ras2fim agency" height="80"> <br> <br>
 ## <i>Creation of flood inundation raster libraries and rating curves from HEC-RAS models </i>
 
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/ras2fim_logo_20211018.png" align="right"
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/ras2fim_logo_20211018.png" align="right"
      alt="ras2fim logo" width="160" height="160">
 
 **Description**:  Starting with geospatially attributed one-dimensional HEC-RAS floodplain models, these scripts are used to create a library of flood depth inundation rasters for a range of storm water discharges (flow).  HEC-RAS models are cut to roughly match the limits of the [National Water Model's {NWM}](https://water.noaa.gov/about/nwm) stream designations (hydrofabric).  For each matching NWM stream, a synthetic rating curve is created based on 'reach averaged' flood depths as determined from the HEC-RAS simulations.  The intent it to create a library of flood depth inundation grids with a ccorresponding rating curve that can be paired with the National Water Model's discharges determination and forecasting to create real-time and predictive floodplain mapping from a detailed HEC-RAS 1-D model.
@@ -13,18 +13,18 @@
 
 
 **Overview**:
-![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/ras2fim_overview.png)
-![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/ras2fim_sample_output.png)
+![](https://github.com/NOAA-OWP/ras2fim/blob/main/doc/ras2fim_overview.png)
+![](https://github.com/NOAA-OWP/ras2fim/blob/main/doc/ras2fim_sample_output.png)
 
 ## Prior to Running the Code
 ### Input Data
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/esip-logo.png" align="right" alt="esip logo" height="50">There are three (3) **"National Datasets"** that will need to be downloaded locally prior to running the RAS2FIM code.  These input data can be found in an Amazon S3 Bucket hosted by [Earth Science Information Partners (ESIP)](https://www.esipfed.org/). These data can be accessed using the AWS Command Line Interface CLI tools.  This S3 Bucket (`s3://noaa-nws-owp-fim`) is set up as a "Requester Pays" bucket. Read more about what that means [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html).<br>
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/esip-logo.png" align="right" alt="esip logo" height="50">There are three (3) **"National Datasets"** that will need to be downloaded locally prior to running the RAS2FIM code.  These input data can be found in an Amazon S3 Bucket hosted by [Earth Science Information Partners (ESIP)](https://www.esipfed.org/). These data can be accessed using the AWS Command Line Interface CLI tools.  This S3 Bucket (`s3://noaa-nws-owp-fim`) is set up as a "Requester Pays" bucket. Read more about what that means [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html).<br>
 ### Configuring the AWS CLI
 1. [Install AWS CLI tools](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
 2. [Configure AWS CLI tools](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
 
 ### (1) Get AWS Folder - National Datasets
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> List folder prior to download:  
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> List folder prior to download:  
 ```
 aws s3 ls s3://noaa-nws-owp-fim/ras2fim/national-datasets --request-payer requester
 ```
@@ -39,10 +39,10 @@ This download will include the following files:
 <br><br>
 
 ### (2) Install HEC-RAS verion 6.0
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/RAS_logo.png" align="right" alt="hec-ras logo" height="80">These RAS2FIM scripts are written to utilize the computational engine and supporting APIs from the U.S Army Corp of Engineers' [Hydrologic Engineering Center's River Analysis System {HEC-RAS}](https://www.hec.usace.army.mil/software/hec-ras/).  Download and install **HEC-RAS version 6.0** to your local machine.  Note: **the version (6.0) matters!**<br><br>The install package can be downloaded [here](https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.20/HEC-RAS_60_Setup.exe) or [from the USACE website](https://www.hec.usace.army.mil/software/hec-ras/download.aspx).Once installed, **open HEC-RAS on that machine** to accept the terrms and conditions and ensure that it will function on that machine prior to running any RAS2FIM scripts.  Close HEC-RAS.
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/RAS_logo.png" align="right" alt="hec-ras logo" height="80">These RAS2FIM scripts are written to utilize the computational engine and supporting APIs from the U.S Army Corp of Engineers' [Hydrologic Engineering Center's River Analysis System {HEC-RAS}](https://www.hec.usace.army.mil/software/hec-ras/).  Download and install **HEC-RAS version 6.0** to your local machine.  Note: **the version (6.0) matters!**<br><br>The install package can be downloaded [here](https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.20/HEC-RAS_60_Setup.exe) or [from the USACE website](https://www.hec.usace.army.mil/software/hec-ras/download.aspx).Once installed, **open HEC-RAS on that machine** to accept the terrms and conditions and ensure that it will function on that machine prior to running any RAS2FIM scripts.  Close HEC-RAS.
 
 ### (3) Clone the Git-hub repository
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/Git_logo.png" align="right" alt="git logo" height="80"> Install `git` onto your Windows machine.  Clone this ras2fim reporitory on to your Windows machine.
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/Git_logo.png" align="right" alt="git logo" height="80"> Install `git` onto your Windows machine.  Clone this ras2fim reporitory on to your Windows machine.
 ```
 git clone https://github.com/NOAA-OWP/ras2fim.git
 ```
@@ -58,13 +58,13 @@ git clone https://github.com/NOAA-OWP/ras2fim.git
 ## Installation
 
 ### (4) Create a new anaconda environment
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/Conda-Logo.jpg" align="right" alt="conda logo" height="80"><br>
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/Conda-Logo.jpg" align="right" alt="conda logo" height="80"><br>
 Detailed instructions on setting up an anaconda environment and running the main ras2fim script is in a this separate [INSTALL](doc/INSTALL.md) document
 
 ## Usage
 
 With the (1) ras2fim anaconda environment created and (2) the ras2fim git-hub folder cloned, `ras2fim` python scripts are within the `src` folder.  The main scripts is titled `ras2fim.py`.  **All scripts have a helper flag of `-h`**.  It is recommended that you run the script with the helper flag first to determine the required input. <br><br>
-![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_python_run.png)
+![](https://github.com/NOAA-OWP/ras2fim/blob/main/doc/conda_python_run.png)
 <br><br>
 Note: For this script there are **seven (7) required** inputs and one (1) optional input.  While this input string will greatly vary on your machine, provided is a sample input string to execute the `ras2fim.py` script.
 ```
@@ -73,7 +73,7 @@ python ras2fim.py -w 10170204 -i C:\HEC\input_folder -o C:\HEC\output_folder -p 
 
 ## How to test the software
 
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> A sample input and output folder is provided for testing the application. From an AWS S3 bucket, a `sample-dataset` folder is provided.  It includes both sample input and sample output data.
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> A sample input and output folder is provided for testing the application. From an AWS S3 bucket, a `sample-dataset` folder is provided.  It includes both sample input and sample output data.
 
 List folder prior to download:  
 ```
