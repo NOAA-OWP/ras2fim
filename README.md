@@ -15,7 +15,7 @@
 More detail regarding RAS2FIM is located on the project's Wiki page.
 <p align="center">
 <a href="https://github.com/NOAA-OWP/ras2fim/wiki">
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/ras2fim_overview.png" alt="Step1" width="342">
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/button_go-to-rasfim-wiki.png" alt="Go To Wiki" width="342">
 </a>
 </p>
 
