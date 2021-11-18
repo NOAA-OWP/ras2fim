@@ -490,12 +490,12 @@ def fn_gdf_append_xs_with_max_flow(df_xs_fn, df_flows_fn):
 # ````````````````````````
 
 # ssssssssssssssssssssssss
-
-
 def fn_cut_stream_downstream(gdf_return_stream_fn, df_xs_fn):
     # Function - split the stream line on the last cross section
     # This to remove the portion of the stream centerline that is
     # downstream of the last cross section; helps with stream conflation
+    
+    df_xs_fn['stream_stn'] =  df_xs_fn['stream_stn'].astype(float)
 
     # Get minimum stationed cross section
     flt_ds_xs = df_xs_fn['stream_stn'].min()
@@ -514,25 +514,29 @@ def fn_cut_stream_downstream(gdf_return_stream_fn, df_xs_fn):
     # the last cross section may be at the last stream point - 2021.10.27
     # get a list of items in the returned GeoCollection
     list_wkt_lines = [item for item in result]
+    list_lines = []
     
     if len(list_wkt_lines) > 1:
-        # Now merge the upstream line with the first segment of the downstream line
-    
-        # get first segment of the downstream line
-        new_line = LineString([result[1].coords[0], result[1].coords[1]])
-    
-        # create a list of the stream line and the first segment
-        # of the next downstream line
-        lines = [result[0], new_line]
-    
+
+        # merge all the lines except the last line
+        for i in range(len(result) -1):
+            list_lines.append(result[i])
+        
+        # Now merge the line with the first segment of the downstream line
+
+        # get first segment of the downstream (last) line
+        new_line = LineString([result[i + 1].coords[0], result[i + 1].coords[1]])    
+        list_lines.append(new_line)
+
         # merge the lines
-        shp_merged_lines = linemerge(lines)
+        shp_merged_lines = linemerge(list_lines)
     
         # Revise the geometry with the first line (assumed upstream)
         gdf_return_stream_fn['geometry'][0] = shp_merged_lines
 
     return gdf_return_stream_fn
 # ssssssssssssssssssssssss
+
 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
 # Print iterations progress
