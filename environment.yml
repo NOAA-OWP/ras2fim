@@ -89,7 +89,6 @@ dependencies:
   - pyparsing=2.4.7=pyhd3eb1b0_0
   - pyproj=2.6.1.post1=py38h593ac45_1
   - pyreadline=2.1=py38_1
-  - python=3.8.11=h6244533_0_cpython
   - python-dateutil=2.8.2=pyhd3eb1b0_0
   - python_abi=3.8=2_cp38
   - pytz=2021.1=pyhd3eb1b0_0
