@@ -66,7 +66,7 @@ def fn_run_ras2fim(str_huc8_arg,
     print("|     Created by Andy Carter, PE of the National Water Center     |")
     print("+-----------------------------------------------------------------+")
     
-    print("  ---(r) HUC 8 WATERSHED: " + str(str_huc8_arg))
+    print("  ---(w) HUC 8 WATERSHED: " + str(str_huc8_arg))
     print("  ---(i) PATH TO HEC-RAS: " + str(str_ras_path_arg))
     print("  ---(o) OUTPUT DIRECTORY: " + str(str_out_arg))
     print("  ---(p) PROJECTION OF HEC-RAS MODELS: " + str(str_crs_arg))
