@@ -7,9 +7,9 @@ import numpy as np
 import rasterio as rio
 import argparse
 import sys
-from numpy.ma import masked_array
 from os import listdir, remove
 from rasterio.merge import merge
+from rasterio.mask import mask
 from rasterio.warp import reproject
 from shutil import rmtree
 from concurrent.futures import ProcessPoolExecutor
@@ -17,20 +17,20 @@ PREP_PROJECTION = 'PROJCS["USA_Contiguous_Albers_Equal_Area_Conic_USGS_version",
 
 def generate_inundation_raster(depth_grid,extent_gridname):
         
-    # Read in raster and convert to boolean
+    # Read in depth grid and convert to boolean
     depth_grid = rio.open(depth_grid)
     depth_data = depth_grid.read(1)
     no_data = depth_grid.nodata 
 
     # Convert depths to boolean 
-    depth_bool = np.where(depth_data == int(no_data), -9999.0, depth_data.astype(int))
-    depth_bool = np.where(depth_bool >= 0, 1, 0) 
+    extent_grid = np.where(depth_data == int(no_data), -9999.0, depth_data.astype(int))
+    extent_grid = np.where(extent_grid >= 0, 1, 0) 
     
     depth_profile = depth_grid.profile.copy()
     depth_profile.update({'nodata': -9999.0, 'dtype': 'int32'})
     
     with rio.open(extent_gridname, "w", **depth_profile) as dest:
-        dest.write(depth_bool, indexes=1)    
+        dest.write(extent_grid, indexes=1)    
 
 
 def reproject_raster(extent_gridname,reproj_gridname,proj):
@@ -78,7 +78,7 @@ def merge_rasters(ras_out,ras_list,proj):
         raster_to_mosiac.append(raster)
     
     # Merge rasters in HUC taking the max value where grids overlap
-    mosaic, comp_trans = merge(raster_to_mosiac, method='max',res=10,precision=50)
+    mosaic, comp_trans = merge(raster_to_mosiac, method='max',res=10,precision=50,nodata=0)
 
     profile.update(driver= "GTiff",
             height= mosaic.shape[1],
@@ -105,21 +105,26 @@ def mask_rasters(ras_out,wbd_layer,huc,proj):
     
     # Read in merged raster
     raster = rio.open(ras_out)
-    raster_data = raster.read(1)
     no_data = raster.nodata 
     profile = raster.profile
     
-    raster_data2 = np.where(raster_data==no_data, 0, raster_data.astype(int))
+    # Create mask using huc8 boundary and set values outside bounds to nodata
+    out_image, out_transform = mask(raster, wbd_geom,nodata=no_data)
     
-    # Create mask using huc8 boundary
-    raster_mask = masked_array(raster_data2, mask=wbd_geom)
+    profile.update(driver= "GTiff",
+            height= out_image.shape[1],
+            width= out_image.shape[2],
+            transform= out_transform,
+            tiled=True,
+            nodata=-9999.0,
+            blockxsize=512, 
+            blockysize=512,
+            dtype='int32',
+            crs=proj,
+            compress='lzw')
     
-    # Cells outside of huc boundary are labeled as no data
-    raster_mask = np.where(raster_mask.mask==True, raster_mask.data.astype(int), -9999)
-
-    profile.update({'dtype': 'int32'})
     with rio.open(ras_out, "w", **profile) as dest:
-        dest.write(raster_mask, indexes=1)
+        dest.write(out_image)
 
 
 def extract_ras(args, huc):
@@ -162,11 +167,11 @@ def extract_ras(args, huc):
         interval = interval.replace('_0_cms.csv','yr')
         
         # Create output dir for extent grids
-        out_grid_dir = output_dir /'Depth_Grid_Boolean' / huc /  interval
+        out_grid_dir = output_dir /'extent_grids' / huc /  interval
         out_grid_dir.mkdir(parents=True,exist_ok=True)
         
         # Create output dir for reprojected extent grids
-        reproj_out_grid_dir = output_dir/ 'Depth_Grid_Boolean_reproj' / huc  / interval
+        reproj_out_grid_dir = output_dir/ 'extent_grids_reproj' / huc  / interval
         reproj_out_grid_dir.mkdir(parents=True,exist_ok=True)
         
         # Get NWM recurrence flows for feature ids in each huc
@@ -212,7 +217,7 @@ def extract_ras(args, huc):
                                         
                     # Append interpolated point to validation rating curve
                     reccur_flow_rc = pd.DataFrame()
-                    interp_df = {'feature_id': feature_id, 'Flow(cms)': val_discharge['discharge'].item(),'AvgDepth(m)': np.round(interp_depth,1)}
+                    interp_df = {'feature_id': feature_id, 'discharge': val_discharge['discharge'].item(),'avg_depth_m': np.round(interp_depth,1)}
                     reccur_flow_rc = reccur_flow_rc.append(interp_df, ignore_index = True)
                     
                     # Write to validation dataset
@@ -254,7 +259,7 @@ def extract_ras(args, huc):
         del nwm_rc_flows
     
     # Merge extent rasters
-    reproj_grid_dir = output_dir /'Depth_Grid_Boolean_reproj' / huc
+    reproj_grid_dir = output_dir /'extent_grids_reproj' / huc
     
     # Get feature ids with missing grids
     exclude_feature_ids = list(set(missing_flows.feature_id))
@@ -266,7 +271,7 @@ def extract_ras(args, huc):
         ras_out = ras_rc_rec_dir /f"ras2fim_huc_{huc}_extent_{interval}.tif"
         
         # Get list of extent grid paths
-        reproj_out_grid_dir = output_dir/ 'Depth_Grid_Boolean_reproj' / huc  / interval
+        reproj_out_grid_dir = reproj_grid_dir  / interval
         ras_list = [str(reproj_out_grid_dir / r) for r in listdir(reproj_out_grid_dir) if ".aux.xml" not in r]
         
         # Remove any grids that do not have extents for every recurrence interval
@@ -303,7 +308,7 @@ if __name__ == '__main__':
     log_file = ras_model_dir / 'ras2fim_validation_conversion.log'
     ras_reorg_dir = ras_model_dir / 'ras_reorg'
     huc_list = listdir(ras_reorg_dir)
-    output_dir = ras_model_dir / 'outputs'
+    output_dir = ras_model_dir / 'validation_data_ras2fim'
     missing_flows_dir = ras_model_dir / 'missing_flows'
     missing_flows_dir.mkdir(parents=True,exist_ok=True)
     wbd_layer = ras_model_dir / 'WBD_National.gpkg'
@@ -357,6 +362,13 @@ if __name__ == '__main__':
     # Remove dir with partial tables
     if all_missing_flows_logfile.is_file():
             rmtree(missing_flows_dir)
+    # Remove intermediate grids
+    # extent_grids = output_dir / 'extent_grids'
+    # extent_grids_reproj = output_dir / 'extent_grids_reproj'
+    # if extent_grids.is_dir():
+    #         rmtree(extent_grids)
+    # if extent_grids_reproj.is_dir():
+    #         rmtree(extent_grids_reproj)
 
     # Close log file
     sys.stdout = sys.__stdout__
