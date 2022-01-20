@@ -356,8 +356,9 @@ if __name__ == '__main__':
     
     # Remove intermediate grids
     extent_grids = output_dir / 'extent_grids'
-    extent_grids_reproj = output_dir / 'extent_grids_reproj'
     if extent_grids.is_dir():
             rmtree(extent_grids)
+            
+    extent_grids_reproj = output_dir / 'extent_grids_reproj'
     if extent_grids_reproj.is_dir():
             rmtree(extent_grids_reproj)
