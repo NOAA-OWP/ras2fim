@@ -98,7 +98,6 @@ def mask_rasters(ras_out,wbd_geom,proj):
     
     # Read in merged raster
     raster = rio.open(ras_out)
-    no_data = raster.nodata 
     profile = raster.profile
     
     # Create mask using huc8 boundary and set values outside bounds to nodata
