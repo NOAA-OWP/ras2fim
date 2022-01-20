@@ -6,7 +6,6 @@ import geopandas as gpd
 import numpy as np
 import rasterio as rio
 import argparse
-import sys
 from os import listdir, remove
 from rasterio.merge import merge
 from rasterio.mask import mask
@@ -310,11 +309,6 @@ if __name__ == '__main__':
     missing_flows_dir.mkdir(parents=True,exist_ok=True)
     wbd_layer = ras_model_dir / 'WBD_National.gpkg'
 
-    # Open log file
-    sys.__stdout__ = sys.stdout
-    logger = open(log_file,'w')
-    sys.stdout = logger
-
     print (f"Creating extent rasters for {len(huc_list)} HUCs")
     extent_grid_args = (recurrence_dir,ras_reorg_dir,output_dir,missing_flows_dir,wbd_layer)
 
@@ -367,7 +361,3 @@ if __name__ == '__main__':
             rmtree(extent_grids)
     if extent_grids_reproj.is_dir():
             rmtree(extent_grids_reproj)
-
-    # Close log file
-    sys.stdout = sys.__stdout__
-    logger.close()
