@@ -303,7 +303,6 @@ if __name__ == '__main__':
     num_workers= args['jobs']
     
     # Set paths
-    log_file = ras_model_dir / 'ras2fim_validation_conversion.log'
     ras_reorg_dir = ras_model_dir / 'ras_reorg'
     huc_list = listdir(ras_reorg_dir)
     output_dir = ras_model_dir / 'validation_data_ras2fim'
