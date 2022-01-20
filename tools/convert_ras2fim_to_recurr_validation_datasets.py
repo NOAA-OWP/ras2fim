@@ -40,9 +40,9 @@ def reproject_raster(extent_gridname,reproj_gridname,proj):
     reproj_data, reproj_trans = reproject(source=rio.band(extent_grid, 1),dst_crs=proj)
     grid_profile = extent_grid.profile.copy()
     
-    grid_profile.update(driver= "GTiff",
-                        height= reproj_data.shape[1],
-                        width= reproj_data.shape[2],
+    grid_profile.update(driver="GTiff",
+                        height=reproj_data.shape[1],
+                        width=reproj_data.shape[2],
                         transform= reproj_trans,
                         tiled=True,
                         nodata=-9999.0,
@@ -80,10 +80,10 @@ def merge_rasters(ras_out,ras_list,proj):
     # Merge rasters in HUC taking the max value where grids overlap
     mosaic, comp_trans = merge(raster_to_mosiac, method='max',res=10,precision=50,nodata=0)
 
-    profile.update(driver= "GTiff",
-            height= mosaic.shape[1],
-            width= mosaic.shape[2],
-            transform= comp_trans,
+    profile.update(driver="GTiff",
+            height=mosaic.shape[1],
+            width=mosaic.shape[2],
+            transform=comp_trans,
             tiled=True,
             nodata=-9999.0,
             blockxsize=512, 
@@ -111,10 +111,10 @@ def mask_rasters(ras_out,wbd_layer,huc,proj):
     # Create mask using huc8 boundary and set values outside bounds to nodata
     out_image, out_transform = mask(raster, wbd_geom,nodata=no_data)
     
-    profile.update(driver= "GTiff",
-            height= out_image.shape[1],
-            width= out_image.shape[2],
-            transform= out_transform,
+    profile.update(driver="GTiff",
+            height=out_image.shape[1],
+            width=out_image.shape[2],
+            transform=out_transform,
             tiled=True,
             nodata=-9999.0,
             blockxsize=512, 
@@ -362,13 +362,14 @@ if __name__ == '__main__':
     # Remove dir with partial tables
     if all_missing_flows_logfile.is_file():
             rmtree(missing_flows_dir)
+    
     # Remove intermediate grids
-    # extent_grids = output_dir / 'extent_grids'
-    # extent_grids_reproj = output_dir / 'extent_grids_reproj'
-    # if extent_grids.is_dir():
-    #         rmtree(extent_grids)
-    # if extent_grids_reproj.is_dir():
-    #         rmtree(extent_grids_reproj)
+    extent_grids = output_dir / 'extent_grids'
+    extent_grids_reproj = output_dir / 'extent_grids_reproj'
+    if extent_grids.is_dir():
+            rmtree(extent_grids)
+    if extent_grids_reproj.is_dir():
+            rmtree(extent_grids_reproj)
 
     # Close log file
     sys.stdout = sys.__stdout__
