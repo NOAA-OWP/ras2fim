@@ -94,7 +94,7 @@ def merge_rasters(ras_out,ras_list,proj):
         m.write(mosaic) 
 
 
-def mask_rasters(ras_out,wbd_geom):
+def mask_rasters(ras_out,wbd_geom,proj):
     
     # Read in merged raster
     raster = rio.open(ras_out)
@@ -282,7 +282,7 @@ def extract_ras(args, huc):
             merge_rasters(ras_out,ras_list,PREP_PROJECTION) 
             
             # Convert cells outside of HUC8 boundaries to nodata
-            mask_rasters(ras_out,wbd)
+            mask_rasters(ras_out,wbd,PREP_PROJECTION)
                    
     if missing_flows_logfile.exists():
         remove(missing_flows_logfile)
