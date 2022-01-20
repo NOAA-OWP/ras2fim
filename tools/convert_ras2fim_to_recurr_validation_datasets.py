@@ -292,7 +292,7 @@ def extract_ras(args, huc):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Convert Depth Grids to Inundation extents')
+    parser = argparse.ArgumentParser(description='Convert depth grids to inundation extents')
     parser.add_argument('-val_dir','--validation-dir', help='Validation data directory', required=True,type=str)
     parser.add_argument('-ras_dir','--ras-dir', help='HEC-RAS model directory', required=True,type=str)
     parser.add_argument('-j','--jobs', help='number of jobs', required=False,type=int,default=1)
