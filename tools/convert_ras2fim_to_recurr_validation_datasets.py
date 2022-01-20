@@ -102,14 +102,14 @@ def mask_rasters(ras_out,wbd_geom,proj):
     profile = raster.profile
     
     # Create mask using huc8 boundary and set values outside bounds to nodata
-    out_image, out_transform = mask(raster,wbd_geom,nodata=no_data)
+    out_image, out_transform = mask(raster,wbd_geom,nodata=2)
     
     profile.update(driver="GTiff",
             height=out_image.shape[1],
             width=out_image.shape[2],
             transform=out_transform,
             tiled=True,
-            nodata=-9999.0,
+            nodata=2,
             blockxsize=512, 
             blockysize=512,
             dtype='int32',
