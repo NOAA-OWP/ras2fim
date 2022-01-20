@@ -71,8 +71,10 @@ def merge_rasters(ras_out,ras_list,proj):
     raster_to_mosiac = []
     for p in ras_list:
         raster = rio.open(p)
-        profile = raster.profile
         raster_to_mosiac.append(raster)
+    
+    profile = raster.profile
+    del raster
     
     # Merge rasters in HUC taking the max value where grids overlap
     mosaic, comp_trans = merge(raster_to_mosiac, method='max',res=10,precision=50,nodata=0)
