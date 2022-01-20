@@ -65,8 +65,6 @@ def write_rating_curves(ras_rc_rec_dir,aggregate_rc,reccur_flow_rc):
         reccur_flow_rc.to_csv(aggregate_rc,index=False)
     else:
         reccur_flow_rc.to_csv(aggregate_rc,index=False, mode='a',header=False)
-    
-    del reccur_flow_rc
 
 
 def merge_rasters(ras_out,ras_list,proj):
@@ -96,12 +94,7 @@ def merge_rasters(ras_out,ras_list,proj):
         m.write(mosaic) 
 
 
-def mask_rasters(ras_out,wbd_layer,huc,proj):
-    
-    # Read in huc8 boundary geometry
-    wbd = gpd.read_file(wbd_layer,layer='WBDHU8')
-    wbd = wbd.to_crs(proj)
-    wbd_geom = wbd.loc[wbd.HUC8 == huc,'geometry'].to_list()
+def mask_rasters(ras_out,wbd_geom):
     
     # Read in merged raster
     raster = rio.open(ras_out)
@@ -109,7 +102,7 @@ def mask_rasters(ras_out,wbd_layer,huc,proj):
     profile = raster.profile
     
     # Create mask using huc8 boundary and set values outside bounds to nodata
-    out_image, out_transform = mask(raster, wbd_geom,nodata=no_data)
+    out_image, out_transform = mask(raster,wbd_geom,nodata=no_data)
     
     profile.update(driver="GTiff",
             height=out_image.shape[1],
@@ -264,6 +257,11 @@ def extract_ras(args, huc):
     # Get feature ids with missing grids
     exclude_feature_ids = list(set(missing_flows.feature_id))
     
+    # Read in huc8 boundary geometry
+    wbd = gpd.read_file(wbd_layer,layer='WBDHU8')
+    wbd = wbd.to_crs(PREP_PROJECTION)
+    wbd = wbd.loc[wbd.HUC8 == huc,'geometry'].to_list()
+    
     # For each recurrence interval
     for interval in listdir(reproj_grid_dir):
         
@@ -284,7 +282,7 @@ def extract_ras(args, huc):
             merge_rasters(ras_out,ras_list,PREP_PROJECTION) 
             
             # Convert cells outside of HUC8 boundaries to nodata
-            mask_rasters(ras_out,wbd_layer,huc,PREP_PROJECTION)
+            mask_rasters(ras_out,wbd)
                    
     if missing_flows_logfile.exists():
         remove(missing_flows_logfile)
