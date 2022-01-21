@@ -347,9 +347,16 @@ if __name__ == '__main__':
             missing_feature_ids = missing_flows_sub.feature_id.drop_duplicates().to_list()
             rc = rc[~rc.feature_id.isin(missing_feature_ids)]
             
-            # Remove old file and replace with remaining feature_ids
+            # Remove old flow file
             remove(rc_path)
-            rc.to_csv(rc_path,index=False)
+            
+            if not rc.empty:
+                # Replace flow file with remaining feature_ids
+                rc.to_csv(rc_path,index=False)
+            else:
+                # Remove huc with incomplete flows for every recurrence interval
+                rmtree(huc_dir)
+                break
             
     # Remove dir with partial tables
     if all_missing_flows_logfile.is_file():
