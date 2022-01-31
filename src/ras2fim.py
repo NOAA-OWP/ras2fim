@@ -311,7 +311,7 @@ if __name__ == '__main__':
                         help=r'OPTIONAL: step of processing to start on',
                         required=False,
                         default=' None Specified - starting at the beginning',
-                        metavar='PATH',
+                        metavar='STRING',
                         type=str)
     
     args = vars(parser.parse_args())
