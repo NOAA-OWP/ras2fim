@@ -56,7 +56,8 @@ def fn_run_ras2fim(str_huc8_arg,
                    b_is_feet,
                    str_nation_arg,
                    str_hec_path,
-                   str_terrain_override):
+                   str_terrain_override,
+                   str_step_override):
     
     flt_start_run_ras2fim = time.time()
     
@@ -66,7 +67,7 @@ def fn_run_ras2fim(str_huc8_arg,
     print("|     Created by Andy Carter, PE of the National Water Center     |")
     print("+-----------------------------------------------------------------+")
     
-    print("  ---(w) HUC 8 WATERSHED: " + str(str_huc8_arg))
+    print("  ---(r) HUC 8 WATERSHED: " + str(str_huc8_arg))
     print("  ---(i) PATH TO HEC-RAS: " + str(str_ras_path_arg))
     print("  ---(o) OUTPUT DIRECTORY: " + str(str_out_arg))
     print("  ---(p) PROJECTION OF HEC-RAS MODELS: " + str(str_crs_arg))
@@ -74,6 +75,7 @@ def fn_run_ras2fim(str_huc8_arg,
     print("  ---(n) PATH TO NATIONAL DATASETS: " + str(str_nation_arg))     
     print("  ---(r) PATH TO HEC-RAS v6.0: " + str(str_hec_path))
     print("  ---[t] Optional: Terrain to Utilize" + str(str_terrain_override))
+    print("  ---[s] Optional: step to start at - " + str(str_step_override))
     
     print("===================================================================")
     print(" ")
@@ -82,8 +84,10 @@ def fn_run_ras2fim(str_huc8_arg,
     # TODO - 2021.09.07
     # check if this folder exists and has HEC-RAS files
     # Do you want to overwrite the previous output if exists?
-    
-    int_step = 0
+
+    if str_step_override == " None Specified - starting at the beginning":  
+        str_step_override = 0
+    int_step = int(str_step_override)
     
     if not os.path.exists(str_out_arg):
         os.mkdir(str_out_arg)
@@ -302,6 +306,14 @@ if __name__ == '__main__':
                         metavar='PATH',
                         type=str)
     
+    parser.add_argument('-s',
+                        dest = "str_step_override",
+                        help=r'OPTIONAL: step of processing to start on',
+                        required=False,
+                        default=' None Specified - starting at the beginning',
+                        metavar='PATH',
+                        type=str)
+    
     args = vars(parser.parse_args())
     
     str_huc8_arg = args['str_huc8_arg']
@@ -312,6 +324,7 @@ if __name__ == '__main__':
     str_nation_arg = args['str_nation_arg']
     str_hec_path = args['str_hec_path']
     str_terrain_override = args['str_terrain_override']
+    str_step_override = args['str_step_override']
     
     fn_run_ras2fim(str_huc8_arg,
                    str_ras_path_arg,
@@ -320,4 +333,5 @@ if __name__ == '__main__':
                    b_is_feet,
                    str_nation_arg,
                    str_hec_path,
-                   str_terrain_override)
+                   str_terrain_override,
+                   str_step_override)
