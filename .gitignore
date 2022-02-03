@@ -75,3 +75,6 @@ bower_components/
 .grunt/
 src/vendor/
 dist/
+
+national-datasets/
+outputs/
