@@ -563,6 +563,8 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     gdf_non_match.to_file(str_filepath_nwm_stream)
     
     print()
+    print("Number of feature_id's matched: "+str(df_summary_data['feature_id'].nunique()))
+    print()
     print('COMPLETE')
     
     flt_end_create_shapes_from_hecras = time.time()

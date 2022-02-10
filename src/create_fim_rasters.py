@@ -21,6 +21,7 @@ import argparse
 import time
 import sys
 import datetime
+import fnmatch
 
 # ras2fim python worker for multiprocessing
 import worker_fim_rasters
@@ -248,6 +249,13 @@ def fn_create_fim_rasters(str_desired_huc8,
         if len(list_of_lists_df_streams) > 0:
             output = p.map(worker_fim_rasters.fn_main_hecras,list_of_lists_df_streams)
         
+    tif_count = 0
+    for root, dirnames, filenames in os.walk(STR_ROOT_OUTPUT_DIRECTORY):
+        for filename in fnmatch.filter(filenames,'*.tif'):
+            tif_count += 1
+
+    print(" ")
+    print("Number of tif's generated: "+int(tif_count))
     print(" ") 
     print('ALL AREAS COMPLETE')
     

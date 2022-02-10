@@ -29,9 +29,12 @@ from calculate_all_terrain_stats import fn_calculate_all_terrain_stats
 
 import argparse
 import os
+import shutil
 
 import time
 import datetime
+import fnmatch
+from re import search
 
 b_terrain_check_only = False
 
@@ -53,10 +56,11 @@ def fn_run_ras2fim(str_huc8_arg,
                    str_ras_path_arg,
                    str_out_arg,
                    str_crs_arg,
-                   b_is_feet,
+                   vert_unit,
                    str_nation_arg,
                    str_hec_path,
-                   str_terrain_override):
+                   str_terrain_override,
+                   str_step_override):
     
     flt_start_run_ras2fim = time.time()
     
@@ -66,26 +70,37 @@ def fn_run_ras2fim(str_huc8_arg,
     print("|     Created by Andy Carter, PE of the National Water Center     |")
     print("+-----------------------------------------------------------------+")
     
-    print("  ---(w) HUC 8 WATERSHED: " + str(str_huc8_arg))
+    print("  ---(r) HUC 8 WATERSHED: " + str(str_huc8_arg))
     print("  ---(i) PATH TO HEC-RAS: " + str(str_ras_path_arg))
     print("  ---(o) OUTPUT DIRECTORY: " + str(str_out_arg))
     print("  ---(p) PROJECTION OF HEC-RAS MODELS: " + str(str_crs_arg))
-    print("  ---(v) VERTICAL IN FEET: " + str(b_is_feet))    
     print("  ---(n) PATH TO NATIONAL DATASETS: " + str(str_nation_arg))     
     print("  ---(r) PATH TO HEC-RAS v6.0: " + str(str_hec_path))
+    print("  ---[v] Optional: Vertical units in: " + str(vert_unit))    
     print("  ---[t] Optional: Terrain to Utilize" + str(str_terrain_override))
-    
+    print("  ---[s] Optional: step to start at - " + str(str_step_override))
+
     print("===================================================================")
     print(" ")
-    
-    # create an output folder
-    # TODO - 2021.09.07
-    # check if this folder exists and has HEC-RAS files
-    # Do you want to overwrite the previous output if exists?
-    
-    int_step = 0
-    
-    if not os.path.exists(str_out_arg):
+ 
+    # parse inputs
+    if vert_unit == "meter":
+        b_is_feet = True
+    else:
+        b_is_feet = False
+    if str_step_override == "None Specified - starting at the beginning":  
+        str_step_override = 0
+    int_step = int(str_step_override)
+
+    # create an output folder with checks
+    if os.path.exists(str_out_arg):
+        if os.path.exists(os.path.join(str_out_arg,'05_hecras_output','terrain_stats.csv')):
+            print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
+            raise SystemExit(0)
+        elif int_step==0:
+            print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
+            shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
+    else:
         os.mkdir(str_out_arg)
     
     # ---- Step 1: create_shapes_from_hecras ----
@@ -136,7 +151,7 @@ def fn_run_ras2fim(str_huc8_arg,
     
     # run the third script 
     if int_step <= 3:
-        if str_terrain_override == " None Specified - using USGS WCS":
+        if str_terrain_override == "None Specified - using USGS WCS":
             # create terrain from the USGS WCS
             fn_get_usgs_dem_from_shape(str_input_path,
                                        str_terrain_from_usgs_dir,
@@ -272,14 +287,6 @@ if __name__ == '__main__':
                         metavar='STRING',
                         type=str)
     
-    parser.add_argument('-v',
-                        dest = "b_is_feet",
-                        help='REQUIRED: create vertical data in feet: Default=True',
-                        required=True,
-                        default=True,
-                        metavar='T/F',
-                        type=str2bool)
-    
     parser.add_argument('-n',
                         dest = "str_nation_arg",
                         help=r'REQUIRED: path to national datasets: Example: E:\X-NWS\X-National_Datasets',
@@ -294,12 +301,28 @@ if __name__ == '__main__':
                         metavar='DIR',
                         type=str)
     
+    parser.add_argument('-v',
+                        dest = "vert_unit",
+                        help='OPTIONAL: define the vertical units of the project, one of "meter" or "foot", leave black to have ras2fim check automatically',
+                        required=False,
+                        default='check',
+                        metavar='STRING',
+                        type=str)
+
     parser.add_argument('-t',
                         dest = "str_terrain_override",
                         help=r'OPTIONAL: path to DEM/VRT to use for mapping: Example: G:\x-fathom\vrt\texas_fathom_20211001.vrt',
                         required=False,
-                        default=' None Specified - using USGS WCS',
+                        default='None Specified - using USGS WCS',
                         metavar='PATH',
+                        type=str)
+    
+    parser.add_argument('-s',
+                        dest = "str_step_override",
+                        help=r'OPTIONAL: step of processing to start on',
+                        required=False,
+                        default='None Specified - starting at the beginning',
+                        metavar='STRING',
                         type=str)
     
     args = vars(parser.parse_args())
@@ -308,16 +331,55 @@ if __name__ == '__main__':
     str_ras_path_arg = args['str_ras_path_arg']
     str_out_arg = args['str_out_arg']
     str_crs_arg = args['str_crs_arg']
-    b_is_feet = args['b_is_feet']
+    vert_unit = args['vert_unit']
     str_nation_arg = args['str_nation_arg']
     str_hec_path = args['str_hec_path']
     str_terrain_override = args['str_terrain_override']
+    str_step_override = args['str_step_override']
     
+
+    if vert_unit == 'check':
+        matches = []
+        for root, dirnames, filenames in os.walk(str_ras_path_arg):
+            for filename in fnmatch.filter(filenames,'*.[Pp][Rr][Jj]'):
+                with open(os.path.join(root,filename)) as f:
+                    first_file_line = f.read()
+                
+                # skip projection files
+                if any(x in first_file_line for x in ['PROJCS','GEOGCS','DATUM','PROJECTION']):
+                    continue
+                
+                matches.append(os.path.join(root,filename))
+
+        identical_array = []
+        for match in matches:
+            with open(match) as f:
+                file_contents = f.read()
+            
+            if search("SI Units", file_contents):
+                identical_array.append("meter")
+            elif search("English Units", file_contents):
+                identical_array.append("foot")
+            else:
+                identical_array.append("manual")
+
+        if ("manual" in identical_array) or (identical_array.count(identical_array[0]) != len(identical_array)):
+            print(" -- ALERT: units were inconsistant for models found, investigate and correct or manually set -v flag appropritely")
+            print(identical_array)
+            raise SystemExit(0)
+
+        else:
+            if identical_array[0] == "SI Units":
+                vert_unit = "meter"
+            elif identical_array[0] == "foot":
+                vert_unit = "foot"
+
     fn_run_ras2fim(str_huc8_arg,
                    str_ras_path_arg,
                    str_out_arg,
                    str_crs_arg,
-                   b_is_feet,
+                   vert_unit,
                    str_nation_arg,
                    str_hec_path,
-                   str_terrain_override)
+                   str_terrain_override,
+                   str_step_override)

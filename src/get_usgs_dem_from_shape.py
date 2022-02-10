@@ -101,24 +101,16 @@ def fn_download_tiles(list_tile_url):
         list_tile_url[0] -- download URL
         list_tile_url[1] -- local directory to store the DEM
     """
-    urllib.request.urlretrieve(list_tile_url[0], list_tile_url[1])
-    
-    # Quick/crappy file size check to ensure something was actually returned
-    time.sleep(15)
-    i = 0
-    fs = os.path.getsize(list_tile_url[1]) # returns in bytes
-    fs = fs / 1000                         # transform to kb
-    
-    while (fs < 10):
-        os.remove(list_tile_url[1])
-        urllib.request.urlretrieve(list_tile_url[0], list_tile_url[1])
-        time.sleep(15)
-        i = i + 1
-        fs = os.path.getsize(list_tile_url[1]) # returns in bytes
-        fs = fs / 1000                         # transform to kb
-        if i == 10:
-            print(" -- ALERT: DEM download failed --")
-            break
+    if not os.path.exists(list_tile_url[1]):    
+        try:
+            urllib.request.urlretrieve(list_tile_url[0], list_tile_url[1])
+        except urllib.error.HTTPError as exception:
+            print(" -- ALERT --")
+            print(exception)
+            print(" -- ALERT: failed to write out the following DEM tile")
+            print(list_tile_url[0])
+            print("writing to:"+list_tile_url[1])
+            raise SystemExit(0)
     
 # .........................
 
