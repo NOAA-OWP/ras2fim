@@ -100,8 +100,7 @@ def fn_run_ras2fim(str_huc8_arg,
         elif int_step==0:
             print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
             shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
-    else:
-        os.mkdir(str_out_arg)
+    os.mkdir(str_out_arg)   
     
     # ---- Step 1: create_shapes_from_hecras ----
     # create a folder for the shapefiles from hec-ras

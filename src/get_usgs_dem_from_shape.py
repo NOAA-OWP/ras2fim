@@ -101,6 +101,7 @@ def fn_download_tiles(list_tile_url):
         list_tile_url[0] -- download URL
         list_tile_url[1] -- local directory to store the DEM
     """
+    out = urllib.request.urlretrieve(list_tile_url[0], list_tile_url[1])
     if not os.path.exists(list_tile_url[1]):    
         try:
             urllib.request.urlretrieve(list_tile_url[0], list_tile_url[1])
