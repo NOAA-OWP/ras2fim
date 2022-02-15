@@ -38,6 +38,7 @@ from multiprocessing import Pool
 from shapely.geometry import LineString
 from shapely.ops import split, linemerge
 
+from re import search
 # ************************
 
 
@@ -73,6 +74,10 @@ def fn_get_active_geom(str_path_hecras_project_fn2):
     # Find the current plan
     pattern = re.compile(r'Current Plan=.*')
     matches = pattern.finditer(file_contents)
+
+    if re.search('Current Plan=', file_contents) is None:
+        print(" -- ALERT: Reconnect files for "+str_path_hecras_project_fn2)
+        raise SystemExit(0)
 
     # close the HEC-RAS project file
     f.close()
@@ -610,13 +615,22 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
             if file.endswith(".prj") or file.endswith(".PRJ"):
                 # Note the case sensitive issue
                 str_file_path = os.path.join(root, file)
+
+                with open(str_file_path) as f:
+                    first_file_line = f.read()
+
+                # skip projection files
+                if any(x in first_file_line for x in ['PROJCS','GEOGCS','DATUM','PROJECTION']):
+                    continue
+
                 list_files.append(str_file_path)
     
     #-----
     # checking to see if 'prj' files are not binary and 
     # valid HEC-RAS prj files.  This should exclude all other
     # prj files
-    
+    # skip projection files
+           
     textchars = bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})
     is_binary_string = lambda bytes: bool(bytes.translate(None, textchars))
     
@@ -624,6 +638,7 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     list_files_valid_prj = []
     
     for str_file_path in list_files:
+
         if not is_binary_string(open(str_file_path, 'rb').read(1024)):
             file_prj = open(str_file_path, "r")
             b_found_match = False
@@ -641,6 +656,7 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     list_models_to_compute = []
     
     for str_prj in list_files:
+        #print("processing:"+str_prj)
         str_path_to_geom_hdf = fn_get_active_geom(str_prj) + '.hdf'
         if  not path.exists(str_path_to_geom_hdf):
             # the hdf file does not exist - add to list of models to compute

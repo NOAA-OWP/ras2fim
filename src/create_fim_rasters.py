@@ -248,12 +248,18 @@ def fn_create_fim_rasters(str_desired_huc8,
         if len(list_of_lists_df_streams) > 0:
             output = p.map(worker_fim_rasters.fn_main_hecras,list_of_lists_df_streams)
         
-    print(" ") 
-    print('ALL AREAS COMPLETE')
-    
+    tif_count = 0
+    for root, dirs, files in os.walk(STR_ROOT_OUTPUT_DIRECTORY):
+        for file in files:    
+            if file.endswith('.tif'):
+                tif_count += 1
     flt_end_create_fim = time.time()
     flt_time_create_fim = (flt_end_create_fim - flt_start_create_fim) // 1
     time_pass_create_fim = datetime.timedelta(seconds=flt_time_create_fim)
+    
+    print(" ") 
+    print('ALL AREAS COMPLETE')
+    print("Number of tif's generated: "+str(tif_count))
     print('Compute Time: ' + str(time_pass_create_fim))
     
     print("====================================================================")

@@ -76,5 +76,7 @@ bower_components/
 src/vendor/
 dist/
 
+# Base data #
+#############
 national-datasets/
 outputs/

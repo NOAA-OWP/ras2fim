@@ -105,7 +105,7 @@ def fn_cut_dems_from_shapes(str_input_shp_path,
     
     print("  ---(i) SHAPEFILE INPUT PATH: " + str_input_shp_path)
     print("  ---(t) TERRAIN INPUT PATH: " + str_input_terrain_path)
-    print("  ---(o) DEM PUTPUT PATH: " + str_output_dir)
+    print("  ---(o) DEM OUTPUT PATH: " + str_output_dir)
     print("  ---[b]   Optional: BUFFER: " + str(int_buffer)) 
     print("  ---[v]   Optional: VERTICAL IN FEET: " + str(b_is_feet)) 
     print("  ---[f]   Optional: FIELD NAME: " + str(str_field_name))

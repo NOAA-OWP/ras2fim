@@ -357,6 +357,9 @@ def fn_calculate_all_terrain_stats(str_input_dir):
     flt_time_pass = (flt_end_run - flt_start_run) // 1
     time_pass = datetime.timedelta(seconds=flt_time_pass)
     
+    print(' ')
+    print('mean of mean terrain difference: ' + str(df_combined_stats['mean'].mean()))
+    print(' ')
     print('Compute Time: ' + str(time_pass))
 
     print('COMPLETE')
