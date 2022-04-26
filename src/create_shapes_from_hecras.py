@@ -139,6 +139,10 @@ def fn_geodataframe_cross_sections(str_path_hecras_project_fn, STR_CRS_MODEL):
     n3 = hf.get('Geometry/Cross Sections/Attributes')
     n3 = np.array(n3)
 
+    # Error handleing: edge case, empty (bad) geo
+    if n2.ndim == 0:
+        return gpd.GeoDataFrame()
+
     # Create a list of  number of points per each stream line
     list_points_per_cross_section_line = []
     for row in n2:
@@ -260,6 +264,10 @@ def fn_geodataframe_stream_centerline(str_path_hecras_project_fn, STR_CRS_MODEL)
     # point maker where each stream points start
     n2 = hf.get('Geometry/River Centerlines/Polyline Parts')
     n2 = np.array(n2)
+
+    # Error handleing: edge case, empty (bad) geo
+    if n2.ndim == 0:
+        return gpd.GeoDataFrame()
 
     # Get the name of the river and reach
     list_river_name = []
@@ -691,6 +699,9 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     
         df_flows = fn_get_flow_dataframe(fn_get_active_flow(ras_path))
         df_xs = fn_geodataframe_cross_sections(ras_path, STR_CRS_MODEL)
+        if df_xs.empty:
+            print("Empty geometry in "+ras_path)
+            continue
     
         # Fix interpolated cross section names (ends with *)
         for index, row in df_xs.iterrows():
