@@ -139,7 +139,7 @@ def fn_geodataframe_cross_sections(str_path_hecras_project_fn, STR_CRS_MODEL):
     n3 = hf.get('Geometry/Cross Sections/Attributes')
     n3 = np.array(n3)
 
-    # Error handleing: edge case, empty (bad) geo
+    # Error handling: edge case, empty (bad) geo
     if n2.ndim == 0:
         return gpd.GeoDataFrame()
 
