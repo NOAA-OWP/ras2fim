@@ -265,7 +265,7 @@ def fn_geodataframe_stream_centerline(str_path_hecras_project_fn, STR_CRS_MODEL)
     n2 = hf.get('Geometry/River Centerlines/Polyline Parts')
     n2 = np.array(n2)
 
-    # Error handleing: edge case, empty (bad) geo
+    # Error handling: edge case, empty (bad) geo
     if n2.ndim == 0:
         return gpd.GeoDataFrame()
 
