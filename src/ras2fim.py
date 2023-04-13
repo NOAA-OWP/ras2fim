@@ -26,6 +26,7 @@ from convert_tif_to_ras_hdf5 import fn_convert_tif_to_ras_hdf5
 from create_fim_rasters import fn_create_fim_rasters
 from simplify_fim_rasters import fn_simplify_fim_rasters
 from calculate_all_terrain_stats import fn_calculate_all_terrain_stats
+from run_ras2rem import fn_run_ras2rem
 
 import argparse
 import os
@@ -60,7 +61,9 @@ def fn_run_ras2fim(str_huc8_arg,
                    str_nation_arg,
                    str_hec_path,
                    str_terrain_override,
-                   str_step_override):
+                   ras2rem,
+                   str_step_override
+                   ):
     
     flt_start_run_ras2fim = time.time()
     
@@ -78,6 +81,7 @@ def fn_run_ras2fim(str_huc8_arg,
     print("  ---(r) PATH TO HEC-RAS v6.0: " + str(str_hec_path))
     print("  ---[v] Optional: Vertical units in: " + str(vert_unit))    
     print("  ---[t] Optional: Terrain to Utilize" + str(str_terrain_override))
+    print("  ---[t] Optional: Run RAS2REM" + str(ras2rem))
     print("  ---[s] Optional: step to start at - " + str(str_step_override))
 
     print("===================================================================")
@@ -244,6 +248,12 @@ def fn_run_ras2fim(str_huc8_arg,
         fn_calculate_all_terrain_stats(str_fim_out_dir)
     # -------------------------------------------------
 
+    # ------ Step 8: run ras2rem -----
+    if int_step <= 8 and ras2rem.lower() != 'n':
+        # define output folder
+        str_ras2rem_dir = os.path.join(str_out_arg, "06_ras2rem")
+        fn_run_ras2rem(str_fim_out_dir, str_ras2rem_dir)
+
     flt_end_run_ras2fim = time.time()
     flt_time_pass_ras2fim = (flt_end_run_ras2fim - flt_start_run_ras2fim) // 1
     time_pass_ras2fim = datetime.timedelta(seconds=flt_time_pass_ras2fim)
@@ -315,7 +325,15 @@ if __name__ == '__main__':
                         default='None Specified - using USGS WCS',
                         metavar='PATH',
                         type=str)
-    
+
+    parser.add_argument('-m',
+                        dest="ras2rem",
+                        help=r'OPTIONAL: run RAS2REM: Enter y (or anything except n) to run RAS2REM',
+                        required=False,
+                        default='n',
+                        metavar='STRING',
+                        type=str)
+
     parser.add_argument('-s',
                         dest = "str_step_override",
                         help=r'OPTIONAL: step of processing to start on',
@@ -323,6 +341,8 @@ if __name__ == '__main__':
                         default='None Specified - starting at the beginning',
                         metavar='STRING',
                         type=str)
+
+
     
     args = vars(parser.parse_args())
     
@@ -334,7 +354,9 @@ if __name__ == '__main__':
     str_nation_arg = args['str_nation_arg']
     str_hec_path = args['str_hec_path']
     str_terrain_override = args['str_terrain_override']
+    ras2rem = args['ras2rem']
     str_step_override = args['str_step_override']
+
     
 
     if vert_unit == 'check':
@@ -381,4 +403,6 @@ if __name__ == '__main__':
                    str_nation_arg,
                    str_hec_path,
                    str_terrain_override,
-                   str_step_override)
+                   ras2rem,
+                   str_step_override,
+                   )
