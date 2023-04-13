@@ -12,5 +12,4 @@ This merge adds a new Pull Request template that was copied from the `inundation
 
 <br/><br/>
 
-
 ## 1.0.0 - 2021.11.10 - Initial Release
