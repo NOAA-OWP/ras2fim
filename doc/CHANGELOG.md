@@ -12,5 +12,5 @@ This merge adds a new Pull Request template that was copied from the `inundation
 
 <br/><br/>
 
-The log file was moved to the unit_errors folder to validate the error, as expected.
+
 ## 1.0.0 - 2021.11.10 - Initial Release
