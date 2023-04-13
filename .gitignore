@@ -80,3 +80,7 @@ dist/
 #############
 national-datasets/
 outputs/
+
+# VS Code #
+############
+.ideas/
