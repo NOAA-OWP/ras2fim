@@ -61,7 +61,7 @@ def fn_run_ras2fim(str_huc8_arg,
                    str_nation_arg,
                    str_hec_path,
                    str_terrain_override,
-                   ras2rem,
+                   run_ras2rem,
                    str_step_override
                    ):
     
@@ -81,7 +81,7 @@ def fn_run_ras2fim(str_huc8_arg,
     print("  ---(r) PATH TO HEC-RAS v6.0: " + str(str_hec_path))
     print("  ---[v] Optional: Vertical units in: " + str(vert_unit))    
     print("  ---[t] Optional: Terrain to Utilize" + str(str_terrain_override))
-    print("  ---[t] Optional: Run RAS2REM" + str(ras2rem))
+    print("  ---[m] Optional: Run RAS2REM: " + str(run_ras2rem))
     print("  ---[s] Optional: step to start at - " + str(str_step_override))
 
     print("===================================================================")
@@ -97,14 +97,14 @@ def fn_run_ras2fim(str_huc8_arg,
     int_step = int(str_step_override)
 
     # create an output folder with checks
-    if os.path.exists(str_out_arg):
-        if os.path.exists(os.path.join(str_out_arg,'05_hecras_output','terrain_stats.csv')):
-            print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
-            raise SystemExit(0)
-        elif int_step==0:
-            print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
-            shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
-    os.mkdir(str_out_arg)   
+    #if os.path.exists(str_out_arg):
+    #    if os.path.exists(os.path.join(str_out_arg,'05_hecras_output','terrain_stats.csv')):
+    #        print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
+    #        raise SystemExit(0)
+    #    elif int_step==0:
+    #        print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
+    #        shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
+    #os.mkdir(str_out_arg)   
     
     # ---- Step 1: create_shapes_from_hecras ----
     # create a folder for the shapefiles from hec-ras
@@ -249,7 +249,7 @@ def fn_run_ras2fim(str_huc8_arg,
     # -------------------------------------------------
 
     # ------ Step 8: run ras2rem -----
-    if int_step <= 8 and ras2rem.lower() != 'n':
+    if int_step <= 8 and run_ras2rem:
         # define output folder
         str_ras2rem_dir = os.path.join(str_out_arg, "06_ras2rem")
         fn_run_ras2rem(str_fim_out_dir, str_ras2rem_dir)
@@ -327,12 +327,12 @@ if __name__ == '__main__':
                         type=str)
 
     parser.add_argument('-m',
-                        dest="ras2rem",
-                        help=r'OPTIONAL: run RAS2REM: Enter y (or anything except n) to run RAS2REM',
+                        dest="rem_outputs",
+                        help=r'OPTIONAL: flag to dictate RAS2REM execution: Enter false to skip, defaults to TRUE',
                         required=False,
-                        default='n',
-                        metavar='STRING',
-                        type=str)
+                        default=True,
+                        metavar='T/F',
+                        type=str2bool)
 
     parser.add_argument('-s',
                         dest = "str_step_override",
@@ -354,7 +354,7 @@ if __name__ == '__main__':
     str_nation_arg = args['str_nation_arg']
     str_hec_path = args['str_hec_path']
     str_terrain_override = args['str_terrain_override']
-    ras2rem = args['ras2rem']
+    rem_outputs = args['rem_outputs']
     str_step_override = args['str_step_override']
 
     
@@ -403,6 +403,6 @@ if __name__ == '__main__':
                    str_nation_arg,
                    str_hec_path,
                    str_terrain_override,
-                   ras2rem,
+                   rem_outputs,
                    str_step_override,
                    )
