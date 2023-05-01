@@ -97,14 +97,14 @@ def fn_run_ras2fim(str_huc8_arg,
     int_step = int(str_step_override)
 
     # create an output folder with checks
-    #if os.path.exists(str_out_arg):
-    #    if os.path.exists(os.path.join(str_out_arg,'05_hecras_output','terrain_stats.csv')):
-    #        print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
-    #        raise SystemExit(0)
-    #    elif int_step==0:
-    #        print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
-    #        shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
-    #os.mkdir(str_out_arg)   
+    if os.path.exists(str_out_arg):
+        if os.path.exists(os.path.join(str_out_arg,'05_hecras_output','terrain_stats.csv')):
+            print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
+            raise SystemExit(0)
+        elif int_step==0:
+            print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
+            shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
+    os.mkdir(str_out_arg)   
     
     # ---- Step 1: create_shapes_from_hecras ----
     # create a folder for the shapefiles from hec-ras
