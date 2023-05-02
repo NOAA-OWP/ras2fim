@@ -4,6 +4,8 @@
 import argparse
 import io
 import pandas as pd
+import shutil
+import traceback
 
 from aws_base import *
 from datetime import datetime
@@ -25,7 +27,8 @@ class Get_Ras_Models(AWS_Base):
 
 
     # default values listed in "__main__"  but also here in case code calls direct.. aka. not through "__main__"
-    def get_models(self, s3_path_to_catalog, huc_number, inc_download_folders=True, target_owp_ras_models_path = "c\\ras2fim_data\\OWP_ras_models"):
+    def get_models(self, s3_path_to_catalog, huc_number, inc_download_folders=True, 
+                   target_owp_ras_models_path = "c\\ras2fim_data\\OWP_ras_models"):
 
         '''
         Overview  (and Processing Steps)
@@ -37,8 +40,7 @@ class Get_Ras_Models(AWS_Base):
             - download all of the folders found using data extracted from columns in the filtered models_catalog.csv file.
                 In S3, the source download folder will be the "models" folder, but put into the "models" folder here.
         - Using the models_catalog.csv, only records with the status of 'unprocessed'
-
-    
+            
         Inputs
         -----------------------
         - s3_path_to_catalog (str) : ie) s3://xyz/OWP_ras_models/models_catalog.csv (left as full pathing in case of pathing
@@ -55,52 +57,111 @@ class Get_Ras_Models(AWS_Base):
 
         '''
 
-        # ----------
-        # Validate inputs
-
-
+        start_time = datetime.now()
+        dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+        print (f"started: {dt_string}")
 
         try:
-            # ----------
-            # calls over to S3 using the aws creds file even though it doesn't use it directly
 
             aws_session = super().load_aws_s3_session()
 
-            #print(s3_client)
-            #s3 = aws_session.resource("s3")
+            # ----------
+            # Validate inputs
+            self.validate_inputs(s3_path_to_catalog, huc_number, inc_download_folders, target_owp_ras_models_path)
+
+
+
+            # ----------
+            # calls over to S3 using the aws creds file even though it doesn't use it directly
             df_all = pd.read_csv(s3_path_to_catalog)
-            #print(df_all)
 
-#            aws_so = {'key': os.getenv('AWS_ACCESS_KEY'),
-#                      'secret': os.getenv('AWS_ACCESS_KEY') }
-                  
-#            df = dd.read_csv(s3_path_to_catalog, storage_options = aws_so).compute()
+            if (self.is_verbose == True):
+                print("df_all list")
+                print(df_all)
 
-#            print(df)
+            # ----------
+            # look for records that are unprocessed, contains the huc number and does not start with 1_
+            df_huc = df_all.loc[(df_all['status'] == 'unprocessed') & 
+                                (~df_all['final_name_key'].str.startswith("1_")) & 
+                                (df_all['hucs'].str.contains(str(huc_number),na=False))]
 
-            # the 'hucs' column has a list of hucs in semi-pythonic formatt, which is not 
-            #df_huc = df_all.loc[(df_all['status'] == 'unprocessed')]        
-            #df_huc = df_all.loc[(df_all['hucs'].str.contains(str(huc_number),na=False))]
+            if (self.is_verbose == True):
+                print("df_huc list")
+                print(df_huc)
 
-            huc_number = '07010101'
 
-            #df_huc = df_all.loc[(df_all['status'] == 'unprocessed') & 
-            #                    (df_all['hucs'].str.contains(str(huc_number),na=False))]
-                                        
-            #print(df_huc)
+            # ----------
+            # remove folders only from the local OWP_ras_models/models (or overwride), keep files
+            # also keep folders starting with "__"
+            owp_models_folder = os.path.join(target_owp_ras_models_path, "models")
+            if (os.path.exists(owp_models_folder)):
+                models_dir_list = os.listdir(owp_models_folder)
 
-            #aws_credentials = { "key": "***", "secret": "***", "token": "***" }
-            #df = pd.read_csv("s3://...", storage_options=aws_credientials)
+                for model_dir in models_dir_list:
+                    if (not model_dir.startswith("__")):  #two underscores
+                        model_dir_path = os.path.join(owp_models_folder, model_dir)
+                        shutil.rmtree(model_dir_path)
+                        if (self.is_verbose == True):
+                            print(f"{model_dir_path} folder removed")
+            else:
+                os.mkdir(owp_models_folder)
+                if (self.is_verbose == True):
+                    print(f"{owp_models_folder} created")
+                
 
-            #obj = s3_client.get_object(Bucket= "ras2fim" , Key = "OWP_ras_models/model_catalog_robh.csv")
-            #df = pd.read_csv(io.BytesIO(obj['Body'].read()), encoding='utf8')
+            # ----------
+            # create log file that can be saved
+
+            # ----------
+            # If inc_download_folders, otherwise we just stop.  Sometimes a list is wanted but not the downloads
+
+            if (inc_download_folders == False):
+                # write out the log
+                print("List created at ... ")
+                return
+
+            # loop through df_huc records and using name, pull down 
+
+
 
         except Exception as ex:
-           print(ex)
+           errMsg = "--------------------------------------" \
+                     f"\n An error has occurred"
+           errMsg = errMsg + traceback.format_exc()
+           print(errMsg, flush=True)
+           #log_error(self.fim_directory, usgs_elev_flag,
+           #             hydro_table_flag, src_cross_flag, huc_id, errMsg)
+
 
         #print(df)
-        print("Done")
+        print("Downloads completed")
         print("number of folders downloaded ??")
+
+        end_time = datetime.now()
+        dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+        print (f"ended: {dt_string}")
+
+        # Calculate duration
+        time_duration = end_time - start_time
+        print(f"Duration: {str(time_duration).split('.')[0]}")
+        print()        
+
+
+    def validate_inputs(self, s3_path_to_catalog, huc_number, inc_download_folders=True, 
+                        target_owp_ras_models_path = "c\\ras2fim_data\\OWP_ras_models"):
+
+        '''
+        If errors are found, an exception will be raised.
+        '''
+
+        # s3 bucket file exists (and creds by default)
+
+        # huc number is valid
+
+        # target_owp_ras_models_path exists
+        if (not os.path.exists(target_owp_ras_models_path)):
+            raise ValueError(f"Target owp_ras_models folder of '{target_owp_ras_models_path}' does not exist")
+
 
 
 if __name__ == '__main__':
