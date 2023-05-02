@@ -23,11 +23,13 @@ Open an **Anaconda Prompt** and navigate to the cloned directory.  Your path may
 ![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_prompt.png)
 
 ### Step 5:
-In the Anaconda Promt, create the `ras2fim` conda environment from the cloned `environment.yml`.<br>
+In the Anaconda Promt, if this is a first time install, you can create the `ras2fim` conda environment from the cloned `environment.yml`.<br>
 ```
 conda env create -f environment.yml
 ```
 ![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_create_env.png)
+If you already have it installed, you can verify the `environment` is installed by typing `conda env list` and you should see a line for ras2fim.<br/><br/>
+
 
 ### Step 6:
 Activate the newly created `ras2fim` conda environment.<br>
@@ -46,3 +48,10 @@ Run the `ras2fim.py` within the `ras2fim` conda environment with a help flag `-h
 python ras2fim.py -h
 ```
 ![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_python_run.png)
+
+### Note:
+If you have VSCode installed, after Step 6 (activate ras2fim), you can type<br>
+```
+code
+```
+and it will launch VSCode as your editor. You will be able to debug and test within VSCode if you like.
