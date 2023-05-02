@@ -53,7 +53,7 @@ class AWS_Base(object):
         # validate the connection)
     
     
-    def load_aws_s3_session(self):
+    def get_aws_s3_session(self):
         
         '''
         Overview
@@ -74,8 +74,32 @@ class AWS_Base(object):
 
         # has not yet been loaded
         aws_session = boto3.Session( aws_access_key_id = os.getenv('AWS_ACCESS_KEY'), 
-                                       aws_secret_access_key=os.getenv('AWS_ACCESS_KEY'), 
-                                       region_name=os.getenv('AWS_ACCESS_KEY') )
+                                     aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY'), 
+                                     region_name = os.getenv('AWS_REGION') )
 
        
         return aws_session
+    
+    def get_aws_cli_credentials(self):
+        
+        '''
+        Overview
+        ----------
+        To run aws cli commands (subprocess), aws creds need to be set up
+        in the command environment. This method will take care of that
+        via bash "exports"
+        
+        Returns
+        -----------
+        A string that can be concatenated to the front of a subprocess cmd
+        and includes the export creds.
+        
+        '''
+        
+        #fh.vprint("getting aws credential string", self.is_verbose, True)
+        
+        cmd = "export AWS_ACCESS_KEY_ID=" + os.getenv('AWS_ACCESS_KEY')
+        cmd += " && export AWS_SECRET_ACCESS_KEY=" + os.getenv('AWS_SECRET_ACCESS_KEY')
+        cmd += " && export AWS_DEFAULT_REGION=" + os.getenv('AWS_REGION')
+        
+        return cmd
