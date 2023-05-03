@@ -133,6 +133,17 @@ class Get_Ras_Models(AWS_Base):
                     # don't log this
                 
 
+            # Save a copy of the filtered models_catalog.csv (or whaver name inputted with date stamp)
+            # to OWP_ras_models (or whatever target path).
+            # version of it.
+            file_dt_string = start_time.strftime("%Y%m%d")
+            filtered_catalog_path = os.path.join(target_owp_ras_models_path, f"models_catalog_{file_dt_string}.csv")
+            df_huc.to_csv(filtered_catalog_path, index=False)
+            self.log_append_and_print(f"Filtered model catalog saved to : {filtered_catalog_path}.\n" \
+                                      "Note: This csv represents all models folders that are pending to be downloaded.\n" \
+                                      "If one model folder does not exist for download from s3, this list is not updated.")
+
+
             # make list from the models_catalog.final_name_key which should be the list of folder names to be downloaded
             folders_to_download = df_huc["final_name_key"].tolist()
             folders_to_download.sort()
@@ -153,7 +164,7 @@ class Get_Ras_Models(AWS_Base):
 
             self.log_append_and_print("")
             self.log_append_and_print("Downloads completed")
-            self.log_append_and_print(f"-- Number of folders downloaded {num_downloaded} (not counting skips)")
+            self.log_append_and_print(f"Number of folders downloaded {num_downloaded} (not counting skips)")
 
         except ValueError as ve:
            errMsg = "--------------------------------------" \
@@ -168,6 +179,8 @@ class Get_Ras_Models(AWS_Base):
                      f"\n An error has occurred"
            errMsg = errMsg + traceback.format_exc()
            self.log_append_and_print(errMsg)
+
+
 
         end_time = datetime.now()
         dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
@@ -238,6 +251,9 @@ class Get_Ras_Models(AWS_Base):
 
     def download_files(self, folder_list):
 
+        self.log_append_and_print("")
+        self.log_append_and_print("......................................")
+
         # ----------
         # remove folders only from the local OWP_ras_models/models (or overwride), keep files
         # also keep folders starting with "__"
@@ -267,16 +283,18 @@ class Get_Ras_Models(AWS_Base):
 
             num_processed += 1
 
+            self.log_append_and_print("")
+
             src_path = self.bucket_name + "/" + self.src_owp_model_folder_path + folder_name + "/"
 
             if s3.exists(src_path) == False:
-                self.log_append_and_print(f"-- {folder_name} - skipped - s3 folder of {src_path} doesn't exist")
+                self.log_append_and_print(f"== {folder_name} - skipped - s3 folder of {src_path} doesn't exist")
                 progress_msg = f">>> {num_processed} of {num_folders_pending} processed"
                 self.log_append_and_print(progress_msg)
                 continue
 
             target_path = os.path.join(self.target_owp_models_folder, folder_name)
-            self.log_append_and_print(f"-- {folder_name} - Downloading to path = {target_path}")
+            self.log_append_and_print(f"== {folder_name} - Downloading to path = {target_path}")
 
             #cmd = root_cmd + f"{src_path} {target_path} --dryrun"
             cmd = root_cmd + f"{src_path} {target_path}"
