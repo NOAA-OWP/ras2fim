@@ -26,9 +26,10 @@ Associated to issue [39](https://github.com/NOAA-OWP/ras2fim/issues/39).
 - For both pulling from S3 as a source as well as for the local target, the "models" will automatically be added at the end of thos provided arguments if/as required.
 - A log file be created in the models/log folder with unique date stamps per run.
 - A "verbose" flag can be optionally added as an argument for additional processing details (note: don't over  use this as it can make errors harder to find). To find an error, simply search the log for the word "error".
-    - Filters downloads from the src models catalog to look for status of "unprocessed" only. Also filters out model catalog final_key_names starting with "1_" one underscore.
-    - Can find huc numbers in the models catalog "hucs" field regardless of string format in that column.  It does assume that models catalog has ensure that leading zero's exist.
-    - All folders in the target models folder will be removed at the start of execution unless the folder starts with two underscores. This ensures old data from previous runs does not bleed through. 
+- Filters downloads from the src models catalog to look for status of "unprocessed" only. Also filters out model catalog final_key_names starting with "1_" one underscore.
+- Can find huc numbers in the models catalog "hucs" field regardless of string format in that column.  It does assume that models catalog has ensure that leading zero's exist.
+- All folders in the target models folder will be removed at the start of execution unless the folder starts with two underscores. This ensures old data from previous runs does not bleed through. 
+- After the source model catalog has been filtered, it will save a copy called models_catalog_{YYYYMMDD}.csv into the target output folder.  Later this csv can be feed into ras2fim.py for meta data for each model.
 
 <br/><br/>
 
