@@ -136,7 +136,7 @@ class Get_Ras_Models(AWS_Base):
             # Save a copy of the filtered models_catalog.csv (or whaver name inputted with date stamp)
             # to OWP_ras_models (or whatever target path).
             # version of it.
-            file_dt_string = start_time.strftime("%Y%m%d")
+            file_dt_string = start_time.strftime("%Y_%m_%d-%H_%M_%S")
             filtered_catalog_path = os.path.join(target_owp_ras_models_path, f"models_catalog_{file_dt_string}.csv")
             df_huc.to_csv(filtered_catalog_path, index=False)
             self.log_append_and_print(f"Filtered model catalog saved to : {filtered_catalog_path}.\n" \
