@@ -32,7 +32,7 @@ Features for this tool include:
     - A log file be created in the models/log folder with unique date stamps per run
     - A "verbose" flag can be optionally added as an argument for additional processing details (note: don't over
          use this as it can make errors harder to find). To find an error, simply search the log for the word "error"
-    - Filters downloads from the src models catalog to look for status of "unprocessed" only. Also filters out
+    - Filters downloads from the src models catalog to look for status of "ready" only. Also filters out
          model catalog final_key_names starting with "1_" one underscore.
     - Can find huc numbers in the models catalog "hucs" field regardless of string format in that column. 
          It does assume that models catalog has ensure that leading zero's exist.
@@ -59,7 +59,7 @@ class Get_Ras_Models(AWS_Base):
                 In S3, the source download folder will be the "models" folder, but put into the "models" folder here, 
                 beside the models_catalog.csv or its override value.
                 The S3 "models" folder, MUST exist beside the model catalog file.
-        - Using the models_catalog.csv, only records with the status of 'unprocessed'
+        - Using the models_catalog.csv, only records with the status of 'ready'
         - Note: The target folder value will check to see if it ends with "models" and add it if needed
             
         Inputs
@@ -109,14 +109,14 @@ class Get_Ras_Models(AWS_Base):
                 self.log_append_and_print(f"models catalog raw record count = {len(df_all)}")
 
             # ----------
-            # look for records that are unprocessed, contains the huc number and does not start with 1_
-            df_huc = df_all.loc[(df_all['status'] == 'unprocessed') & 
+            # look for records that are ready, contains the huc number and does not start with 1_
+            df_huc = df_all.loc[(df_all['status'] == 'ready') & 
                                 (~df_all['final_name_key'].str.startswith("1_")) & 
                                 (df_all['hucs'].str.contains(str(huc_number), na = False))]
 
             if (df_huc.empty):
                 self.log_append_and_print(f"No valid records return for {huc_number}. Note: some may have been filtered out. " \
-                      "Current filter are: status is unprocessed; final_name_key does not start with 1_; " \
+                      "Current filter are: status is ready; final_name_key does not start with 1_; " \
                        "and huc number exists in the huc column." )
                 return
 
@@ -377,12 +377,16 @@ class Get_Ras_Models(AWS_Base):
 if __name__ == '__main__':
 
     # Sample Usage (mins) (also downloads related folders)
-    #python3 get_list_ras_models.py -s s3://xyz/OWP_ras_models/models_catalog.csv -u 12010401
+    #python3 ./tools/aws/get_list_ras_models.py -s s3://xyz/OWP_ras_models/models_catalog.csv -u 12010401
 
-    # NOTE: There are some minor issues with s3 authenication. So.. even though we are passing in a aws creds file,
+    # NOTE: There are some minor issues with s3 authentication. So.. even though we are passing in a aws creds file,
     # for now, you need to be in your user root home directory and run aws configure (if not already done at some point)
     # If has been run on this machine before, you will find a config file and credentials file in your root /.aws directory
     # ie) /users/{your user name}/.aws
+
+    # Ensure you have made a copy of the aws_creds_template.env file to another location and edited for your actual aws assigned
+    # creds. NOAA can not share our credentials to non NOAA/OWP personnel. See the "-c" param for defaults or you can 
+    # override it using the -c arg.
             
     parser = argparse.ArgumentParser(description='Communication with aws s3 data services to download OWP_ras_model folders by HUC')
     
@@ -399,14 +403,14 @@ if __name__ == '__main__':
     # can't default due to security.  ie) s3://xyz/OWP_ras_models/models_catalog.csv
     # Note: the actual models folders are assumed to be a folder named "models" beside the models_catalog.csv
     parser.add_argument('-s','--s3_path_to_catalog', 
-                        help='s3 path and file name of models_catalog.', required=True)
+                        help='(Reqd) s3 path and file name of models_catalog.', required=True)
 
     parser.add_argument('-t','--target_owp_ras_models_path',
                         help='(Opt) Location of the root ras2fim owp_ras_models folders. Defaults = c:\\ras2fim_data\\OWP_ras_models',
                         required=False, default="c:\\ras2fim_data\\OWP_ras_models")
     
     parser.add_argument('-u','--huc_number', 
-                        help='pull model records matching the huc number', required=True)
+                        help='(Reqd) download model records matching this provided number', required=True)
 
     parser.add_argument('-v','--is_verbose', 
                         help='(Opt) Adding this flag will give additional tracing output. Default = False (no extra output)',
