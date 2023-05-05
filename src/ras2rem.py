@@ -91,7 +91,6 @@ def make_rem(Input_dir,Output_dir):
 
 
 if __name__=="__main__":
-    # OMG this proj lib is sooooo annoying and messes up things getting a crs properly!
     try:
         del os.environ["PROJ_LIB"]
     except Exception as e:
