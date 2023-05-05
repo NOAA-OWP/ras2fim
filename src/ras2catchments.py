@@ -12,16 +12,13 @@ import fiona
 import fiona.transform
 from shapely.geometry import Polygon
 from rasterio import features
+import glob
+import time
+from osgeo import gdal
 
+# This function creates a geopackage of Feature IDs from the raster that
+# matches the Depth Grid processing extents from ras2fim Step 5.
 def vectorize(path):
-    
-    # delete this environment variable because the updated library we need
-    # is included in the rasterio wheel
-    try:
-        del os.environ["PROJ_LIB"]
-    except Exception as e:
-        print(e)
-    
     with rasterio.open(path) as src:
         rast = src.read()
 
@@ -42,12 +39,10 @@ def vectorize(path):
     gdf.to_file(path.replace(".tif",".gpkg"),driver="GPKG",layer="catchments") #,crs=gdf.crs)
     return
 
+# This function creates a raster and geopackage of Feature IDs that correspond to the extent
+# of the Depth Grids (and subsequent REMs that also match the Depth Grids)
 def make_catchments(Input_dir,Output_dir):
-    try:
-        del os.environ["PROJ_LIB"]
-    except Exception as e:
-        print(e)
-    
+    start_time = time.time()    
     all_tif_files=list(Path(Input_dir).rglob('*/Depth_Grid/*.tif'))
     rem_values = list(map(lambda var:str(var).split(".tif")[0].split("-")[-1], all_tif_files))
     rem_values=np.unique(rem_values)
@@ -61,9 +56,14 @@ def make_catchments(Input_dir,Output_dir):
             all_comids.append(int(comid))
 
     all_comids = list(set(all_comids))
-    
+    print(f"Looking through {all_comids}")
+
+    # The following file needs to point to a NWM catchments shapefile that is pulled from S3
     nwm_comid_polygons = r"L:\laura_temp\nwm_catchments_clip.shp" # full or full-ish set
+
+    # The following file should be rewired to point to a subset polygon shape in a temp directory
     temp_sub_polygons = r"c:\users\laura.keys\documents\subset_polys.shp" # clipped to relevant
+
     with fiona.open(nwm_comid_polygons) as shapefile:
         print(".. getting all relevant shapes")
         with fiona.open(temp_sub_polygons,"w",driver=shapefile.driver, \
@@ -72,7 +72,8 @@ def make_catchments(Input_dir,Output_dir):
                 if x["properties"]["FEATUREID"] in all_comids:
                     print(f"...... writing {x['properties']['FEATUREID']}")
                     dest.write(x)
-    
+
+    print("TIME to create subset polygons: " +str(time.time()-start_time))
     for rem_value in rem_values:
         raster_to_mosiac = []
         this_rem_tif_files = [file  for file in all_tif_files if file.name.endswith("-%s.tif"%rem_value)]
@@ -131,7 +132,7 @@ def make_catchments(Input_dir,Output_dir):
             m.write(mosaic)
             print(f"++ Writing rem-based comids to {comid_rem_path}")
 
-    # combine all comid files
+    # combine all comid files into one single raster and write out
     all_comid_files = list(Path(Output_dir).rglob('*_comid.tif'))
     raster_to_mosiac = []
 
@@ -159,20 +160,33 @@ def make_catchments(Input_dir,Output_dir):
     for p in all_comid_files:
         os.remove(p)
         #pass
-        
-    os.remove(temp_sub_polygons)
-    os.remove(temp_proj_polygons)
 
+    print(f"Removing {temp_sub_polygons} and {temp_proj_polygons}")
+    temp_sub_poly_files = glob.glob(temp_sub_polygons.replace('.shp','.*'))
+    temp_proj_poly_files = glob.glob(temp_proj_polygons.replace('.shp','.*'))
+    print(temp_sub_poly_files)
+    print(temp_proj_poly_files)
+    for f in temp_sub_poly_files:
+        os.remove(f)
+    for f in temp_proj_poly_files:
+        os.remove(f)
+
+    print("TIME to finish raster creation: " +str(time.time()-start_time))
     print("*** Vectorizing COMIDs")
-    vectorize(comid_path) 
+    vectorize(comid_path)
+    print("TIME to finish vector creation: " +str(time.time()-start_time))
 
 if __name__=="__main__":
-    # OMG this proj lib is sooooo annoying and messes up things getting a crs properly!
+    # delete this environment variable because the updated library we need
+    # is included in the rasterio wheel
     try:
         del os.environ["PROJ_LIB"]
     except Exception as e:
         print(e)
-        
+
+    # These paths should be rewired to point to the following:
+    # Input directory - results from ras2fim Step 5 that contain depth grids
+    # Output directory - desired output directory for feature ID files (currently points to ras2rem outputs)
     Input_dir=r"C:\Users\laura.keys\Documents\starter_rem_data\ras2fim_for_ESIP_AWS\sample-dataset\output_iowa\05_hecras_output"
     Output_dir=r"C:\Users\laura.keys\Documents\starter_rem_data\ras2fim_for_ESIP_AWS\sample-dataset\output_iowa\06_ras2rem_output"
 
