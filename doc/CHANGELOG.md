@@ -13,7 +13,7 @@ Key Notes
 Associated to issue [39](https://github.com/NOAA-OWP/ras2fim/issues/39). 
 
 ### Additions  
-- `data/aws`
+- `tools/aws`
     - `aws_base.py`: a basic parent class used to provide common functionality to any aws type code calls. Currently, it is used by `get_ras_models.py`, but others are expected.
     - `get_ras_models.py` : The tool mentioned above. See key features below.
     - `aws_creds_templates.env`: At this point, some functionality requires a valid aws credentials. However, a user will still need to setup their local user .aws folder with a config and credentials file in it, for this program to run. These are hoped to be amalgamated later. One of the args into `get_ras_models.py` is an override for the default location and adjusted file name.
@@ -26,10 +26,31 @@ Associated to issue [39](https://github.com/NOAA-OWP/ras2fim/issues/39).
 - For both pulling from S3 as a source as well as for the local target, the "models" will automatically be added at the end of thos provided arguments if/as required.
 - A log file be created in the models/log folder with unique date stamps per run.
 - A "verbose" flag can be optionally added as an argument for additional processing details (note: don't over  use this as it can make errors harder to find). To find an error, simply search the log for the word "error".
-- Filters downloads from the src models catalog to look for status of "unprocessed" only. Also filters out model catalog final_key_names starting with "1_" one underscore.
+- Filters downloads from the src models catalog to look for status of "ready" only. Also filters out model catalog final_key_names starting with "1_" one underscore.
 - Can find huc numbers in the models catalog "hucs" field regardless of string format in that column.  It does assume that models catalog has ensure that leading zero's exist.
 - All folders in the target models folder will be removed at the start of execution unless the folder starts with two underscores. This ensures old data from previous runs does not bleed through. 
 - After the source model catalog has been filtered, it will save a copy called models_catalog_{YYYYMMDD}.csv into the target output folder.  Later this csv can be feed into ras2fim.py for meta data for each model.
+
+
+### Steps to apply new features including AWS credentials and conda enviroment.yml changes.
+
+While this is a number of steps, it also setups for a fair bit of new and future functionality.
+
+Use your anaconda terminal window for all "type" commands below.
+
+1) Path to your new code dir. ie) cd c:\users\(your profile name}\projects\dev\ras2fim.
+2) Type `conda activate ras2fim`
+3) Type `conda env update -f environment.yml`.  You are ready to do testing with `ras2fim.py` and other files, but not `get_ras_models.py`
+
+**If you are an NOAA/OWP staff member, do the next steps. Only NOAA/OWP members can use the new `get_ras_models.py`.**
+1) See if you already have aws credentials file in place. Path to c:\users\{profile name|\.aws with a file named config and another named credentials in it. You might have to turn on with file explorer, the ability to see hidden files / folders. Once this is setup for your machine, it will not need to be done again.
+2) If that folder and files are not there, type `aws configure`. It will ask for some AWS keys which you should already have.
+3) In the c:\ras2fim_data folder, create a new subfolder called "config"
+4) Inside the code folder "\tools\aws" is a file called aws_cred_template.env. Copy that file to your new "config" folder.
+5) Rename that file to "aws_hv_s3_creds.env"
+6) Open the file and fill in the fields with the aws credentials values you should have. Make sure to save it.
+7) You are ready to test the new tool.
+
 
 <br/><br/>
 
