@@ -651,7 +651,7 @@ def create_src_subset_csv(hydro_table,catchmentStagesDict,src_table):
 
 
 if __name__ == '__main__':
-    # OMG this proj lib is sooooo annoying and messes up things getting a crs properly!
+    
     try:
         del os.environ["PROJ_LIB"]
     except Exception as e:
