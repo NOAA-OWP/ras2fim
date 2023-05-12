@@ -109,7 +109,6 @@ def fn_create_fim_rasters(str_desired_huc8,
     print(" ")
     print("+=================================================================+")
     print("|                NWM RASTER LIBRARY FROM HEC-RAS                  |")
-    print("|   Created by Andy Carter, PE of the National Water Center       |")
     print("+-----------------------------------------------------------------+")
 
     STR_HUC8 = str_desired_huc8
@@ -204,49 +203,49 @@ def fn_create_fim_rasters(str_desired_huc8,
     
     # create a pool of processors
     num_processors = (mp.cpu_count() - 1)
-    p = Pool(processes = num_processors)
-    
-    df_huc12 = gpd.read_file(str_huc12_area_shp)
-    int_huc12_index = 0
-    
-    l = len(df_huc12)
-    str_prefix = r"Processing HUCs (0 of " + str(l) + "):" 
-    fn_print_progress_bar(0, l, prefix = str_prefix , suffix = 'Complete', length = 27)
-    
-    # Loop through each HUC-12
-    for i in df_huc12.index:
-        str_huc12 = str(df_huc12['HUC_12'][i])
-        int_huc12_index += 1
-        #print(str_huc12)
-        str_prefix = r"Processing HUCs (" + str(int_huc12_index) + " of " + str(l) + "):"
-        fn_print_progress_bar(int_huc12_index, l, prefix = str_prefix , suffix = 'Complete', length = 27)
+    with Pool(processes = num_processors) as executor:
         
-        # Constant - Folder to write the HEC-RAS folders and files
-        str_root_folder_to_create = STR_ROOT_OUTPUT_DIRECTORY + '\\HUC_' + str_huc12
+        df_huc12 = gpd.read_file(str_huc12_area_shp)
+        int_huc12_index = 0
         
-        # Select all the 'feature_id' in a given huc12
-        df_streams_huc12 = df_streams_merge_2.query('huc12 == @str_huc12')
-    
-        # Reset the query index
-        df_streams_huc12 = df_streams_huc12.reset_index()
+        l = len(df_huc12)
+        str_prefix = r"Processing HUCs (0 of " + str(l) + "):" 
+        fn_print_progress_bar(0, l, prefix = str_prefix , suffix = 'Complete', length = 27)
         
-        # Create a folder for the HUC-12 area
-        os.makedirs(str_root_folder_to_create, exist_ok=True)
+        # Loop through each HUC-12
+        for i in df_huc12.index:
+            str_huc12 = str(df_huc12['HUC_12'][i])
+            int_huc12_index += 1
+            #print(str_huc12)
+            str_prefix = r"Processing HUCs (" + str(int_huc12_index) + " of " + str(l) + "):"
+            fn_print_progress_bar(int_huc12_index, l, prefix = str_prefix , suffix = 'Complete', length = 27)
+            
+            # Constant - Folder to write the HEC-RAS folders and files
+            str_root_folder_to_create = STR_ROOT_OUTPUT_DIRECTORY + '\\HUC_' + str_huc12
+            
+            # Select all the 'feature_id' in a given huc12
+            df_streams_huc12 = df_streams_merge_2.query('huc12 == @str_huc12')
         
-        # ammend the pandas dataframe
-        df_streams_huc12_mod1 = df_streams_huc12 [["feature_id",
-                                                   "us_xs",
-                                                   "ds_xs",
-                                                   "peak_flow",
-                                                   "ras_path",
-                                                   "huc12",
-                                                   "settings"]]
-    
-        # create a list of lists from the dataframe
-        list_of_lists_df_streams = df_streams_huc12_mod1.values.tolist()
+            # Reset the query index
+            df_streams_huc12 = df_streams_huc12.reset_index()
+            
+            # Create a folder for the HUC-12 area
+            os.makedirs(str_root_folder_to_create, exist_ok=True)
+            
+            # ammend the pandas dataframe
+            df_streams_huc12_mod1 = df_streams_huc12 [["feature_id",
+                                                    "us_xs",
+                                                    "ds_xs",
+                                                    "peak_flow",
+                                                    "ras_path",
+                                                    "huc12",
+                                                    "settings"]]
+        
+            # create a list of lists from the dataframe
+            list_of_lists_df_streams = df_streams_huc12_mod1.values.tolist()
 
-        if len(list_of_lists_df_streams) > 0:
-            output = p.map(worker_fim_rasters.fn_main_hecras,list_of_lists_df_streams)
+            if len(list_of_lists_df_streams) > 0:
+                output = executor.map(worker_fim_rasters.fn_main_hecras, list_of_lists_df_streams)
         
     tif_count = 0
     for root, dirs, files in os.walk(STR_ROOT_OUTPUT_DIRECTORY):

@@ -37,6 +37,8 @@ import datetime
 import fnmatch
 from re import search
 
+import shared_variables as sv
+
 b_terrain_check_only = False
 
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -55,7 +57,7 @@ def str2bool(v):
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 def fn_run_ras2fim(str_huc8_arg,
                    str_ras_path_arg,
-                   str_out_arg,
+                   r2f_huc_output_dir,
                    str_crs_arg,
                    vert_unit,
                    str_nation_arg,
@@ -75,7 +77,7 @@ def fn_run_ras2fim(str_huc8_arg,
     
     print("  ---(r) HUC 8 WATERSHED: " + str(str_huc8_arg))
     print("  ---(i) PATH TO HEC-RAS: " + str(str_ras_path_arg))
-    print("  ---(o) OUTPUT DIRECTORY: " + str(str_out_arg))
+    print("  ---(o) OUTPUT DIRECTORY: " + str(r2f_huc_output_dir))
     print("  ---(p) PROJECTION OF HEC-RAS MODELS: " + str(str_crs_arg))
     print("  ---(n) PATH TO NATIONAL DATASETS: " + str(str_nation_arg))     
     print("  ---(r) PATH TO HEC-RAS v6.0: " + str(str_hec_path))
@@ -97,18 +99,22 @@ def fn_run_ras2fim(str_huc8_arg,
     int_step = int(str_step_override)
 
     # create an output folder with checks
-    if os.path.exists(str_out_arg):
-        if os.path.exists(os.path.join(str_out_arg,'05_hecras_output','terrain_stats.csv')):
+    if os.path.exists(r2f_huc_output_dir):
+        if os.path.exists(os.path.join(r2f_huc_output_dir, '05_hecras_output', 'terrain_stats.csv')):
             print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
             raise SystemExit(0)
         elif int_step==0:
             print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
-            shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
-    os.mkdir(str_out_arg)   
+            shutil.rmtree(r2f_huc_output_dir, ignore_errors=False, onerror=None)
+    else:
+        os.mkdir(r2f_huc_output_dir)   
     
     # ---- Step 1: create_shapes_from_hecras ----
     # create a folder for the shapefiles from hec-ras
-    str_shapes_from_hecras_dir = os.path.join(str_out_arg, "01_shapes_from_hecras") 
+    print()
+    print ("+++++++ Processing for code STEP 1 +++++++" )
+
+    str_shapes_from_hecras_dir = os.path.join(r2f_huc_output_dir, "01_shapes_from_hecras") 
     if not os.path.exists(str_shapes_from_hecras_dir):
         os.mkdir(str_shapes_from_hecras_dir)
     
@@ -121,7 +127,10 @@ def fn_run_ras2fim(str_huc8_arg,
 
     # ------ Step 2: conflate_hecras_to_nwm -----    
     # do whatever is needed to create folders and determine variables
-    str_shapes_from_conflation_dir = os.path.join(str_out_arg, "02_shapes_from_conflation")
+    print()
+    print ("+++++++ Processing for code  STEP 2 +++++++" )
+
+    str_shapes_from_conflation_dir = os.path.join(r2f_huc_output_dir, "02_shapes_from_conflation")
     if not os.path.exists(str_shapes_from_conflation_dir):
         os.mkdir(str_shapes_from_conflation_dir)
     
@@ -136,9 +145,11 @@ def fn_run_ras2fim(str_huc8_arg,
     # ------ Step 3: get_usgs_dem_from_shape or clip_dem_from_shape ----    
     str_area_shp_name = str_huc8_arg + "_huc_12_ar.shp"
     str_input_path = os.path.join(str_shapes_from_conflation_dir, str_area_shp_name)
-    
+    print()
+    print ("+++++++ Processing for code  STEP 3 +++++++" )
+
     # create output folder
-    str_terrain_from_usgs_dir = os.path.join(str_out_arg, "03_terrain")
+    str_terrain_from_usgs_dir = os.path.join(r2f_huc_output_dir, "03_terrain")
     if not os.path.exists(str_terrain_from_usgs_dir):
         os.mkdir(str_terrain_from_usgs_dir)
         
@@ -180,9 +191,11 @@ def fn_run_ras2fim(str_huc8_arg,
     # str_terrain_from_usgs_dir
     
     # create a converted terrain folder
-    str_hecras_terrain_dir = os.path.join(str_out_arg, "04_hecras_terrain")
+    str_hecras_terrain_dir = os.path.join(r2f_huc_output_dir, "04_hecras_terrain")
     if not os.path.exists(str_hecras_terrain_dir):
         os.mkdir(str_hecras_terrain_dir)
+    print()
+    print ("+++++++  Processing for code STEP 4 +++++++" )
         
     str_area_prj_name = str_huc8_arg + "_huc_12_ar.prj"
     str_projection_path = os.path.join(str_shapes_from_conflation_dir, str_area_prj_name)
@@ -201,9 +214,11 @@ def fn_run_ras2fim(str_huc8_arg,
     # str_terrain_from_usgs_dir
     
     # create a converted terrain folder
-    str_fim_out_dir = os.path.join(str_out_arg, "05_hecras_output")
+    str_fim_out_dir = os.path.join(r2f_huc_output_dir, "05_hecras_output")
     if not os.path.exists(str_fim_out_dir):
         os.mkdir(str_fim_out_dir)
+    print()
+    print ("+++++++ Processing for code  STEP 5 +++++++" )
     
     # path to standard input (PlanStandardText01.txt, PlanStandardText02.txt, ProjectStandardText01.txt )
     str_std_input_path = os.getcwd() # assumed as in directory executing script
@@ -236,6 +251,8 @@ def fn_run_ras2fim(str_huc8_arg,
     str_output_crs = "EPSG:3857"
     # ==============================================
     
+    print()
+    print ("+++++++  Processing for code STEP 6 +++++++" )
     if int_step <= 6:
         fn_simplify_fim_rasters(str_fim_out_dir,
                                 flt_resolution_depth_grid,
@@ -244,15 +261,20 @@ def fn_run_ras2fim(str_huc8_arg,
     
 
     # ------ Step 7: calculate terrain statistics -----
+    print()
+    print ("+++++++ Processing for code  STEP 7 +++++++" )
+
     if int_step <= 7:
         fn_calculate_all_terrain_stats(str_fim_out_dir)
     # -------------------------------------------------
 
     # ------ Step 8: run ras2rem -----
+    print()
+    print ("+++++++ Processing for code  STEP 8 +++++++" )
     if int_step <= 8 and run_ras2rem:
         # define output folder
-        str_ras2rem_dir = os.path.join(str_out_arg, "06_ras2rem")
-        fn_run_ras2rem(str_fim_out_dir, str_ras2rem_dir)
+        str_ras2rem_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_RAS2REM)
+        fn_run_ras2rem(str_ras2rem_dir)
 
     flt_end_run_ras2fim = time.time()
     flt_time_pass_ras2fim = (flt_end_run_ras2fim - flt_start_run_ras2fim) // 1
@@ -260,104 +282,61 @@ def fn_run_ras2fim(str_huc8_arg,
     
     print('Total Compute Time: ' + str(time_pass_ras2fim))
     
-    
-    
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    
+
+def __init_and_run(str_huc8_arg, 
+                   str_crs_arg,
+                   str_hec_path,
+                   r2f_huc_output_dir,
+                   base_ras2fim_path = sv.DEFAULT_BASE_DIR,
+                   str_ras_path_arg = sv.R2F_OUTPUT_MODELS_DIR,
+                   str_nation_arg  = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
+                   vert_unit = 'check',
+                   str_terrain_override = 'None Specified - using USGS WCS',
+                   rem_outputs = True,
+                   str_step_override = 'None Specified - starting at the beginning'):
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='========== RUN RAS2FIM FOR A HEC-RAS 1-D DATASET (HUC8) ==========')
-    
-    parser.add_argument('-w',
-                        dest = "str_huc8_arg",
-                        help='REQUIRED: HUC-8 watershed that is being evaluated: Example: 10170204',
-                        required=True,
-                        metavar='STRING',
-                        type=str)
-    
-    parser.add_argument('-i',
-                        dest = "str_ras_path_arg",
-                        help=r'REQUIRED: path containing the HEC-RAS files: Example C:\HEC\ras_folder',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
+    ####################################################################
+    ####  Some validation of input, but mostly setting up pathing ######
+    # -b   (ie c:\ras2fim)
+    if (os.path.isdir(base_ras2fim_path) == False):
+        raise ValueError("the -bp arg (base path) does not appear to be a folder.")
 
-    parser.add_argument('-o',
-                        dest = "str_out_arg",
-                        help=r'REQUIRED: path to write all the outputs: Example C:\HEC\output_folder',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
-    
-    parser.add_argument('-p',
-                        dest = "str_crs_arg",
-                        help=r'REQUIRED: projection of HEC-RAS models: Example EPSG:26915',
-                        required=True,
-                        metavar='STRING',
-                        type=str)
-    
-    parser.add_argument('-n',
-                        dest = "str_nation_arg",
-                        help=r'REQUIRED: path to national datasets: Example: E:\X-NWS\X-National_Datasets',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
-    
-    parser.add_argument('-r',
-                        dest = "str_hec_path",
-                        help=r'REQUIRED: path to HEC-RAS 6.0: Example: "C:\Program Files (x86)\HEC\HEC-RAS\6.0" (wrap in quotes)',
-                        required=True,
-                        metavar='DIR',
-                        type=str)
-    
-    parser.add_argument('-v',
-                        dest = "vert_unit",
-                        help='OPTIONAL: define the vertical units of the project, one of "meter" or "foot", leave black to have ras2fim check automatically',
-                        required=False,
-                        default='check',
-                        metavar='STRING',
-                        type=str)
+    # -w   (ie 12090301)
+    if (len(str_huc8_arg) != 8):
+        raise ValueError("the -w flag (HUC8) is not 8 characters long")
+    if (str_huc8_arg.isnumeric() == False): # can handle leading zeros
+        raise ValueError("the -w flag (HUC8) does not appear to be a HUC8")
 
-    parser.add_argument('-t',
-                        dest = "str_terrain_override",
-                        help=r'OPTIONAL: path to DEM/VRT to use for mapping: Example: G:\x-fathom\vrt\texas_fathom_20211001.vrt',
-                        required=False,
-                        default='None Specified - using USGS WCS',
-                        metavar='PATH',
-                        type=str)
+    # -i  (ie OWP_ras_models\models)
+    if (os.path.exists(str_ras_path_arg) == False):  # in case we get a full path incoming
+        str_ras_path_arg = os.path.join(base_ras2fim_path, str_ras_path_arg)
+        if (os.path.exists(str_ras_path_arg) == False): # fully pathed should be ok, depending on their input value
+            raise ValueError("the -i arg (ras path arg) does not appear to be a folder.")
+        
+    # -o  (ie 12090301_meters_2277_test_1)
+    if (os.path.exists(r2f_huc_output_dir) == False):  # in case we get a full path incoming
+        r2f_huc_output_dir = os.path.join(base_ras2fim_path, sv.ROOT_DIR_R2F_OUTPUT_MODELS, r2f_huc_output_dir)
+        # we don't need to validate the basic path and the child folder need not yet exist. We built
+        # up the path ourselves.
 
-    parser.add_argument('-m',
-                        dest="rem_outputs",
-                        help=r'OPTIONAL: flag to dictate RAS2REM execution: Enter false to skip, defaults to TRUE',
-                        required=False,
-                        default=True,
-                        metavar='T/F',
-                        type=str2bool)
+    # -n  (ie: inputs\\X-National_Datasets)
+    if (os.path.exists(str_nation_arg) == False):   # in case we get a full path incoming
+        str_nation_arg = os.path.join(base_ras2fim_path, str_nation_arg)
+        if (os.path.exists(str_nation_arg) == False): # fully pathed shoudl be ok, depending on their input value
+            raise ValueError("the -n arg (national dataset) does not appear to be a folder.")
 
-    parser.add_argument('-s',
-                        dest = "str_step_override",
-                        help=r'OPTIONAL: step of processing to start on',
-                        required=False,
-                        default='None Specified - starting at the beginning',
-                        metavar='STRING',
-                        type=str)
+    # -r  (ie: C:\Program Files (x86)\HEC\HEC-RAS\6.0)
+    if (os.path.exists(str_hec_path) == False):
+        raise ValueError("the -r arg (HEC-RAS engine path) does not appear to be correct.")
 
+    # -t  (ie: blank or a path such as inputs\12090301_dem_meters_0_2277.tif)
+    if (str_terrain_override != "None Specified - using USGS WCS"):
+        if (os.path.exists(str_terrain_override) == False): # might be a full path already
+            str_terrain_override = os.path.join(base_ras2fim_path, str_terrain_override)
+            if (os.path.exists(str_nation_arg) == False): # fully pathed shoudl be ok, depending on their input value
+                raise ValueError("the -t arg (terrain override) does not appear to be correct.")
 
-    
-    args = vars(parser.parse_args())
-    
-    str_huc8_arg = args['str_huc8_arg']
-    str_ras_path_arg = args['str_ras_path_arg']
-    str_out_arg = args['str_out_arg']
-    str_crs_arg = args['str_crs_arg']
-    vert_unit = args['vert_unit']
-    str_nation_arg = args['str_nation_arg']
-    str_hec_path = args['str_hec_path']
-    str_terrain_override = args['str_terrain_override']
-    rem_outputs = args['rem_outputs']
-    str_step_override = args['str_step_override']
-
-    
 
     if vert_unit == 'check':
         matches = []
@@ -397,12 +376,109 @@ if __name__ == '__main__':
 
     fn_run_ras2fim(str_huc8_arg,
                    str_ras_path_arg,
-                   str_out_arg,
+                   r2f_huc_output_dir,
                    str_crs_arg,
                    vert_unit,
                    str_nation_arg,
                    str_hec_path,
                    str_terrain_override,
                    rem_outputs,
-                   str_step_override,
-                   )
+                   str_step_override )
+
+    
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='========== RUN RAS2FIM FOR A HEC-RAS 1-D DATASET (HUC8) ==========')
+
+    parser.add_argument('-w',
+                        dest = "str_huc8_arg",
+                        help = 'REQUIRED: HUC-8 watershed that is being evaluated: Example: 10170204',
+                        required = True,
+                        type = str)  # has to be string so it doesn't strip the leading zero
+
+    parser.add_argument('-p',
+                        dest = "str_crs_arg",
+                        help = r'REQUIRED: projection of HEC-RAS models: Example EPSG:2277',
+                        required = True,
+                        type = str)
+
+    parser.add_argument('-r',
+                        dest = "str_hec_path",
+                        help = r'REQUIRED: path to HEC-RAS 6.0: Example: "C:\Program Files (x86)\HEC\HEC-RAS\6.0" (wrap in quotes)',
+                        required = True,
+                        type = str)
+
+    parser.add_argument('-o',
+                        dest = "r2f_huc_output_dir",
+                        help = r'REQUIRED: The name of the r2f huc output folder to be created in the outputs_ras2fim_models folder.'\
+                               r' Example: my_12090301_test_2. It wil be added to the -bp (base path) and the' \
+                               r' hardcoded value of ..ouput_ras2fim_models.. to become something like' \
+                               r' c:\ras2fim_data\output_ras2fim_models\my_12090301_test_2.' \
+                               r' NOTE: you can use a full path if you like and we will not override it.',
+                        required = True,
+                        type = str) 
+
+    parser.add_argument('-bp',
+                        dest = "base_ras2fim_path",
+                        help = 'OPTIONAL: The base local of all of ras2fim folder (ie.. inputs, OWP_ras_models, output_ras2fim_models, etc).' \
+                              r' Defaults to C:\ras2fim_data.',
+                        required = False,
+                        default = sv.DEFAULT_BASE_DIR,
+                        type = str)
+    
+    parser.add_argument('-i',
+                        dest = "str_ras_path_arg",
+                        help = r'OPTIONAL: path containing the HEC_RAS files: Example my_OWP_ras_models\my_models.' \
+                               r' Defaults to OWP_ras_models\models (and we will add the "-bp" flag in front to becomes' \
+                               r' C:\ras2fim_data\my_OWP_ras_models\my_models (or the defaults)).' \
+                               r' NOTE: you can use a full path if you like and we will not override it.',                               
+                        default = sv.R2F_OUTPUT_MODELS_DIR,
+                        required = False,
+                        type = str)
+
+    parser.add_argument('-n',
+                        dest = "str_nation_arg",
+                        help = r'OPTIONAL: path to national datasets: Example: \inputs\my_X-National_Datasets.' \
+                               r' Defaults to \inputs\X-National_Datasets (and we and will add the "-bp" flag in front to becomes' \
+                               r' C:\ras2fim_data\inputs\my_X-National_Datasetss (the defaults)).' \
+                               r' NOTE: you can use a full path if you like and we will not override it.',                               
+                        default = f'{sv.ROOT_DIR_INPUTS}\\{sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR}',
+                        required = False,
+                        type = str)
+        
+    parser.add_argument('-v',
+                        dest = "vert_unit",
+                        help='OPTIONAL: define the vertical units of the project, one of "meter" or "foot",' \
+                             ' leave black to have ras2fim check automatically (Default = check).',
+                        required = False,
+                        default = 'check',
+                        type = str)
+
+    parser.add_argument('-t',
+                        dest = "str_terrain_override",
+                        help = r'OPTIONAL: full path to DEM/VRT to use for mapping: Example: c:\ras2fim_data\inputs\some_dem.tif.' \
+                               r'Defaults to calling USGS website, but note.. it can be unstable and throw 404 and 500 errors.',
+                        required = False,
+                        default = 'None Specified - using USGS WCS',
+                        type = str)
+
+    parser.add_argument('-m',
+                        dest = "rem_outputs",
+                        help = r'OPTIONAL: flag to dictate RAS2REM execution: Enter false to skip, defaults to TRUE.',
+                        required = False,
+                        default = True,
+                        metavar = 'T/F',
+                        type = str2bool)
+
+    parser.add_argument('-s',
+                        dest = "str_step_override",
+                        help = r'OPTIONAL: step of processing to start on.',
+                        required = False,
+                        default = 'None Specified - starting at the beginning',
+                        type = str)
+
+    
+    args = vars(parser.parse_args())
+    
+    __init_and_run(**args)

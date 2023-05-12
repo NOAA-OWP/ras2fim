@@ -141,7 +141,6 @@ def fn_simplify_fim_rasters(str_input_dir,
     print(" ")
     print("+=================================================================+")
     print("|                SIMPLIFIED GEOTIFFS FOR RAS2FIM                  |")
-    print("|   Created by Andy Carter, PE of the National Water Center       |")
     print("+-----------------------------------------------------------------+")
 
     STR_MAP_OUTPUT = str_input_dir
