@@ -150,7 +150,6 @@ if __name__ == '__main__':
     print(" ")
     print("+=================================================================+")
     print("|                    DETERMINE PROCESS STATUS                     |")
-    print("|   Created by Andy Carter, PE of the National Water Center       |")
     print("+-----------------------------------------------------------------+")
     
     print("  ---(i) NAME OF PROCESS: " + str_process_name)

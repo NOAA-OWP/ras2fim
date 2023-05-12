@@ -206,7 +206,6 @@ if __name__ == '__main__':
     print(" ")
     print("+=================================================================+")
     print("|         CALCULATE TERRAIN VS HEC-RAS MODEL STATISTICS           |")
-    print("|   Created by Andy Carter, PE of the National Water Center       |")
     print("+-----------------------------------------------------------------+")
 
     print("  ---(i) HEC-RAS GEOMETRY HDF: " + str_geom_hdf_path)
