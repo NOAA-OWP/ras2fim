@@ -8,6 +8,7 @@ import os
 
 # BASIC ROOT FOLDERS
 DEFAULT_BASE_DIR = r"c:\ras2fim_data"
+DEFAULT_HECRAS_ENGINE_PATH = r'C:\Program Files (x86)\HEC\HEC-RAS\6.0'
 
 ROOT_DIR_INPUTS = "inputs"
 ROOT_DIR_OWP_RAS_MODELS = "OWP_ras_models"

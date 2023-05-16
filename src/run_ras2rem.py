@@ -112,31 +112,31 @@ def fn_ras2rem_make_rem(r2f_hecras_dir, r2f_ras2rem_dir):
         os.remove(p)
 
 
-def fn_run_ras2rem(str_r2f_out_dir, base_ras2fim_path = sv.DEFAULT_BASE_DIR):
+def fn_run_ras2rem(r2f_huc_output_dir, base_ras2fim_path = sv.DEFAULT_BASE_DIR):
     
     ####################################################################
     # Input validation and variable setup
 
     # The subfolders like 05_ and 06_ are referential from here.
-    if (os.path.exists(str_r2f_out_dir) == False):  # in case we get a full path incoming
+    if (os.path.exists(r2f_huc_output_dir) == False):  # in case we get a full path incoming
 
         #if it doesn't exist, then let's add the default pathing and see if exists now
-        str_r2f_out_dir = os.path.join(sv.DEFAULT_BASE_DIR, sv.ROOT_DIR_R2F_OUTPUT_MODELS, str_r2f_out_dir )
-        if (os.path.exists(str_r2f_out_dir) == False):  # this path should be there by now (the huc output folder)
-            raise Exception(f"The ras2fim output directory for this huc does not appear to exist : {str_r2f_out_dir}")
+        r2f_huc_output_dir = os.path.join(sv.DEFAULT_BASE_DIR, sv.ROOT_DIR_R2F_OUTPUT_MODELS, r2f_huc_output_dir )
+        if (os.path.exists(r2f_huc_output_dir) == False):  # this path should be there by now (the huc output folder)
+            raise Exception(f"The ras2fim output directory for this huc does not appear to exist : {r2f_huc_output_dir}")
 
-    if (str_r2f_out_dir.lower().find(sv.R2F_OUTPUT_DIR_RAS2REM.lower()) >= 0):
+    if (r2f_huc_output_dir.lower().find(sv.R2F_OUTPUT_DIR_RAS2REM.lower()) >= 0):
         raise Exception(f"The ras2fim output directory needs to be the root output folder and not the 06_ras2rem subfolder.")
 
     # We need the two subdirectories 
-    r2f_hecras_dir = os.path.join(str_r2f_out_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-    r2f_ras2rem_dir = os.path.join(str_r2f_out_dir, sv.R2F_OUTPUT_DIR_RAS2REM)
+    r2f_hecras_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    r2f_ras2rem_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_RAS2REM)
 
     ####################################################################
     ####  Start processing ######
     print("+=================================================================+")
     print("|                       Run ras2rem                               |")
-    print("  --- RAS2FIM HUC owp_ras2fim_model Path: " + str(str_r2f_out_dir))    
+    print("  --- RAS2FIM HUC owp_ras2fim_model Path: " + str(r2f_huc_output_dir))    
     print("  --- RAS2FIM HECRES Input Path: " + str(r2f_hecras_dir))
     print("  --- RAS2REM Output Path: " + str(r2f_ras2rem_dir))
     print("+-----------------------------------------------------------------+")    
@@ -161,6 +161,13 @@ def fn_run_ras2rem(str_r2f_out_dir, base_ras2fim_path = sv.DEFAULT_BASE_DIR):
 
 if __name__=="__main__":
 
+    # Sample usage:
+    # Using all defaults:
+    #     python run_ras2rem.py -o 12090301_meters_2277_test_22
+
+    # Override every optional argument (and of course, you can override just the ones you like)
+    #     python run_ras2rem.py  -bp c:\ras2fim_rob_folder -o C:\ras2fim_rob_folder\output_ras2fim_models_22\12090301_meters_2277_test_22
+
     parser = argparse.ArgumentParser(description='==== Run RAS2REM ===')
 
     parser.add_argument('-bp',
@@ -172,7 +179,7 @@ if __name__=="__main__":
                         type = str)
 
     parser.add_argument('-o',
-                        dest = "str_r2f_out_dir",
+                        dest = "r2f_huc_output_dir",
                         help = r'REQUIRED: The name of the r2f huc output folder to be created in the outputs_ras2fim_models folder.'\
                                r' Example: if you submit a value of my_12090301_test_2, ' \
                                r' It wil be added to the -bp (base path) and the' \

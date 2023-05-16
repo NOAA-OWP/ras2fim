@@ -283,8 +283,8 @@ def fn_run_ras2fim(str_huc8_arg,
 
 def init_and_run_ras2fim(str_huc8_arg, 
                          str_crs_arg,
-                         str_hec_path,
                          r2f_huc_output_dir,
+                         str_hec_path  = sv.DEFAULT_HECRAS_ENGINE_PATH,
                          base_ras2fim_path = sv.DEFAULT_BASE_DIR,
                          str_ras_path_arg = sv.R2F_OUTPUT_MODELS_DIR,
                          str_nation_arg  = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
@@ -389,6 +389,18 @@ def init_and_run_ras2fim(str_huc8_arg,
 
 if __name__ == '__main__':
     
+    # Sample usage:
+    # Using all defaults:
+    #     python ras2fim.py -w 12090301 -o 12090301_meters_2277_test_2 -p EPSG:2277 -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif
+
+    # Override every optional argument (and of course, you can override just the ones you like)
+    # python ras2fim.py -w 12090301 -bp c:\ras2fim_data_22 -i C:\ras2fim_data_22\OWP_ras_models_22\models_22
+    #    -o C:\ras2fim_data_22\output_ras2fim_models_22\12090301_meters_2277_test_22 -p EPSG:2277
+    #    -n C:\ras2fim_data_22\inputs\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.0"
+    #    -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif
+    #   (don't leave line breaks after eacn line above.. this is just an example)
+
+
     parser = argparse.ArgumentParser(description='========== RUN RAS2FIM FOR A HEC-RAS 1-D DATASET (HUC8) ==========')
 
     parser.add_argument('-w',
@@ -400,12 +412,6 @@ if __name__ == '__main__':
     parser.add_argument('-p',
                         dest = "str_crs_arg",
                         help = r'REQUIRED: projection of HEC-RAS models: Example EPSG:2277',
-                        required = True,
-                        type = str)
-
-    parser.add_argument('-r',
-                        dest = "str_hec_path",
-                        help = r'REQUIRED: path to HEC-RAS 6.0: Example: "C:\Program Files (x86)\HEC\HEC-RAS\6.0" (wrap in quotes)',
                         required = True,
                         type = str)
 
@@ -427,6 +433,14 @@ if __name__ == '__main__':
                         default = sv.DEFAULT_BASE_DIR,
                         type = str)
     
+    parser.add_argument('-r',
+                        dest = "str_hec_path",
+                        help = r'OPTIONAL: path to HEC-RAS 6.0: Defaults to C:\Program Files (x86)\HEC\HEC-RAS\6.0' \
+                               r' but you can override it, Example: "C:\Program Files (x86)\HEC\HEC-RAS\6.3" (wrap in quotes)',
+                        required = False,
+                        default = sv.DEFAULT_HECRAS_ENGINE_PATH,
+                        type = str)
+
     parser.add_argument('-i',
                         dest = "str_ras_path_arg",
                         help = r'OPTIONAL: path containing the HEC_RAS files: Example my_OWP_ras_models\my_models.' \
