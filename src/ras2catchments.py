@@ -82,8 +82,53 @@ def load_nwm_huc_catchments(huc_num, national_ds_dir, src_wbd_huc8_dir, src_nwm_
 
 # This function creates a raster and geopackage of Feature IDs that correspond to the extent
 # of the Depth Grids (and subsequent REMs that also match the Depth Grids)
-def make_catchments(huc_num, r2f_huc_output_dir, base_ras2fim_path, national_ds_dir):
+def make_catchments(huc_num, str_r2f_out_dir, base_ras2fim_path, national_ds_dir):
     
+    ####################################################################
+    ####  Some validation of input, but mostly setting up pathing ######
+    # -b   (ie c:\ras2fim)
+    if (os.path.isdir(base_ras2fim_path) == False):
+        raise ValueError("the -bp arg (base path) does not appear to be a folder.")
+    
+    # -w   (ie 12090301)    
+    if (len(huc_num) != 8):
+        raise ValueError("the -w flag (HUC8) is not 8 characters long")
+    if (huc_num.isnumeric() == False): # can handle leading zeros
+        raise ValueError("the -w flag (HUC8) does not appear to be a HUC8")
+
+
+    # The subfolders like 05_ and 06_ are referential from here.
+    if (os.path.exists(str_r2f_out_dir) == False):  # in case we get a full path incoming
+        str_r2f_out_dir = os.path.join(base_ras2fim_path, "output_ras2fim_models", str_r2f_out_dir)
+        # we don't need to validate the basic path and the child folder need not yet exist. We built
+        # up the path ourselves.
+
+    # -o  (ie 12090301_meters_2277_test_1)
+    # The subfolders like 05_ and 06_ are referential from here.
+    if (os.path.exists(str_r2f_out_dir) == False):  # in case we get a full path incoming
+
+        #if it doesn't exist, then let's add the default pathing and see if exists now
+        str_r2f_out_dir = os.path.join(sv.DEFAULT_BASE_DIR, sv.ROOT_DIR_R2F_OUTPUT_MODELS, str_r2f_out_dir )
+        if (os.path.exists(str_r2f_out_dir) == False):  # this path should be there by now (the huc output folder)
+            raise Exception(f"The ras2fim output directory for this huc does not appear to exist : {str_r2f_out_dir}")
+
+    if (str_r2f_out_dir.lower().find(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT.lower()) >= 0) or (str_r2f_out_dir.lower().find(sv.R2F_OUTPUT_DIR_RAS2REM.lower()) >= 0):
+        raise Exception(f"The ras2fim output directory needs to be the root output folder and not the  05_ OR 06_ output subfolder.")
+
+    # -n  (ie: inputs\\X-National_Datasets)
+    if (os.path.exists(national_ds_dir) == False):   # in case we get a full path incoming
+        national_ds_dir = os.path.join(base_ras2fim_path, national_ds_dir)
+        if (os.path.exists(national_ds_dir) == False): # fully pathed shoudl be ok, depending on their input value
+            raise ValueError("the -n arg (national dataset) does not appear to be a folder.")
+
+    src_nwm_catchments_file = os.path.join(base_ras2fim_path, sv.INPUT_NWM_CATCHMENTS_FILE)
+    src_wbd_huc8_dir = os.path.join(base_ras2fim_path, sv.INPUT_WBD_HUC8_DIR)
+    r2f_hecras_dir = os.path.join(str_r2f_out_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    r2f_ras2rem_dir = os.path.join(str_r2f_out_dir, sv.R2F_OUTPUT_DIR_RAS2REM)
+
+
+    ####################################################################
+    ####  Start processing ######
     start_time = time.time()    
 
     print(" ")
@@ -92,15 +137,10 @@ def make_catchments(huc_num, r2f_huc_output_dir, base_ras2fim_path, national_ds_
     print("+-----------------------------------------------------------------+")
     print("  ---(w) HUC-8: " + huc_num)
     print("  ---(b) BASE_RAS2FIM_PATH: " + base_ras2fim_path)
-    print("  ---(o) OUTPUT DIRECTORY: " + r2f_huc_output_dir)
+    print("  ---(o) OUTPUT DIRECTORY: " + str_r2f_out_dir)
     print("  ---(n) PATH TO NATIONAL DATASETS: " + national_ds_dir)     
     print("===================================================================")
     print(" ")
-
-    src_nwm_catchments_file = os.path.join(base_ras2fim_path, sv.INPUT_NWM_CATCHMENTS_FILE)
-    src_wbd_huc8_dir = os.path.join(base_ras2fim_path, sv.INPUT_WBD_HUC8_DIR)
-    r2f_hecras_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-    r2f_ras2rem_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_RAS2REM)
 
     all_tif_files=list(Path(r2f_hecras_dir).rglob('*/Depth_Grid/*.tif'))
     rem_values = list(map(lambda var:str(var).split(".tif")[0].split("-")[-1], all_tif_files))
@@ -258,42 +298,7 @@ def make_catchments(huc_num, r2f_huc_output_dir, base_ras2fim_path, national_ds_
     vectorize(comid_path)
     print("TIME to finish vector creation: " +str(time.time()-start_time))
     """
-
  
-def __init_and_run(huc_num,
-                   r2f_huc_output_dir,
-                   base_ras2fim_path = sv.DEFAULT_BASE_DIR,
-                   national_ds_dir = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR ):
-
-    
-
-    ####################################################################
-    ####  Some validation of input, but mostly setting up pathing ######
-    # -b   (ie c:\ras2fim)
-    if (os.path.isdir(base_ras2fim_path) == False):
-        raise ValueError("the -bp arg (base path) does not appear to be a folder.")
-    
-    # -w   (ie 12090301)    
-    if (len(huc_num) != 8):
-        raise ValueError("the -w flag (HUC8) is not 8 characters long")
-    if (huc_num.isnumeric() == False): # can handle leading zeros
-        raise ValueError("the -w flag (HUC8) does not appear to be a HUC8")
-
-    # -o  (ie C:\ras2fim_data\output_ras2fim_models\12090301_meters_2277_test_1)
-    # The subfolders like 05_ and 06_ are referential from here.
-    if (os.path.exists(r2f_huc_output_dir) == False):  # in case we get a full path incoming
-        r2f_huc_output_dir = os.path.join(base_ras2fim_path, "output_ras2fim_models", r2f_huc_output_dir)
-        # we don't need to validate the basic path and the child folder need not yet exist. We built
-        # up the path ourselves.
-
-    # -n  (ie: inputs\\X-National_Datasets)
-    if (os.path.exists(national_ds_dir) == False):   # in case we get a full path incoming
-        national_ds_dir = os.path.join(base_ras2fim_path, national_ds_dir)
-        if (os.path.exists(national_ds_dir) == False): # fully pathed shoudl be ok, depending on their input value
-            raise ValueError("the -n arg (national dataset) does not appear to be a folder.")
-
-    make_catchments(huc_num, r2f_huc_output_dir, base_ras2fim_path, national_ds_dir)
-
 
 if __name__=="__main__":
 
@@ -301,16 +306,15 @@ if __name__=="__main__":
     # Input directory - results from ras2fim Step 5 that contain depth grids
     # Output directory - desired output directory for feature ID files (currently points to ras2rem outputs)
 
-    #Input_dir=r"C:\Users\laura.keys\Documents\starter_rem_data\ras2fim_for_ESIP_AWS\sample-dataset\output_iowa\05_hecras_output"
-    #Output_dir=r"C:\Users\laura.keys\Documents\starter_rem_data\ras2fim_for_ESIP_AWS\sample-dataset\output_iowa\06_ras2rem_output"
-
     # delete this environment variable because the updated library we need
     # is included in the rasterio wheel
+    
     try:
-        del os.environ["PROJ_LIB"]
+        #print("os.environ['PROJ_LIB''] is " + os.environ["PROJ_LIB"])
+        if (os.environ["PROJ_LIB"]):
+            del os.environ["PROJ_LIB"]
     except Exception as e:
         print(e)
-
 
     parser = argparse.ArgumentParser(description='========== Create catchments for specified existing output_ras2fim_models folder ==========')
 
@@ -321,9 +325,10 @@ if __name__=="__main__":
                         type = str)
 
     parser.add_argument('-o',
-                        dest = "r2f_huc_output_dir",
+                        dest = "str_r2f_out_dir",
                         help = r'REQUIRED: The name of the huc output folder has to exist already in the outputs_ras2fim_models folder.'\
-                               r' Example: my_12090301_test_2. It wil be added to the -bp (base path) and the' \
+                               r' Example: if you submit a value of my_12090301_test_2, ' \
+                               r' It wil be added to the -bp (base path) and the' \
                                r' hardcoded value of ..ouput_ras2fim_models.. to become something like' \
                                r' c:\ras2fim_data\output_ras2fim_models\my_12090301_test_2.' \
                                r' NOTE: you can use a full path if you like and we will not override it.' \
@@ -351,5 +356,5 @@ if __name__=="__main__":
 
     args = vars(parser.parse_args())
     
-    __init_and_run(**args)
+    make_catchments(**args)
 

@@ -57,7 +57,7 @@ def str2bool(v):
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 def fn_run_ras2fim(str_huc8_arg,
                    str_ras_path_arg,
-                   r2f_huc_output_dir,
+                   str_out_arg,
                    str_crs_arg,
                    vert_unit,
                    str_nation_arg,
@@ -77,7 +77,7 @@ def fn_run_ras2fim(str_huc8_arg,
     
     print("  ---(r) HUC 8 WATERSHED: " + str(str_huc8_arg))
     print("  ---(i) PATH TO HEC-RAS: " + str(str_ras_path_arg))
-    print("  ---(o) OUTPUT DIRECTORY: " + str(r2f_huc_output_dir))
+    print("  ---(o) OUTPUT DIRECTORY: " + str(str_out_arg))
     print("  ---(p) PROJECTION OF HEC-RAS MODELS: " + str(str_crs_arg))
     print("  ---(n) PATH TO NATIONAL DATASETS: " + str(str_nation_arg))     
     print("  ---(r) PATH TO HEC-RAS v6.0: " + str(str_hec_path))
@@ -99,22 +99,22 @@ def fn_run_ras2fim(str_huc8_arg,
     int_step = int(str_step_override)
 
     # create an output folder with checks
-    if os.path.exists(r2f_huc_output_dir):
-        if os.path.exists(os.path.join(r2f_huc_output_dir, '05_hecras_output', 'terrain_stats.csv')):
+    if os.path.exists(str_out_arg):
+        if os.path.exists(os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, 'terrain_stats.csv')):
             print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
             raise SystemExit(0)
         elif int_step==0:
             print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
-            shutil.rmtree(r2f_huc_output_dir, ignore_errors=False, onerror=None)
+            shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
     else:
-        os.mkdir(r2f_huc_output_dir)   
+        os.mkdir(str_out_arg)   
     
     # ---- Step 1: create_shapes_from_hecras ----
     # create a folder for the shapefiles from hec-ras
     print()
     print ("+++++++ Processing for code STEP 1 +++++++" )
 
-    str_shapes_from_hecras_dir = os.path.join(r2f_huc_output_dir, "01_shapes_from_hecras") 
+    str_shapes_from_hecras_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS) 
     if not os.path.exists(str_shapes_from_hecras_dir):
         os.mkdir(str_shapes_from_hecras_dir)
     
@@ -130,7 +130,7 @@ def fn_run_ras2fim(str_huc8_arg,
     print()
     print ("+++++++ Processing for code  STEP 2 +++++++" )
 
-    str_shapes_from_conflation_dir = os.path.join(r2f_huc_output_dir, "02_shapes_from_conflation")
+    str_shapes_from_conflation_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
     if not os.path.exists(str_shapes_from_conflation_dir):
         os.mkdir(str_shapes_from_conflation_dir)
     
@@ -149,7 +149,7 @@ def fn_run_ras2fim(str_huc8_arg,
     print ("+++++++ Processing for code  STEP 3 +++++++" )
 
     # create output folder
-    str_terrain_from_usgs_dir = os.path.join(r2f_huc_output_dir, "03_terrain")
+    str_terrain_from_usgs_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_TERRAIN)
     if not os.path.exists(str_terrain_from_usgs_dir):
         os.mkdir(str_terrain_from_usgs_dir)
         
@@ -191,7 +191,7 @@ def fn_run_ras2fim(str_huc8_arg,
     # str_terrain_from_usgs_dir
     
     # create a converted terrain folder
-    str_hecras_terrain_dir = os.path.join(r2f_huc_output_dir, "04_hecras_terrain")
+    str_hecras_terrain_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_HECRAS_TERRAIN)
     if not os.path.exists(str_hecras_terrain_dir):
         os.mkdir(str_hecras_terrain_dir)
     print()
@@ -214,9 +214,9 @@ def fn_run_ras2fim(str_huc8_arg,
     # str_terrain_from_usgs_dir
     
     # create a converted terrain folder
-    str_fim_out_dir = os.path.join(r2f_huc_output_dir, "05_hecras_output")
-    if not os.path.exists(str_fim_out_dir):
-        os.mkdir(str_fim_out_dir)
+    str_hecras_out_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    if not os.path.exists(str_hecras_out_dir):
+        os.mkdir(str_hecras_out_dir)
     print()
     print ("+++++++ Processing for code  STEP 5 +++++++" )
     
@@ -236,7 +236,7 @@ def fn_run_ras2fim(str_huc8_arg,
     if int_step <= 5:
         fn_create_fim_rasters(str_huc8_arg,
                               str_shapes_from_conflation_dir,
-                              str_fim_out_dir,
+                              str_hecras_out_dir,
                               str_projection_path,
                               str_hecras_terrain_dir,
                               str_std_input_path,
@@ -254,7 +254,7 @@ def fn_run_ras2fim(str_huc8_arg,
     print()
     print ("+++++++  Processing for code STEP 6 +++++++" )
     if int_step <= 6:
-        fn_simplify_fim_rasters(str_fim_out_dir,
+        fn_simplify_fim_rasters(str_hecras_out_dir,
                                 flt_resolution_depth_grid,
                                 str_output_crs)
     # ----------------------------------------
@@ -265,16 +265,14 @@ def fn_run_ras2fim(str_huc8_arg,
     print ("+++++++ Processing for code  STEP 7 +++++++" )
 
     if int_step <= 7:
-        fn_calculate_all_terrain_stats(str_fim_out_dir)
+        fn_calculate_all_terrain_stats(str_hecras_out_dir)
     # -------------------------------------------------
 
     # ------ Step 8: run ras2rem -----
     print()
     print ("+++++++ Processing for code  STEP 8 +++++++" )
     if int_step <= 8 and run_ras2rem:
-        # define output folder
-        str_ras2rem_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_RAS2REM)
-        fn_run_ras2rem(str_ras2rem_dir)
+        fn_run_ras2rem(str_out_arg)
 
     flt_end_run_ras2fim = time.time()
     flt_time_pass_ras2fim = (flt_end_run_ras2fim - flt_start_run_ras2fim) // 1
@@ -283,17 +281,17 @@ def fn_run_ras2fim(str_huc8_arg,
     print('Total Compute Time: ' + str(time_pass_ras2fim))
     
 
-def __init_and_run(str_huc8_arg, 
-                   str_crs_arg,
-                   str_hec_path,
-                   r2f_huc_output_dir,
-                   base_ras2fim_path = sv.DEFAULT_BASE_DIR,
-                   str_ras_path_arg = sv.R2F_OUTPUT_MODELS_DIR,
-                   str_nation_arg  = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
-                   vert_unit = 'check',
-                   str_terrain_override = 'None Specified - using USGS WCS',
-                   rem_outputs = True,
-                   str_step_override = 'None Specified - starting at the beginning'):
+def init_and_run_ras2fim(str_huc8_arg, 
+                         str_crs_arg,
+                         str_hec_path,
+                         r2f_huc_output_dir,
+                         base_ras2fim_path = sv.DEFAULT_BASE_DIR,
+                         str_ras_path_arg = sv.R2F_OUTPUT_MODELS_DIR,
+                         str_nation_arg  = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
+                         vert_unit = 'check',
+                         str_terrain_override = 'None Specified - using USGS WCS',
+                         rem_outputs = True,
+                         str_step_override = 'None Specified - starting at the beginning'):
 
 
     ####################################################################
@@ -338,6 +336,7 @@ def __init_and_run(str_huc8_arg,
                 raise ValueError("the -t arg (terrain override) does not appear to be correct.")
 
 
+    # Setup enviroment logic
     if vert_unit == 'check':
         matches = []
         for root, dirnames, filenames in os.walk(str_ras_path_arg):
@@ -389,6 +388,7 @@ def __init_and_run(str_huc8_arg,
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    
 
 if __name__ == '__main__':
+    
     parser = argparse.ArgumentParser(description='========== RUN RAS2FIM FOR A HEC-RAS 1-D DATASET (HUC8) ==========')
 
     parser.add_argument('-w',
@@ -481,4 +481,4 @@ if __name__ == '__main__':
     
     args = vars(parser.parse_args())
     
-    __init_and_run(**args)
+    init_and_run_ras2fim(**args)
