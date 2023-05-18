@@ -29,6 +29,12 @@ conda env create -f environment.yml
 ```
 ![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_create_env.png)
 If you already have it installed, you can verify the `environment` is installed by typing `conda env list` and you should see a line for ras2fim.<br/><br/>
+Next you need to do one pip install
+```
+pip install rasterio==1.3.5
+```
+
+This should make your environment ready to go.
 
 
 ### Step 6:
@@ -48,6 +54,16 @@ Run the `ras2fim.py` within the `ras2fim` conda environment with a help flag `-h
 python ras2fim.py -h
 ```
 ![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_python_run.png)
+
+### Step 9:
+Now we need to setup the default folder structure for your inputs and outputs. Most tools will let you override any folder to your own pathing, but all tools are defaulted to this structure and it is encouraged as it helps standardize data.
+
+To setup your enviroment default folders:
+```
+a) Make a directory at your c: called ras2fim_data
+b) Make the following subfolder with these names and case `inputs`, `OWP_ras_models`, `outputs_ras2fim_models`
+```
+
 
 ### Note:
 If you have VSCode installed, after Step 6 (activate ras2fim), you can type<br>
