@@ -63,7 +63,8 @@ To setup your enviroment **default** folders:
 a) Make a directory at your c: called ras2fim_data
 b) Make the following subfolder with these names and case `inputs`, `OWP_ras_models`, `outputs_ras2fim_models`. Inside the `OWP_ras_models` folder, make another subfolder called `models`.
 ```
-
+The default folder structure will look like this:
+<img src="default_folder_structure.png" align="right" alt="ras2fim default folder structure image">
 
 ### Note:
 If you have VSCode installed, after Step 6 (activate ras2fim), you can type<br>
