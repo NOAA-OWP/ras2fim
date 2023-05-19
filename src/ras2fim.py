@@ -388,17 +388,63 @@ def init_and_run_ras2fim(str_huc8_arg,
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    
 
 if __name__ == '__main__':
-    
+
+
     # Sample usage:
     # Using all defaults:
     #     python ras2fim.py -w 12090301 -o 12090301_meters_2277_test_2 -p EPSG:2277 -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif
 
-    # Override every optional argument (and of course, you can override just the ones you like)
-    # python ras2fim.py -w 12090301 -bp c:\ras2fim_data_22 -i C:\ras2fim_data_22\OWP_ras_models_22\models_22
-    #    -o C:\ras2fim_data_22\output_ras2fim_models_22\12090301_meters_2277_test_22 -p EPSG:2277
-    #    -n C:\ras2fim_data_22\inputs\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.0"
-    #    -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif
-    #   (don't leave line breaks after eacn line above.. this is just an example)
+    # There are a number of ways to use arguments:
+    #
+    # 1) If you use the defaults, then you will need the default folder structure as seen in the docs/INSTALL.md. It will require you to 
+    #    to create folders in a specific pattern and specific names.
+
+    # 2) You can also use the current code in legacy fashion with all of it's previous arguments.
+    #    ie) python ras2fim.py -w 10170204 -i C:\HEC\input_folder -o C:\HEC\output_folder -p EPSG:26915
+    #            -v False -n E:\X-NWS\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.0"
+          
+    # 3) You can also override just the -bp (base path) argument, it will assume certain pathing after the -bp value folder.
+    #    ie) python ras2fim.py -bp c:/my_ras_dev -w 12090301 -o 12090301_meters_2277_test_2 -p EPSG:2277 -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif
+    #    
+    #    Without any other overrides, when the code looks for models being feed into ras2fim.py, it will look for:
+    #        c:/my_ras_dev/OWP_ras_models/models/{one to many subfoldes with ras models}
+    #    In this case, the output folder will default part of the path and become 
+    #        c:/my_ras_dev/output_ras2fim_models/{the name of the -o flag in shortened form: ie) 12090301_meters_2277_test_22}
+    #        as in c:/my_ras_dev/output_ras2fim_models/12090301_meters_2277_test_22.
+    #
+    #    Why have a -bp argument? You can simply make a full copy of your the default folder structure, but rename your base path.
+    #    ie) -bp c:/my_ras_dev and now you have a fully self contained folder structure. This simplifies your ras2fim.py commands
+    #        signifantly. 
+    #    Remember.. If you are download the following three folders in S3 (ESIP or NOAA/OWP/FIM), DO NOT download all contents
+    #    of the following three folders:
+    #        - OWP_ras_models/models:  This may eventually contain 10,000's or 100,000's of model folders
+    #        - source_hecras_data: This is the raw data supplied by various sources and this folder could have multiple terrabytes
+    #          of data.
+    #        - output_ras_models: This is the output created by ras2fim.py and this eventualy may have hundreds of folders.
+    #    SO... pull down only what you need in small parts of those three folders as/when you need it, in order not to overwhelm 
+    #        your disk space.
+    #    Granted.. this assumes you need info from one or more of those three folders, but you may not need any of it and are working
+    #        with your own datasets.
+    #        
+    # 4) But any and all optional arguments can be overridden, so let's try this version:
+    #    ie) python ras2fim.py -bp c:/my_ras_dev -w 12090301 -o c:/users/my_user/desktop/ras2fim_outputs/12090301_meters_2277_test_2 -p EPSG:2277 -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif
+    #    
+    #    The -bp flag will set the default and the -i flag (input) and -n (national dataset) have not been overridden, so you will get:
+    #        - The ras model files will come from c:/my_ras_dev/OWP_ras_models/models.. and whatever model subfolers inside of that.
+    #        - The national dataset files will come from  c:/my_ras_dev/inputs/X-National_datasets
+    #        - Your outputs have been overriden to go to c:/users/my_user/desktop/ras2fim_outputs/12090301_meters_2277_test_2
+    #          and as always, the output folder will add the 6 subfolders of 01 to 06.
+    #        - As before.. if the final folder of 12090301_meters_2277_test_2 does not yet exist, it will create it.
+    #          However, as before, it will error out if the parent path (ie c:/users/my_user/desktop/ras2fim_outputs) does not exist.
+    # 
+    # 5) You can also override any combination of the optional flags. Here is an example of all values being overridden:
+    #
+    #    python ras2fim.py -w 10170204 -i C:\HEC\input_folder -o C:\HEC\output_folder -p EPSG:26915
+    #            -v False -n E:\X-NWS\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.0"
+    #           (Notice.. it is identical to previous versions of ras2fim.py commands)
+    #
+    #  Note: Careful on copy / pasting commands directly from here as some have line breaks for display purposes.
+    #        Python command line commands don't like line breaks and you will need to remove them.
 
 
     parser = argparse.ArgumentParser(description='========== RUN RAS2FIM FOR A HEC-RAS 1-D DATASET (HUC8) ==========')
