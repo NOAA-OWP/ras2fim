@@ -56,12 +56,12 @@ python ras2fim.py -h
 ![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_python_run.png)
 
 ### Step 9:
-Now we need to setup the default folder structure for your inputs and outputs. Most tools will let you override any folder to your own pathing, but all tools are defaulted to this structure and it is encouraged as it helps standardize data.
+Now we need to setup the **default folder structure** for your inputs and outputs. All code will use this default structure to look for data. Howver, most code will let you override any folder to your own pathing, and you can build your own folder structure. 
 
-To setup your enviroment default folders:
+To setup your enviroment **default** folders:
 ```
 a) Make a directory at your c: called ras2fim_data
-b) Make the following subfolder with these names and case `inputs`, `OWP_ras_models`, `outputs_ras2fim_models`
+b) Make the following subfolder with these names and case `inputs`, `OWP_ras_models`, `outputs_ras2fim_models`. Inside the `OWP_ras_models` folder, make another subfolder called `models`.
 ```
 
 
