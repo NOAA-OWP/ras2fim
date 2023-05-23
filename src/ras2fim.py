@@ -98,16 +98,17 @@ def fn_run_ras2fim(str_huc8_arg,
         str_step_override = 0
     int_step = int(str_step_override)
 
+    # TODO: step system not fully working and needs to be fixed.
     # create an output folder with checks
-    if os.path.exists(str_out_arg):
-        if os.path.exists(os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, 'terrain_stats.csv')):
-            print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
-            raise SystemExit(0)
-        elif int_step==0:
-            print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
-            shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
-    else:
-        os.mkdir(str_out_arg)   
+    #if os.path.exists(str_out_arg):
+    #    if os.path.exists(os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, 'terrain_stats.csv')):
+    #        print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
+    #        raise SystemExit(0)
+    #    elif int_step==0:
+    #        print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
+    #        shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
+    #else:
+    os.mkdir(str_out_arg) # pathing has already been validated and ensure the child folder does not pre-exist
     
     # ---- Step 1: create_shapes_from_hecras ----
     # create a folder for the shapefiles from hec-ras
@@ -285,8 +286,7 @@ def init_and_run_ras2fim(str_huc8_arg,
                          str_crs_arg,
                          r2f_huc_output_dir,
                          str_hec_path  = sv.DEFAULT_HECRAS_ENGINE_PATH,
-                         base_ras2fim_path = sv.DEFAULT_BASE_DIR,
-                         str_ras_path_arg = sv.R2F_OUTPUT_MODELS_DIR,
+                         str_ras_path_arg = sv.HECRAS_INPUT_DEFAULT_OWP_RAS_MODELS,
                          str_nation_arg  = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
                          vert_unit = 'check',
                          str_terrain_override = 'None Specified - using USGS WCS',
@@ -296,9 +296,6 @@ def init_and_run_ras2fim(str_huc8_arg,
 
     ####################################################################
     ####  Some validation of input, but mostly setting up pathing ######
-    # -b   (ie c:\ras2fim)
-    if (os.path.isdir(base_ras2fim_path) == False):
-        raise ValueError("the -bp arg (base path) does not appear to be a folder.")
 
     # -w   (ie 12090301)
     if (len(str_huc8_arg) != 8):
@@ -306,23 +303,31 @@ def init_and_run_ras2fim(str_huc8_arg,
     if (str_huc8_arg.isnumeric() == False): # can handle leading zeros
         raise ValueError("the -w flag (HUC8) does not appear to be a HUC8")
 
-    # -i  (ie OWP_ras_models\models)
-    if (os.path.exists(str_ras_path_arg) == False):  # in case we get a full path incoming
-        str_ras_path_arg = os.path.join(base_ras2fim_path, str_ras_path_arg)
-        if (os.path.exists(str_ras_path_arg) == False): # fully pathed should be ok, depending on their input value
-            raise ValueError("the -i arg (ras path arg) does not appear to be a folder.")
+    # -i  (ie OWP_ras_models\models) (HECRAS models)
+    if (os.path.exists(str_ras_path_arg) == False) and (str_ras_path_arg != sv.HECRAS_INPUT_DEFAULT_OWP_RAS_MODELS):
+        raise ValueError("the -i arg (ras path arg) does not appear to be a valid folder.")
         
-    # -o  (ie 12090301_meters_2277_test_1)
-    if (os.path.exists(r2f_huc_output_dir) == False):  # in case we get a full path incoming
-        r2f_huc_output_dir = os.path.join(base_ras2fim_path, sv.ROOT_DIR_R2F_OUTPUT_MODELS, r2f_huc_output_dir)
-        # we don't need to validate the basic path and the child folder need not yet exist. We built
-        # up the path ourselves.
+    # -o  (ie 12090301_meters_2277_test_1) or some full custom path
+    # We need to remove the the last folder name and validate that the parent paths are valid
+    is_invalid_path = False
+    if ("\\" in r2f_huc_output_dir):  # submitted a full path
+        parent_dir_name = os.path.dirname(r2f_huc_output_dir)
+        if (os.path.exists(parent_dir_name) == False): # parent path must exist
+            is_invalid_path = True
+    else: # they provide just a child folder (base path name)
+        r2f_huc_output_dir = os.path.join(sv.R2F_DEFAULT_OUTPUT_MODELS, r2f_huc_output_dir)
+        if (os.path.exists(r2f_huc_output_dir) == True): # child folder must not exist
+            is_invalid_path = True
+
+    if (is_invalid_path == True):
+        raise ValueError('The -o child folder (base path) can not pre-exist as we will create it, but the ' \
+                         ' parent folders must exist. See code notes in the __main__ section for details and examples')
+
 
     # -n  (ie: inputs\\X-National_Datasets)
-    if (os.path.exists(str_nation_arg) == False):   # in case we get a full path incoming
-        str_nation_arg = os.path.join(base_ras2fim_path, str_nation_arg)
-        if (os.path.exists(str_nation_arg) == False): # fully pathed shoudl be ok, depending on their input value
-            raise ValueError("the -n arg (national dataset) does not appear to be a folder.")
+    if (os.path.exists(str_nation_arg) == False) and (str_nation_arg != sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR):
+        raise ValueError("the -n arg (inputs x national datasets path arg) does not appear to be a valid folder.")
+
 
     # -r  (ie: C:\Program Files (x86)\HEC\HEC-RAS\6.0)
     if (os.path.exists(str_hec_path) == False):
@@ -330,10 +335,8 @@ def init_and_run_ras2fim(str_huc8_arg,
 
     # -t  (ie: blank or a path such as inputs\12090301_dem_meters_0_2277.tif)
     if (str_terrain_override != "None Specified - using USGS WCS"):
-        if (os.path.exists(str_terrain_override) == False): # might be a full path already
-            str_terrain_override = os.path.join(base_ras2fim_path, str_terrain_override)
-            if (os.path.exists(str_nation_arg) == False): # fully pathed shoudl be ok, depending on their input value
-                raise ValueError("the -t arg (terrain override) does not appear to be correct.")
+        if (os.path.exists(str_terrain_override) == False): # might be a full path 
+            raise ValueError("the -t arg (terrain override) does not appear to be correct a valid path and file.")
 
 
     # Setup enviroment logic
@@ -396,52 +399,28 @@ if __name__ == '__main__':
 
     # There are a number of ways to use arguments:
     #
-    # 1) If you use the defaults, then you will need the default folder structure as seen in the docs/INSTALL.md. It will require you to 
+    # 1) You can use the defaults, which will use the folder structure as seen in the docs/INSTALL.md. It will require you to 
     #    to create folders in a specific pattern and specific names.
 
     # 2) You can also use the current code in legacy fashion with all of it's previous arguments.
     #    ie) python ras2fim.py -w 10170204 -i C:\HEC\input_folder -o C:\HEC\output_folder -p EPSG:26915
     #            -v False -n E:\X-NWS\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.0"
-          
-    # 3) You can also override just the -bp (base path) argument, it will assume certain pathing after the -bp value folder.
-    #    ie) python ras2fim.py -bp c:/my_ras_dev -w 12090301 -o 12090301_meters_2277_test_2 -p EPSG:2277 -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif
-    #    
-    #    Without any other overrides, when the code looks for models being feed into ras2fim.py, it will look for:
-    #        c:/my_ras_dev/OWP_ras_models/models/{one to many subfoldes with ras models}
-    #    In this case, the output folder will default part of the path and become 
-    #        c:/my_ras_dev/output_ras2fim_models/{the name of the -o flag in shortened form: ie) 12090301_meters_2277_test_22}
-    #        as in c:/my_ras_dev/output_ras2fim_models/12090301_meters_2277_test_22.
-    #
-    #    Why have a -bp argument? You can simply make a full copy of your the default folder structure, but rename your base path.
-    #    ie) -bp c:/my_ras_dev and now you have a fully self contained folder structure. This simplifies your ras2fim.py commands
-    #        signifantly. 
-    #    Remember.. If you are download the following three folders in S3 (ESIP or NOAA/OWP/FIM), DO NOT download all contents
-    #    of the following three folders:
-    #        - OWP_ras_models/models:  This may eventually contain 10,000's or 100,000's of model folders
-    #        - source_hecras_data: This is the raw data supplied by various sources and this folder could have multiple terrabytes
-    #          of data.
-    #        - output_ras_models: This is the output created by ras2fim.py and this eventualy may have hundreds of folders.
-    #    SO... pull down only what you need in small parts of those three folders as/when you need it, in order not to overwhelm 
-    #        your disk space.
-    #    Granted.. this assumes you need info from one or more of those three folders, but you may not need any of it and are working
-    #        with your own datasets.
     #        
-    # 4) But any and all optional arguments can be overridden, so let's try this version:
-    #    ie) python ras2fim.py -bp c:/my_ras_dev -w 12090301 -o c:/users/my_user/desktop/ras2fim_outputs/12090301_meters_2277_test_2 -p EPSG:2277 -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif
+    #    But any and all optional arguments can be overridden, so let's try this version:
+    #    ie) python ras2fim.py -w 12090301 -i C:\HEC\input_folder -o c:/users/my_user/desktop/ras2fim_outputs/12090301_meters_2277_test_2 -p EPSG:2277
+    #                          -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif -n E:\X-NWS\X-National_Datasets
     #    
-    #    The -bp flag will set the default and the -i flag (input) and -n (national dataset) have not been overridden, so you will get:
-    #        - The ras model files will come from c:/my_ras_dev/OWP_ras_models/models.. and whatever model subfolers inside of that.
-    #        - The national dataset files will come from  c:/my_ras_dev/inputs/X-National_datasets
-    #        - Your outputs have been overriden to go to c:/users/my_user/desktop/ras2fim_outputs/12090301_meters_2277_test_2
-    #          and as always, the output folder will add the 6 subfolders of 01 to 06.
-    #        - As before.. if the final folder of 12090301_meters_2277_test_2 does not yet exist, it will create it.
-    #          However, as before, it will error out if the parent path (ie c:/users/my_user/desktop/ras2fim_outputs) does not exist.
-    # 
-    # 5) You can also override any combination of the optional flags. Here is an example of all values being overridden:
+    #        - When the -n arg not being set, it defaults to c:/ras2fim_data/inputs/X-National_datasets.
     #
-    #    python ras2fim.py -w 10170204 -i C:\HEC\input_folder -o C:\HEC\output_folder -p EPSG:26915
-    #            -v False -n E:\X-NWS\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.0"
-    #           (Notice.. it is identical to previous versions of ras2fim.py commands)
+    #        - The -o arg is required, but can be either a full path (as shown above), or a simple folder name. 
+    #             ie) -o c:/users/my_user/desktop/ras2fim_outputs/12090301_meters_2277_test_2  (the 6 folders of 01, 02... 06 will be under this folder can not be overriden).
+    #                 OR
+    #                 -o 12090301_meters_2277_test_3  (We will use the root default pathing and become c:/ras2fim_data/outputs_ras2fim_models/12090301_meters_2277_test_3)
+    #             As before.. if the final folder of 12090301_meters_2277_test_2 can not pre-exist and we will create it.
+    #             However, as before, it will error out if the parent path (ie c:/users/my_user/desktop/ras2fim_outputs) does not exist.
+    #
+    #         - The -i arg is optional and defaults to c:/ras2fim_data/OWP_ras_models/models. Each file or subfolder in this directory will be used as input into the ras2fim.py code.
+    #              Again, you an override this to any location you like.
     #
     #  Note: Careful on copy / pasting commands directly from here as some have line breaks for display purposes.
     #        Python command line commands don't like line breaks and you will need to remove them.
@@ -463,21 +442,11 @@ if __name__ == '__main__':
 
     parser.add_argument('-o',
                         dest = "r2f_huc_output_dir",
-                        help = r'REQUIRED: The name of the r2f huc output folder to be created in the outputs_ras2fim_models folder.'\
-                               r' Example: my_12090301_test_2. It wil be added to the -bp (base path) and the' \
-                               r' hardcoded value of ..ouput_ras2fim_models.. to become something like' \
-                               r' c:\ras2fim_data\output_ras2fim_models\my_12090301_test_2.' \
-                               r' NOTE: you can use a full path if you like and we will not override it.',
+                        help = r'REQUIRED: This can be used in one of two ways. You can submit either a full path' \
+                               r' such as c:\users\my_user\Desktop\myoutput OR you can add a simple final folder name.' \
+                                ' Please see the embedded notes in the __main__ section of the code for details and  examples.',
                         required = True,
                         type = str) 
-
-    parser.add_argument('-bp',
-                        dest = "base_ras2fim_path",
-                        help = 'OPTIONAL: The base local of all of ras2fim folder (ie.. inputs, OWP_ras_models, output_ras2fim_models, etc).' \
-                              r' Defaults to C:\ras2fim_data.',
-                        required = False,
-                        default = sv.DEFAULT_BASE_DIR,
-                        type = str)
     
     parser.add_argument('-r',
                         dest = "str_hec_path",
@@ -489,21 +458,17 @@ if __name__ == '__main__':
 
     parser.add_argument('-i',
                         dest = "str_ras_path_arg",
-                        help = r'OPTIONAL: path containing the HEC_RAS files: Example my_OWP_ras_models\my_models.' \
-                               r' Defaults to OWP_ras_models\models (and we will add the "-bp" flag in front to becomes' \
-                               r' C:\ras2fim_data\my_OWP_ras_models\my_models (or the defaults)).' \
-                               r' NOTE: you can use a full path if you like and we will not override it.',                               
-                        default = sv.R2F_OUTPUT_MODELS_DIR,
+                        help = r'OPTIONAL: path containing the HEC_RAS files: Example -i C:\HEC\input_folder\my_models.' \
+                               r' Defaults to c:\ras2fim_datas\OWP_ras_models\models.',
+                        default = sv.HECRAS_INPUT_DEFAULT_OWP_RAS_MODELS,
                         required = False,
                         type = str)
 
     parser.add_argument('-n',
                         dest = "str_nation_arg",
-                        help = r'OPTIONAL: path to national datasets: Example: \inputs\my_X-National_Datasets.' \
-                               r' Defaults to \inputs\X-National_Datasets (and we and will add the "-bp" flag in front to becomes' \
-                               r' C:\ras2fim_data\inputs\my_X-National_Datasetss (the defaults)).' \
-                               r' NOTE: you can use a full path if you like and we will not override it.',                               
-                        default = f'{sv.ROOT_DIR_INPUTS}\\{sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR}',
+                        help = r'OPTIONAL: path to national datasets: Example: E:\X-NWS\X-National_Datasets.' \
+                               r' Defaults to c:\ras2fim_data\inputs\X-National_Datasets.',
+                        default = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
                         required = False,
                         type = str)
         
@@ -517,7 +482,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-t',
                         dest = "str_terrain_override",
-                        help = r'OPTIONAL: full path to DEM/VRT to use for mapping: Example: c:\ras2fim_data\inputs\some_dem.tif.' \
+                        help = r'OPTIONAL: full path to DEM Tif to use for mapping: Example: c:\ras2fim_data\inputs\some_dem.tif.' \
                                r'Defaults to calling USGS website, but note.. it can be unstable and throw 404 and 500 errors.',
                         required = False,
                         default = 'None Specified - using USGS WCS',
@@ -525,7 +490,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-m',
                         dest = "rem_outputs",
-                        help = r'OPTIONAL: flag to dictate RAS2REM execution: Enter false to skip, defaults to TRUE.',
+                        help = r'OPTIONAL: flag to dictate including RAS2REM execution: Enter false to skip, defaults to TRUE.',
                         required = False,
                         default = True,
                         metavar = 'T/F',
@@ -533,7 +498,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-s',
                         dest = "str_step_override",
-                        help = r'OPTIONAL: step of processing to start on.',
+                        help = r'OPTIONAL: step of processing to start on. Note: This feature is temporarily not working.',
                         required = False,
                         default = 'None Specified - starting at the beginning',
                         type = str)

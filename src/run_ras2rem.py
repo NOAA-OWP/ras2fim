@@ -39,7 +39,7 @@ def fn_ras2rem_make_rating_curve(r2f_hecras_dir, r2f_ras2rem_dir):
     rating_curve_df.to_csv(os.path.join(r2f_ras2rem_dir,"rating_curve.csv"), index = False)
 
 
-def fn_ras2rem_make_rem(r2f_hecras_dir, r2f_ras2rem_dir):
+def fn_make_rems(r2f_hecras_dir, r2f_ras2rem_dir):
     '''
     Args:
         r2f_hecras_dir: directory containing all fim raster  (the huc model 05_hecras_outputs)
@@ -112,21 +112,25 @@ def fn_ras2rem_make_rem(r2f_hecras_dir, r2f_ras2rem_dir):
         os.remove(p)
 
 
-def fn_run_ras2rem(r2f_huc_output_dir, base_ras2fim_path = sv.DEFAULT_BASE_DIR):
+def fn_run_ras2rem(r2f_huc_output_dir):
     
     ####################################################################
     # Input validation and variable setup
 
     # The subfolders like 05_ and 06_ are referential from here.
-    if (os.path.exists(r2f_huc_output_dir) == False):  # in case we get a full path incoming
+    # -o  (ie 12090301_meters_2277_test_1) or some full custom path
+    # We need to remove the the last folder name and validate that the parent paths are valid
+    is_invalid_path = False
+    if ("\\" in r2f_huc_output_dir):  # submitted a full path
+        if (os.path.exists(r2f_huc_output_dir) == False): # full path must exist
+            is_invalid_path = True
+    else: # they provide just a child folder (base path name)
+        r2f_huc_output_dir = os.path.join(sv.R2F_DEFAULT_OUTPUT_MODELS, r2f_huc_output_dir)
+        if (os.path.exists(r2f_huc_output_dir) == False): # child folder must exist
+            is_invalid_path = True
 
-        #if it doesn't exist, then let's add the default pathing and see if exists now
-        r2f_huc_output_dir = os.path.join(sv.DEFAULT_BASE_DIR, sv.ROOT_DIR_R2F_OUTPUT_MODELS, r2f_huc_output_dir )
-        if (os.path.exists(r2f_huc_output_dir) == False):  # this path should be there by now (the huc output folder)
-            raise Exception(f"The ras2fim output directory for this huc does not appear to exist : {r2f_huc_output_dir}")
-
-    if (r2f_huc_output_dir.lower().find(sv.R2F_OUTPUT_DIR_RAS2REM.lower()) >= 0):
-        raise Exception(f"The ras2fim output directory needs to be the root output folder and not the 06_ras2rem subfolder.")
+    if (is_invalid_path == True):
+        raise ValueError('The -o folder must exist and appears to be invalid.')
 
     # We need the two subdirectories 
     r2f_hecras_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
@@ -137,7 +141,7 @@ def fn_run_ras2rem(r2f_huc_output_dir, base_ras2fim_path = sv.DEFAULT_BASE_DIR):
     print("+=================================================================+")
     print("|                       Run ras2rem                               |")
     print("  --- RAS2FIM HUC owp_ras2fim_model Path: " + str(r2f_huc_output_dir))    
-    print("  --- RAS2FIM HECRES Input Path: " + str(r2f_hecras_dir))
+    print("  --- RAS2FIM ras2fim HECRES Input Path: " + str(r2f_hecras_dir))
     print("  --- RAS2REM Output Path: " + str(r2f_ras2rem_dir))
     print("+-----------------------------------------------------------------+")    
 
@@ -151,7 +155,7 @@ def fn_run_ras2rem(r2f_huc_output_dir, base_ras2fim_path = sv.DEFAULT_BASE_DIR):
     os.mkdir(r2f_ras2rem_dir)
 
     fn_ras2rem_make_rating_curve(r2f_hecras_dir, r2f_ras2rem_dir)
-    fn_ras2rem_make_rem(r2f_hecras_dir, r2f_ras2rem_dir)
+    fn_make_rems(r2f_hecras_dir, r2f_ras2rem_dir)
 
     flt_end_ras2rem = time.time()
     flt_time_pass_ras2rem = (flt_end_ras2rem - flt_start_ras2rem) // 1
@@ -165,27 +169,20 @@ if __name__=="__main__":
     # Using all defaults:
     #     python run_ras2rem.py -o 12090301_meters_2277_test_22
 
-    # Override every optional argument (and of course, you can override just the ones you like)
-    #     python run_ras2rem.py  -bp c:\ras2fim_rob_folder -o C:\ras2fim_rob_folder\output_ras2fim_models_22\12090301_meters_2277_test_22
+    #  - The -o arg is required, but can be either a full path (as shown above), or a simple folder name but not the "06_" folder name. Use the primary huc ras2fim output directory.
+    #        ie) -o c:/users/my_user/desktop/ras2fim_outputs/12090301_meters_2277_test_2  (the 6 folders of 01, 02... 05 will be under this folder can not be overriden).
+    #            OR
+    #            -o 12090301_meters_2277_test_3  (We will use the root default pathing and become c:/ras2fim_data/outputs_ras2fim_models/12090301_meters_2277_test_3)
+    
+    # If the "06_" folder exists, it will be removed and overwritten.
 
     parser = argparse.ArgumentParser(description='==== Run RAS2REM ===')
 
-    parser.add_argument('-bp',
-                        dest = "base_ras2fim_path",
-                        help = 'OPTIONAL: The base local of all of ras2fim folder (ie.. inputs, OWP_ras_models, output_ras2fim_models, etc).' \
-                              r' Defaults to C:\ras2fim_data.',
-                        required = False,
-                        default = "c:\\ras2fim_data",
-                        type = str)
-
     parser.add_argument('-o',
                         dest = "r2f_huc_output_dir",
-                        help = r'REQUIRED: The name of the r2f huc output folder to be created in the outputs_ras2fim_models folder.'\
-                               r' Example: if you submit a value of my_12090301_test_2, ' \
-                               r' It wil be added to the -bp (base path) and the' \
-                               r' hardcoded value of ..ouput_ras2fim_models.. to become something like' \
-                               r' c:\ras2fim_data\output_ras2fim_models\my_12090301_test_2.' \
-                               r' NOTE: you can use a full path if you like and we will not override it.',
+                        help = r'REQUIRED: This can be used in one of two ways. You can submit either a full path' \
+                               r' such as c:\users\my_user\Desktop\myoutput OR you can add a simple final folder name.' \
+                                ' Please see the embedded notes in the __main__ section of the code for details and  examples.',
                         required = True,
                         type = str) 
 

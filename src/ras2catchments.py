@@ -84,16 +84,11 @@ def load_nwm_huc_catchments(huc_num, national_ds_dir, src_wbd_huc8_dir, src_nwm_
 # of the Depth Grids (and subsequent REMs that also match the Depth Grids)
 def make_catchments(huc_num,
                     r2f_huc_output_dir,
-                    base_ras2fim_path = sv.DEFAULT_BASE_DIR,
-                    national_ds_dir = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
-                    src_nwm_catchments_file = sv.INPUT_NWM_CATCHMENTS_FILE):
+                    national_ds_dir = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR):
     
 
     ####################################################################
     ####  Some validation of input, but mostly setting up pathing ######
-    # -b   (ie c:\ras2fim)
-    if (os.path.isdir(base_ras2fim_path) == False):
-        raise ValueError("the -bp arg (base path) does not appear to be a folder.")
     
     # -w   (ie 12090301)    
     if (len(huc_num) != 8):
@@ -102,44 +97,46 @@ def make_catchments(huc_num,
         raise ValueError("the -w flag (HUC8) does not appear to be a HUC8")
 
 
-    # -o  (ie 12090301_meters_2277_test_1)
     # The subfolders like 05_ and 06_ are referential from here.
-    if (os.path.exists(r2f_huc_output_dir) == False):  # in case we get a full path incoming
+    # -o  (ie 12090301_meters_2277_test_1) or some full custom path
+    # We need to remove the the last folder name and validate that the parent paths are valid
+    is_invalid_path = False
+    if ("\\" in r2f_huc_output_dir):  # submitted a full path
+        if (os.path.exists(r2f_huc_output_dir) == False): # full path must exist
+            is_invalid_path = True
+    else: # they provide just a child folder (base path name)
+        r2f_huc_output_dir = os.path.join(sv.R2F_DEFAULT_OUTPUT_MODELS, r2f_huc_output_dir)
+        if (os.path.exists(r2f_huc_output_dir) == False): # child folder must exist
+            is_invalid_path = True
 
-        #if it doesn't exist, then let's add the default pathing and see if exists now
-        r2f_huc_output_dir = os.path.join(sv.DEFAULT_BASE_DIR, sv.ROOT_DIR_R2F_OUTPUT_MODELS, r2f_huc_output_dir )
-        if (os.path.exists(r2f_huc_output_dir) == False):  # this path should be there by now (the huc output folder)
-            raise Exception(f"The ras2fim output directory for this huc does not appear to exist : {r2f_huc_output_dir}")
+    if (is_invalid_path == True):
+        raise ValueError('The -o folder must exist and appears to be invalid.')
 
-    if (r2f_huc_output_dir.lower().find(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT.lower()) >= 0) or (r2f_huc_output_dir.lower().find(sv.R2F_OUTPUT_DIR_RAS2REM.lower()) >= 0):
-        raise Exception(f"The ras2fim output directory needs to be the root output folder and not the  05_ OR 06_ output subfolder.")
-
-    # But the 05 directory must already exist (just not submitted as input) ( maybe it wasn't processed yet)
+    # AND the 05 directory must already exist 
     r2f_hecras_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-    if (os.path.exists(r2f_hecras_dir) == False):  # in case we get a full path incoming
+    if (os.path.exists(r2f_hecras_dir) == False):
         raise Exception(f"The ras2fim huc output, {sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT} subfolder does not appear to exist." \
                         " Ensure ras2fim has been run and created a value 05 folder.")
     
-    # And the 06 directory must already exist (just not submitted as input) ( maybe it wasn't processed yet)
+    # And the 06 directory must already exist ( maybe it wasn't processed yet)
     r2f_ras2rem_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_RAS2REM)
-    if (os.path.exists(r2f_ras2rem_dir) == False):  # in case we get a full path incoming
+    if (os.path.exists(r2f_ras2rem_dir) == False):
         raise Exception(f"The ras2fim huc output, {sv.R2F_OUTPUT_DIR_RAS2REM} subfolder does not appear to exist." \
                         " Ensure ras2rem has been run and created a value 06 folder.")
 
     # -n  (ie: inputs\\X-National_Datasets)
-    if (os.path.exists(national_ds_dir) == False):   # in case we get a full path incoming
-        national_ds_dir = os.path.join(base_ras2fim_path, national_ds_dir)
-        if (os.path.exists(national_ds_dir) == False): # fully pathed shoudl be ok, depending on their input value
-            raise ValueError("the -n arg (national dataset) does not appear to be a folder.")
+    if (os.path.exists(national_ds_dir) == False) and (national_ds_dir != sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR):
+        raise ValueError("the -n arg (inputs x national datasets path arg) does not appear to be a valid folder.")
 
-    if (os.path.exists(src_nwm_catchments_file) == False):   # in case we get a full path incoming
-        src_nwm_catchments_file = os.path.join(base_ras2fim_path, sv.INPUT_NWM_CATCHMENTS_FILE)
-        if (os.path.exists(src_nwm_catchments_file) == False): # fully pathed shoudl be ok, depending on their input value
-            raise ValueError(f"the -c arg (nwm catchments file) does not appear to exist : {src_nwm_catchments_file}.")
+#    TODO: Get this workign
+    #src_nwm_catchments_file = ""
+
+    #if (os.path.exists(src_nwm_catchments_file) == False):   # in case we get a full path incoming
+    #    raise ValueError(f"the -c arg (nwm catchments file) does not appear to exist : {src_nwm_catchments_file}.")
 
 
     # TODO: This is unconfirmed as a needed input. Might make it optional input arg
-    src_wbd_huc8_dir = os.path.join(base_ras2fim_path, sv.INPUT_WBD_HUC8_DIR)
+    #src_wbd_huc8_dir = os.path.join(, sv.INPUT_WBD_HUC8_DIR)
 
 
     ####################################################################
@@ -151,10 +148,9 @@ def make_catchments(huc_num,
     print("|                 CREATE CATCHMENTS                               |")
     print("+-----------------------------------------------------------------+")
     print("  ---(w) HUC-8: " + huc_num)
-    print("  ---(bp) BASE_RAS2FIM_PATH: " + base_ras2fim_path)
     print("  ---(o) OUTPUT DIRECTORY: " + r2f_huc_output_dir)
-    print("  ---(n) PATH TO NATIONAL DATASETS: " + national_ds_dir)     
-    print("  ---(c) PATH TO nwm_catchments.gpkg: " + src_nwm_catchments_file)     
+    print("  ---(n) PATH TO NATIONAL DATASETS: " + national_ds_dir)    
+    # print("  ---(c)") 
     print("===================================================================")
     print(" ")
 
@@ -173,11 +169,13 @@ def make_catchments(huc_num,
     all_comids = list(set(all_comids))
     print(f"Looking through {all_comids}")
 
-    nwm_catchments_subset_file = load_nwm_huc_catchments(huc_num,
-                                                         national_ds_dir,
-                                                         src_wbd_huc8_dir,
-                                                         src_nwm_catchments_file, 
-                                                         r2f_ras2rem_dir)
+    return
+
+    #nwm_catchments_subset_file = load_nwm_huc_catchments(huc_num,
+    #                                                     national_ds_dir,
+    #                                                     src_wbd_huc8_dir,
+    #                                                     src_nwm_catchments_file, 
+    #                                                     r2f_ras2rem_dir)
     
 
     # The following file needs to point to a NWM catchments shapefile (local.. not S3 (for now))
@@ -201,14 +199,14 @@ def make_catchments(huc_num,
     '''
     # Create a seperate file for each feature in the nwm_catchments that matches
     # a comm id from depth grides
-    print(".. getting all relevant shapes")
-    with fiona.open(nwm_catchments_subset_file, "w", driver='GPKG') as nwm_catchments:
-        for feat in nwm_catchments:
-            if feat["properties"]["FEATUREID"] in all_comids:
-                print(f"...... writing {feat['properties']['FEATUREID']}")
-                nwm_catchments.write(feat)
+    #print(".. getting all relevant shapes")
+    #with fiona.open(nwm_catchments_subset_file, "w", driver='GPKG') as nwm_catchments:
+    #    for feat in nwm_catchments:
+    #        if feat["properties"]["FEATUREID"] in all_comids:
+    #            print(f"...... writing {feat['properties']['FEATUREID']}")
+    #            nwm_catchments.write(feat)
 
-    r"""
+    '''
 
     print("TIME to create subset polygons: " +str(time.time()-start_time))
     for rem_value in rem_values:
@@ -313,7 +311,7 @@ def make_catchments(huc_num,
     print("*** Vectorizing COMIDs")
     vectorize(comid_path)
     print("TIME to finish vector creation: " +str(time.time()-start_time))
-    """
+    '''
  
 
 if __name__=="__main__":
@@ -339,9 +337,17 @@ if __name__=="__main__":
 
     # Override every optional argument (and of course, you can override just the ones you like)
     #     python ras2catchments.py -w 12090301 -o C:\ras2fim_data_rob_folder\output_ras2fim_models_2222\12090301_meters_2277_test_2
-    #          -bp C:\ras2fim_data_rob_folder -n C:\ras2fim_rob\my_inputs\my_X-National_Datasets_rob_version
-    #          -c C:\my_nwm_catchments\the_nwm_catchments_test.gkpg
-
+    #          -c C:\my_nwm_catchments\the_nwm_catchments_test.gkpg -n E:\X-NWS\X-National_Datasets
+    
+    #  - When the -n arg not being set, it defaults to c:/ras2fim_data/inputs/X-National_datasets.    
+    
+    #  - The -o arg is required, but can be either a full path (as shown above), or a simple folder name and the 01..06 folders populated.
+    #        ie) -o c:/users/my_user/desktop/ras2fim_outputs/12090301_meters_2277_test_2
+    #            OR
+    #            -o 12090301_meters_2277_test_3  (We will use the root default pathing and become c:/ras2fim_data/outputs_ras2fim_models/12090301_meters_2277_test_3)
+   
+    # TODO: notes about -c
+    
     parser = argparse.ArgumentParser(description='========== Create catchments for specified existing output_ras2fim_models folder ==========')
 
     parser.add_argument('-w',
@@ -352,41 +358,28 @@ if __name__=="__main__":
 
     parser.add_argument('-o',
                         dest = "r2f_huc_output_dir",
-                        help = r'REQUIRED: The name of the huc output folder has to exist already in the outputs_ras2fim_models folder.'\
-                               r' Example: if you submit a value of my_12090301_test_2, ' \
-                               r' It wil be added to the -bp (base path) and the' \
-                               r' hardcoded value of ..ouput_ras2fim_models.. to become something like' \
-                               r' c:\ras2fim_data\output_ras2fim_models\my_12090301_test_2.' \
-                               r' NOTE: you can use a full path if you like and we will not override it.' \
-                                ' Do not add the subfolder of 05_hecras_output, we will add that.',
+                        help = r'REQUIRED: This can be used in one of two ways. You can submit either a full path' \
+                               r' such as c:\users\my_user\Desktop\myoutput OR you can add a simple final folder name.' \
+                                ' Please see the embedded notes in the __main__ section of the code for details and  examples.',
                         required = True,
-                        type = str)  # TODO: make this default to the outputs_ras2fim_models\{huc}_{units}_{crs} ??
+                        type = str) 
 
-    parser.add_argument('-bp',
-                        dest = "base_ras2fim_path",
-                        help = 'OPTIONAL: The base local of all of ras2fim folder (ie.. inputs, OWP_ras_models, output_ras2fim_models, etc).' \
-                              r' Defaults to C:\ras2fim_data.',
-                        required = False,
-                        default = r"c:\ras2fim_data",
-                        type = str)
-
+    '''
     parser.add_argument('-c',
                         dest = "src_nwm_catchments_file",
                         help = r'OPTIONAL: path and file name to the nwm catchments file.' \
-                               r' Defaults to inputs\nwm_hydrofabric\nwm_catchments.gpkg.'
-                               r' Override example: c:\mytest_data\inputs\my_test_nwc_catchments_file.gkpg.' \
-                               r' NOTE: you can use a full path if you like and we will not override it.',                               
+                               r' Defaults to c:\ras2fim_data\inputs\nwm_hydrofabric\nwm_catchments.gpkg.' \
+                               r' Override example: c:\mytest_data\inputs\my_test_nwc_catchments_file.gkpg.',
                         default = sv.INPUT_NWM_CATCHMENTS_FILE,
                         required = False,
                         type = str)
+    '''
 
     parser.add_argument('-n',
-                        dest = "national_ds_dir",
-                        help = r'OPTIONAL: path to national datasets: Example: \inputs\my_X-National_Datasets.' \
-                               r' Defaults to \inputs\X-National_Datasets (and we and will add the "-bp" flag in front to becomes' \
-                               r' C:\ras2fim_data\inputs\my_X-National_Datasets (the defaults)).' \
-                               r' NOTE: you can use a full path if you like and we will not override it.',                               
-                        default = r'inputs\X-National_Datasets',
+                        dest = "str_nation_arg",
+                        help = r'OPTIONAL: path to national datasets: Example: E:\X-NWS\X-National_Datasets.' \
+                               r' Defaults to c:\ras2fim_data\inputs\X-National_Datasets.',
+                        default = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
                         required = False,
                         type = str)
 
