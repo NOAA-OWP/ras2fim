@@ -3,15 +3,17 @@ We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 ## v1.x.x - 2023-05-12 - [PR#55](https://github.com/NOAA-OWP/ras2fim/pull/55)
 
-When a recent version of ras2catchment.py was checked in, it had hardcoding paths that were not testable. Some new input files were also required to get the feature working.  Considering the new data flow model and folder structure, the team agreed to attempt to standardize the pathing from one folder to another.  A new system was added to help manage paths inside the `C:\\ras2fim_data` directory, or whatever name you like. That "base path" value is now always submitted as an incoming parameters and most other things can find folders relationally versus absolute pathing for each input and  output parameter.  Most of the original arguments and full pathing continues to work, but is no longer needed and it is encourage to now only use the pathing defaults.
+When a recent version of ras2catchment.py was checked in, it had hardcoding paths that were not testable. Some new input files were also required to get the feature working.  Considering the new data flow model and folder structure, the team agreed to attempt to standardize the pathing from one folder to another.  A new system was added to help manage paths inside the `C:\\ras2fim_data` directory, or whatever name you like.  Most of the original arguments and full pathing continues to work, but is no longer needed and it is encourage to now only use the pathing defaults.
 
 New usage pattern with minimum args is now:
 `python ras2fim.py -w 12090301 -o 12090301_meters_2277_test_3 -p EPSG:2277 -r "C:\Program Files (x86)\HEC\HEC-RAS\6.0" -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif`.  Min parameters are:
 - `-w` is the huc number as before.
-- `-o` just the basic folder name that will be created in the "outputs_ras_models" folder.  ie) if this value is 12090301_meters_2277_test_3, the full defaulted path becomes "c:\ras2fim_data\outputs_ras_models\12090301_meters_2277_test_3 and all of the 6 child (01 to 06) will be created under it.
+- `-o` just the basic folder name that will be created in the "outputs_ras_models" folder.  ie) if this value is 12090301_meters_2277_test_3, the full defaulted path becomes "c:\ras2fim_data\outputs_ras_models\12090301_meters_2277_test_3 and all of the 6 child (01 to 06) will be created under it. It can be overridden to a full different path.
 - `-p` is the CRS/EPSG value as before.
 - `-r` is the path to the HECRAS engine software as before.
 - `-t` is the path to the underlying DEM to be used. It is technically optional. When not supplied, the system will call the USGS -  website to get the DEM, but calling USGS is unstable and will be removed shortly (as it was before).
+
+**For more details on sample usage and arguments, see the "__main__" folders in source code.
 
 A new system was added to `ras2fim.py`, `run_ras2rem.py` and `ras2catchments.py` by moving logic out of the __main__ functions. Moving that code into a separate method, allows for input validation, and defaults to be accurately be set even if the .py file is being used without going through command line.  
 
@@ -44,7 +46,7 @@ PR related to issue [51](https://github.com/NOAA-OWP/ras2fim/issues/51).
     - `conflate_shapes_from_hecras.py`: cleanup for redundant info and screen output.
     - `get_usgs_dem_from_shape.py`: cleanup for redundant info and screen output.
     - `ras2catchments.py`: Changes described above (pathing, styling, moving code out of the "main" function, adding in pathing for new data sources, etc). Note: the script is not operational but has taken a step forward to getting it fully working. The new data inputs and pathing were required first.
-    - `ras2fim.py`:  Many of the changes listed above such as some small styling fixes, moving code out of "main", cleaning pathing to defaults, adding a new "base_ras2fim_folder" arg, change some hardcoded paths and file names to now come from the `shared_variables.py` file for code system consistency, and added a bit of better "step" tracking. 
+    - `ras2fim.py`:  Many of the changes listed above such as some small styling fixes, moving code out of "main", cleaning pathing to defaults, change some hardcoded paths and file names to now come from the `shared_variables.py` file for code system consistency, and added a bit of better "code step" tracking. 
     - `run_ras2rem.py`: Change described above (pathing, using common values from `shared_variables.py`, minor styling fixes, moving logic from "main" to another method, and fixes to be more PEP-8 compliant. Note: This file does not work and did not work in the current dev branch prior to this PR. Assumed that a fix is coming from another PR.
     - `simplify_fim_rasters.py`: cleanup for redundant info and screen output.
 - `tools`
