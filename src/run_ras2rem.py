@@ -25,8 +25,10 @@ def fn_ras2rem_make_rating_curve(Input_dir,Output_dir ):
         this_file_df=pd.read_csv(file)
         this_file_df["feature-id"]=featureid
         rating_curve_df=rating_curve_df.append(this_file_df)
-    rating_curve_df.rename(columns={"AvgDepth(m)":"stage (m)","Flow(cms)":"Discharge (m3s-1)"},inplace=True)
-    rating_curve_df=rating_curve_df[["feature-id","stage (m)","Discharge (m3s-1)"]]
+    #rating_curve_df.rename(columns={"AvgDepth(m)":"stage (m)","Flow(cms)":"Discharge (m3s-1)"},inplace=True)
+    #rating_curve_df=rating_curve_df[["feature-id","stage (m)","Discharge (m3s-1)"]]
+    rating_curve_df.rename(columns={"AvgDepth(ft)":"stage (ft)","Flow(cfs)":"Discharge (cfs)"},inplace=True)
+    rating_curve_df=rating_curve_df[["feature-id","stage (ft)","Discharge (cfs)"]]
     rating_curve_df.to_csv(os.path.join(Output_dir,"rating_curve.csv"),index=False)
 
 def fn_ras2rem_make_rem(Input_dir,Output_dir):
