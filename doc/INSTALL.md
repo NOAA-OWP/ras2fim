@@ -28,14 +28,6 @@ In the Anaconda Promt, if this is a first time install, you can create the `ras2
 conda env create -f environment.yml
 ```
 ![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_create_env.png)
-If you already have it installed, you can verify the `environment` is installed by typing `conda env list` and you should see a line for ras2fim.<br/><br/>
-Next you need to do one pip install
-```
-pip install rasterio==1.3.5
-```
-
-This should make your environment ready to go.
-
 
 ### Step 6:
 Activate the newly created `ras2fim` conda environment.<br>
