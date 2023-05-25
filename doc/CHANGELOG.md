@@ -30,7 +30,6 @@ PR related to issue [51](https://github.com/NOAA-OWP/ras2fim/issues/51).
     - `shared_variables.py`: holding all of the default pathing, folder and file names to ensure consistency throughout the code.
 
 ### Changes  
-- `environment.yml`: Some packages updates, plus remove rasterio as a conda package and let it become a pip package for better control on versioning of it.
 - `src`
     - `calculate_all_terrain_stats.py`: cleanup for redundant info and screen output.
     - `clip_dem_from_shape.py`: cleanup for redundant info and screen output.
