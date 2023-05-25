@@ -53,7 +53,7 @@ Run the `ras2fim.py` within the `ras2fim` conda environment with a help flag `-h
 ```
 python ras2fim.py -h
 ```
-![](https://github.com/NOAA-OWP/ras2fim/blob/dev-fix-pathing/doc/conda_python_run.png)
+![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_python_run.png)
 
 ### Step 9:
 Now we need to setup the **default folder structure** for your inputs and outputs. All code will use this default structure to look for data. Howver, most code will let you override any folder to your own pathing, and you can build your own folder structure. 
@@ -64,7 +64,7 @@ a) Make a directory at your c: called ras2fim_data
 b) Make the following subfolder with these names and case `inputs`, `OWP_ras_models`, `outputs_ras2fim_models`. Inside the `OWP_ras_models` folder, make another subfolder called `models`.
 ```
 The default folder structure will look like this:<br>
-![ras2fim default folder structure image](https://github.com/NOAA-OWP/ras2fim/blob/dev-fix-pathing/doc/default_folder_structure.png)
+![ras2fim default folder structure image](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/default_folder_structure.png)
 <br>
 
 ### Step 10:
@@ -72,7 +72,7 @@ You will now need some data.
 - `inputs`:  In the README.md, you may have already downloaded the X-National_datasets folder. You are encouraged, but not mandiatory, to move the X-National_datasets folder with its three files, inside the `inputs` folder. 
 - `OWP_ras_models\models`: While also optional, you are encouraged to move each of your models that have been pre-processed into the `OWP_ras_models\models`. Note: When you run `ras2fim.py`, each of your models likely have there own folder, and you can put as many model folders as you like in this `models` folder. When you run `ras2fim.py` it will load in all data across all files and folders inside the `OWP_ras_models\models` folder. Remember, you can put your model folders anywhere you like, this is just the default pattern.<br>
 ie)<br>
-![ras2fim default models folder structure image](https://github.com/NOAA-OWP/ras2fim/blob/dev-fix-pathing/doc/default_models_folder_structure.png)
+![ras2fim default models folder structure image](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/default_models_folder_structure.png)
 <br><br>
 
 #### You are now ready to start processing ras2fim models
