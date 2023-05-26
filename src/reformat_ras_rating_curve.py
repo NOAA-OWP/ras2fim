@@ -271,7 +271,7 @@ for dir in dirlist: ## eventually this will be replaced with the multiprocessor
         midpoint_y_list = []
 
         # Project to CRS to get the coordinates in the correct format
-        nwm_diff_prj = nwm_diff.to_crs(4326)
+        nwm_diff_prj = nwm_diff.to_crs("EPSG:4326")
 
         # Get middle segment of the flowlines
         for index, row in nwm_diff_prj.iterrows():
@@ -324,36 +324,43 @@ for dir in dirlist: ## eventually this will be replaced with the multiprocessor
         midpoints_df['geometry'] = midpoints_df.apply(lambda x: Point((float(x.midpoint_lon), float(x.midpoint_lat))), axis=1)
         midpoints_gdf = gpd.GeoDataFrame(midpoints_df, geometry='geometry')
 
-        ** okay here I need to make sure the rasters and points are in the same projection so that the extract can work properly!!
-
         # Join filepath and read terrain file
         terrain_file_path = os.path.join(terrain_folder_path, terrain_file_first)
         terrain = rasterio.open(terrain_file_path)
-        # terrain_prj = terrain.to_crs(4326)
 
-        print("projections: ")
-        print(midpoints_gdf.crs)
-        print(terrain.crs)
-        # print(terrain_prj.crs)
+        # Make sure the rasters and points are in the same projection so that the extract can work properly
+        midpoints_gdf = midpoints_gdf.set_crs('EPSG:4326') # set the correct projection 
+        midpoints_gdf = midpoints_gdf.to_crs('EPSG:26915') # so it matches terrain
 
+        print("midpoints projection " + str(midpoints_gdf.crs))
+        print("terrain projection: " + str(terrain.crs))
 
-        # Extract point value from terrain raster
+        # Extract elevation value from terrain raster
+        raw_elev_list = []
         for point in midpoints_gdf['geometry']:
+            # Format points
             x = point.xy[0][0]
             y = point.xy[1][0]
-            row, col = terrain_prj.index(x,y)
-            print("Point correspond to row, col: %d, %d"%(row,col))
-            print("Raster value on point %.2f \n"%terrain_prj.read(1)[row,col])
+            row, col = terrain.index(x,y)
 
+            # Get elevation from point and add to list
+            raw_elev = terrain.read(1)[row,col]
+            raw_elev_list.append(raw_elev)
 
+        # Add elevation list to midpoints geodatabase
+        midpoints_gdf['Raw_elevation'] = raw_elev_list
 
-        # print(midpoints_gdf['geometry'])
-        # print(terrain.crs)
-        # print(terrain.count)
-        # print(terrain_file_path)
+        print(midpoints_gdf)
 
         # ------------------------------------------------------------------------------------------------
         # Placeholder: Pull datum information from the datum API
+
+        # determine input datum
+
+        # if input datum doesn't equal output datum, convert (navd88 (north american vertical datum 88))
+
+
+
 
         # based on ngvd_to_navd_ft() in NOAA-OWP/inundation-mapping/blob/dev/tools/tools_shared_functions.py (line 1099)
         # ngvd_to_navd_ft(datum_info, region = 'contiguous')
