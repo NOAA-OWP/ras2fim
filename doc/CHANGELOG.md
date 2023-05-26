@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.x.x - 2023-05-12 - [PR#55](https://github.com/NOAA-OWP/ras2fim/pull/55)
+## v1.5.0 - 2023-05-12 - [PR#55](https://github.com/NOAA-OWP/ras2fim/pull/55)
 
 When a recent version of ras2catchment.py was checked in, it had hardcoding paths that were not testable. Some new input files were also required to get the feature working.  Considering the new data flow model and folder structure, the team agreed to attempt to standardize the pathing from one folder to another.  A new system was added to help manage paths inside the `C:\\ras2fim_data` directory, or whatever name you like.  Most of the original arguments and full pathing continues to work, but is no longer needed and it is encourage to now only use the pathing defaults.
 
@@ -21,12 +21,6 @@ For example, with run_ras2rem.py, a person can use the script from command line,
 
 Some changes were started against ras2catchments.py for new data required for it to be run, but at this point, the ras2catchment system is not working. A separate card will be created to continue to adjust it and get it fully operational. Styling upgrades were made to be more compliant with PEP-8 and fim development standards.
 
-New things to know in order to move forward:
-1) the conda environment file is forcing rasterio down to version 1.1.1 due to some of it's dependencies, but ras2catchments.py needs rasterio 1.3.5.  We are unable to force the environment system to upgrade to the latest rasterio as it breaks a ton of dependencies.  In the interim, the environment.yml will need to be run as a conda update again on your machine AND now you need to manually do a "pip install rasterio==1.3.5".  We will re-evaluated this later. 
-**You will need to run an conda enviro update and the pip install with this merge.**
-
-2) Two new data sources are required to be downloaded into your inputs folder. This includes some pre-cut HUC8 wbd gpkpgs and the full CONUS+ nwm_catchments file.  An email will come out soon for the S3 commands to get those.
-
 While there is a little scope creep here, there was no much. Most was required due to testing or new requirements.
 
 PR related to issue [51](https://github.com/NOAA-OWP/ras2fim/issues/51). 
@@ -36,7 +30,6 @@ PR related to issue [51](https://github.com/NOAA-OWP/ras2fim/issues/51).
     - `shared_variables.py`: holding all of the default pathing, folder and file names to ensure consistency throughout the code.
 
 ### Changes  
-- `environment.yml`: Some packages updates, plus remove rasterio as a conda package and let it become a pip package for better control on versioning of it.
 - `src`
     - `calculate_all_terrain_stats.py`: cleanup for redundant info and screen output.
     - `clip_dem_from_shape.py`: cleanup for redundant info and screen output.
@@ -55,21 +48,6 @@ PR related to issue [51](https://github.com/NOAA-OWP/ras2fim/issues/51).
     - `nws_ras2fim_check_processs_stats.py`:  cleanup for redundant info and screen output.
     - `nws_ras2fim_clip_dem_from_shape.py`:  cleanup for redundant info and screen output.
     - `nws_ras2fim_entwine_dem_from_shp.py`: cleanup for redundant info and screen output.
-
-### Steps to apply new features including AWS credentials and conda enviroment.yml changes.
-
-While this is a number of steps, it also setups for a fair bit of new and future functionality.
-
-Use your anaconda terminal window for all "type" commands below.
-
-1) Path to your new code dir. ie) cd c:\users\(your profile name}\projects\dev\ras2fim.
-2) Run `conda activate ras2fim`
-3) Run `conda env update -f environment.yml`.  You are ready to do testing with `ras2fim.py` and other files, but not `get_ras_models.py`
-4) Run `pip install rasterio==1.3.5`
-5) Download new input data matching the path. If you are not an OWP/NOAA employee, you will need to go to ESIP to get the files. If you are an OWP/NOAA employee, you can get the files at the ras2fim S3 bucket.
-- Commands needed: Adjusting for S3 bucket name
-   - aws s3 cp s3://{your bucket name}/inputs/wbd/HUC8_All c:\ras2fim_data\inputs\wbd\HUC8_All --recursive --dryrun  (remove --dryrun when you have validated the pathing)
-   - aws s3 cp s3://{your bucket name}/inputs/nwm_hydrofabric/nwm_catchments.gpkg C:\ras2fim_data\inputs\nwm_hydrofabric\nwm_catchments.gpkg --dryrun  (remove --dryrun when you have validated the pathing)
   
 <br/><br/>
 
