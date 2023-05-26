@@ -37,6 +37,8 @@ import time
 import datetime
 import warnings
 
+import shared_variables as sv
+
 # $$$$$$$$$$$$$$$$$$$$$$
 def fn_wkt_loads(x):
     try:
@@ -98,7 +100,6 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     print(" ")
     print("+=================================================================+")
     print("|        CONFLATE HEC-RAS TO NATIONAL WATER MODEL STREAMS         |")
-    print("|     Created by Andy Carter, PE of the National Water Center     |")
     print("+-----------------------------------------------------------------+")
     
     
@@ -140,13 +141,13 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     # (3) the National water model recurrance flows
     
     # Input - Watershed boundary data geopackage
-    str_wbd_geopkg_path = str_national_dataset_path + '\\' + 'WBD_National.gpkg'
+    str_wbd_geopkg_path = str_national_dataset_path + '\\' + sv.INPUT_WBD_NATIONAL_FILE
     
     # Input - National Water Model stream lines geopackage
-    str_nwm_flowline_geopkg_path = str_national_dataset_path + '\\' + 'nwm_flows.gpkg'
+    str_nwm_flowline_geopkg_path = str_national_dataset_path + '\\' + sv.INPUT_NWM_FLOWS_FILE
     
     # Input - Recurrance Intervals netCDF
-    str_netcdf_path = str_national_dataset_path + '\\' + 'nwm_wbd_lookup.nc'
+    str_netcdf_path = str_national_dataset_path + '\\' + sv.INPUT_NWM_WBD_LOOKUP_FILE
     
     # Geospatial projections
     # wgs = "epsg:4326" - not needed

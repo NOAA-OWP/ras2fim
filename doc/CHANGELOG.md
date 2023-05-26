@@ -1,6 +1,56 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.5.0 - 2023-05-12 - [PR#55](https://github.com/NOAA-OWP/ras2fim/pull/55)
+
+When a recent version of ras2catchment.py was checked in, it had hardcoding paths that were not testable. Some new input files were also required to get the feature working.  Considering the new data flow model and folder structure, the team agreed to attempt to standardize the pathing from one folder to another.  A new system was added to help manage paths inside the `C:\\ras2fim_data` directory, or whatever name you like.  Most of the original arguments and full pathing continues to work, but is no longer needed and it is encourage to now only use the pathing defaults.
+
+New usage pattern with minimum args is now:
+`python ras2fim.py -w 12090301 -o 12090301_meters_2277_test_3 -p EPSG:2277 -r "C:\Program Files (x86)\HEC\HEC-RAS\6.0" -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif`.  Min parameters are:
+- `-w` is the huc number as before.
+- `-o` just the basic folder name that will be created in the "outputs_ras_models" folder.  ie) if this value is 12090301_meters_2277_test_3, the full defaulted path becomes "c:\ras2fim_data\outputs_ras_models\12090301_meters_2277_test_3 and all of the 6 child (01 to 06) will be created under it. It can be overridden to a full different path.
+- `-p` is the CRS/EPSG value as before.
+- `-r` is the path to the HECRAS engine software as before.
+- `-t` is the path to the underlying DEM to be used. It is technically optional. When not supplied, the system will call the USGS -  website to get the DEM, but calling USGS is unstable and will be removed shortly (as it was before).
+
+**For more details on sample usage and arguments, see the "__main__" folders in source code.
+
+A new system was added to `ras2fim.py`, `run_ras2rem.py` and `ras2catchments.py` by moving logic out of the __main__ functions. Moving that code into a separate method, allows for input validation, and defaults to be accurately be set even if the .py file is being used without going through command line.  
+
+For example, with run_ras2rem.py, a person can use the script from command line, however, ras2fim.py could also call directly over to a method and not come through command line. By moving validation and defaults into a separate function inside run_ras2rem.py, they can be enforced or adjusted.
+
+Some changes were started against ras2catchments.py for new data required for it to be run, but at this point, the ras2catchment system is not working. A separate card will be created to continue to adjust it and get it fully operational. Styling upgrades were made to be more compliant with PEP-8 and fim development standards.
+
+While there is a little scope creep here, there was no much. Most was required due to testing or new requirements.
+
+PR related to issue [51](https://github.com/NOAA-OWP/ras2fim/issues/51). 
+
+### Additions  
+- `src`
+    - `shared_variables.py`: holding all of the default pathing, folder and file names to ensure consistency throughout the code.
+
+### Changes  
+- `src`
+    - `calculate_all_terrain_stats.py`: cleanup for redundant info and screen output.
+    - `clip_dem_from_shape.py`: cleanup for redundant info and screen output.
+    - `conflate_hecras_to_nwm.py`: cleanup for redundant info and screen output and changed some file names to come from shared_variables.
+    - `convert_tif_to_ras_hdf5.py`: cleanup for redundant info and screen output.
+    - `create_fim_rasters.py`: cleanup for redundant info and screen output and added a "with" wrapper around the processing pooling for stability reasons.
+    - `conflate_shapes_from_hecras.py`: cleanup for redundant info and screen output.
+    - `get_usgs_dem_from_shape.py`: cleanup for redundant info and screen output.
+    - `ras2catchments.py`: Changes described above (pathing, styling, moving code out of the "main" function, adding in pathing for new data sources, etc). Note: the script is not operational but has taken a step forward to getting it fully working. The new data inputs and pathing were required first.
+    - `ras2fim.py`:  Many of the changes listed above such as some small styling fixes, moving code out of "main", cleaning pathing to defaults, change some hardcoded paths and file names to now come from the `shared_variables.py` file for code system consistency, and added a bit of better "code step" tracking. 
+    - `run_ras2rem.py`: Change described above (pathing, using common values from `shared_variables.py`, minor styling fixes, moving logic from "main" to another method, and fixes to be more PEP-8 compliant. Note: This file does not work and did not work in the current dev branch prior to this PR. Assumed that a fix is coming from another PR.
+    - `simplify_fim_rasters.py`: cleanup for redundant info and screen output.
+- `tools`
+    - `convert_ras2fim_to_recurr_validation_datasets.py`:  Changes to support the new common values from `shared_variables.py`
+    - `nws_ras2fim_calculate_terrain_stats.py`:  cleanup for redundant info and screen output.
+    - `nws_ras2fim_check_processs_stats.py`:  cleanup for redundant info and screen output.
+    - `nws_ras2fim_clip_dem_from_shape.py`:  cleanup for redundant info and screen output.
+    - `nws_ras2fim_entwine_dem_from_shp.py`: cleanup for redundant info and screen output.
+  
+<br/><br/>
+
 
 ## v1.4.0 - 2023-05-03 - [PR#43](https://github.com/NOAA-OWP/ras2fim/pull/43)
 

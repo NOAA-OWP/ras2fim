@@ -103,7 +103,6 @@ def fn_cut_dems_from_shapes(str_input_shp_path,
     print(" ")
     print("+=================================================================+")
     print("|         CUT DEMs FROM LARGER DEM PER POLYGON SHAPEFILE          |")
-    print("|   Created by Andy Carter, PE of the National Water Center       |")
     print("+-----------------------------------------------------------------+")
     
     print("  ---(i) SHAPEFILE INPUT PATH: " + str_input_shp_path)

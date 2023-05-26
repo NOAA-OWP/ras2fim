@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import os
 from pathlib import Path
 import pandas as pd
 import geopandas as gpd
@@ -12,6 +12,9 @@ from rasterio.mask import mask
 from rasterio.warp import reproject
 from shutil import rmtree
 from concurrent.futures import ProcessPoolExecutor
+
+import src.shared_variables as sv
+
 PREP_PROJECTION = 'PROJCS["USA_Contiguous_Albers_Equal_Area_Conic_USGS_version",GEOGCS["NAD83",DATUM["North_American_Datum_1983",SPHEROID["GRS 1980",6378137,298.2572221010042,AUTHORITY["EPSG","7019"]],AUTHORITY["EPSG","6269"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433],AUTHORITY["EPSG","4269"]],PROJECTION["Albers_Conic_Equal_Area"],PARAMETER["standard_parallel_1",29.5],PARAMETER["standard_parallel_2",45.5],PARAMETER["latitude_of_center",23],PARAMETER["longitude_of_center",-96],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]]]'
 
 def generate_inundation_raster(depth_grid,extent_gridname):
@@ -308,7 +311,7 @@ if __name__ == '__main__':
     output_dir = ras_model_dir / 'validation_data_ras2fim'
     missing_flows_dir = ras_model_dir / 'missing_flows'
     missing_flows_dir.mkdir(parents=True,exist_ok=True)
-    wbd_layer = ras_model_dir / 'WBD_National.gpkg'
+    wbd_layer = os.path.join(ras_model_dir, sv.INPUT_WBD_NATIONAL_FILE)
 
     print (f"Creating extent rasters for {len(huc_list)} HUCs")
     extent_grid_args = (recurrence_dir,ras_reorg_dir,output_dir,missing_flows_dir,wbd_layer)

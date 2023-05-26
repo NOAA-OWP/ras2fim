@@ -183,7 +183,6 @@ def fn_get_usgs_dem_from_shape(str_input_path,
     print(" ")
     print("+=================================================================+")
     print("|                   USGS TERRAIN FROM SHAPEFILE                   |")
-    print("|   Created by Andy Carter, PE of the National Water Center       |")
     print("+-----------------------------------------------------------------+")
 
     

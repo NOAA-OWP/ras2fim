@@ -320,7 +320,6 @@ def fn_calculate_all_terrain_stats(str_input_dir):
     print(" ")
     print("+=================================================================+")
     print("|    CALCULATE TERRAIN STATISTICS FOR MULTIPLE HEC-RAS MODELS     |")
-    print("|    Created by Andy Carter, PE of the National Water Center      |")
     print("+-----------------------------------------------------------------+")
     
     print("  ---(i) RAS MAPPER DIRECTORY: " + str_input_dir)

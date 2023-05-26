@@ -329,7 +329,6 @@ if __name__ == '__main__':
     print(" ")
     print("+=================================================================+")
     print("|                 GET ENTWINE DEM FROM SHAPEFILE                  |")
-    print("|   Created by Andy Carter, PE of the National Water Center       |")
     print("+-----------------------------------------------------------------+")
     
     print("  ---(i) SHAPEFILE INPUT PATH: " + str_input_shapefile_path)
