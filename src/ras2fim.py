@@ -27,17 +27,18 @@ from create_fim_rasters import fn_create_fim_rasters
 from simplify_fim_rasters import fn_simplify_fim_rasters
 from calculate_all_terrain_stats import fn_calculate_all_terrain_stats
 from run_ras2rem import fn_run_ras2rem
+from ras2catchments import make_catchments
 
 import argparse
 import os
 import shutil
+from datetime import datetime
 
-import time
-import datetime
 import fnmatch
 from re import search
 
 import shared_variables as sv
+import shared_functions as sf
 
 b_terrain_check_only = False
 
@@ -67,7 +68,7 @@ def fn_run_ras2fim(str_huc8_arg,
                    str_step_override
                    ):
     
-    flt_start_run_ras2fim = time.time()
+    start_dt = datetime.now() 
     
     print(" ")
     print("+=================================================================+")
@@ -100,16 +101,24 @@ def fn_run_ras2fim(str_huc8_arg,
 
     # TODO: step system not fully working and needs to be fixed.
     # create an output folder with checks
-    #if os.path.exists(str_out_arg):
+    if os.path.exists(str_out_arg) and (int_step == 0):
+        print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
+        raise SystemExit(0)
+
     #    if os.path.exists(os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, 'terrain_stats.csv')):
     #        print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
     #        raise SystemExit(0)
     #    elif int_step==0:
     #        print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
     #        shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
-    #else:
-    os.mkdir(str_out_arg) # pathing has already been validated and ensure the child folder does not pre-exist
+    else:
+        if (int_step > 0):
+            print(f"Starting a code step number {int_step} as per the -s arg")
+
+        if not os.path.exists(str_out_arg):
+            os.mkdir(str_out_arg)
     
+
     # ---- Step 1: create_shapes_from_hecras ----
     # create a folder for the shapefiles from hec-ras
     print()
@@ -185,9 +194,8 @@ def fn_run_ras2fim(str_huc8_arg,
                                     str_field_name)
     # -------------------------------------------
 
-    # ------ Step 4: convert_tif_to_ras_hdf5 ----- 
-    # 
-    
+    # ------  Step 4: convert_tif_to_ras_hdf5 ----- 
+     
     # folder of tifs created in third script (get_usgs_dem_from_shape)
     # str_terrain_from_usgs_dir
     
@@ -269,17 +277,28 @@ def fn_run_ras2fim(str_huc8_arg,
         fn_calculate_all_terrain_stats(str_hecras_out_dir)
     # -------------------------------------------------
 
+
     # ------ Step 8: run ras2rem -----
     print()
     print ("+++++++ Processing for code  STEP 8 +++++++" )
     if int_step <= 8 and run_ras2rem:
         fn_run_ras2rem(str_out_arg)
+    # -------------------------------------------------
 
-    flt_end_run_ras2fim = time.time()
-    flt_time_pass_ras2fim = (flt_end_run_ras2fim - flt_start_run_ras2fim) // 1
-    time_pass_ras2fim = datetime.timedelta(seconds=flt_time_pass_ras2fim)
-    
-    print('Total Compute Time: ' + str(time_pass_ras2fim))
+
+    # ------ Step 9: run ras2catchments -----
+    print()
+    print ("+++++++ Processing for code  STEP 9 +++++++" )
+    if int_step <= 8:
+        make_catchments(str_huc8_arg, str_out_arg, str_nation_arg)
+    # -------------------------------------------------
+
+
+    print("+=================================================================+")
+    print("  RUN RAS2FIM - Completed                                         |")
+    sf.print_date_time_duration(start_dt, datetime.now())
+    print("+-----------------------------------------------------------------+")
+
     
 
 def init_and_run_ras2fim(str_huc8_arg, 
