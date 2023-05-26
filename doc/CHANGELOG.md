@@ -28,6 +28,9 @@ Code folder changes:
     - `ras2fim.py`: Updated to change the duration output system to come from the new `shared_functions.py` file replacing it's original duration calc code. The `step` feature has been partially repaired as it had an error in it, but has not been fully fixed or tested. A separate issue card and PR will be coming.  In the meantime, the code now has re-instated the code feature of not allowing a user to re-execute ras2fim.py against a folder that already exists.  
     - `ras2catchments.py`:  This has been rebuilt in recognition that it had a fair bit of temporary duplication code from `run_ras2rem`.  `ras2catchemts` is now stripped back to it's original requirement described above.
 
+### Note: 
+Sometimes when using ras2catchemnts.py from command line, an error was issued talking about a PROJ file not existing. The source of the error was traced but a fix was not found. A code fix previously existed to attempt to fix it, but did not appear to fix it.  However.. the error does not block or limit the functionality of using this tool. And, when ras2catchment is called as part of the ras2fim pipeline flow, the error is not created/shown. It was decided to just mention the issue and investigate later if required.
+
 <br/><br/>
 
 
