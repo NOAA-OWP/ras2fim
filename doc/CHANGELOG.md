@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.6.0 - 2023-06-02 - [PR#55](https://github.com/NOAA-OWP/ras2fim/pull/65)
+## v1.6.0 - 2023-06-02 - [PR#65](https://github.com/NOAA-OWP/ras2fim/pull/65)
 Updated `src/run_ras2rem.py` with following changes:
 - Fixed a bug regarding the units used for rating_curve.csv output. Now, ras2rem will infer the vertical unit from ras2fim results in 05_hecras_output folder. 
 - Added multi-processing capability for making tif files for rem values.
