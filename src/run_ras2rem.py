@@ -96,8 +96,8 @@ def fn_generate_tif_for_each_rem(tpl_request):
          "dtype": rasterio.float64
          }
     )
-    with rasterio.open(os.path.join(Output_dir,"{}_rem.tif".format(rem_value)), "w", **output_meta) as m:
-        m.write(mosaic)
+    with rasterio.open(os.path.join(Output_dir,"{}_rem.tif".format(rem_value)), "w", **output_meta) as tiffile:
+        tiffile.write(mosaic)
     return  rem_value
 
 def fn_make_rems(r2f_hecras_dir, r2f_ras2rem_dir):
@@ -158,8 +158,8 @@ def fn_make_rems(r2f_hecras_dir, r2f_ras2rem_dir):
          }
     )
 
-    with rasterio.open(os.path.join(r2f_ras2rem_dir,"rem.tif"), "w", **output_meta) as m:
-        m.write(mosaic)
+    with rasterio.open(os.path.join(r2f_ras2rem_dir,"rem.tif"), "w", **output_meta) as tiffile:
+        tiffile.write(mosaic)
 
     # finally delete unnecessary files to clean up
     for raster in raster_to_mosiac:
