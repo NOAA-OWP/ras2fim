@@ -183,9 +183,7 @@ def make_catchments(input_dir,output_dir,nwm_feature_id_polygons,TEMP_FOLDER):
             df = gpd.read_file(temp_sub_polygons)
             print(df.crs)
             df = df.to_crs(raster.crs)
-            print(".. Subset shapefile read in and transformed")
             df.to_file(temp_proj_polygons)
-            print(".. and written back out")
 
         with fiona.open(temp_proj_polygons) as subset_shapefile:
             shapes = [feature["geometry"] for feature in subset_shapefile if feature['properties']['FEATUREID']==int(feature_id)]
@@ -232,13 +230,11 @@ def make_catchments(input_dir,output_dir,nwm_feature_id_polygons,TEMP_FOLDER):
     # Clean up intermediate files
     for p in raster_to_mosaic:
         os.remove(p)
-        #pass
 
     print(f"Removing {temp_sub_polygons} and {temp_proj_polygons}")
     temp_sub_poly_files = glob.glob(temp_sub_polygons.replace('.shp','.*'))
     temp_proj_poly_files = glob.glob(temp_proj_polygons.replace('.shp','.*'))
-    print(temp_sub_poly_files)
-    print(temp_proj_poly_files)
+
     # Remove other related files that shapefiles require
     for f in temp_sub_poly_files:
         os.remove(f)
@@ -248,6 +244,7 @@ def make_catchments(input_dir,output_dir,nwm_feature_id_polygons,TEMP_FOLDER):
     print("TIME to finish raster creation: " +str(time.time()-start_time))
     
     return feature_id_path
+
 
 def main_call(huc_num, ROOT_DIR, NWM_CATCHMENTS_SHAPEFILE,
                     TEMP_FOLDER, CHANGELOG_PATH, CATALOG_PATH):
@@ -266,7 +263,8 @@ def main_call(huc_num, ROOT_DIR, NWM_CATCHMENTS_SHAPEFILE,
     feature_id_path = make_catchments(input_dir,output_dir,NWM_CATCHMENTS_SHAPEFILE,TEMP_FOLDER)
 
     print("*** Vectorizing FEATURE IDs")
-    vectorize(feature_id_path,CHANGELOG_PATH,CATALOG_PATH,SRC_PATH)
+    vectorize(feature_id_path,CHANGELOG_PATH,CATALOG_PATH,
+              os.path.join(ras2rem_dir,'rating_curve.csv'))
 
     return    
 
