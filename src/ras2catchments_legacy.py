@@ -20,53 +20,24 @@ from osgeo import gdal
 import keepachangelog
 import argparse
 
-# This is here as a placeholder until we resolve run_ras2rem's column names and ensure they're a match
-def fn_ras2rem_make_rating_curve(r2f_hecras_dir, r2f_ras2rem_dir):
-
-    '''
-    Args:
-        r2f_hecras_dir: directory containing all fim raster  (the huc model 05_hecras_outputs)
-        r2f_ras2rem_dir: directory to write output file (rating_curve.csv)
-
-    Returns: rating_curve.csv file
-    '''
-    print("Making rating curve")
-    rating_curve_df = pd.DataFrame()
-
-    all_rating_files = Path(r2f_hecras_dir).rglob('*rating_curve.csv')
-
-    for file in all_rating_files:
-        featureid=file.name.split("_rating_curve.csv")[0]
-        this_file_df=pd.read_csv(file)
-        this_file_df["feature_id"]=featureid
-        rating_curve_df=rating_curve_df.append(this_file_df)
-
-    rating_curve_df=rating_curve_df[["feature_id","AvgDepth(ft)","Flow(cfs)"]]
-
-    rating_curve_df.to_csv(os.path.join(r2f_ras2rem_dir,"rating_curve.csv"), index = False)
-
-def update_src_file(SRC_PATH, huc):
-    df = pd.read_csv(SRC_PATH)
-
-    # add data that works with the existing inundation hydro table format requirements
-    df['HydroID'] = df.feature_id
-    df['HUC'] = huc
-    df['LakeID'] = -999
-    df['last_updated'] = ''
-    df['submitter'] = ''
-    df['obs_source'] = ''
+def convert_to_metric(ras2rem_dir, huc):
+    df = pd.read_csv(os.path.join(ras2rem_dir,'rating_curve.csv'))
 
     # convert to metric if needed
-    if not 'AvgDepth(m)' in df.columns and not 'stage' in df.columns: # Assumes Imperial units already there
-        df["AvgDepth(m)"] = ["{:0.2f}".format(h * 0.3048) for h in df["AvgDepth(ft)"]]
-        df["Flow(cms)"] = ["{:0.2f}".format(q * 0.0283168) for q in df["Flow(cfs)"]]
+    if 'stage_m' not in df.columns: # Assumes only Imperial units
+        df["stage_m"] = ["{:0.2f}".format(h * 0.3048) for h in df["stage_ft"]]
+        df["discharge_cms)"] = ["{:0.2f}".format(q * 0.0283168) for q in df["discharge_cfs"]]
+        df.to_csv(os.path.join(SRC_PATH),index=False)
 
-    df.rename(columns={"AvgDepth(m)":"stage","Flow(cms)":"discharge_cms"},inplace=True)
-    
-    df.to_csv(os.path.join(SRC_PATH),index=False)
+        rem_path = os.path.join(ras2rem_dir,'rem.tif')
+        with rasterio.open(rem_path) as src:
+            raster = src.read()
+            raster = raster * 0.3048
+            output_meta = src.meta.copy()
+        with rasterio.open(rem_path,'w',**output_meta) as dest:
+            raster.write(dest)
 
     return
-
 
 #
 # Scrapes the top changelog version (most recent version listed in our repo)
@@ -125,13 +96,15 @@ def vectorize(path,CHANGELOG_PATH,CATALOG_PATH,SRC_PATH):
     
     # Get min and max stage and discharge for each Feature ID, then create a combined field for stage and flow
     agg_df = src_df.groupby(["feature_id"]).agg({'stage': ['min', 'max'], 'discharge_cms': ['min','max']})
-    agg_df['stage_range'] = agg_df['stage']['min'].astype(str) + ' - ' + agg_df['stage']['max'].astype(str)
-    agg_df['flow_range'] = agg_df['discharge_cms']['min'].astype(str) + ' - ' \
-        + agg_df['discharge_cms']['max'].astype(str)
+    
+    agg_df['start_stage'] = agg_df['stage']['min']
+    agg_df['end_stage'] = agg_df['stage']['max']
+    agg_df['start_flow'] = agg_df['discharge_cms']['min']
+    agg_df['end_flow'] = agg_df['discharge_cms']['max']
 
     # Flatten from MultiIndex and keep relevant columns
     agg_df.columns = ["_".join(c).rstrip('_') for c in agg_df.columns.to_flat_index()]
-    agg_df = agg_df[['stage_range','flow_range']]
+    agg_df = agg_df[['start_stage','end_stage','start_flow','end_flow']]
 
     # Join SRC data to polygon GeoDataFrame
     gdf = gdf.merge(agg_df,how="left",left_on="HydroID",right_on="feature_id")
@@ -278,30 +251,13 @@ def make_catchments(input_dir,output_dir,nwm_feature_id_polygons,TEMP_FOLDER):
 
 def main_call(huc_num, ROOT_DIR, NWM_CATCHMENTS_SHAPEFILE,
                     TEMP_FOLDER, CHANGELOG_PATH, CATALOG_PATH):
-    '''
-    huc_num = args['huc_num']
-    ROOT_DIR = args['ROOT_DIR'] #r"C:\Users\rdp-user\Documents\colorado"
-    # The following file needs to point to a NWM catchments shapefile that is pulled from S3
-    NWM_CATCHMENTS_SHAPEFILE = args['NWM_CATCHMENTS_SHAPEFILE'] #r"C:\Users\rdp-user\Documents\nwm_catchments_clip\nwm_catchments_tx.shp"
-    TEMP_FOLDER = args['TEMP_FOLDER'] #r"c:\users\rdp-user\documents"
-    CHANGELOG_PATH = args['CHANGELOG_PATH'] #r"C:\Users\rdp-user\Projects\code_lkeys\ras2fim\doc\CHANGELOG.md"
-    CATALOG_PATH = args['CATALOG_PATH'] #r"c:/users/rdp-user/downloads/model_catalog.csv"
-    '''
+
     input_dir= os.path.join(ROOT_DIR,"05_hecras_output")
     ras2rem_dir = os.path.join(ROOT_DIR,"06_rem_output")
     output_dir= os.path.join(ROOT_DIR,"08_eff_catchment_output")
-
-    SRC_PATH = os.path.join(ras2rem_dir,"rating_curve.csv")
-
-    '''    
-    # XXX This can be removed once we ensure that we have the right column names from run_ras2rem
-    if not os.path.exists(ras2rem_dir):
-        os.mkdir(ras2rem_dir)
-    fn_ras2rem_make_rating_curve(input_dir, ras2rem_dir)
     
-    # adds necessary columns and converts to metric if needed based on the existing columns
-    update_src_file(SRC_PATH, huc_num)
-    '''
+    # converts SRC and REM to metric if needed based on the existing SRC columns
+    convert_to_metric(ras2rem_dir, huc_num)
     
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
