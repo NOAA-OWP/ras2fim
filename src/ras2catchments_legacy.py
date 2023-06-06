@@ -20,8 +20,14 @@ from osgeo import gdal
 import keepachangelog
 import argparse
 
+#
+# I'd like to move this conversion to be a separate external utility,
+# but for now I think it's fine here because it's related to getting
+# everything in the right format for Hydrovis.
+#
 def convert_to_metric(ras2rem_dir, huc):
-    df = pd.read_csv(os.path.join(ras2rem_dir,'rating_curve.csv'))
+    SRC_PATH = os.path.join(ras2rem_dir,'rating_curve.csv')
+    df = pd.read_csv(SRC_PATH)
 
     # convert to metric if needed
     if 'stage_m' not in df.columns: # Assumes only Imperial units
