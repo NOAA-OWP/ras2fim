@@ -32,16 +32,16 @@ def convert_to_metric(ras2rem_dir, huc):
     # convert to metric if needed
     if 'stage_m' not in df.columns: # Assumes only Imperial units
         df["stage_m"] = ["{:0.2f}".format(h * 0.3048) for h in df["stage_ft"]]
-        df["discharge_cms)"] = ["{:0.2f}".format(q * 0.0283168) for q in df["discharge_cfs"]]
+        df["discharge_cms"] = ["{:0.2f}".format(q * 0.0283168) for q in df["discharge_cfs"]]
         df.to_csv(os.path.join(SRC_PATH),index=False)
 
         rem_path = os.path.join(ras2rem_dir,'rem.tif')
         with rasterio.open(rem_path) as src:
             raster = src.read()
-            raster = raster * 0.3048
+            raster = np.multiply(raster, np.where(raster != 65535,0.3048,1))
             output_meta = src.meta.copy()
-        with rasterio.open(rem_path,'w',**output_meta) as dest:
-            raster.write(dest)
+        with rasterio.open(rem_path,'w',**output_meta,compress="LZW") as dest:
+            dest.write(raster)
 
     return
 
@@ -101,10 +101,10 @@ def vectorize(path,CHANGELOG_PATH,CATALOG_PATH,SRC_PATH):
     src_df = pd.read_csv(SRC_PATH)
     
     # Get min and max stage and discharge for each Feature ID, then create a combined field for stage and flow
-    agg_df = src_df.groupby(["feature_id"]).agg({'stage': ['min', 'max'], 'discharge_cms': ['min','max']})
+    agg_df = src_df.groupby(["feature_id"]).agg({'stage_m': ['min', 'max'], 'discharge_cms': ['min','max']})
     
-    agg_df['start_stage'] = agg_df['stage']['min']
-    agg_df['end_stage'] = agg_df['stage']['max']
+    agg_df['start_stage'] = agg_df['stage_m']['min']
+    agg_df['end_stage'] = agg_df['stage_m']['max']
     agg_df['start_flow'] = agg_df['discharge_cms']['min']
     agg_df['end_flow'] = agg_df['discharge_cms']['max']
 
@@ -229,7 +229,7 @@ def make_catchments(input_dir,output_dir,nwm_feature_id_polygons,TEMP_FOLDER):
     )
     # Write out the feature_id raster file
     feature_id_path = os.path.join(output_dir,"feature_id.tif")
-    with rasterio.open(feature_id_path, "w", **output_meta) as m:
+    with rasterio.open(feature_id_path, "w", **output_meta,compress="LZW") as m:
         m.write(mosaic)
         print(f"** Writing final feature_id mosaic to {feature_id_path}")
 
@@ -256,7 +256,7 @@ def main_call(huc_num, ROOT_DIR, NWM_CATCHMENTS_SHAPEFILE,
                     TEMP_FOLDER, CHANGELOG_PATH, CATALOG_PATH):
 
     input_dir= os.path.join(ROOT_DIR,"05_hecras_output")
-    ras2rem_dir = os.path.join(ROOT_DIR,"06_rem_output")
+    ras2rem_dir = os.path.join(ROOT_DIR,"06_ras2rem")
     output_dir= os.path.join(ROOT_DIR,"08_eff_catchment_output")
     
     # converts SRC and REM to metric if needed based on the existing SRC columns
