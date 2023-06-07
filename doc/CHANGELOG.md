@@ -1,6 +1,19 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.x.x - 2023-06-07 - [PR#69](https://github.com/NOAA-OWP/ras2fim/pull/69)
+
+Each time ras2fim is run, it creates an output folder for a HUC. Inside this folder are the six output folders (01..06). A new file is now being included that records all incoming arguments that were submitted to ras2fim plus a few derived values.
+
+
+### Changes  
+- `src\ras2fim.py`: changes include:
+          - moving the int_step calculations down into the init_and_run_ras2fim function. Reason: It is also logic for validating and setting up basic variables.
+          - moved the creation of the new HUC folder into init_and_run_ras2fim function. The folder needs to be created earlier, so the new run_arguments.txt file can be saved.
+
+
+<br><br>
+
 ## v1.5.0 - 2023-05-12 - [PR#55](https://github.com/NOAA-OWP/ras2fim/pull/55)
 
 When a recent version of ras2catchment.py was checked in, it had hardcoding paths that were not testable. Some new input files were also required to get the feature working.  Considering the new data flow model and folder structure, the team agreed to attempt to standardize the pathing from one folder to another.  A new system was added to help manage paths inside the `C:\\ras2fim_data` directory, or whatever name you like.  Most of the original arguments and full pathing continues to work, but is no longer needed and it is encourage to now only use the pathing defaults.
