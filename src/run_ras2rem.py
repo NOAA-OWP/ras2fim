@@ -93,7 +93,8 @@ def fn_generate_tif_for_each_rem(tpl_request):
          "height": mosaic.shape[1],
          "width": mosaic.shape[2],
          "transform": output,
-         "dtype": rasterio.float64
+         "dtype": rasterio.float64,
+         "compress":"LZW"
          }
     )
     with rasterio.open(os.path.join(Output_dir,"{}_rem.tif".format(rem_value)), "w", **output_meta) as tiffile:
@@ -155,6 +156,7 @@ def fn_make_rems(r2f_hecras_dir, r2f_ras2rem_dir):
          "height": mosaic.shape[1],
          "width": mosaic.shape[2],
          "transform": output,
+         "compress":"LZW"
          }
     )
 
@@ -254,8 +256,8 @@ if __name__=="__main__":
                         dest = "r2f_huc_parent_dir",
                         help = r'REQUIRED:'
                                r'This should be the path to the folder containing the ras2fim "05_hecras_output" subfolder. '
-                               'The ras2rem result will be created in a folder called "06_ras2rem" in the same parent directory.\n' \
-                               r' There are two optionsL: 1) Providing a full path' \
+                               'The ras2rem results will be created in a folder called "06_ras2rem" in the same parent directory.\n' \
+                               r' There are two options: 1) Providing a full path' \
                                r' 2) Providing only huc folder name, when following AWS data structure.' \
                                 ' Please see the embedded notes in the __main__ section of the code for details and examples.',
                         required = True,
