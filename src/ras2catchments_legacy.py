@@ -26,19 +26,20 @@ import argparse
 # everything in the right format for Hydrovis.
 #
 def convert_to_metric(ras2rem_dir, huc):
-    SRC_PATH = os.path.join(ras2rem_dir,'rating_curve.csv')
-    df = pd.read_csv(SRC_PATH)
+    src_path = os.path.join(ras2rem_dir,'rating_curve.csv')
+    df = pd.read_csv(src_path)
 
     # convert to metric if needed
-    if 'stage_m' not in df.columns: # Assumes only Imperial units
+    if 'stage_m' not in df.columns: # if no meters, then only Imperial units are in the file
         df["stage_m"] = ["{:0.2f}".format(h * 0.3048) for h in df["stage_ft"]]
         df["discharge_cms"] = ["{:0.2f}".format(q * 0.0283168) for q in df["discharge_cfs"]]
-        df.to_csv(os.path.join(SRC_PATH),index=False)
+        df.to_csv(os.path.join(src_path),index=False)
 
+        # REM will also be in Imperial units if the incoming SRC was
         rem_path = os.path.join(ras2rem_dir,'rem.tif')
         with rasterio.open(rem_path) as src:
             raster = src.read()
-            raster = np.multiply(raster, np.where(raster != 65535,0.3048,1))
+            raster = np.multiply(raster, np.where(raster != 65535,0.3048,1)) # keep no-data value as-is
             output_meta = src.meta.copy()
         with rasterio.open(rem_path,'w',**output_meta,compress="LZW") as dest:
             dest.write(raster)
@@ -48,13 +49,13 @@ def convert_to_metric(ras2rem_dir, huc):
 #
 # Scrapes the top changelog version (most recent version listed in our repo)
 #
-def get_changelog_version(CHANGELOG_PATH):
-    changelog = keepachangelog.to_dict(CHANGELOG_PATH)
+def get_changelog_version(changelog_path):
+    changelog = keepachangelog.to_dict(changelog_path)
     return list(changelog.keys())[0]
 
 # This function creates a geopackage of Feature IDs from the raster that
-# matches the Depth Grid processing extents from ras2fim Step 5.
-def vectorize(path,CHANGELOG_PATH,CATALOG_PATH,SRC_PATH):
+# matches the Depth Grid processing extents ("maxments") from ras2fim Step 5.
+def vectorize(path,changelog_path,catalog_path,src_path):
     with rasterio.open(path) as src:
         rast = src.read()
 
@@ -67,7 +68,7 @@ def vectorize(path,CHANGELOG_PATH,CATALOG_PATH,SRC_PATH):
     vals = []
     for shp,val in shapes:
       geoms.append(Polygon(shp["coordinates"][0]))
-      vals.append(val)
+      vals.append(val) # feature IDs
 
     # Dataframe of Feature ID values to complement the geometries of the polygons derived from raster
     df = pd.DataFrame(vals)
@@ -76,18 +77,18 @@ def vectorize(path,CHANGELOG_PATH,CATALOG_PATH,SRC_PATH):
     
     # We pass in (potentially) many different depths for each Feature ID, so dissolve them together
     gdf = gpd.GeoDataFrame(df,crs=src.crs,geometry=geoms)
-    gdf = gdf.dissolve('feature_id')    
+    gdf = gdf.dissolve('feature_id') # ensure that we just have one big polygon per feature ID
 
     #
     # MODEL CATALOG DATA
     #
-    model_df = pd.read_csv(CATALOG_PATH)
+    model_df = pd.read_csv(catalog_path)
     
-    # Join GeoDataFrame to model catalog that has some relevant metadata; keep only relevant fields
+    # Join GeoDataFrame to model catalog that has some relevant metadata; keep only relevant fields that match our feature IDs
     gdf = gdf.merge(model_df,how="left",left_on="feature_id",right_on="nhdplus_comid")
     columns_to_keep = ["geometry","HydroID","source","last_modified","model_name"]
     gdf = gdf[columns_to_keep]
-    gdf['last_modified'] = gdf['last_modified'].fillna(-1) # maybe should be time.time() for current
+    gdf['last_modified'] = gdf['last_modified'].fillna(-1)
     try:
         gdf['last_modified'] = [dt.datetime.utcfromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S") for t in gdf['last_modified']]
     except Exception as e:
@@ -98,9 +99,9 @@ def vectorize(path,CHANGELOG_PATH,CATALOG_PATH,SRC_PATH):
     #
     # SRC DATA
     #
-    src_df = pd.read_csv(SRC_PATH)
+    src_df = pd.read_csv(src_path)
     
-    # Get min and max stage and discharge for each Feature ID, then create a combined field for stage and flow
+    # Get min and max stage and discharge for each Feature ID, then create fields for stage and flow mins and maxs
     agg_df = src_df.groupby(["feature_id"]).agg({'stage_m': ['min', 'max'], 'discharge_cms': ['min','max']})
     
     agg_df['start_stage'] = agg_df['stage_m']['min']
@@ -123,7 +124,8 @@ def vectorize(path,CHANGELOG_PATH,CATALOG_PATH,SRC_PATH):
     gdf['flow_match_score'] = [0] * len(gdf)
     gdf['terrain_match_score'] = [0] * len(gdf)
     gdf['other_notes'] = [""] * len(gdf)
-    gdf['ras2fim_version'] = [get_changelog_version(CHANGELOG_PATH)] * len(gdf)
+
+    gdf['ras2fim_version'] = [get_changelog_version(changelog_path)] * len(gdf)
 
     # ... then we should have all the metadata we need on a per-catchment basis 
 
@@ -133,7 +135,7 @@ def vectorize(path,CHANGELOG_PATH,CATALOG_PATH,SRC_PATH):
 
 # This function creates a raster AND geopackage of Feature IDs that correspond to the extent
 # of the Depth Grids (and subsequent REMs that also match the Depth Grids)
-def make_catchments(input_dir,output_dir,nwm_feature_id_polygons,TEMP_FOLDER):
+def make_catchments(input_dir,output_dir,nwm_feature_id_polygons,temp_folder):
     start_time = time.time()    
     all_tif_files=list(Path(input_dir).rglob('*/Depth_Grid/*.tif'))
     feature_id_values = list(map(lambda var:str(var).split(".tif")[0].split("-")[-2], all_tif_files))
@@ -143,7 +145,7 @@ def make_catchments(input_dir,output_dir,nwm_feature_id_polygons,TEMP_FOLDER):
     print(f"Looking through {all_feature_ids}")
 
     # This file will be written out to contain a subset of polygons that correspond to the feature IDs of interest
-    temp_sub_polygons = os.path.join(TEMP_FOLDER,"subset_polys.shp")
+    temp_sub_polygons = os.path.join(temp_folder,"subset_polys.shp")
     
     # Creating a subset of polygons that only contain the feature IDs of interest.
     # This step is technically optional, but it will speed up processing immensely so that we don't
@@ -170,8 +172,8 @@ def make_catchments(input_dir,output_dir,nwm_feature_id_polygons,TEMP_FOLDER):
         # Look through all depth grid tiffs associated with this feature ID and find the max depth value and file
         for p in this_feature_id_tif_files:
             print(p)
-            rem = int(str(p).split('\\')[-1].split('-')[1].rstrip('.tif'))
-            print(f"Looking at {rem} for {feature_id}... max_rem is {max_rem} before this")
+            rem = int(str(p).split('\\')[-1].split('-')[1].rstrip('.tif')) # get rem value from filename
+            print(f"Looking at {rem} for {feature_id}... max_rem was {max_rem} before this")
             if(rem > max_rem):
                 max_rem = rem
                 max_rem_file = p
@@ -182,7 +184,7 @@ def make_catchments(input_dir,output_dir,nwm_feature_id_polygons,TEMP_FOLDER):
         # we match our raster projections.
         # Create a matching projection version of the subset of possible catchments; only need to do this the first time
         # because each subsequent run can use this same file
-        temp_proj_polygons = os.path.join(TEMP_FOLDER,"temp_sub_proj_polys.shp") # reproj
+        temp_proj_polygons = os.path.join(temp_folder,"temp_sub_proj_polys.shp") # reproj
         if not os.path.exists(temp_proj_polygons):
             print("Projecting Feature ID polygons from NWM Catchments")
             print(raster.crs)
@@ -191,11 +193,12 @@ def make_catchments(input_dir,output_dir,nwm_feature_id_polygons,TEMP_FOLDER):
             df = df.to_crs(raster.crs)
             df.to_file(temp_proj_polygons)
 
+        # Get the polygon associated with this current feature ID
         with fiona.open(temp_proj_polygons) as subset_shapefile:
             shapes = [feature["geometry"] for feature in subset_shapefile if feature['properties']['FEATUREID']==int(feature_id)]
         
         # ... apply polygon as mask to initial raster. Will only pull one feature ID at a time. 
-        # Clips depth grid to catchment boundary
+        # Clips depth grid to catchment boundary to create "maxment"
         masked_raster, transform = rasterio.mask.mask(raster, shapes, nodata=raster.nodata, filled=True, invert=False)
 
         # Force datatypes to be 32-bit integers
@@ -213,7 +216,7 @@ def make_catchments(input_dir,output_dir,nwm_feature_id_polygons,TEMP_FOLDER):
         raster_to_mosaic.append(feature_id_rem_path)
 
     # Merge all the feature IDs' max depths together
-    print("MERGING all max depths")
+    print("Merging all max depths")
     print(raster_to_mosaic)
     mosaic, output = merge(list(map(rasterio.open,raster_to_mosaic)), method="min")
 
@@ -227,7 +230,7 @@ def make_catchments(input_dir,output_dir,nwm_feature_id_polygons,TEMP_FOLDER):
          "dtype":np.int32,
          }
     )
-    # Write out the feature_id raster file
+    # Write out the feature_id raster file, which is one of our required outputs
     feature_id_path = os.path.join(output_dir,"feature_id.tif")
     with rasterio.open(feature_id_path, "w", **output_meta,compress="LZW") as m:
         m.write(mosaic)
@@ -252,12 +255,12 @@ def make_catchments(input_dir,output_dir,nwm_feature_id_polygons,TEMP_FOLDER):
     return feature_id_path
 
 
-def main_call(huc_num, ROOT_DIR, NWM_CATCHMENTS_SHAPEFILE,
-                    TEMP_FOLDER, CHANGELOG_PATH, CATALOG_PATH):
+def main_call(huc_num, root_dir, nwm_catchments_shapefile,
+                    temp_folder, changelog_path, catalog_path):
 
-    input_dir= os.path.join(ROOT_DIR,"05_hecras_output")
-    ras2rem_dir = os.path.join(ROOT_DIR,"06_ras2rem")
-    output_dir= os.path.join(ROOT_DIR,"08_eff_catchment_output")
+    input_dir= os.path.join(root_dir,"05_hecras_output")
+    ras2rem_dir = os.path.join(root_dir,"06_ras2rem")
+    output_dir= os.path.join(root_dir,"08_eff_catchment_output")
     
     # converts SRC and REM to metric if needed based on the existing SRC columns
     convert_to_metric(ras2rem_dir, huc_num)
@@ -266,10 +269,10 @@ def main_call(huc_num, ROOT_DIR, NWM_CATCHMENTS_SHAPEFILE,
         shutil.rmtree(output_dir)
     os.mkdir(output_dir)
     
-    feature_id_path = make_catchments(input_dir,output_dir,NWM_CATCHMENTS_SHAPEFILE,TEMP_FOLDER)
+    feature_id_path = make_catchments(input_dir,output_dir,nwm_catchments_shapefile,temp_folder)
 
-    print("*** Vectorizing FEATURE IDs")
-    vectorize(feature_id_path,CHANGELOG_PATH,CATALOG_PATH,
+    print("*** Vectorizing Feature IDs and creating metadata")
+    vectorize(feature_id_path,changelog_path,catalog_path,
               os.path.join(ras2rem_dir,'rating_curve.csv'))
 
     return    
@@ -291,31 +294,31 @@ if __name__=="__main__":
                         type = str)
 
     parser.add_argument('-p',
-                        dest = "ROOT_DIR",
+                        dest = "root_dir",
                         help = r'REQUIRED: Full path that contains results folders of a ras2fim run.',
                         required = True,
                         type = str) 
 
     parser.add_argument('-n',
-                        dest = "NWM_CATCHMENTS_SHAPEFILE",
+                        dest = "nwm_catchments_shapefile",
                         help = r'REQUIRED: path to NWM catchments: Example: E:\X-NWS\X-National_Datasets\nwm_catchments.shp.',
                         required = True,
                         type = str)
 
     parser.add_argument('-t',
-                        dest = "TEMP_FOLDER",
+                        dest = "temp_folder",
                         help = r'REQUIRED: path to temporary working folder. Example: C:/users/<user_name>/Documents/temp.',
                         required = True,
                         type = str)
     
     parser.add_argument('-c',
-                        dest = "CHANGELOG_PATH",
+                        dest = "changelog_path",
                         help = r'REQUIRED: path to changelog file in this repo',
                         required = True,
                         type = str)
 
     parser.add_argument('-m',
-                        dest = "CATALOG_PATH",
+                        dest = "catalog_path",
                         help = r'REQUIRED: path to model catalog csv file downloaded from S3',
                         required = True,
                         type = str)
