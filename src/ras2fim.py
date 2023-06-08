@@ -280,12 +280,7 @@ def create_input_args_log (**kwargs):
     r2f_huc_output_dir = kwargs.get("r2f_huc_output_dir")
 
     arg_log_file = os.path.join(r2f_huc_output_dir, "run_arguments.txt")
-
-    print(arg_log_file)
-
-    #print("here 1")
-    #print(kwargs)
-
+    
     # Remove it if is aleady exists (relavent if we add an override system)
     if (os.path.exists(arg_log_file)):
         os.remove(arg_log_file)
@@ -294,12 +289,16 @@ def create_input_args_log (**kwargs):
     utc_now = datetime.datetime.now(datetime.timezone.utc)
     str_date = utc_now.strftime("%Y-%m-%d")
 
+    # The file can be parsed later by using the two colons and the line break if ever required
+    # We are already talking about using data in this file for metadata files
+    # especially as the DEM's becomed versions in the input files which meta data
+    # will need to know what fim version of the DEM was used.
     with open(arg_log_file, "w") as arg_file:
-        arg_file.write(f"process_date: {str_date}\n")
+        arg_file.write(f"process_date == {str_date}\n")
+        arg_file.write(f"command_line_submitted == {(' '.join(sys.argv))}\n")
 
         for key, value in kwargs.items():
-            arg_file.write("%s: %s\n" % (key, value))
-
+            arg_file.write("%s == %s\n" % (key, value))
 
 
 def init_and_run_ras2fim(str_huc8_arg, 
@@ -378,7 +377,7 @@ def init_and_run_ras2fim(str_huc8_arg,
         int_step = int(str_step_override)
 
 
-    # Save incoming args and a few new variables created to this point into a log file
+    # Save incoming args and a few new derived variables created to this point into a log file
     # Careful... when **locals() is called, it will include ALL variables in this function to this point.
     create_input_args_log(**locals())
 
