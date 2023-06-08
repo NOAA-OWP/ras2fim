@@ -4,7 +4,6 @@ import os, argparse, rasterio, datetime, sys, shutil, gdal, osr, rasterio.crs
 import pandas as pd
 import numpy as np
 import geopandas as gpd
-# from rasterio.crs  import CRS
 from geopandas.tools import overlay
 from shapely.geometry import LineString, Point
 from concurrent.futures import ProcessPoolExecutor, as_completed, wait
@@ -15,7 +14,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed, wait
 def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename, 
                         output_save_folder, int_output_table_label, 
                         int_geospatial_label, int_log_label, source, 
-                        location_type, active, input_vdatum):
+                        location_type, active, input_vdatum, nodataval):
 
     """
     Reads, compiles, and reformats the rating curve info for the given directory (run in ___main___)
@@ -27,17 +26,18 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
     output_log.append(f"Directory: {dir}")
 
     if verbose == True:
-        print(" ")
+        print()
         print(f"Directory: {dir}")
     
     # Check for rating curve, get metadata and read it in if it exists
     rc_path = os.path.join(input_folder_path, dir, "06_ras2rem", "rating_curve.csv")
     
     if os.path.isfile(rc_path) == False:
-        print(f"No rating curve file available.")
+        print(f"No rating curve file available for {dir}.")
         output_log.append("Rating curve NOT available.")
         dir_log_filename = str(dir) + int_log_label
         dir_log_filepath = os.path.join(output_save_folder, intermediate_filename, dir_log_filename)
+
         with open(dir_log_filepath, 'w') as f:
             for line in output_log:
                 f.write(f"{line}\n")
@@ -236,31 +236,43 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         elif str_unit_raster in ['f', 'ft', 'feet']:
             str_unit_raster = 'ft'
         else:
-            log = "Warning: Raster units not recognized as feet or meters."
+            log = f"Warning: Raster units not recognized as feet or meters. ({dir})"
             output_log.append(log)
             print(log)
 
         # If the rating curve units aren't equal to the elevation units, convert them 
         if str_unit_raster == stage_units:
-            print('Stage units and raster units are the same, no unit conversion needed.')
             rc_elev_df['stage_final'] = rc_elev_df['stage'] 
+            log = 'Stage units and raster units are the same, no unit conversion needed.'
+            # print('Stage units and raster units are the same, no unit conversion needed.')
 
         elif stage_units == 'ft' and str_unit_raster == 'meter':
-            print('Need to convert stage units to meter.')
             rc_elev_df['stage_final'] = rc_elev_df['stage'] / 3.281  ## meter = feet / 3.281
+            log = 'Need to convert stage units to meter.'
+            # print('Need to convert stage units to meter.')
 
         elif stage_units == 'm' and str_unit_raster == 'ft':
-            print('Need to convert stage units to feet.')
             rc_elev_df['stage_final'] = rc_elev_df['stage'] / 0.3048  ## feet = meters / 0.3048
+            log = 'Need to convert stage units to feet.'
+            # print('Need to convert stage units to feet.')
 
         else:
-            log = f'Warning: No conversion available between {stage_units} and {str_unit_raster}. Stage set to -9999 (nodata) value.'
+            log = f'Warning: No conversion available between {stage_units} and {str_unit_raster}. Stage set to nodata value ({nodataval}).'
             output_log.append(log)
-            print(log)
-            rc_elev_df['stage_final'] = (0 - 9999)
+            # print(log)
+            rc_elev_df['stage_final'] = nodataval
 
-        # elevation_navd88 is calculated by adding the rating curve value to the navd88_datum value
-        rc_elev_df['elevation_navd88'] = rc_elev_df['navd88_datum'] + rc_elev_df['stage']
+        if verbose == True:
+            print(log)
+
+        ## Calculate elevation_navd88 by adding the rating curve value to the navd88_datum value
+        #rc_elev_df['elevation_navd88'] = rc_elev_df['navd88_datum'] + rc_elev_df['stage']
+
+        # If 'stage' does not equal a nodata value, calculate elevation_navd88 by adding 'navd88_datum' and 'stage'
+        rc_elev_df.loc[rc_elev_df['stage_final'] != nodataval, 'elevation_navd88'] = rc_elev_df['stage_final'] + rc_elev_df['navd88_datum']
+
+        # If stage DOES equal the nodata value, set the 'elevation_navd88' to the nodata value as well
+        rc_elev_df.loc[rc_elev_df['stage_final'] == nodataval, 'elevation_navd88'] = nodataval
 
         # ------------------------------------------------------------------------------------------------
         # [Placeholder]: Determine whether an elevation adjustment is needed to supplement 
@@ -272,13 +284,13 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
 
         # Make column just called 'flow' with the discharge values
         flow_columns = rc_elev_df.filter(like='Discharge')
-        rc_elev_df['flow'] =  stage_columns.iloc[:, 0]
+        rc_elev_df['flow'] =  flow_columns.iloc[:, 0]
         
         # Get timestamp
         wrds_timestamp = datetime.datetime.now() 
 
         dir_output_table = pd.DataFrame({'flow' : rc_elev_df['flow'],
-                                         'stage' : rc_elev_df['stage'],
+                                         'stage' : rc_elev_df['stage_final'], # the stage value that was corrected for units
                                          'feature_id' : rc_elev_df['feature-id'],  
                                          'location_type': location_type, #str 
                                          'source': source, #str
@@ -299,14 +311,17 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         # ------------------------------------------------------------------------------------------------
         # Export dir_output_table, dir_geospatial, and log to the intermediate save folder
 
+        # Save output table for directory
         dir_output_table_filename = str(dir) + int_output_table_label 
         dir_output_table_filepath = os.path.join(output_save_folder, intermediate_filename, dir_output_table_filename)
         dir_output_table.to_csv(dir_output_table_filepath, index=False)        
 
+        # Save geospatial table for directory
         dir_geospatial_filename = str(dir) + int_geospatial_label
         dir_geospatial_filepath = os.path.join(output_save_folder, intermediate_filename, dir_geospatial_filename)
         dir_geospatial.to_csv(dir_geospatial_filepath, index=False)  
 
+        # Save log for directory
         dir_log_filename = str(dir) + int_log_label
         dir_log_filepath = os.path.join(output_save_folder, intermediate_filename, dir_log_filename)
         with open(dir_log_filepath, 'w') as f:
@@ -321,7 +336,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
 # -----------------------------------------------------------------
 def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbose, num_workers, 
                               keep_intermediates,  start_time_string, overwrite, source, 
-                              location_type, active, input_vdatum):
+                              location_type, active, input_vdatum, nodataval):
 
     """
     Creates directory list and feeds directories to dir_reformat_ras_rc() inside a multiprocessor.
@@ -362,24 +377,39 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
 
     # Create empty output log and give it a header
     output_log = []
-    output_log.append("reformat_ras_rating_curves.py started at " + str(start_time_string))
+    output_log.append(f"Processing for reformat_ras_rating_curves.py started at {str(start_time_string)}")
+    output_log.append(f"Input directory: {input_folder_path}")
 
     # ------------------------------------------------------------------------------------------------
     # # Create a process pool and run dir_reformat_ras_rc() for each directory in the directory list
     # with ProcessPoolExecutor(max_workers=num_workers) as executor:
 
+    if verbose == True:
+        print()
+        print("--------------------------------------------------------------")
+        print("Begin iterating through directories with multiprocessor...")
+        print()
+
+
     #     for dir in dirlist:
     #         executor.submit(dir_reformat_ras_rc, dir, input_folder_path, verbose, intermediate_filename, output_save_folder, int_output_table_label, int_geospatial_label, int_log_label, source, 
-                              #location_type, active, input_vdatum)
+                              #location_type, active, input_vdatum, nodataval)
 
     ##debug: run without multiprocessor
     for dir in dirlist:
         dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename, output_save_folder, 
                             int_output_table_label, int_geospatial_label, int_log_label, source, 
-                            location_type, active, input_vdatum)
+                            location_type, active, input_vdatum, nodataval)
+
 
     # ------------------------------------------------------------------------------------------------
     # Read in all intermedate files (+ output logs) and combine them 
+
+    if verbose == True:
+        print()
+        print("--------------------------------------------------------------")
+        print("Begin compiling multiprocessor outputs...")
+        print()
 
     # Get list of intermediate files from path
     intermediate_filepath = os.path.join(output_save_folder, intermediate_filename)
@@ -433,10 +463,6 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     output_log = [s.replace('\n', '') for s in output_log]
     output_log.append(" ")
 
-    if verbose == True:
-        print("=======================")
-        print("Reading and compiling multiprocessor outputs.")
-
     # If keep-intermediates option is not selected, clean out intermediates folder
     if keep_intermediates == False:
         shutil.rmtree(intermediate_filepath)
@@ -447,16 +473,15 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     # Check for and remove duplicate values
     if full_geospatial['feature_id'].duplicated().any():
         print()
-        print("Duplicate feature_ids removed from geospatial data table.")
+        print("Duplicate feature_ids were found and removed from geospatial data table.")
         
         if verbose == True:
             duplicated_fids = full_geospatial.loc[full_geospatial['feature_id'].duplicated() == True]['feature_id']
-            
-            print("Duplicate feature_id values:")
-            print(duplicated_fids)
+            print("Duplicate feature_id values: " + str(set(list(duplicated_fids))))
 
-        output_log.append("Duplicate feature_ids removed from geospatial data table:")
-        output_log.append(duplicated_fids)
+            output_log.append("Duplicate feature_id values: " + str(set(list(duplicated_fids))))
+            output_log.append("Duplicate feature_ids were removed from geospatial data table.")
+            output_log.append(" ")
 
         full_geospatial.drop_duplicates(subset='feature_id', inplace=True)
 
@@ -468,6 +493,7 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     output_geopackage = gpd.GeoDataFrame(output_geopackage_temp, geometry='geometry')
 
     if verbose == True:
+        print()
         print("Midpoint geopackage created.")
 
     # ------------------------------------------------------------------------------------------------
@@ -509,15 +535,28 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
 if __name__ == '__main__':
 
     """
-    Sample usage:
+    Sample usage (no linebreak so they can be copied and pasted):
     
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i '/Users/rdp-user/projects/reformat-ras2fim/ras2fim_test_outputs' -o '/Users/rdp-user/projects/reformat-ras2fim/temp' -v -l
-
+    # Recommended parameters:
     python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i '/Users/rdp-user/projects/reformat-ras2fim/ras2fim_test_outputs' -o '/Users/rdp-user/projects/reformat-ras2fim/temp' -v -l -ov
 
+    # Minimalist run (only required arguments):
+    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i '/Users/rdp-user/projects/reformat-ras2fim/ras2fim_test_outputs' -o '/Users/rdp-user/projects/reformat-ras2fim/temp'
+
+    # Maximalist run (all possible arguments):
+    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i '/Users/rdp-user/projects/reformat-ras2fim/ras2fim_test_outputs' -o '/Users/rdp-user/projects/reformat-ras2fim/temp' -v -l -j 6 -k -ov -so "ras2fim" -lt "USGS" -ac "True"
+
+    # Overwrite existing intermediate files:
+    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i '/Users/rdp-user/projects/reformat-ras2fim/ras2fim_test_outputs' -o '/Users/rdp-user/projects/reformat-ras2fim/temp' -v -ov
+
+    # Run with 6 workers:
     python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i '/Users/rdp-user/projects/reformat-ras2fim/ras2fim_test_outputs' -o '/Users/rdp-user/projects/reformat-ras2fim/temp' -v -l -j 6
 
+    # Keep intermediates, save output log, and run quietly (no verbose tag):
     python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i '/Users/rdp-user/projects/reformat-ras2fim/ras2fim_test_outputs' -o '/Users/rdp-user/projects/reformat-ras2fim/temp' -k -l
+
+    # Input the data source, location type, and active information using the -so, -lt, and -ac flags:
+    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i '/Users/rdp-user/projects/reformat-ras2fim/ras2fim_test_outputs' -o '/Users/rdp-user/projects/reformat-ras2fim/temp' -v -so "ras2fim" -lt "USGS" -ac "True"
 
     Notes:
        - Required arguments: -i "input path", -o "output path"
@@ -544,8 +583,7 @@ if __name__ == '__main__':
                         required=False, default=False, action='store_true')
     parser.add_argument('-ov', '--overwrite', help='Option to overwrite existing intermediate files in the output save folder.', 
                         required=False, default=False, action='store_true')
-    
-    parser.add_argument('-s', '--source', help='Input a value for the "source" output column (i.e. "ras2fim", "ras2fim v2.1").', required=False, default=" ")
+    parser.add_argument('-so', '--source', help='Input a value for the "source" output column (i.e. "ras2fim", "ras2fim v2.1").', required=False, default=" ")
     parser.add_argument('-lt', '--location-type', help='Input a value for the "location_type" output column (i.e. "USGS", "IFC").', required=False, default=" ")
     parser.add_argument('-ac', '--active', help='Input a value for the "active" column ("True" or "False")', required=False, default=" ")
 
@@ -567,20 +605,29 @@ if __name__ == '__main__':
     start_time = datetime.datetime.now()
     start_time_string = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
 
-    print("============================================")
-    print(f"Started compiling ras2fim rating curves at {start_time_string}.")
-    print(" ")
-    print(f"Verbose: {str(verbose)}")
-    print(f"Save output log to folder: {str(log)}")
-    print(f"Keep intermediates: {str(keep_intermediates)}")
-    print(f"Number of workers: {num_workers}")
+    print("-----------------------------------------------------------------------------------------------")
+    print("Begin rating curve compilation process...")
+    print()
+    print(f"Start time: {start_time_string}.")
+    print()
+    print("Settings: ")
+    print(f"    Verbose: {str(verbose)}")
+    print(f"    Save output log to folder: {str(log)}")
+    print(f"    Keep intermediates: {str(keep_intermediates)}")
+    print(f"    Number of workers: {num_workers}")
 
     # Set default vertical datum and print warning about vertical datum conversion
     input_vdatum = "NAVD88"
     output_vdatum = "NAVD88"
 
     if input_vdatum == output_vdatum:
-        print(f"No datum conversion will take place.")
+        print(f"    No datum conversion will take place.")
+
+    # End of settings block
+    print()
+
+    # Set nodata value
+    nodataval = (0 - 9999) # -9999
 
     # Check job numbers
     total_cpus_requested = num_workers
@@ -591,13 +638,16 @@ if __name__ == '__main__':
 
     # Run main function
     compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbose, num_workers, keep_intermediates, 
-                              start_time_string, overwrite, source, location_type, active, input_vdatum)
+                              start_time_string, overwrite, source, location_type, active, input_vdatum, nodataval)
 
     # Record end time, calculate runtime, and print runtime
     end_time = datetime.datetime.now()
     runtime = end_time - start_time
 
     print()
-    print("Process finished.") 
-    print("Total runtime:", runtime)
-    print("============================================")
+    print(f"Process finished. Total runtime: {runtime}") 
+    print("-----------------------------------------------------------------------------------------------")
+
+
+
+    
