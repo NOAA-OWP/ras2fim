@@ -1,6 +1,17 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.6.0 - 2023-06-02 - [PR#65](https://github.com/NOAA-OWP/ras2fim/pull/65)
+Updated `src/run_ras2rem.py` with following changes:
+- Fixed a bug regarding the units used for rating_curve.csv output. Now, ras2rem will infer the vertical unit from ras2fim results in 05_hecras_output folder. 
+- Added multi-processing capability for making tif files for rem values.
+- Added a progress bar to show the progress during above step (making tif files for rem values). 
+- Made the help notes for -p flag more clear, so the user will understand where the ras2rem outputs are created. 
+- Added some extra columns needed for hydroviz into rating_curve.csv output. This involved moving the required changes from `src/ras2rem.py` file into `src/run_ras2rem.py`, which allowed removing the `src/ras2rem.py` altogether.
+Removed `src/ras2rem.py`.
+
+<br/><br/>
+
 ## v1.5.0 - 2023-05-12 - [PR#55](https://github.com/NOAA-OWP/ras2fim/pull/55)
 
 When a recent version of ras2catchment.py was checked in, it had hardcoding paths that were not testable. Some new input files were also required to get the feature working.  Considering the new data flow model and folder structure, the team agreed to attempt to standardize the pathing from one folder to another.  A new system was added to help manage paths inside the `C:\\ras2fim_data` directory, or whatever name you like.  Most of the original arguments and full pathing continues to work, but is no longer needed and it is encourage to now only use the pathing defaults.
