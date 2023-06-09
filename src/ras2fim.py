@@ -32,6 +32,7 @@ from ras2catchments import make_catchments
 import argparse
 import os
 import shutil
+import sys
 from datetime import datetime
 
 import fnmatch
@@ -40,6 +41,7 @@ from re import search
 import shared_variables as sv
 import shared_functions as sf
 
+# Global Variables
 b_terrain_check_only = False
 
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -65,7 +67,7 @@ def fn_run_ras2fim(str_huc8_arg,
                    str_hec_path,
                    str_terrain_override,
                    run_ras2rem,
-                   str_step_override
+                   int_step
                    ):
     
     start_dt = datetime.now() 
@@ -85,7 +87,7 @@ def fn_run_ras2fim(str_huc8_arg,
     print("  ---[v] Optional: Vertical units in: " + str(vert_unit))    
     print("  ---[t] Optional: Terrain to Utilize" + str(str_terrain_override))
     print("  ---[m] Optional: Run RAS2REM: " + str(run_ras2rem))
-    print("  ---[s] Optional: step to start at - " + str(str_step_override))
+    print("  ---[s] Optional: step to start at - " + str(int_step))
 
     print("===================================================================")
     print(" ")
@@ -101,7 +103,7 @@ def fn_run_ras2fim(str_huc8_arg,
 
     # TODO: step system not fully working and needs to be fixed.
     # create an output folder with checks
-    if os.path.exists(str_out_arg) and (int_step == 0):
+    if os.path.exists(str_out_arg)
         print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
         raise SystemExit(0)
 
@@ -111,12 +113,13 @@ def fn_run_ras2fim(str_huc8_arg,
     #    elif int_step==0:
     #        print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
     #        shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
-    else:
-        if (int_step > 0):
-            print(f"Starting a code step number {int_step} as per the -s arg")
+    #else:
+    #    if (int_step > 0):
+    #        print(f"Starting a code step number {int_step} as per the -s arg")
 
-        if not os.path.exists(str_out_arg):
-            os.mkdir(str_out_arg)
+    #if not os.path.exists(str_out_arg):
+    
+    os.mkdir(str_out_arg)
     
 
     # ---- Step 1: create_shapes_from_hecras ----
@@ -301,6 +304,39 @@ def fn_run_ras2fim(str_huc8_arg,
 
     
 
+def create_input_args_log (**kwargs):
+
+    '''
+    Overview:
+        This method takes all incoming arguments, cycles through them and put them in a file
+    Inputs:
+        **kwargs is any dictionary of key / value pairs
+    '''
+
+    r2f_huc_output_dir = kwargs.get("r2f_huc_output_dir")
+
+    arg_log_file = os.path.join(r2f_huc_output_dir, "run_arguments.txt")
+    
+    # Remove it if is aleady exists (relavent if we add an override system)
+    if (os.path.exists(arg_log_file)):
+        os.remove(arg_log_file)
+
+    # start with the processing date
+    utc_now = datetime.datetime.now(datetime.timezone.utc)
+    str_date = utc_now.strftime("%Y-%m-%d")
+
+    # The file can be parsed later by using the two colons and the line break if ever required
+    # We are already talking about using data in this file for metadata files
+    # especially as the DEM's becomed versions in the input files which meta data
+    # will need to know what fim version of the DEM was used.
+    with open(arg_log_file, "w") as arg_file:
+        arg_file.write(f"process_date == {str_date}\n")
+        arg_file.write(f"command_line_submitted == {(' '.join(sys.argv))}\n")
+
+        for key, value in kwargs.items():
+            arg_file.write("%s == %s\n" % (key, value))
+
+
 def init_and_run_ras2fim(str_huc8_arg, 
                          str_crs_arg,
                          r2f_huc_output_dir,
@@ -343,6 +379,19 @@ def init_and_run_ras2fim(str_huc8_arg,
                          ' parent folders must exist. See code notes in the __main__ section for details and examples')
 
 
+    # TODO: step system not fully working and needs to be fixed.
+    # create an output folder with checks
+    #if os.path.exists(str_out_arg):
+    #    if os.path.exists(os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, 'terrain_stats.csv')):
+    #        print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
+    #        raise SystemExit(0)
+    #    elif int_step==0:
+    #        print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
+    #        shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
+    #else:
+    os.mkdir(r2f_huc_output_dir) # pathing has already been validated and ensure the child folder does not pre-exist
+
+
     # -n  (ie: inputs\\X-National_Datasets)
     if (os.path.exists(str_nation_arg) == False) and (str_nation_arg != sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR):
         raise ValueError("the -n arg (inputs x national datasets path arg) does not appear to be a valid folder.")
@@ -357,6 +406,16 @@ def init_and_run_ras2fim(str_huc8_arg,
         if (os.path.exists(str_terrain_override) == False): # might be a full path 
             raise ValueError("the -t arg (terrain override) does not appear to be correct a valid path and file.")
 
+
+    if str_step_override == "None Specified - starting at the beginning":  
+        int_step = 0
+    else:
+        int_step = int(str_step_override)
+
+
+    # Save incoming args and a few new derived variables created to this point into a log file
+    # Careful... when **locals() is called, it will include ALL variables in this function to this point.
+    create_input_args_log(**locals())
 
     # Setup enviroment logic
     if vert_unit == 'check':
@@ -395,6 +454,7 @@ def init_and_run_ras2fim(str_huc8_arg,
             elif identical_array[0] == "foot":
                 vert_unit = "foot"
 
+
     fn_run_ras2fim(str_huc8_arg,
                    str_ras_path_arg,
                    r2f_huc_output_dir,
@@ -404,7 +464,7 @@ def init_and_run_ras2fim(str_huc8_arg,
                    str_hec_path,
                    str_terrain_override,
                    rem_outputs,
-                   str_step_override )
+                   int_step )
 
     
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    

@@ -90,7 +90,7 @@ aws s3 ls s3://noaa-nws-owp-fim/ras2fim/sample-datasets --request-payer requeste
 ```
 Download Sample Input and Output datasets: (212 Mb)
 ```
-aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/sample-datasets sample-datasets --request-payer requester
+aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/sample-dataset sample-datasets --request-payer requester
 ```
 A video, showing the use of these sample data with the `ras2fim` scripts is provided.
 
