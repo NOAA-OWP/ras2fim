@@ -1,6 +1,39 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.x.x - 2023-05-26 - [PR#64](https://github.com/NOAA-OWP/ras2fim/pull/64)
+
+In a recent release, the ras2catchment product feature was included but was not completed and now is.
+
+The ras2catchment product feature looks at depth grid files names created by `ras2fim`, the extract the river features ID that are relevant.  Using that list of relevant feature IDs,  extract the relevant catchment polygons from `nwm_catchments.gkpg`, creating its own catchments gkpg.
+
+New input files are required for this release to be tested and used. One file and one folder need to be downloaded in the `X-National_Datasets` folder, or your equivalent. The new file and folder are:
+- `nwm_catchments.gpkg`:  It needs to be sitting beside the original three files of `nwm_flows.gpkg`, `nwm_wbd_lookup.nc`, and `WBD_National.gpkg`.  
+- A folder named `WBD_HUC8` needs to  be downloaded and place inside the `X-National_Datasets` or equiv.  The `WBD_HUC8` folder includes a gkpg for each HUC8 from the a full WBD national gkpg. They were split to separate HUC8 files for system performance.
+
+The new file and folder can be found in `inputs` directories on both rasfim S3 or ESIP S3.
+
+Code folder changes:
+
+### Additions 
+ 
+- `README.md`: Has been updated to talk about downloading all `X-National_Datasets` files and folder now in the `Inputs` directory. Previous versions of this page talked about getting three files from a folder in ESIP called `National Datasets`. Now both ESIP and ras2fim S3 have an identical `inputs` folder.  This md file now also talks the new file and WBD_HUC8 folder in its required downloads.
+- `INSTALL.md`: Updated to talk about the new inputs instead of the original three files.
+- `src`
+    - `shared_functions.py`: Includes a common duration calculating function, now used by both ras2fim and ras2catchments.py. This file can be shared for common functionality across all files in the code. Common shared functions help with consistency, avoid duplication and ease of implementation. Other code blocks have already been detected as being duplicated and may be moved into this file at a later time.
+
+### Changes  
+
+- `src`
+    - `ras2fim.py`: Updated to change the duration output system to come from the new `shared_functions.py` file replacing it's original duration calc code. The `step` feature has been partially repaired as it had an error in it, but has not been fully fixed or tested. A separate issue card and PR will be coming.  In the meantime, the code now has re-instated the code feature of not allowing a user to re-execute ras2fim.py against a folder that already exists.  
+    - `ras2catchments.py`:  This has been rebuilt in recognition that it had a fair bit of temporary duplication code from `run_ras2rem`.  `ras2catchemts` is now stripped back to it's original requirement described above.
+
+### Note: 
+Sometimes when using ras2catchemnts.py from command line, an error was issued talking about a PROJ file not existing. The source of the error was traced but a fix was not found. A code fix previously existed to attempt to fix it, but did not appear to fix it.  However.. the error does not block or limit the functionality of using this tool. And, when ras2catchment is called as part of the ras2fim pipeline flow, the error is not created/shown. It was decided to just mention the issue and investigate later if required.
+
+<br/><br/>
+
+
 ## v1.7.0 - 2023-06-07 - [PR#69](https://github.com/NOAA-OWP/ras2fim/pull/69)
 
 Each time ras2fim is run, it creates an output folder for a HUC. Inside this folder are the six output folders (01..06). A new file is now being included that records all incoming arguments that were submitted to ras2fim plus a few derived values.
@@ -72,7 +105,6 @@ PR related to issue [51](https://github.com/NOAA-OWP/ras2fim/issues/51).
     - `nws_ras2fim_entwine_dem_from_shp.py`: cleanup for redundant info and screen output.
   
 <br/><br/>
-
 
 ## v1.4.0 - 2023-05-03 - [PR#43](https://github.com/NOAA-OWP/ras2fim/pull/43)
 
