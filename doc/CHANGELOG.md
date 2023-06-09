@@ -1,6 +1,17 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.7.0 - 2023-06-07 - [PR#69](https://github.com/NOAA-OWP/ras2fim/pull/69)
+
+Each time ras2fim is run, it creates an output folder for a HUC. Inside this folder are the six output folders (01..06). A new file is now being included that records all incoming arguments that were submitted to ras2fim plus a few derived values.
+
+### Changes  
+- `src\ras2fim.py`: changes include:
+          - moving the int_step calculations down into the init_and_run_ras2fim function. Reason: It is also logic for validating and setting up basic variables.
+          - moved the creation of the new HUC folder into init_and_run_ras2fim function. The folder needs to be created earlier, so the new run_arguments.txt file can be saved.
+
+<br/><br/>
+
 ## v1.6.0 - 2023-06-02 - [PR#65](https://github.com/NOAA-OWP/ras2fim/pull/65)
 Updated `src/run_ras2rem.py` with following changes:
 - Fixed a bug regarding the units used for rating_curve.csv output. Now, ras2rem will infer the vertical unit from ras2fim results in 05_hecras_output folder. 
