@@ -15,6 +15,23 @@ from concurrent.futures import ProcessPoolExecutor
 # Writes a metadata file into the save directory
 # -----------------------------------------------------------------
 def write_metadata_file(output_save_folder, start_time_string):
+
+    """
+    Overview:
+
+    Creates a metadata textfile and saves it to the output save folder.
+
+
+    Parameters (will error if do not exist):
+    
+    - output_save_folder: str
+        filepath for folder to put output files (optional arguments set in __main__ or defaults to value from ## )    
+
+    - start_time_string: str
+        system datetime when the code was run
+
+    """
+
     metadata_content = []
     metadata_content.append(' ')
     metadata_content.append(f'Data was produced using reformat_ras_rating_curve.py on {start_time_string}.')
@@ -65,7 +82,61 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
                         location_type, active, input_vdatum, nodataval):
 
     """
-    Reads, compiles, and reformats the rating curve info for the given directory (run in ___main___)
+    Overview:
+    
+    Reads, compiles, and reformats the rating curve info for the given directory (runs in compile_ras_rating_curves). 
+
+    Notes:
+        - Currently has placeholders for crosswalking the sites to a feature_id if they are not already correct, 
+          converting the vertical datum if needed, and adjusting the rating curve elevation to supplement the 
+          cross walking.
+
+        - Automatically overwrites the main outputs (the compiled CSV, geopackage, and log) if they already 
+          exist in the output folder. If there is a need to keep the existing main outputs, use a different 
+          output folder.
+
+    
+    Parameters (will error if do not exist):
+
+    - dir: str
+        name of file on which to run `dir_reformat_ras_rc` (ras2fim output file containing steps 01 through 06)
+    
+    - input_folder_path: str
+        filepath for folder containing input ras2fim models (optional arguments set in __main__ or defaults to value from __)
+    
+    - output_save_folder: str
+        filepath for folder to put output files (optional arguments set in __main__ or defaults to value from __)        
+    
+    - verbose: bool
+        option to run verbose code with a lot of print statements (optional argument set in __main__)
+    
+    - source: str
+        optional input value for the "source" output column (i.e. "", "ras2fim", "ras2fim v2.1") 
+    
+    - location_type: str
+        optional input value for the "location_type" output column (i.e. "", "USGS", "IFC")
+    
+    - active: str
+        optional input value for the "active" column (i.e. "", "True", "False")
+    
+    - intermediate_filename: str
+        name of file to store intermediates (set in compile_ras_rating_curves, defaults to "intermediate_outputs")
+    
+    - int_output_table_label: str 
+        suffix for intermediate output table (set in compile_ras_rating_curves, defaults to "_output_table.csv")
+    
+    - int_geospatial_label: str 
+        suffix for intermediate output table (set in compile_ras_rating_curves, defaults to "_geospatial.csv")
+    
+    - int_log_label: str
+        suffix for intermediate output table (set in compile_ras_rating_curves, defaults to "_log.txt")
+    
+    - input_vdatum: str
+        vertical datum of the input ras2fim data (defaults to "NAVD88", only used to fill the datum column)
+    
+    - nodataval: int
+        value to use for no data (from ___ ## defaults file??)
+    
 
     """
     # Create empty output log
@@ -386,23 +457,92 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
 # Compiles the rating curve and points from each directory 
 # -----------------------------------------------------------------
 def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbose, num_workers, 
-                              keep_intermediates,  start_time_string, overwrite, source, 
-                              location_type, active, input_vdatum, nodataval):
+                              keep_intermediates, overwrite, source, location_type, active):
 
     """
+    Overview:
+
     Creates directory list and feeds directories to dir_reformat_ras_rc() inside a multiprocessor.
     Compiles the rating curve and geopackage info from the intermediate data folder and saves a final 
-    rating curve CSV and geospatial outputs geopackage.
+    rating curve CSV and geospatial outputs geopackage. Runs from __main__.
 
+
+    Parameters (will error if do not exist):
+
+    - input_folder_path: str
+        filepath for folder containing input ras2fim models (optional arguments set in __main__ or defaults to value from ## )
+    
+    - output_save_folder: str
+        filepath for folder to put output files (optional arguments set in __main__ or defaults to value from ## )        
+    
+    - verbose: bool
+        option to run verbose code with a lot of print statements (argument set in __main__)
+
+    - log: bool
+        option to save output logs as a textfile (optional argument set in __main__)
+
+    - num_workers: int
+        number of workers to use during parallel processing (optional argument set in __main__)
+
+    - keep_intermediates: bool
+        option to keep the intermediate files created for each directory (optional argument set in __main__)
+
+    - overwrite: bool
+        option to overwrite the existing files in the intermediate outputs file (optional argument set in __main__)
+    
+    - source: str
+        optional input value for the "source" output column (i.e. "", "ras2fim", "ras2fim v2.1") 
+    
+    - location_type: str
+        optional input value for the "location_type" output column (i.e. "", "USGS", "IFC")
+    
+    - active: str
+        optional input value for the "active" column (i.e. "", "True", "False")
+    
     """
 
-    # Get a list of the directories in the input folder path
-    dirlist = os.listdir(input_folder_path)
-
+    
     # Establish file naming conventions
     int_output_table_label = "_output_table.csv"
     int_geospatial_label = "_geospatial.csv"
     int_log_label = "_log.txt"
+    
+    # Record and print start time
+    start_time = datetime.datetime.now()
+    start_time_string = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+
+    
+    # Set default vertical datum and print warning about vertical datum conversion
+    input_vdatum = "NAVD88"
+    output_vdatum = "NAVD88" 
+
+    # Set nodata value
+    nodataval = (0 - 9999) # -9999 ## get a nodata value from defaults (or establish it)
+
+    # Settings block
+    print("-----------------------------------------------------------------------------------------------")
+    print("Begin rating curve compilation process...")
+    print()
+    print(f"Start time: {start_time_string}.")
+    print()
+    print("Settings: ")
+    print(f"    Verbose: {str(verbose)}")
+    print(f"    Save output log to folder: {str(log)}")
+    print(f"    Keep intermediates: {str(keep_intermediates)}")
+    print(f"    Number of workers: {num_workers}")
+    if input_vdatum == output_vdatum:
+        print(f"    No datum conversion will take place.")
+    print()
+
+    # Check job numbers
+    total_cpus_requested = num_workers
+    total_cpus_available = os.cpu_count() - 2 
+    if total_cpus_requested > total_cpus_available:
+        raise ValueError("Total CPUs requested exceeds your machine\'s available CPU count minus one. "\
+                          "Please lower the quantity of requested workers accordingly.")
+
+    # Get a list of the directories in the input folder path
+    dirlist = os.listdir(input_folder_path)
 
     # Create intermediate directory
     intermediate_filename = "intermediate_outputs"
@@ -578,6 +718,14 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
         print()
         print("No output log saved.")
 
+    # Record end time, calculate runtime, and print runtime
+    end_time = datetime.datetime.now()
+    runtime = end_time - start_time
+
+    print()
+    print(f"Process finished. Total runtime: {runtime}") 
+    print("-----------------------------------------------------------------------------------------------")
+
 if __name__ == '__main__':
 
     """
@@ -629,10 +777,9 @@ if __name__ == '__main__':
                         required=False, default=False, action='store_true')
     parser.add_argument('-ov', '--overwrite', help='Option to overwrite existing intermediate files in the output save folder.', 
                         required=False, default=False, action='store_true')
-    parser.add_argument('-so', '--source', help='Input a value for the "source" output column (i.e. "ras2fim", "ras2fim v2.1").', required=False, default=" ")
-    parser.add_argument('-lt', '--location-type', help='Input a value for the "location_type" output column (i.e. "USGS", "IFC").', required=False, default=" ")
-    parser.add_argument('-ac', '--active', help='Input a value for the "active" column ("True" or "False")', required=False, default=" ")
-
+    parser.add_argument('-so', '--source', help='Input a value for the "source" output column (i.e. "ras2fim", "ras2fim v2.1").', required=False, default="")
+    parser.add_argument('-lt', '--location-type', help='Input a value for the "location_type" output column (i.e. "USGS", "IFC").', required=False, default="")
+    parser.add_argument('-ac', '--active', help='Input a value for the "active" column ("True" or "False")', required=False, default="")
 
     # Assign variables from arguments
     args = vars(parser.parse_args())
@@ -647,49 +794,7 @@ if __name__ == '__main__':
     location_type = str(args['location_type'])
     active = str(args['active'])
 
-    # Record and print start time
-    start_time = datetime.datetime.now()
-    start_time_string = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-
-    print("-----------------------------------------------------------------------------------------------")
-    print("Begin rating curve compilation process...")
-    print()
-    print(f"Start time: {start_time_string}.")
-    print()
-    print("Settings: ")
-    print(f"    Verbose: {str(verbose)}")
-    print(f"    Save output log to folder: {str(log)}")
-    print(f"    Keep intermediates: {str(keep_intermediates)}")
-    print(f"    Number of workers: {num_workers}")
-
-    # Set default vertical datum and print warning about vertical datum conversion
-    input_vdatum = "NAVD88"
-    output_vdatum = "NAVD88"
-
-    if input_vdatum == output_vdatum:
-        print(f"    No datum conversion will take place.")
-
-    # End of settings block
-    print()
-
-    # Set nodata value
-    nodataval = (0 - 9999) # -9999
-
-    # Check job numbers
-    total_cpus_requested = num_workers
-    total_cpus_available = os.cpu_count() - 1
-    if total_cpus_requested > total_cpus_available:
-        raise ValueError("Total CPUs requested exceeds your machine\'s available CPU count minus one. "\
-                          "Please lower the quantity of requested workers accordingly.")
 
     # Run main function
     compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbose, num_workers, keep_intermediates, 
-                              start_time_string, overwrite, source, location_type, active, input_vdatum, nodataval)
-
-    # Record end time, calculate runtime, and print runtime
-    end_time = datetime.datetime.now()
-    runtime = end_time - start_time
-
-    print()
-    print(f"Process finished. Total runtime: {runtime}") 
-    print("-----------------------------------------------------------------------------------------------")
+                               overwrite, source, location_type, active)
