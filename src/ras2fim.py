@@ -33,7 +33,7 @@ import argparse
 import os
 import shutil
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 import fnmatch
 from re import search
@@ -97,31 +97,7 @@ def fn_run_ras2fim(str_huc8_arg,
         b_is_feet = True
     else:
         b_is_feet = False
-    if str_step_override == "None Specified - starting at the beginning":  
-        str_step_override = 0
-    int_step = int(str_step_override)
-
-    # TODO: step system not fully working and needs to be fixed.
-    # create an output folder with checks
-    if os.path.exists(str_out_arg)
-        print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
-        raise SystemExit(0)
-
-    #    if os.path.exists(os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, 'terrain_stats.csv')):
-    #        print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
-    #        raise SystemExit(0)
-    #    elif int_step==0:
-    #        print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
-    #        shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
-    #else:
-    #    if (int_step > 0):
-    #        print(f"Starting a code step number {int_step} as per the -s arg")
-
-    #if not os.path.exists(str_out_arg):
     
-    os.mkdir(str_out_arg)
-    
-
     # ---- Step 1: create_shapes_from_hecras ----
     # create a folder for the shapefiles from hec-ras
     print()
@@ -322,7 +298,7 @@ def create_input_args_log (**kwargs):
         os.remove(arg_log_file)
 
     # start with the processing date
-    utc_now = datetime.datetime.now(datetime.timezone.utc)
+    utc_now = datetime.now(timezone.utc)
     str_date = utc_now.strftime("%Y-%m-%d")
 
     # The file can be parsed later by using the two colons and the line break if ever required
@@ -410,7 +386,11 @@ def init_and_run_ras2fim(str_huc8_arg,
     if str_step_override == "None Specified - starting at the beginning":  
         int_step = 0
     else:
-        int_step = int(str_step_override)
+        if (not str_step_override.isnumeric()):
+            raise ValueError("the -o step override is invalid.")
+
+        else:
+            int_step = int(str_step_override)
 
 
     # Save incoming args and a few new derived variables created to this point into a log file

@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.x.x - 2023-05-26 - [PR#64](https://github.com/NOAA-OWP/ras2fim/pull/64)
+## v1.8.0 - 2023-05-26 - [PR#64](https://github.com/NOAA-OWP/ras2fim/pull/64)
 
 In a recent release, the ras2catchment product feature was included but was not completed and now is.
 
@@ -13,22 +13,27 @@ New input files are required for this release to be tested and used. One file an
 
 The new file and folder can be found in `inputs` directories on both rasfim S3 or ESIP S3.
 
+ras2catchemnts.py now also needs a models_catalog.csv to be feed into it in order to create an output meta data file.  By default, the file will be at c:/ras2fim_data/OWP_ras_models/models_catalog_[].csv. The [] will be subsituted with the huc number. This matches the output file name convention from the new get models by catalog that is coming soon.
+
 Code folder changes:
 
 ### Additions 
  
-- `README.md`: Has been updated to talk about downloading all `X-National_Datasets` files and folder now in the `Inputs` directory. Previous versions of this page talked about getting three files from a folder in ESIP called `National Datasets`. Now both ESIP and ras2fim S3 have an identical `inputs` folder.  This md file now also talks the new file and WBD_HUC8 folder in its required downloads.
-- `INSTALL.md`: Updated to talk about the new inputs instead of the original three files.
 - `src`
     - `shared_functions.py`: Includes a common duration calculating function, now used by both ras2fim and ras2catchments.py. This file can be shared for common functionality across all files in the code. Common shared functions help with consistency, avoid duplication and ease of implementation. Other code blocks have already been detected as being duplicated and may be moved into this file at a later time.
 
 ### Changes  
 
-- `src`
-    - `ras2fim.py`: Updated to change the duration output system to come from the new `shared_functions.py` file replacing it's original duration calc code. The `step` feature has been partially repaired as it had an error in it, but has not been fully fixed or tested. A separate issue card and PR will be coming.  In the meantime, the code now has re-instated the code feature of not allowing a user to re-execute ras2fim.py against a folder that already exists.  
-    - `ras2catchments.py`:  This has been rebuilt in recognition that it had a fair bit of temporary duplication code from `run_ras2rem`.  `ras2catchemts` is now stripped back to it's original requirement described above.
+- `README.md`: Has been updated to talk about downloading all `X-National_Datasets` files and folder now in the `Inputs` directory. Previous versions of this page talked about getting three files from a folder in ESIP called `National Datasets`. Now both ESIP and ras2fim S3 have an identical `inputs` folder.  This md file now also talks the new file and WBD_HUC8 folder in its required downloads.
+- `INSTALL.md`: Updated to talk about the new inputs instead of the original three files.
 
-### Note: 
+- `src`
+    - `ras2fim.py`: Updated to change the duration output system to come from the new shared_function. Also add a new input parameter to feed to ras2catchemnts for the models_catalog.csv or subset of it.
+    - `ras2catchments.py`:  Get it it working plus have it work with the new datasources for the nwm_catchments.gkpg. Also added code to work with a copy of the models_catalog.csv to extract data to become meta data output.
+    - `run_ras2rem.py`: Fixed some formatting / styling to match PEP-8 standards, plus udpate the multi proc to be wrapped with a "with" statement for better memory control.
+    - `shared_variables.py`: Added a few new default values.
+
+### Notes: 
 Sometimes when using ras2catchemnts.py from command line, an error was issued talking about a PROJ file not existing. The source of the error was traced but a fix was not found. A code fix previously existed to attempt to fix it, but did not appear to fix it.  However.. the error does not block or limit the functionality of using this tool. And, when ras2catchment is called as part of the ras2fim pipeline flow, the error is not created/shown. It was decided to just mention the issue and investigate later if required.
 
 <br/><br/>
