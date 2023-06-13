@@ -2,14 +2,20 @@
 
 import os, re, sys
 import argparse, datetime, shutil, osr
-import gdal, rasterio, rasterio.crs
+import gdal
+import rasterio
+import rasterio.crs ## commented out because it was causing a weird error... 
+                      ## not sure if this is impacting things (but also import 
+                      ## rasterio also causes this issue sometimes)
 import pandas as pd
-import numpy as np
+import numpy as np ## remove?
 import geopandas as gpd
 from rasterio.merge import merge
 from geopandas.tools import overlay
 from shapely.geometry import LineString, Point
 from concurrent.futures import ProcessPoolExecutor
+
+import shared_variables as sv
 
 # -----------------------------------------------------------------
 # Writes a metadata file into the save directory
@@ -501,6 +507,8 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     
     """
 
+    # Set nodata value
+    nodataval = sv.DEFAULT_NODATA_VAL # get nodata val from default variables
     
     # Establish file naming conventions
     int_output_table_label = "_output_table.csv"
@@ -511,17 +519,13 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     start_time = datetime.datetime.now()
     start_time_string = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
 
-    
     # Set default vertical datum and print warning about vertical datum conversion
     input_vdatum = "NAVD88"
-    output_vdatum = "NAVD88" 
-
-    # Set nodata value
-    nodataval = (0 - 9999) # -9999 ## get a nodata value from defaults (or establish it)
+    output_vdatum = sv.OUTPUT_VERTICAL_DATUM
 
     # Settings block
     print("-----------------------------------------------------------------------------------------------")
-    print("Begin rating curve compilation process...")
+    print("Begin rating curve compilation process.")
     print()
     print(f"Start time: {start_time_string}.")
     print()
@@ -530,9 +534,51 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     print(f"    Save output log to folder: {str(log)}")
     print(f"    Keep intermediates: {str(keep_intermediates)}")
     print(f"    Number of workers: {num_workers}")
+    print(f"    No data value: {nodataval}")
     if input_vdatum == output_vdatum:
         print(f"    No datum conversion will take place.")
     print()
+
+    # Get default paths from shared variables if they aren't included
+    if input_folder_path == "":
+        input_folder_path = sv.R2F_DEFAULT_OUTPUT_MODELS # ras2fim output folder
+        print(f"    Using default input folder path: {input_folder_path}")
+
+        if not os.path.exists(input_folder_path):
+            print(f"    No file exists at {input_folder_path}")
+
+    # Error out if the input folder doesn't exist
+    if not os.path.exists(input_folder_path):
+        sys.exit(f"    No folder at input folder path: {input_folder_path}")
+
+    # Check for output folders
+    if output_save_folder == "":
+        
+        # Error if the parent directory is missing
+        if not os.path.exists(sv.R2F_OUTPUT_DIR_RELEASES):
+            print(f"Error: Attempted to use default output save folder but parent directory {str(sv.R2F_OUTPUT_DIR_RELEASES)} is missing.")
+            print("Create parent directory or specify a different output folder using `-o` followed by the directory filepath.")
+            sys.exit()
+
+        # Check that default output folder exists
+        output_save_folder = os.path.join(sv.R2F_OUTPUT_DIR_RELEASES, "compiled_rating_curves")
+        print(f"    Using default output save folder: {output_save_folder}")
+
+        # Attempt to make default output folder if it doesn't exist
+        if not os.path.exists(output_save_folder): 
+            print(f"    No folder found at {input_folder_path}")
+            try:
+                print("    Creating output folder.")
+                os.mkdir(output_save_folder)
+            except OSError:
+                print(OSError)
+                sys.exit(f"Unable to create folder at {input_folder_path}")
+
+    else:
+
+        # Check that user-inputted output folder exists
+        if not os.path.exists(output_save_folder):
+            sys.exit(f"No folder found at {output_save_folder}")
 
     # Check job numbers
     total_cpus_requested = num_workers
@@ -730,31 +776,36 @@ if __name__ == '__main__':
 
     """
     Sample usage (no linebreak so they can be copied and pasted):
-    
-    # Recommended parameters:
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i '/Users/rdp-user/projects/reformat-ras2fim/ras2fim_test_outputs' -o '/Users/rdp-user/projects/reformat-ras2fim/temp' -v -l -ov
 
-    # Minimalist run (only required arguments):
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i '/Users/rdp-user/projects/reformat-ras2fim/ras2fim_test_outputs' -o '/Users/rdp-user/projects/reformat-ras2fim/temp'
+    # Recommended parameters:
+    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim_models' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves' -v -l -ov
+
+    # Minimalist run (all defaults used):
+    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py
 
     # Maximalist run (all possible arguments):
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i '/Users/rdp-user/projects/reformat-ras2fim/ras2fim_test_outputs' -o '/Users/rdp-user/projects/reformat-ras2fim/temp' -v -l -j 6 -k -ov -so "ras2fim" -lt "USGS" -ac "True"
+    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim_models' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves' -v -l -j 6 -k -ov -so "ras2fim" -lt "USGS" -ac "True"
+
+    # Only input folders:
+    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim_models/subset' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves'
 
     # Overwrite existing intermediate files:
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i '/Users/rdp-user/projects/reformat-ras2fim/ras2fim_test_outputs' -o '/Users/rdp-user/projects/reformat-ras2fim/temp' -v -ov
+    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim_models' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves' -v -ov
 
     # Run with 6 workers:
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i '/Users/rdp-user/projects/reformat-ras2fim/ras2fim_test_outputs' -o '/Users/rdp-user/projects/reformat-ras2fim/temp' -v -l -j 6
+    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim_models' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves' -v -l -j 6
 
     # Keep intermediates, save output log, and run quietly (no verbose tag):
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i '/Users/rdp-user/projects/reformat-ras2fim/ras2fim_test_outputs' -o '/Users/rdp-user/projects/reformat-ras2fim/temp' -k -l
+    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim_models' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves' -k -l
 
     # Input the data source, location type, and active information using the -so, -lt, and -ac flags:
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i '/Users/rdp-user/projects/reformat-ras2fim/ras2fim_test_outputs' -o '/Users/rdp-user/projects/reformat-ras2fim/temp' -v -so "ras2fim" -lt "USGS" -ac "True"
+    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim_models' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves' -v -so "ras2fim" -lt "USGS" -ac "True"
 
     Notes:
-       - Required arguments: -i "input path", -o "output path"
-       - Optional arguments: use the -l tag to save the output log
+       - Required arguments: None
+       - Optional arguments: use the -i tag to specify the input ras2fim filepath (defaults to c:\ras2fim_data\output_ras2fim_models if not specified)
+                             use the -o tag to specify the output save folder (defaults to c:\ras2fim_data\ras2fim_releases\compiled_rating_curves if not specified)
+                             use the -l tag to save the output log
                              use the -v tag to run in a verbose setting
                              use the -j flag followed by the number to specify number of workers
                              use the -k flag to keep intermediate files once the script has run
@@ -768,8 +819,8 @@ if __name__ == '__main__':
     # Parse arguments
     parser = argparse.ArgumentParser(description='Iterate through a directory containing ras2fim outputs and '\
                                      'compile a rating curve table and rating curve location point file.')
-    parser.add_argument('-i', '--input-path', help='Input directory containing ras2fim outputs to process.', required=True)
-    parser.add_argument('-o', '--output-path', help='Output save folder.', required=True)
+    parser.add_argument('-i', '--input-path', help='Input directory containing ras2fim outputs to process.', required=False, default='')
+    parser.add_argument('-o', '--output-path', help='Output save folder.', required=False, default='')
     parser.add_argument('-l', '--log', help='Option to save output log to output save folder.', required=False, default=False, action='store_true')
     parser.add_argument('-v', '--verbose', help='Option to print more updates and descriptions.', required=False, default=False, action='store_true')
     parser.add_argument('-j', '--num-workers',help='Number of concurrent processes', required=False, default=1, type=int)
