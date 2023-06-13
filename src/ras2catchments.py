@@ -1,20 +1,27 @@
-import shutil
+
 import os
-from pathlib import Path
+
+import argparse
+import fiona
+import fiona.transform
+import glob
+import geopandas as gpd
 import numpy as np
 import pandas as pd
-import geopandas as gpd
-from rasterio.merge import merge
 import rasterio
 import rasterio.mask
 import re
-import fiona
-import fiona.transform
-from shapely.geometry import Polygon
-from rasterio import features
-import glob
+import shutil
 import time
+
+import shared_variables as sv
+
 from osgeo import gdal
+from pathlib import Path
+from rasterio import features
+from rasterio.merge import merge
+from shapely.geometry import Polygon
+
 
 # This function creates a geopackage of Feature IDs from the raster that
 # matches the Depth Grid processing extents from ras2fim Step 5.
@@ -39,11 +46,115 @@ def vectorize(path):
     gdf.to_file(path.replace(".tif",".gpkg"),driver="GPKG",layer="catchments") #,crs=gdf.crs)
     return
 
+
+def load_nwm_huc_catchments(huc_num, national_ds_dir, src_wbd_huc8_dir, src_nwm_catchments_file, r2f_ras2rem_dir):
+
+    src_wbd_huc8_extent_file = os.path.join(src_wbd_huc8_dir, f"HUC8_{huc_num}.gpkg")
+
+    # now use that single huc poly to clip against the nwm_catchments file
+    # Find intersecting nwm_catchments
+    print("Subsetting NWM Catchments from HUC8, no buffer", flush=True)
+
+    # TODO.. projection
+
+    # TODO: throws error = Error: string indices must be integers
+    nwm_catchments_df = gpd.read_file(src_nwm_catchments_file, mask = src_wbd_huc8_extent_file)
+    #nwm_catchments_df = gpd.read_file(src_nwm_catchments_file)   
+    #src_nwm_catchments_file = r"C:\ras2fim_data\inputs\X-National_Datasets\nwm_catchments_subset\nwm_catchments_clip.shp"
+    #nwm_catchments_df = gpd.read_file(src_nwm_catchments_file)       
+
+    # TODO: Shape files are much slower to load. Can we change this to a gkpg? Can fiona open a gpkg?
+    nwm_catchments_subset_file = os.path.join(r2f_ras2rem_dir, "nwm_catchments_subset.shp")
+
+    # TODO: How do we handle projection
+    nwm_catchments_df.to_file(nwm_catchments_subset_file)
+
+    # TODO: fix this (and projection)
+    '''
+    if len(nwm_catchments) > 0:
+        nwm_catchments.to_file(subset_nwm_catchments, driver=getDriver(subset_nwm_catchments), index=False, crs=DEFAULT_FIM_PROJECTION_CRS)
+    else:
+        print ("No NWM catchments within HUC " + str(hucCode) + " boundaries.")
+        sys.exit(0)
+    del nwm_catchments
+    '''
+    return nwm_catchments_subset_file
+
 # This function creates a raster and geopackage of Feature IDs that correspond to the extent
 # of the Depth Grids (and subsequent REMs that also match the Depth Grids)
-def make_catchments(Input_dir,Output_dir):
+def make_catchments(huc_num,
+                    r2f_huc_output_dir,
+                    national_ds_dir = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR):
+    
+
+    ####################################################################
+    ####  Some validation of input, but mostly setting up pathing ######
+    
+    # -w   (ie 12090301)    
+    if (len(huc_num) != 8):
+        raise ValueError("the -w flag (HUC8) is not 8 characters long")
+    if (huc_num.isnumeric() == False): # can handle leading zeros
+        raise ValueError("the -w flag (HUC8) does not appear to be a HUC8")
+
+
+    # The subfolders like 05_ and 06_ are referential from here.
+    # -o  (ie 12090301_meters_2277_test_1) or some full custom path
+    # We need to remove the the last folder name and validate that the parent paths are valid
+    is_invalid_path = False
+    if ("\\" in r2f_huc_output_dir):  # submitted a full path
+        if (os.path.exists(r2f_huc_output_dir) == False): # full path must exist
+            is_invalid_path = True
+    else: # they provide just a child folder (base path name)
+        r2f_huc_output_dir = os.path.join(sv.R2F_DEFAULT_OUTPUT_MODELS, r2f_huc_output_dir)
+        if (os.path.exists(r2f_huc_output_dir) == False): # child folder must exist
+            is_invalid_path = True
+
+    if (is_invalid_path == True):
+        raise ValueError('The -o folder must exist and appears to be invalid.')
+
+    # AND the 05 directory must already exist 
+    r2f_hecras_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    if (os.path.exists(r2f_hecras_dir) == False):
+        raise Exception(f"The ras2fim huc output, {sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT} subfolder does not appear to exist." \
+                        " Ensure ras2fim has been run and created a value 05 folder.")
+    
+    # And the 06 directory must already exist ( maybe it wasn't processed yet)
+    r2f_ras2rem_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_RAS2REM)
+    if (os.path.exists(r2f_ras2rem_dir) == False):
+        raise Exception(f"The ras2fim huc output, {sv.R2F_OUTPUT_DIR_RAS2REM} subfolder does not appear to exist." \
+                        " Ensure ras2rem has been run and created a value 06 folder.")
+
+    # -n  (ie: inputs\\X-National_Datasets)
+    if (os.path.exists(national_ds_dir) == False) and (national_ds_dir != sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR):
+        raise ValueError("the -n arg (inputs x national datasets path arg) does not appear to be a valid folder.")
+
+#    TODO: Get this workign
+    #src_nwm_catchments_file = ""
+
+    #if (os.path.exists(src_nwm_catchments_file) == False):   # in case we get a full path incoming
+    #    raise ValueError(f"the -c arg (nwm catchments file) does not appear to exist : {src_nwm_catchments_file}.")
+
+
+    # TODO: This is unconfirmed as a needed input. Might make it optional input arg
+    #src_wbd_huc8_dir = os.path.join(, sv.INPUT_WBD_HUC8_DIR)
+
+
+    ####################################################################
+    ####  Start processing ######
     start_time = time.time()    
-    all_tif_files=list(Path(Input_dir).rglob('*/Depth_Grid/*.tif'))
+
+    print(" ")
+    print("+=================================================================+")
+    print("|                 CREATE CATCHMENTS                               |")
+    print("+-----------------------------------------------------------------+")
+    print("  ---(w) HUC-8: " + huc_num)
+    print("  ---(o) OUTPUT DIRECTORY: " + r2f_huc_output_dir)
+    print("  ---(n) PATH TO NATIONAL DATASETS: " + national_ds_dir)    
+    # print("  ---(c)") 
+    print("===================================================================")
+    print(" ")
+
+    all_tif_files=list(Path(r2f_hecras_dir).rglob('*/Depth_Grid/*.tif'))
     rem_values = list(map(lambda var:str(var).split(".tif")[0].split("-")[-1], all_tif_files))
     rem_values=np.unique(rem_values)
 
@@ -58,12 +169,25 @@ def make_catchments(Input_dir,Output_dir):
     all_comids = list(set(all_comids))
     print(f"Looking through {all_comids}")
 
-    # The following file needs to point to a NWM catchments shapefile that is pulled from S3
-    nwm_comid_polygons = r"L:\laura_temp\nwm_catchments_clip.shp" # full or full-ish set
+    return
+
+    #nwm_catchments_subset_file = load_nwm_huc_catchments(huc_num,
+    #                                                     national_ds_dir,
+    #                                                     src_wbd_huc8_dir,
+    #                                                     src_nwm_catchments_file, 
+    #                                                     r2f_ras2rem_dir)
+    
+
+    # The following file needs to point to a NWM catchments shapefile (local.. not S3 (for now))
+    ## nwm_comid_polygons = sv.INPUT_NWM_CATCHMENTS_FILE
 
     # The following file should be rewired to point to a subset polygon shape in a temp directory
-    temp_sub_polygons = r"c:\users\laura.keys\documents\subset_polys.shp" # clipped to relevant
+    # TODO: upgrade to clip against some full new CONUS dataset to pull the poly's we need. Not sure i understand what they are yet (Rob)
+    # temp_sub_polygons = r"c:\users\laura.keys\documents\subset_polys.shp" # clipped to relevant
 
+    # TODO: WIP
+
+    '''
     with fiona.open(nwm_comid_polygons) as shapefile:
         print(".. getting all relevant shapes")
         with fiona.open(temp_sub_polygons,"w",driver=shapefile.driver, \
@@ -72,6 +196,17 @@ def make_catchments(Input_dir,Output_dir):
                 if x["properties"]["FEATUREID"] in all_comids:
                     print(f"...... writing {x['properties']['FEATUREID']}")
                     dest.write(x)
+    '''
+    # Create a seperate file for each feature in the nwm_catchments that matches
+    # a comm id from depth grides
+    #print(".. getting all relevant shapes")
+    #with fiona.open(nwm_catchments_subset_file, "w", driver='GPKG') as nwm_catchments:
+    #    for feat in nwm_catchments:
+    #        if feat["properties"]["FEATUREID"] in all_comids:
+    #            print(f"...... writing {feat['properties']['FEATUREID']}")
+    #            nwm_catchments.write(feat)
+
+    '''
 
     print("TIME to create subset polygons: " +str(time.time()-start_time))
     for rem_value in rem_values:
@@ -82,7 +217,8 @@ def make_catchments(Input_dir,Output_dir):
             print(f"** Addressing {comid}")
             raster = rasterio.open(p)
 
-            temp_proj_polygons = r"c:\users\laura.keys\documents\temp_sub_proj_polys.shp" # reproj
+
+            #temp_proj_polygons = r"c:\users\laura.keys\documents\temp_sub_proj_polys.shp" # reproj
             if not os.path.exists(temp_proj_polygons):
                 print("Projecting COMID polygons from NWM Catchments")
                 print(raster.crs)
@@ -102,7 +238,7 @@ def make_catchments(Input_dir,Output_dir):
             long_raster_vals = np.array(masked_raster,dtype=np.int32)
             long_raster_vals[long_raster_vals != raster.nodata] = np.int32(comid)
                 
-            comid_rem_path = os.path.join(Output_dir,"temp_{}_{}.tif".format(rem_value,comid))
+            comid_rem_path = os.path.join(output_dir, "temp_{}_{}.tif".format(rem_value, comid))
             output_meta = raster.meta.copy()
             output_meta.update({"dtype":np.int32})
             with rasterio.open(comid_rem_path, "w", **output_meta) as m:
@@ -149,7 +285,7 @@ def make_catchments(Input_dir,Output_dir):
          "transform": output,
          }
     )
-    comid_path = os.path.join(Output_dir,"comid.tif")
+    comid_path = os.path.join(output_dir,"comid.tif")
     with rasterio.open(comid_path, "w", **output_meta) as m:
         m.write(mosaic)
         print(f"** Writing final comid mosaic to {comid_path}")
@@ -175,19 +311,79 @@ def make_catchments(Input_dir,Output_dir):
     print("*** Vectorizing COMIDs")
     vectorize(comid_path)
     print("TIME to finish vector creation: " +str(time.time()-start_time))
+    '''
+ 
 
 if __name__=="__main__":
-    # delete this environment variable because the updated library we need
-    # is included in the rasterio wheel
-    try:
-        del os.environ["PROJ_LIB"]
-    except Exception as e:
-        print(e)
 
     # These paths should be rewired to point to the following:
     # Input directory - results from ras2fim Step 5 that contain depth grids
     # Output directory - desired output directory for feature ID files (currently points to ras2rem outputs)
-    Input_dir=r"C:\Users\laura.keys\Documents\starter_rem_data\ras2fim_for_ESIP_AWS\sample-dataset\output_iowa\05_hecras_output"
-    Output_dir=r"C:\Users\laura.keys\Documents\starter_rem_data\ras2fim_for_ESIP_AWS\sample-dataset\output_iowa\06_ras2rem_output"
 
-    make_catchments(Input_dir,Output_dir)
+    # delete this environment variable because the updated library we need
+    # is included in the rasterio wheel
+    
+    try:
+        #print("os.environ['PROJ_LIB''] is " + os.environ["PROJ_LIB"])
+        if (os.environ["PROJ_LIB"]):
+            del os.environ["PROJ_LIB"]
+    except Exception as e:
+        print(e)
+
+
+    # Sample usage:
+    # Using all defaults:
+    #     python ras2catchments.py -w 12090301 -o 12090301_meters_2277_test_22
+
+    # Override every optional argument (and of course, you can override just the ones you like)
+    #     python ras2catchments.py -w 12090301 -o C:\ras2fim_data_rob_folder\output_ras2fim_models_2222\12090301_meters_2277_test_2
+    #          -c C:\my_nwm_catchments\the_nwm_catchments_test.gkpg -n E:\X-NWS\X-National_Datasets
+    
+    #  - When the -n arg not being set, it defaults to c:/ras2fim_data/inputs/X-National_datasets.    
+    
+    #  - The -o arg is required, but can be either a full path (as shown above), or a simple folder name and the 01..06 folders populated.
+    #        ie) -o c:/users/my_user/desktop/ras2fim_outputs/12090301_meters_2277_test_2
+    #            OR
+    #            -o 12090301_meters_2277_test_3  (We will use the root default pathing and become c:/ras2fim_data/outputs_ras2fim_models/12090301_meters_2277_test_3)
+   
+    # TODO: notes about -c
+    
+    parser = argparse.ArgumentParser(description='========== Create catchments for specified existing output_ras2fim_models folder ==========')
+
+    parser.add_argument('-w',
+                        dest = "huc_num",
+                        help = 'REQUIRED: HUC-8 watershed that is being evaluated: Example: 10170204',
+                        required = True,
+                        type = str)
+
+    parser.add_argument('-o',
+                        dest = "r2f_huc_output_dir",
+                        help = r'REQUIRED: This can be used in one of two ways. You can submit either a full path' \
+                               r' such as c:\users\my_user\Desktop\myoutput OR you can add a simple final folder name.' \
+                                ' Please see the embedded notes in the __main__ section of the code for details and  examples.',
+                        required = True,
+                        type = str) 
+
+    '''
+    parser.add_argument('-c',
+                        dest = "src_nwm_catchments_file",
+                        help = r'OPTIONAL: path and file name to the nwm catchments file.' \
+                               r' Defaults to c:\ras2fim_data\inputs\nwm_hydrofabric\nwm_catchments.gpkg.' \
+                               r' Override example: c:\mytest_data\inputs\my_test_nwc_catchments_file.gkpg.',
+                        default = sv.INPUT_NWM_CATCHMENTS_FILE,
+                        required = False,
+                        type = str)
+    '''
+
+    parser.add_argument('-n',
+                        dest = "str_nation_arg",
+                        help = r'OPTIONAL: path to national datasets: Example: E:\X-NWS\X-National_Datasets.' \
+                               r' Defaults to c:\ras2fim_data\inputs\X-National_Datasets.',
+                        default = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
+                        required = False,
+                        type = str)
+
+    args = vars(parser.parse_args())
+    
+    make_catchments(**args)
+

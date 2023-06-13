@@ -104,7 +104,6 @@ def fn_convert_tif_to_ras_hdf5(str_hec_path,
     print(" ")
     print("+=================================================================+")
     print("|       CONVERT TERRAIN GEOTIFFS TO HEC-RAS TERRAINS (HDF5)       |")
-    print("|     Created by Andy Carter, PE of the National Water Center     |")
     print("+-----------------------------------------------------------------+")
     
     # path to the directory that contains RasProcess and associated dll

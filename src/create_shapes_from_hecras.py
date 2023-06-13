@@ -39,6 +39,9 @@ from shapely.geometry import LineString
 from shapely.ops import split, linemerge
 
 from re import search
+
+import shared_variables as sv
+
 # ************************
 
 
@@ -591,7 +594,6 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     print(" ")
     print("+=================================================================+")
     print("|    STREAM AND CROSS SECTION SHAPEFILES FROM HEC-RAS DIRECTORY   |")
-    print("|     Created by Andy Carter, PE of the National Water Center     |")
     print("+-----------------------------------------------------------------+")
 
     # TODO - not contants - lower case - 2021.09.07
