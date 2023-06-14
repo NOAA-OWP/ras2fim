@@ -205,19 +205,13 @@ def fn_run_ras2rem(r2f_huc_parent_dir):
     
     r2f_ras2rem_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_RAS2REM)
 
-    try:
-        if os.path.exists(r2f_ras2rem_dir):
-            shutil.rmtree(r2f_ras2rem_dir)
-        os.mkdir(r2f_ras2rem_dir)
-    except:
-        # yes.. this is weird to do nothing with the exception.
-        # later when we have error logging, we can write it to log.
-        # However in windows environments, shutil command can, on occasion,
-        # be slower to actually remove the folder then the code executes.
-        # The code simply tells windows to remove the folder, but does not wait for it to be done.
-        # This can, on occasion, result in an exception. This is a known problem in the Dev world with shutil.
-        # It can also error if someone is actually in the folder with windows explorer.
-        print() 
+    if os.path.exists(r2f_ras2rem_dir):
+        shutil.rmtree(r2f_ras2rem_dir)
+        # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
+        # so sometimes mkdir can fail if rmtree isn't done
+        time.sleep(2) # 2 seconds
+
+    os.mkdir(r2f_ras2rem_dir)
 
 
     ####################################################################

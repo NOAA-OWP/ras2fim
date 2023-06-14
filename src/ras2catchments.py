@@ -15,15 +15,14 @@ import numpy as np
 import pandas as pd
 import rasterio
 import rasterio.mask
-import rioxarray as rxr
 import shutil
 import time
 
 import shared_variables as sv
 import shared_functions as sf
 
-from multiprocessing import Pool
-from concurrent.futures import ProcessPoolExecutor, as_completed, wait
+#from multiprocessing import Pool
+#from concurrent.futures import ProcessPoolExecutor, as_completed, wait
 from pathlib import Path
 from rasterio.merge import merge
 from rasterio import features
@@ -35,14 +34,6 @@ from shapely.geometry import Polygon
 # but for now I think it's fine here because it's related to getting
 # everything in the right format for Hydrovis.
 #
-
-#
-# Scrapes the top changelog version (most recent version listed in our repo)
-#
-#def get_changelog_version():
-#    changelog = keepachangelog.to_dict("..\\CHANGELOG.md")
-#    return list(changelog.keys())[0]
-
 def convert_to_metric(ras2rem_dir):
 
     src_path = os.path.join(ras2rem_dir, 'rating_curve.csv')
@@ -65,12 +56,12 @@ def convert_to_metric(ras2rem_dir):
 
     return
 
-#
+
 # Scrapes the top changelog version (most recent version listed in our repo)
-#
-#def get_changelog_version(changelog_path):
-#    changelog = keepachangelog.to_dict(changelog_path)
-#    return list(changelog.keys())[0]
+
+def get_changelog_version(changelog_path):
+    changelog = keepachangelog.to_dict(changelog_path)
+    return list(changelog.keys())[0]
 
 
 # This function creates a geopackage of Feature IDs from the raster that
@@ -108,24 +99,19 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
     gdf = gdf.dissolve('feature_id') # ensure that we just have one big polygon per feature ID
 
     # -------------------
-    # Use the model data catalog to add data the metadata gkpg
-    model_df = pd.read_csv(model_huc_catalog_path)
-    
-    # Join GeoDataFrame to model catalog that has some relevant metadata; keep only relevant fields that match our feature IDs
-    gdf = gdf.merge(model_df, how="left", left_on="feature_id", right_on="nhdplus_comid")
-    columns_to_keep = ["geometry", "HydroID", "source", "last_modified", "model_name"]
-    gdf = gdf[columns_to_keep]
-    gdf['last_modified'] = gdf['last_modified'].fillna(-1)
-    try:
-        gdf['last_modified'] = [dt.datetime.utcfromtimestamp(t).strftime("%Y-%m-%d %H:%M:%S") for t in gdf['last_modified']]
-    except Exception as e:
-        print("Model catalog date issue. Moving on.")
-        print(e)
-        
-    # -------------------
     # rating_curve DATA
+    # Load the rating curve first so we always keep the stage values
+    # Because ras2fim loads from the 'models' directory and not the model_catalog, it is possible to have
+    # rating curve values with no entry in models_catalog which means we are missing some meta data
+    # The key is a left join with the rating curve as the base
     rc_df = pd.read_csv(rating_curve_path)
-    
+
+    # we can now drop the HydroID from the rc_dr, so we don't have dup columns from the rating curve
+    rc_df.drop('HydroID', inplace=True, axis=1) 
+    # Join GeoDataFrame to rating curve that has some relevant metadata; keep only relevant fields that match our feature IDs
+    # at this point, we have all rating_curve records. We do need the min, max, but then need to flatten to a single feature record
+    gdf = gdf.merge(rc_df, how="left", left_on="feature_id", right_on="feature_id")
+
     # Get min and max stage and discharge for each Feature ID, then create fields for stage and flow mins and maxs
     agg_df = rc_df.groupby(["feature_id"]).agg({'stage_m': ['min', 'max'], 'discharge_cms': ['min','max']})
     
@@ -140,9 +126,49 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
 
     # -------------------
     # Join SRC data to polygon GeoDataFrame
-    gdf = gdf.merge(agg_df, how="left", left_on="HydroID", right_on="feature_id")
-    
-    #
+    gdf = gdf.merge(agg_df, how="left", left_on="feature_id", right_on="feature_id")
+
+    # now that we have the min and mas and new columns for them, we can delete some of the columns that we no longer
+    # need from the rating_curve_db. This will allow us to flatten to keep just one record per feature_id
+    rc_cols_to_drop = ['stage_m', 'discharge_cms']
+    if ('stage_ft' in gdf.columns): rc_cols_to_drop.append('stage_ft')
+    if ('discharge_cfs' in gdf.columns): rc_cols_to_drop.append('discharge_cfs')
+    gdf.drop(rc_cols_to_drop, inplace=True, axis=1)
+    gdf = gdf.drop_duplicates()    
+
+    # -------------------
+    # Use the model data catalog to add data the metadata gkpg
+    model_df = pd.read_csv(model_huc_catalog_path)
+    gdf = gdf.merge(model_df, how="left", left_on="feature_id", right_on="nhdplus_comid")    
+
+    # drop the models_catalog columns we don't want
+    # Yes. this might mean new columns in models_catalog will auto appear
+    cols_to_drop = []
+    if ('nhdplus_comid' in gdf.columns): cols_to_drop.append('nhdplus_comid')
+    if ('g_file' in gdf.columns): cols_to_drop.append('g_file')
+    if ('crs' in gdf.columns): cols_to_drop.append('crs')
+    if ('nhdplus_inital_scrape_namecomid' in gdf.columns): cols_to_drop.append('inital_scrape_name')
+    if ('nhdplus_initial_scrape_namecomid' in gdf.columns): cols_to_drop.append('initial_scrape_name')
+    if ('notes' in gdf.columns): cols_to_drop.append('notes')
+    gdf.drop(cols_to_drop, inplace=True, axis=1)    
+
+    # fix the last_modified to utc not not linux time units
+    gdf['last_modified'] = gdf['last_modified'].fillna(-1)  #model_catalog field
+    try:
+        gdf['last_modified'] = [dt.datetime.utcfromtimestamp(t).strftime("%Y-%m-%d") for t in gdf['last_modified']]
+    except Exception as e:
+        print("Model catalog date issue. Moving on.")
+        print(e)
+
+    # this could change if the model was updated and re-ran against this huc
+    gdf.rename(columns = {'last_modified':'hecras_model_last_modified'}, inplace=True)
+
+    # populate the rating_curve field with today's utc date
+    gdf['last_updated'] = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
+    # renamed a few columns
+    gdf.rename(columns = {'last_updated':'ras2fim_processed_date'}, inplace=True)
+
+    # -------------------
     # Placeholders for other metadata
     # More meta data coming shortly. It will be named models_catalog_{huc}.csv from whatever path
     # has been defined as the OWP_ras_models (c:/ras2fim_data/OWP_ras_models is the default)
@@ -153,9 +179,9 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
     #gdf['terrain_match_score'] = [0] * len(gdf)
     #gdf['other_notes'] = [""] * len(gdf)
 
-    #gdf['ras2fim_version'] = [get_changelog_version(changelog_path)] * len(gdf)
-    # ... then we should have all the metadata we need on a per-catchment basis 
+    gdf['ras2fim_version'] = [get_changelog_version(changelog_path)] * len(gdf)
 
+    # ... then we should have all the metadata we need on a per-catchment basis 
     print("** Writing out updated catchments geopackage **")
     gdf.to_file(mosaic_features_raster_path.replace(".tif", "_meta.gpkg"), driver="GPKG", layer="catchments")
 
@@ -307,6 +333,10 @@ def __validate_make_catchments(huc_num,
     rtn_varibles_dict["catchments_subset_file"] = catchments_subset_file
 
     # -------------------
+    rating_curve_path = os.path.join(r2f_ras2rem_dir,'rating_curve.csv')
+    rtn_varibles_dict["rating_curve_path"] = rating_curve_path
+
+    # -------------------
     # only return the variables created or modified
     return rtn_varibles_dict
 
@@ -316,7 +346,7 @@ def __validate_make_catchments(huc_num,
 def make_catchments(huc_num,
                     r2f_huc_parent_dir,
                     national_ds_path = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
-                    model_huc_catalog_path = sv.HUC_MODELS_CATALOG_PATH):
+                    model_huc_catalog_path = sv.RSF_MODELS_CATALOG_PATH):
     
     '''
     Overview
@@ -385,8 +415,8 @@ def make_catchments(huc_num,
     print ("Getting list of feature IDs")
 
     # -------------------
-    #TODO: When we get a full model catalog, we 
     # Make a list of all tif file in the 05_  Depth_Grid (focusing on the depth not the feature ID)
+    # TODO: We can change this to extract from the rating curve file.
     r2f_hecras_dir = rtn_varibles_dict.get("r2f_hecras_dir")
     all_depth_grid_tif_files=list(Path(r2f_hecras_dir).rglob('*/Depth_Grid/*.tif'))
     if (len(all_depth_grid_tif_files) == 0):
@@ -446,9 +476,6 @@ def make_catchments(huc_num,
     # Use the first discovered depth file as all rems' should be the same. 
     with rasterio.open(all_depth_grid_tif_files[0]) as rem_raster:
         raster_crs = rem_raster.crs.wkt
-
-    #with rxr.open_rasterio(all_depth_grid_tif_files[0]) as rem_raster:
-    #    raster_crs = rem_raster.rio.crs
 
     # Let's create one overall gpkg that has all of the relavent polys, for quick validation
     reproj_nwm_filtered_df = nwm_filtered_df.to_crs(raster_crs)
@@ -574,7 +601,9 @@ def make_catchments(huc_num,
     print("*** Vectorizing Feature IDs and creating metadata")
     #vectorize(mosaic_features_raster_path, changelog_path, catalog_path, os.path.join(r2f_hecras_dir,'rating_curve.csv'))
     model_huc_catalog_path = rtn_varibles_dict.get("model_huc_catalog_path")
-    vectorize(mosaic_features_raster_path, "", model_huc_catalog_path, os.path.join(r2f_ras2rem_dir,'rating_curve.csv'))
+    current_script_path = os.path.realpath(os.path.dirname(__file__))
+    catalog_md_path = os.path.join(current_script_path, '..', 'doc', 'CHANGELOG.md')
+    vectorize(mosaic_features_raster_path, catalog_md_path, model_huc_catalog_path, rtn_varibles_dict.get("rating_curve_path"))
 
     # -------------------    
     # Cleanup the temp files in datatyped_rems_dir, later this will be part of the cleanup system.
@@ -644,7 +673,7 @@ if __name__=="__main__":
                         help = r'OPTIONAL: path to model catalog csv, filtered for the supplied HUC, file downloaded from S3.' \
                                r' Defaults to c:\ras2fim_data\OWP_ras_models\models_catalog_[].csv and will use subsitution'\
                                r' to replace the [] with the huc number.',
-                        default = sv.HUC_MODELS_CATALOG_PATH,
+                        default = sv.RSF_MODELS_CATALOG_PATH,
                         required = False,
                         type = str)
 
