@@ -16,6 +16,7 @@ The new file and folder can be found in `inputs` directories on both rasfim S3 o
 ras2catchemnts.py now also needs a models_catalog.csv to be feed into it in order to create an output meta data file.  By default, the file will be at c:/ras2fim_data/OWP_ras_models/models_catalog_[].csv. The [] will be subsituted with the huc number. This matches the output file name convention from the new get models by catalog that is coming soon.
 
 Code folder changes:
+    (details coming)
 
 ### Additions 
  
@@ -26,6 +27,7 @@ Code folder changes:
 
 - `README.md`: Has been updated to talk about downloading all `X-National_Datasets` files and folder now in the `Inputs` directory. Previous versions of this page talked about getting three files from a folder in ESIP called `National Datasets`. Now both ESIP and ras2fim S3 have an identical `inputs` folder.  This md file now also talks the new file and WBD_HUC8 folder in its required downloads.
 - `INSTALL.md`: Updated to talk about the new inputs instead of the original three files.
+- `environment.yml`: Add a new pip installed package named keepachangelog (was not available in conda repo's so have to use pip)
 
 - `src`
     - `ras2fim.py`: Updated to change the duration output system to come from the new shared_function. Also add a new input parameter to feed to ras2catchemnts for the models_catalog.csv or subset of it.

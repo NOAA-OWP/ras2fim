@@ -5,20 +5,25 @@ import os
 import argparse
 import datetime as dt
 import fiona
-fiona.supported_drivers
+#fiona.supported_drivers
 import fiona.transform
 import glob
 import geopandas as gpd
-#import keepachangelog
+import keepachangelog
+import multiprocessing as mp
 import numpy as np
 import pandas as pd
 import rasterio
 import rasterio.mask
+import rioxarray as rxr
 import shutil
+import time
 
 import shared_variables as sv
 import shared_functions as sf
 
+from multiprocessing import Pool
+from concurrent.futures import ProcessPoolExecutor, as_completed, wait
 from pathlib import Path
 from rasterio.merge import merge
 from rasterio import features
@@ -282,7 +287,7 @@ def __validate_make_catchments(huc_num,
     if ("[]" in model_huc_catalog_path):
         model_huc_catalog_path = model_huc_catalog_path.replace("[]", huc_num)
     if (os.path.exists(model_huc_catalog_path) == False):
-        raise FileNotFoundError (f"The -md models catalog ({model_huc_catalog_path}) does not exist. Please check your pathing.")
+        raise FileNotFoundError (f"The -mc models catalog ({model_huc_catalog_path}) does not exist. Please check your pathing.")
     rtn_varibles_dict["model_huc_catalog_path"] = model_huc_catalog_path
 
     # -------------------
@@ -290,6 +295,9 @@ def __validate_make_catchments(huc_num,
     r2f_catchments_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_CATCHMENTS)
     if (os.path.exists(r2f_catchments_dir) == True):
         shutil.rmtree(r2f_catchments_dir)
+        # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
+        # so sometimes mkdir can fail if rmtree isn't done
+        time.sleep(2) # 2 seconds
 
     os.mkdir(r2f_catchments_dir)
     rtn_varibles_dict["r2f_catchments_dir"] = r2f_catchments_dir
@@ -439,6 +447,9 @@ def make_catchments(huc_num,
     with rasterio.open(all_depth_grid_tif_files[0]) as rem_raster:
         raster_crs = rem_raster.crs.wkt
 
+    #with rxr.open_rasterio(all_depth_grid_tif_files[0]) as rem_raster:
+    #    raster_crs = rem_raster.rio.crs
+
     # Let's create one overall gpkg that has all of the relavent polys, for quick validation
     reproj_nwm_filtered_df = nwm_filtered_df.to_crs(raster_crs)
     reproj_nwm_filtered_df.to_file(rtn_varibles_dict.get("catchments_subset_file"), driver='GPKG')
@@ -449,19 +460,86 @@ def make_catchments(huc_num,
     datatyped_rems_dir = os.path.join(rtn_varibles_dict.get("r2f_catchments_dir"), "datatyped_feature_rems")
     if (os.path.exists(datatyped_rems_dir)):
         shutil.rmtree(datatyped_rems_dir)
+        # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
+        # so sometimes mkdir can fail if rmtree isn't done
+        time.sleep(2) # 2 seconds
+
     os.mkdir(datatyped_rems_dir)
 
     # -------------------
     rasters_to_mosaic = []
     r2f_hecras_dir = rtn_varibles_dict.get("r2f_hecras_dir")
     # Traverse through all feature IDs that we found depth grid folders earlier
+
+    # -------------------
+    # get maxments.
+    rasters_to_mosaic = []
+    ctr = 1
     for feature_id in all_feature_ids:
 
-        # Could probably multi proc this if we have performance issues
-        feature_id_rem_path = __get_maxment(feature_id, reproj_nwm_filtered_df, r2f_hecras_dir, datatyped_rems_dir)
+        get_maxmt_args = {'feature_id': feature_id,
+                          'reproj_nwm_filtered_df': reproj_nwm_filtered_df,
+                          'r2f_hecras_dir': r2f_hecras_dir,
+                          'datatyped_rems_dir': datatyped_rems_dir }
+
+        print(f"Getting maxment for feature id {feature_id}  ({(ctr)} of {len(all_feature_ids)})")
+        feature_id_rem_path = __get_maxment(**get_maxmt_args)
 
         # append particular feature_id + depth value path to list
         rasters_to_mosaic.append(feature_id_rem_path)
+        ctr = ctr + 1
+
+    # TODO: get multip proc working, but it needs a return value
+    #num_processors = (mp.cpu_count() - 2)
+    #executor_dict = {}
+    #ctr = 0
+    #get_maxmt_args = []
+    #for feature_id in all_feature_ids:
+    #    get_maxmt_args.append((feature_id, reproj_nwm_filtered_df, r2f_hecras_dir, datatyped_rems_dir))
+
+    #list_of_returned_results = []
+    #with ProcessPoolExecutor(max_workers = num_processors) as executor:
+
+        
+        #future_list = []
+
+        #for feature_id in all_feature_ids:
+
+        #    get_maxmt_args = {'feature_id': feature_id,
+        #                      'reproj_nwm_filtered_df': reproj_nwm_filtered_df,
+        #                      'r2f_hecras_dir': r2f_hecras_dir,
+        #                      'datatyped_rems_dir': datatyped_rems_dir }
+
+        #future = executor.submit(__get_maxment, get_maxmt_args)
+        #print(future.result)
+        #executor_dict[ctr] = feature_id_rem_path
+        #future_list.append(future)
+
+        # append particular feature_id + depth value path to list
+        #rasters_to_mosaic.append(feature_id_rem_path)
+        #ctr = ctr + 1
+
+        #result = executor.map()
+
+        #for f in as_completed(future_list):
+        #    result = f.result()
+            #print('Future done {}'.format(f))
+        #    rasters_to_mosaic.append(result)
+        
+        #future = executor.map(__get_maxment, get_maxmt_args )
+
+
+        # Send the executor to the progress bar and wait for all FR tasks to finish
+        #sf.progress_bar_handler(executor_dict, f"Getting maxments with {num_processors} workers")
+
+        #list_of_returned_results = list(tqdm.tqdm(executor.map(__get_maxment, get_maxmt_arg),
+        #                            total = len(all_feature_ids),
+        #                            desc='Getting Maxments',
+        #                            bar_format = "{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+        #                            ncols=67 ))
+        
+    #print(list_of_returned_results)
+    #sys.exit()
 
     # -------------------
     # Merge all the feature IDs' max depths together
@@ -500,8 +578,8 @@ def make_catchments(huc_num,
 
     # -------------------    
     # Cleanup the temp files in datatyped_rems_dir, later this will be part of the cleanup system.
-    if (os.path.exists(datatyped_rems_dir)):
-        shutil.rmtree(datatyped_rems_dir)
+    #if (os.path.exists(datatyped_rems_dir)):
+    #    shutil.rmtree(datatyped_rems_dir)
 
     # -------------------    
     print()
