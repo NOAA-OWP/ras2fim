@@ -4,9 +4,7 @@ import os, re, sys
 import argparse, datetime, shutil, osr
 import gdal
 import rasterio
-import rasterio.crs ## commented out because it was causing a weird error... 
-                      ## not sure if this is impacting things (but also import 
-                      ## rasterio also causes this issue sometimes)
+import rasterio.crs
 import pandas as pd
 import numpy as np ## remove?
 import geopandas as gpd
