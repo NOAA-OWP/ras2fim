@@ -33,6 +33,8 @@ import argparse
 import os
 import shutil
 import sys
+import time
+
 from datetime import datetime, timezone
 
 import fnmatch
@@ -280,11 +282,18 @@ def fn_run_ras2fim(str_huc8_arg,
     print ("+++++++ Finalizing processing +++++++" )
     r2f_ras2rem_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_RAS2REM) 
     r2f_catchments_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_CATCHMENTS)   
-    r2f_release_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_RELEASE_FILES)   
+    r2f_final_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_FINAL)   
 
     # Copy all files from the 06_ras2rem and the 07_ras2catchemnts directories
-    shutil.copytree(r2f_ras2rem_dir, r2f_release_dir )
-    shutil.copytree(r2f_catchments_dir, r2f_release_dir )
+    if (os.path.exists(r2f_final_dir) == True):
+        shutil.rmtree(r2f_final_dir)
+        # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
+        # so sometimes mkdir can fail if rmtree isn't done
+        time.sleep(2) # 2 seconds
+
+    os.mkdir(r2f_final_dir)
+    shutil.copytree(r2f_ras2rem_dir, r2f_final_dir )
+    shutil.copytree(r2f_catchments_dir, r2f_final_dir )
 
 
     print("+=================================================================+")

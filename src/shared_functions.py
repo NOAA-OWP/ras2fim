@@ -1,9 +1,6 @@
+#!/usr/bin/env python3
 
 import os
-
-from concurrent.futures import ProcessPoolExecutor, as_completed, wait
-from tqdm import tqdm
-
 
 
 def print_date_time_duration(start_dt, end_dt):
