@@ -6,7 +6,7 @@ import gdal
 import rasterio
 import rasterio.crs
 import pandas as pd
-import numpy as np ## remove?
+import numpy as np 
 import geopandas as gpd
 from rasterio.merge import merge
 from geopandas.tools import overlay
