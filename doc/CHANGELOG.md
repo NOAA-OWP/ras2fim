@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.8.0 - 2023-05-26 - [PR#64](https://github.com/NOAA-OWP/ras2fim/pull/64)
+## v1.8.0 - 2023-06-15 - [PR#64](https://github.com/NOAA-OWP/ras2fim/pull/64)
 
 In a recent release, the ras2catchment product feature was included but was not completed and now is.
 
@@ -13,30 +13,48 @@ New input files are required for this release to be tested and used. One file an
 
 The new file and folder can be found in `inputs` directories on both rasfim S3 or ESIP S3.
 
-ras2catchemnts.py now also needs a models_catalog.csv to be feed into it in order to create an output meta data file.  By default, the file will be at c:/ras2fim_data/OWP_ras_models/models_catalog_[].csv. The [] will be subsituted with the huc number. This matches the output file name convention from the new get models by catalog that is coming soon.
+There are some other fixes that were rolled into this, some by discovery during debugging, some based on partially loaded functionality.  They include:
+- [Issue 71](https://github.com/NOAA-OWP/ras2fim/issues/71): Fix proj.db error 
+- [Issue 46](https://github.com/NOAA-OWP/ras2fim/issues/46): Develop metadata reporting system. Note: Laura had most of this written and it was rolled into this branch / PR.
+- [Issue 56](https://github.com/NOAA-OWP/ras2fim/issues/56) ras2fim - fix ras2catchments for new input data sources.  This was the original issue that started this branch and PR.
 
-Code folder changes:
-    (details coming)
+Note: Currently, this edition does not have multi processing which calculating `maxments`. A `maxment` is the catchment for any particular feature based on its maximum depth value. Multi processing will be added later and was deferred due to the fact that based on current code the child process needed to pass information back to the parent process. This is very difficult and unstable. A separate issue card , [#75](https://github.com/NOAA-OWP/ras2fim/issues/75), has been added to fix this later. 
+
+### Environment Upgrade Notes
+This version requires an update to the conda environment for ras2fim.  To upgrade, follow these steps (using an Anaconda / Mini Conda command terminal):
+1) If not already, type `conda deactivate ras2fim`
+2) Ensure you are pathed into the correct branch to where the new `environment.yml` file is at, then type `conda env update -f environment.yml`. This might take a few minutes
+3) `conda activate ras2fim`
+
+Coupled with downloading the new catchment file and WBD folder into inputs, you should be ready to go. 
 
 ### Additions 
- 
+
 - `src`
-    - `shared_functions.py`: Includes a common duration calculating function, now used by both ras2fim and ras2catchments.py. This file can be shared for common functionality across all files in the code. Common shared functions help with consistency, avoid duplication and ease of implementation. Other code blocks have already been detected as being duplicated and may be moved into this file at a later time.
+    - `shared_functions.py`: Includes a common duration calculating function, now used by both ras2fim and ras2catchments.py. This file can be shared for common functionality across all files in the code. Common shared functions help with consistency, avoid duplication and ease of implementation. Other code blocks have already been detected as being duplicated and may be moved into this file at a later time.  The first function is for calculating and printing date / time duration.
 
 ### Changes  
 
 - `README.md`: Has been updated to talk about downloading all `X-National_Datasets` files and folder now in the `Inputs` directory. Previous versions of this page talked about getting three files from a folder in ESIP called `National Datasets`. Now both ESIP and ras2fim S3 have an identical `inputs` folder.  This md file now also talks the new file and WBD_HUC8 folder in its required downloads.
 - `INSTALL.md`: Updated to talk about the new inputs instead of the original three files.
-- `environment.yml`: Add a new pip installed package named keepachangelog (was not available in conda repo's so have to use pip)
-
+- `environment.yml`: Changes to upgrade the rasterio package upgrade. Also added a new package called `keepachangelog` which has to be loaded via PIP as it is not available in any of the conda repos.
 - `src`
-    - `ras2fim.py`: Updated to change the duration output system to come from the new shared_function. Also add a new input parameter to feed to ras2catchemnts for the models_catalog.csv or subset of it.
-    - `ras2catchments.py`:  Get it it working plus have it work with the new datasources for the nwm_catchments.gkpg. Also added code to work with a copy of the models_catalog.csv to extract data to become meta data output.
-    - `run_ras2rem.py`: Fixed some formatting / styling to match PEP-8 standards, plus udpate the multi proc to be wrapped with a "with" statement for better memory control.
-    - `shared_variables.py`: Added a few new default values.
-
-### Notes: 
-Sometimes when using ras2catchemnts.py from command line, an error was issued talking about a PROJ file not existing. The source of the error was traced but a fix was not found. A code fix previously existed to attempt to fix it, but did not appear to fix it.  However.. the error does not block or limit the functionality of using this tool. And, when ras2catchment is called as part of the ras2fim pipeline flow, the error is not created/shown. It was decided to just mention the issue and investigate later if required.
+    - `clip_dem_from_shape.py`: Added a simple time duration calculator. Needed for timing tests.
+    - `ras2catchments.py`: Changes include:
+        - This has been rebuilt in recognition that it had a fair bit of temporary duplication code from `run_ras2rem`. 
+        - Added code making a metadata gpkg, pulling the version number from the CHANGELOG.md to put into the meta data
+        - Upgraded input validation. 
+        - This file expects a valid model_catalog.csv, usually found in OWP_ras_models folder, which provides more meta data. A new optional param has been added to provide a specific model catalog file. By default, it will look for a file called `models_catalog_{huc}.csv`. It should match the "ras model" folders being submitted to `ras2fim.py`. 
+    -  `ras2fim.py`: Changes include:
+        - Updated to change the duration output system to come from the new `shared_functions.py` file replacing it's original duration calc code. 
+        - The `step` feature has been partially repaired as it had an error in it, but has not been fully fixed or tested. A separate issue card and PR will be coming. 
+        -  In the meantime, the code now has re-instated the code feature of not allowing a user to re-execute ras2fim.py against a folder that already exists.  
+        - Updates to add ras2catchments.py into the overall process flow.
+        - A new section to copy "final" files from the ras2rem and catchments folder. The new `final` subfolder has the files required for release, as in final product files.
+        - A few styling updates
+    -  `run_ras2rem.py`: Some minor style changes (mostly spacing), but also added a "with" wrapper around the multi processing "pool" code, to be more PEP-8 compliant. 
+    - `shared_variables.py`: to add new pathing and constants for changes above.
+    - `worker_fim_raster.py`: During debugging, it was noticed that the pre-existing system for logging errors in this file, logged some info such as model name, but failed to log the reason for the exception.
 
 <br/><br/>
 
