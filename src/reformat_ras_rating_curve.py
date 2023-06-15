@@ -4,9 +4,7 @@ import os, re, sys
 import argparse, datetime, shutil, osr
 import gdal
 import rasterio
-import rasterio.crs ## commented out because it was causing a weird error... 
-                      ## not sure if this is impacting things (but also import 
-                      ## rasterio also causes this issue sometimes)
+import rasterio.crs
 import pandas as pd
 import numpy as np ## remove?
 import geopandas as gpd
@@ -208,6 +206,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         feature_id_list = [] 
         midpoint_x_list = []
         midpoint_y_list = []
+        huc8_list = []
 
         # Project to CRS to get the coordinates in the correct format
         nwm_diff_prj = nwm_diff.to_crs('EPSG:4326') 
@@ -215,6 +214,9 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         # Get middle segment of the flowlines
         for index, row in nwm_diff_prj.iterrows():
             feature_id = nwm_diff_prj['feature_id'][index] 
+
+            # Get HUC8 
+            huc8 = nwm_diff_prj['huc8'][index] 
 
             # Create linestring      
             line = LineString(nwm_diff_prj['geometry'][index])
@@ -225,13 +227,15 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
             midpoint_y = midpoint.y
 
             # Append results to output lists
+            huc8_list.append(huc8)
             feature_id_list.append(feature_id)
             midpoint_x_list.append(midpoint_x)
             midpoint_y_list.append(midpoint_y)
 
         # Make output dataframe
         midpoints_df = pd.DataFrame(
-            {'feature_id': feature_id_list,
+            {'huc8': huc8_list, 
+             'feature_id': feature_id_list,
             'midpoint_lon': midpoint_x_list,
             'midpoint_lat': midpoint_y_list
             })
@@ -347,7 +351,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         # Compile elevation and datum information
 
         # Join raw elevation to rating curve using feature_id and drop the redundant feature_id column
-        rc_elev_df = pd.merge(rc_df, midpoints_gdf[['feature_id', 'Raw_elevation', 'midpoint_lat', 'midpoint_lon']], 
+        rc_elev_df = pd.merge(rc_df, midpoints_gdf[['feature_id', 'huc8', 'Raw_elevation', 'midpoint_lat', 'midpoint_lon']], 
                               left_on='feature-id', right_on='feature_id', how='left')
         rc_elev_df = rc_elev_df.drop('feature_id', axis=1)
 
@@ -419,7 +423,8 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
 
         dir_output_table = pd.DataFrame({'flow' : rc_elev_df['flow'],
                                          'stage' : rc_elev_df['stage_final'], # the stage value that was corrected for units
-                                         'feature_id' : rc_elev_df['feature-id'],  
+                                         'feature_id' : rc_elev_df['feature-id'], 
+                                         'huc8' : rc_elev_df['huc8'],  
                                          'location_type': location_type, #str 
                                          'source': source, #str
                                          'flow_units': discharge_units, #str
@@ -433,7 +438,10 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
                                          'lat': rc_elev_df['midpoint_lat'], #num
                                          'lon': rc_elev_df['midpoint_lon']}) #num
         
-        dir_geospatial = dir_output_table.drop(columns=['stage', 'elevation_navd88', 'flow'])
+        dir_geospatial = dir_output_table.drop(columns=['stage', 'flow']) ## WARNING: no longer removes elevation_navd88 
+                                                                          ## from .gpkg but value is calculated as 
+                                                                          ## stage+navd88_datum so it is currently relevant 
+                                                                          ## to only one flow value per feature ID.
         dir_geospatial = dir_geospatial.drop_duplicates(subset='feature_id', keep='first')
 
         # ------------------------------------------------------------------------------------------------
