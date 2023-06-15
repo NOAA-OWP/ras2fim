@@ -292,8 +292,11 @@ def fn_run_ras2fim(str_huc8_arg,
         time.sleep(2) # 2 seconds
 
     os.mkdir(r2f_final_dir)
-    shutil.copytree(r2f_ras2rem_dir, r2f_final_dir )
-    shutil.copytree(r2f_catchments_dir, r2f_final_dir )
+    shutil.copy2(os.path.join(r2f_ras2rem_dir, "rem.tif"), r2f_final_dir)
+    shutil.copy2(os.path.join(r2f_ras2rem_dir, "rating_curve.csv"), r2f_final_dir)
+    shutil.copy2(os.path.join(r2f_catchments_dir, "nwm_catchments_subset.gpkg"), r2f_final_dir)
+    shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features.tif"), r2f_final_dir)
+    shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features_meta.gpkg"), r2f_final_dir)
 
 
     print("+=================================================================+")

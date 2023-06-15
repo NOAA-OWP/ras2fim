@@ -58,7 +58,6 @@ def convert_to_metric(ras2rem_dir):
 
 
 # Scrapes the top changelog version (most recent version listed in our repo)
-
 def get_changelog_version(changelog_path):
     changelog = keepachangelog.to_dict(changelog_path)
     return list(changelog.keys())[0]
@@ -213,7 +212,6 @@ def __get_maxment(feature_id, reproj_nwm_filtered_df, r2f_hecras_dir, datatyped_
     # -------------------
     # ... apply polygon as mask to initial raster. Will only pull one feature ID at a time. 
     # Clips depth grid to catchment boundary to create "maxment"
-    #masked_raster, transform = rasterio.mask.mask(feature_id_max_depth_raster, shapes, nodata=raster.nodata, filled=True, invert=False)
     masked_raster, transform = rasterio.mask.mask(feature_max_depth_raster,
                                                   feature_catchment_df.geometry, 
                                                   nodata = feature_max_depth_raster.nodata, 
@@ -383,13 +381,6 @@ def make_catchments(huc_num,
 
     '''
 
-    # Validate input params plus setup other key derived variables
-    #r2f_huc_parent_dir, r2f_hecras_dir, r2f_catchments_dir, \
-    #    wbd_huc8_file, model_huc_catalog_path, \
-    #    src_nwm_catchments_file, r2f_ras2rem_dir = __validate_make_catchments (huc_num,
-    #                                                                            r2f_huc_parent_dir,
-    #                                                                            model_huc_catalog_path,
-    #                                                                            national_ds_path)
     rtn_varibles_dict = __validate_make_catchments (huc_num,
                                                     r2f_huc_parent_dir,
                                                     model_huc_catalog_path,
@@ -516,58 +507,6 @@ def make_catchments(huc_num,
         rasters_to_mosaic.append(feature_id_rem_path)
         ctr = ctr + 1
 
-    # TODO: get multip proc working, but it needs a return value
-    #num_processors = (mp.cpu_count() - 2)
-    #executor_dict = {}
-    #ctr = 0
-    #get_maxmt_args = []
-    #for feature_id in all_feature_ids:
-    #    get_maxmt_args.append((feature_id, reproj_nwm_filtered_df, r2f_hecras_dir, datatyped_rems_dir))
-
-    #list_of_returned_results = []
-    #with ProcessPoolExecutor(max_workers = num_processors) as executor:
-
-        
-        #future_list = []
-
-        #for feature_id in all_feature_ids:
-
-        #    get_maxmt_args = {'feature_id': feature_id,
-        #                      'reproj_nwm_filtered_df': reproj_nwm_filtered_df,
-        #                      'r2f_hecras_dir': r2f_hecras_dir,
-        #                      'datatyped_rems_dir': datatyped_rems_dir }
-
-        #future = executor.submit(__get_maxment, get_maxmt_args)
-        #print(future.result)
-        #executor_dict[ctr] = feature_id_rem_path
-        #future_list.append(future)
-
-        # append particular feature_id + depth value path to list
-        #rasters_to_mosaic.append(feature_id_rem_path)
-        #ctr = ctr + 1
-
-        #result = executor.map()
-
-        #for f in as_completed(future_list):
-        #    result = f.result()
-            #print('Future done {}'.format(f))
-        #    rasters_to_mosaic.append(result)
-        
-        #future = executor.map(__get_maxment, get_maxmt_args )
-
-
-        # Send the executor to the progress bar and wait for all FR tasks to finish
-        #sf.progress_bar_handler(executor_dict, f"Getting maxments with {num_processors} workers")
-
-        #list_of_returned_results = list(tqdm.tqdm(executor.map(__get_maxment, get_maxmt_arg),
-        #                            total = len(all_feature_ids),
-        #                            desc='Getting Maxments',
-        #                            bar_format = "{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
-        #                            ncols=67 ))
-        
-    #print(list_of_returned_results)
-    #sys.exit()
-
     # -------------------
     # Merge all the feature IDs' max depths together
     print("Merging all max depths")
@@ -607,8 +546,8 @@ def make_catchments(huc_num,
 
     # -------------------    
     # Cleanup the temp files in datatyped_rems_dir, later this will be part of the cleanup system.
-    #if (os.path.exists(datatyped_rems_dir)):
-    #    shutil.rmtree(datatyped_rems_dir)
+    if (os.path.exists(datatyped_rems_dir)):
+        shutil.rmtree(datatyped_rems_dir)
 
     # -------------------    
     print()

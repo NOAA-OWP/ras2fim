@@ -62,7 +62,7 @@ git clone https://github.com/NOAA-OWP/ras2fim.git
 * [HEC-RAS Version 6.0](https://www.hec.usace.army.mil/software/hec-ras/download.aspx)
 * [Anaconda](https://www.anaconda.com/products/individual) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) for Windows
 * National datasets - from AWS - See "Prior to Running the Code" section
-* Runs on a Windows OS only -Tested on Windows 10
+* Runs on a Windows OS only - Tested on Windows 10
 
 ## Installation
 
@@ -75,9 +75,9 @@ Detailed instructions on setting up an anaconda environment and running the main
 With the (1) ras2fim anaconda environment created and (2) the ras2fim git-hub folder cloned, `ras2fim` python scripts are within the `src` folder.  The main scripts is titled `ras2fim.py`.  **All scripts have a helper flag of `-h`**.  It is recommended that you run the script with the helper flag first to determine the required input. <br><br>
 ![](https://github.com/NOAA-OWP/ras2fim/blob/main/doc/conda_python_run.png)
 <br><br>
-Note: For this script there are **seven (7) required** inputs and one (1) optional input.  While this input string will greatly vary on your machine, provided is a sample input string to execute the `ras2fim.py` script.
+Note: For this script there are **three (3) required** arguments and a number of optional arguments.  While this input string will greatly vary on your machine, below is a sample input string to execute the `ras2fim.py` script (with most arguments defaulted).
 ```
-python ras2fim.py -w 10170204 -i C:\HEC\input_folder -o C:\HEC\output_folder -p EPSG:26915 -v False -n E:\X-NWS\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.0"
+python ras2fim.py -w 05030104 -p EPSG:2248 -o 05030104_meters_2248
 ```
 
 ## How to test the software
