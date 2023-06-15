@@ -381,7 +381,7 @@ def init_and_run_ras2fim(str_huc8_arg,
             is_invalid_path = True
 
     if (is_invalid_path == True):
-        raise ValueError('The -o child folder (base path) can not pre-exist as we will create it, but the ' \
+        raise ValueError('The -o child folder (huc ras model output path) can not pre-exist, as we will create it, but the' \
                          ' parent folders must exist. See code notes in the __main__ section for details and examples')
 
     # -------------------
