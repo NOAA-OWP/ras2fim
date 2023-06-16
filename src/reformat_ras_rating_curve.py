@@ -154,12 +154,19 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
     
     # Check for rating curve, get metadata and read it in if it exists
     rc_path = os.path.join(input_folder_path, dir, "06_ras2rem", "rating_curve.csv")
-    
+
+    # Create intermediate output file within directory (08_adjusted_src)
+    intermediate_filepath = os.path.join(input_folder_path, dir, intermediate_filename)
+    if not os.path.exists(intermediate_filepath):
+        os.mkdir(intermediate_filepath)
+
+    print(intermediate_filepath)
+
     if os.path.isfile(rc_path) == False:
         print(f"No rating curve file available for {dir}.")
         output_log.append("Rating curve NOT available.")
         dir_log_filename = str(dir) + int_log_label
-        dir_log_filepath = os.path.join(output_save_folder, intermediate_filename, dir_log_filename)
+        dir_log_filepath = os.path.join(intermediate_filepath, dir_log_filename)
 
         with open(dir_log_filepath, 'w') as f:
             for line in output_log:
@@ -288,7 +295,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
             )
 
             # Write mosaic terrain raster to intermediate folder with metadata
-            dir_mosaic_filepath = os.path.join(output_save_folder, intermediate_filename, "{}_mosaic.tif".format(dir))
+            dir_mosaic_filepath = os.path.join(intermediate_filepath, "{}_mosaic.tif".format(dir))
             with rasterio.open(dir_mosaic_filepath, "w", **output_meta) as tiffile:
                 tiffile.write(mosaic)
 
@@ -447,17 +454,17 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
 
         # Save output table for directory
         dir_output_table_filename = str(dir) + int_output_table_label 
-        dir_output_table_filepath = os.path.join(output_save_folder, intermediate_filename, dir_output_table_filename)
+        dir_output_table_filepath = os.path.join(intermediate_filepath, dir_output_table_filename)
         dir_output_table.to_csv(dir_output_table_filepath, index=False)        
 
         # Save geospatial table for directory
         dir_geospatial_filename = str(dir) + int_geospatial_label
-        dir_geospatial_filepath = os.path.join(output_save_folder, intermediate_filename, dir_geospatial_filename)
+        dir_geospatial_filepath = os.path.join(intermediate_filepath, dir_geospatial_filename)
         dir_geospatial.to_csv(dir_geospatial_filepath, index=False)  
 
         # Save log for directory
         dir_log_filename = str(dir) + int_log_label
-        dir_log_filepath = os.path.join(output_save_folder, intermediate_filename, dir_log_filename)
+        dir_log_filepath = os.path.join(intermediate_filepath, dir_log_filename)
         with open(dir_log_filepath, 'w') as f:
             for line in output_log:
                 f.write(f"{line}\n")
@@ -469,7 +476,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
 # Compiles the rating curve and points from each directory 
 # -----------------------------------------------------------------
 def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbose, num_workers, 
-                              keep_intermediates, overwrite, source, location_type, active):
+                              overwrite, source, location_type, active):
 
     """
     Overview:
@@ -496,9 +503,6 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     - num_workers: int
         number of workers to use during parallel processing (optional argument set in __main__)
 
-    - keep_intermediates: bool
-        option to keep the intermediate files created for each directory (optional argument set in __main__)
-
     - overwrite: bool
         option to overwrite the existing files in the intermediate outputs file (optional argument set in __main__)
     
@@ -520,6 +524,7 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     int_output_table_label = "_output_table.csv"
     int_geospatial_label = "_geospatial.csv"
     int_log_label = "_log.txt"
+    intermediate_filename = "08_adjusted_src"
     
     # Record and print start time
     start_time = datetime.datetime.now()
@@ -538,7 +543,6 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     print("Settings: ")
     print(f"    Verbose: {str(verbose)}")
     print(f"    Save output log to folder: {str(log)}")
-    print(f"    Keep intermediates: {str(keep_intermediates)}")
     print(f"    Number of workers: {num_workers}")
     print(f"    No data value: {nodataval}")
     if input_vdatum == output_vdatum:
@@ -596,25 +600,6 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     # Get a list of the directories in the input folder path
     dirlist = os.listdir(input_folder_path)
 
-    # Create intermediate directory
-    intermediate_filename = "intermediate_outputs"
-    intermediate_filepath = os.path.join(output_save_folder, intermediate_filename)
-
-    if overwrite == True:
-        if os.path.exists(intermediate_filepath):
-            try:
-                shutil.rmtree(intermediate_filepath)
-                print(f"Overwriting {intermediate_filepath}.")
-            except OSError as e:
-                print("Error: %s : %s" % (intermediate_filepath, e.strerror))
-    else:
-        if os.path.exists(intermediate_filepath):
-            sys.exit(f"Error: File already exists at {intermediate_filepath}. "\
-                     "Manually delete directory, use overwrite flag (-ov) or "\
-                     "use a different output save folder.")
-
-    os.mkdir(intermediate_filepath)
-
     # Create empty output log and give it a header
     output_log = []
     output_log.append(f"Processing for reformat_ras_rating_curves.py started at {str(start_time_string)}")
@@ -652,61 +637,60 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
         print()
 
     # Get list of intermediate files from path
-    intermediate_filepath = os.path.join(output_save_folder, intermediate_filename)
-
     int_output_table_files = []
     int_geospatial_files = []
     int_logs = []
 
-    for dirpath, dirnames, filenames in os.walk(intermediate_filepath):
+    
+    for dir in dirlist:
+        intermediate_filepath = os.path.join(input_folder_path, dir, intermediate_filename)
 
-        for filename in filenames:
-            if filename.endswith(int_output_table_label): 
-                path = os.path.join(dirpath, filename)
-                int_output_table_files.append(path)
+        # Get output table
+        filename = dir + int_output_table_label
+        path = os.path.join(intermediate_filepath, filename)
+        int_output_table_files.append(path)
 
-            elif filename.endswith(int_geospatial_label): 
-                path = os.path.join(dirpath, filename)
-                int_geospatial_files.append(path)   
+        # Get geospatial filename
+        filename = dir + int_geospatial_label
+        path = os.path.join(intermediate_filepath, filename)
+        int_geospatial_files.append(path)  
 
-            elif filename.endswith(int_log_label): 
-                path = os.path.join(dirpath, filename)
-                int_logs.append(path)                      
+        # Get log filename
+        filename = dir + int_log_label
+        path = os.path.join(intermediate_filepath, filename)
+        int_logs.append(path)      
 
     # Read and compile the intermediate rating curve tables
     full_output_table = pd.DataFrame()
     for file_path in int_output_table_files:
-        df = pd.read_csv(file_path)
-        full_output_table = pd.concat([full_output_table, df])
+        if os.path.exists(file_path):
+            df = pd.read_csv(file_path)
+            full_output_table = pd.concat([full_output_table, df])
     full_output_table.reset_index(drop=True, inplace=True)
 
     # Read and compile the intermediate geospatial tables
     full_geospatial = pd.DataFrame()
     for file_path in int_geospatial_files:
-        df = pd.read_csv(file_path)
-        full_geospatial = pd.concat([full_geospatial, df])
+        if os.path.exists(file_path):
+            df = pd.read_csv(file_path)
+            full_geospatial = pd.concat([full_geospatial, df])
     full_geospatial.reset_index(drop=True, inplace=True)
 
     # Read and compile all logs
     for file_path in int_logs:
-        with open(file_path) as f:
-            lines = f.readlines()
-
-            for line in lines:
-                output_log.append(line)
+        if os.path.exists(file_path):
+            with open(file_path) as f:
+                lines = f.readlines()
+                for line in lines:
+                    output_log.append(line)
 
     # Remove extra linebreaks from log
     output_log = [s.replace('\n', '') for s in output_log]
     output_log.append(" ")
 
-    # If keep-intermediates option is not selected, clean out intermediates folder
-    if keep_intermediates == False:
-        shutil.rmtree(intermediate_filepath)
-        if verbose == True:
-            print("Cleaning intermediate files.")
-
     # ------------------------------------------------------------------------------------------------
     # Check for and remove duplicate values
+
     if full_geospatial['feature_id'].duplicated().any():
         print()
         print("Duplicate feature_ids were found and removed from geospatial data table.")
@@ -801,9 +785,6 @@ if __name__ == '__main__':
     # Run with 6 workers:
     python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim_models' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves' -v -l -j 6
 
-    # Keep intermediates, save output log, and run quietly (no verbose tag):
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim_models' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves' -k -l
-
     # Input the data source, location type, and active information using the -so, -lt, and -ac flags:
     python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim_models' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves' -v -so "ras2fim" -lt "USGS" -ac "True"
 
@@ -814,7 +795,6 @@ if __name__ == '__main__':
                              use the -l tag to save the output log
                              use the -v tag to run in a verbose setting
                              use the -j flag followed by the number to specify number of workers
-                             use the -k flag to keep intermediate files once the script has run
                              use the -ov flag to overwrite any existing intermediate files
                              use the -so flag to input a value for the "source" output column (i.e. "ras2fim", "ras2fim v2.1") 
                              use the -lt flag to input a value for the "location_type" output column (i.e. "USGS", "IFC")
@@ -830,8 +810,6 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--log', help='Option to save output log to output save folder.', required=False, default=False, action='store_true')
     parser.add_argument('-v', '--verbose', help='Option to print more updates and descriptions.', required=False, default=False, action='store_true')
     parser.add_argument('-j', '--num-workers',help='Number of concurrent processes', required=False, default=1, type=int)
-    parser.add_argument('-k', '--keep-intermediates', help='Option to save intermediates in temp directory after script is finished.', 
-                        required=False, default=False, action='store_true')
     parser.add_argument('-ov', '--overwrite', help='Option to overwrite existing intermediate files in the output save folder.', 
                         required=False, default=False, action='store_true')
     parser.add_argument('-so', '--source', help='Input a value for the "source" output column (i.e. "ras2fim", "ras2fim v2.1").', required=False, default="")
@@ -845,7 +823,6 @@ if __name__ == '__main__':
     log = bool(args['log'])
     verbose = bool(args['verbose'])
     num_workers = args['num_workers']
-    keep_intermediates = bool(args['keep_intermediates'])
     overwrite = bool(args['overwrite'])
     source = str(args['source'])
     location_type = str(args['location_type'])
@@ -853,5 +830,5 @@ if __name__ == '__main__':
 
 
     # Run main function
-    compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbose, num_workers, keep_intermediates, 
+    compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbose, num_workers, 
                                overwrite, source, location_type, active)
