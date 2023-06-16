@@ -216,7 +216,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
             feature_id = nwm_diff_prj['feature_id'][index] 
 
             # Get HUC8 
-            huc8 = nwm_diff_prj['huc8'][index] 
+            huc8 = nwm_diff_prj['huc8'][index]
 
             # Create linestring      
             line = LineString(nwm_diff_prj['geometry'][index])
@@ -424,7 +424,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         dir_output_table = pd.DataFrame({'flow' : rc_elev_df['flow'],
                                          'stage' : rc_elev_df['stage_final'], # the stage value that was corrected for units
                                          'feature_id' : rc_elev_df['feature-id'], 
-                                         'huc8' : rc_elev_df['huc8'],  
+                                         'huc8' : rc_elev_df['huc8'],  #str
                                          'location_type': location_type, #str 
                                          'source': source, #str
                                          'flow_units': discharge_units, #str
@@ -438,10 +438,8 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
                                          'lat': rc_elev_df['midpoint_lat'], #num
                                          'lon': rc_elev_df['midpoint_lon']}) #num
         
-        dir_geospatial = dir_output_table.drop(columns=['stage', 'flow']) ## WARNING: no longer removes elevation_navd88 
-                                                                          ## from .gpkg but value is calculated as 
-                                                                          ## stage+navd88_datum so it is currently relevant 
-                                                                          ## to only one flow value per feature ID.
+        dir_geospatial = dir_output_table.drop(columns=['stage', 'flow', 'elevation_navd88']) # If you want to keep `elevation_navd88` in the geopackage, 
+                                                                                              # remove it from this command.
         dir_geospatial = dir_geospatial.drop_duplicates(subset='feature_id', keep='first')
 
         # ------------------------------------------------------------------------------------------------
