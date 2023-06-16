@@ -354,6 +354,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         output_log.append("Midpoints projection " + str(midpoints_gdf.crs))
         output_log.append("Terrain projection: " + str(terrain.crs))
 
+
         # ------------------------------------------------------------------------------------------------
         # Compile elevation and datum information
 
@@ -710,7 +711,7 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
 
     output_geopackage_temp = full_geospatial
     output_geopackage_temp['geometry'] = output_geopackage_temp.apply(lambda x: Point((float(x.lon), float(x.lat))), axis=1)
-    output_geopackage = gpd.GeoDataFrame(output_geopackage_temp, geometry='geometry')
+    output_geopackage = gpd.GeoDataFrame(output_geopackage_temp, geometry='geometry', crs='epsg:26915')
 
     if verbose == True:
         print()
