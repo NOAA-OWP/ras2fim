@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 
 import os
@@ -105,12 +106,6 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
     # The key is a left join with the rating curve as the base
     rc_df = pd.read_csv(rating_curve_path)
 
-    # we can now drop the HydroID from the rc_dr, so we don't have dup columns from the rating curve
-    rc_df.drop('HydroID', inplace=True, axis=1) 
-    # Join GeoDataFrame to rating curve that has some relevant metadata; keep only relevant fields that match our feature IDs
-    # at this point, we have all rating_curve records. We do need the min, max, but then need to flatten to a single feature record
-    gdf = gdf.merge(rc_df, how="left", left_on="feature_id", right_on="feature_id")
-
     # Get min and max stage and discharge for each Feature ID, then create fields for stage and flow mins and maxs
     agg_df = rc_df.groupby(["feature_id"]).agg({'stage_m': ['min', 'max'], 'discharge_cms': ['min','max']})
     
@@ -126,19 +121,16 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
     # -------------------
     # Join SRC data to polygon GeoDataFrame
     gdf = gdf.merge(agg_df, how="left", left_on="feature_id", right_on="feature_id")
-
-    # now that we have the min and mas and new columns for them, we can delete some of the columns that we no longer
-    # need from the rating_curve_db. This will allow us to flatten to keep just one record per feature_id
-    rc_cols_to_drop = ['stage_m', 'discharge_cms']
-    if ('stage_ft' in gdf.columns): rc_cols_to_drop.append('stage_ft')
-    if ('discharge_cfs' in gdf.columns): rc_cols_to_drop.append('discharge_cfs')
-    gdf.drop(rc_cols_to_drop, inplace=True, axis=1)
     gdf = gdf.drop_duplicates()    
 
     # -------------------
     # Use the model data catalog to add data the metadata gkpg
     model_df = pd.read_csv(model_huc_catalog_path)
     gdf = gdf.merge(model_df, how="left", left_on="feature_id", right_on="nhdplus_comid")    
+
+    # There are likely some HydroIDs that are associated with multiple model entries in the model catalog,
+    # but we only want one result in our final outputs for now so that we don't confuse our Hydrovis end users.
+    gdf = gdf.drop_duplicates(subset=["HydroID"])
 
     # drop the models_catalog columns we don't want
     # Yes. this might mean new columns in models_catalog will auto appear
@@ -172,11 +164,11 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
     # More meta data coming shortly. It will be named models_catalog_{huc}.csv from whatever path
     # has been defined as the OWP_ras_models (c:/ras2fim_data/OWP_ras_models is the default)
     
-    #gdf['ras_model_type'] = ['1D'] * len(gdf)
-    #gdf['model_date'] = ["Unknown"] * len(gdf) # where would we find this in the model data?
-    #gdf['flow_match_score'] = [0] * len(gdf)
-    #gdf['terrain_match_score'] = [0] * len(gdf)
-    #gdf['other_notes'] = [""] * len(gdf)
+    gdf['ras_model_type'] = ['1D'] * len(gdf)
+    gdf['model_date'] = ["Unknown"] * len(gdf) # where would we find this in the model data?
+    gdf['flow_match_score'] = [0] * len(gdf)
+    gdf['terrain_match_score'] = [0] * len(gdf)
+    gdf['other_notes'] = [""] * len(gdf)
 
     gdf['ras2fim_version'] = [get_changelog_version(changelog_path)] * len(gdf)
 
@@ -189,7 +181,7 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
 # For each feature ID, finds the path for the tif with the max depth value
 def __get_maxment(feature_id, reproj_nwm_filtered_df, r2f_hecras_dir, datatyped_rems_dir):
 
-    feature_catchment_df = reproj_nwm_filtered_df[reproj_nwm_filtered_df.ID == feature_id]
+    feature_catchment_df = reproj_nwm_filtered_df[reproj_nwm_filtered_df.FEATUREID == feature_id]
 
     # Pull all relevant depth grid tiffs for this feature ID
     this_feature_id_tif_files = list(Path(r2f_hecras_dir).rglob(f'*/Depth_Grid/{feature_id}-*.tif'))
@@ -425,15 +417,10 @@ def make_catchments(huc_num,
 
     # -------------------
     # Make a list of all unique feature id,
-    # TODO: We might just be able to take the first part of of the .tif files (before the -xxx)
-    # and that should be the list of the feature IDs.
-
     # strip out the rest of the path keeping just the feature ids
     all_feature_ids = list(set(feature_id_values))
     all_feature_ids = [int(str(x).split('\\')[-1].split('-')[0]) for x in all_feature_ids]
     
-    #print(f"Looking through {all_feature_ids}")
-
     num_features = len(all_feature_ids)
     if (num_features == 0):
         # in case the file name pattern changed
@@ -457,7 +444,7 @@ def make_catchments(huc_num,
     # -------------------    
     print("Getting all relevant catchment polys")
     print()
-    filtered_catchments_df = huc8_nwm_df.loc[huc8_nwm_df['ID'].isin(all_feature_ids)]
+    filtered_catchments_df = huc8_nwm_df.loc[huc8_nwm_df['FEATUREID'].isin(all_feature_ids)]
     nwm_filtered_df = gpd.GeoDataFrame.copy(filtered_catchments_df)
 
     # -------------------
@@ -485,13 +472,33 @@ def make_catchments(huc_num,
     os.mkdir(datatyped_rems_dir)
 
     # -------------------
-    rasters_to_mosaic = []
-    r2f_hecras_dir = rtn_varibles_dict.get("r2f_hecras_dir")
     # Traverse through all feature IDs that we found depth grid folders earlier
 
     # -------------------
     # get maxments.
     rasters_to_mosaic = []
+
+    # Create a copy of the REM created by ras2rem so that we make sure our final feature ID tif is
+    # really the same size (so that we're not off by a pixel)
+    r2f_rem_path = os.path.join(rtn_varibles_dict["r2f_ras2rem_dir"],'rem.tif')
+    if os.path.exists(r2f_rem_path): 
+        r2f_rem_extent_path = os.path.join(rtn_varibles_dict["r2f_ras2rem_dir"], \
+                                           'rem_extent_nodata.tif')
+        with rasterio.open(r2f_rem_path) as src:
+            rem_raster = src.read()
+            # create a raster with exact dimesions of REM but with all nodata (yes, we could do this as 
+            # a new numpy n-d array, but then we'd need to setup a lot of parameters to match those of 
+            # rem_raster)
+            rem_raster = np.where(np.isnan(rem_raster),65535,65535)
+            output_meta = src.meta.copy()
+            output_meta.update( { "dtype":np.int32, "compress":"LZW" })
+            with rasterio.open(r2f_rem_extent_path, 'w', **output_meta) as dst:
+                dst.write(rem_raster)
+        # add nodata REM file to list of rasters to merge, so that the final merged raster has same extent
+        rasters_to_mosaic.append(r2f_rem_extent_path)
+    else:
+        print(f"{r2f_rem_path} doesn't exist")
+
     ctr = 1
     for feature_id in all_feature_ids:
 
@@ -619,4 +626,6 @@ if __name__=="__main__":
     args = vars(parser.parse_args())
     
     make_catchments(**args)
+
+
 
