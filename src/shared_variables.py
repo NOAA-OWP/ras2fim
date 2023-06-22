@@ -28,7 +28,7 @@ INPUT_DEFAULT_NWM_FLOWS_FILE_PATH = os.path.join(INPUT_DEFAULT_X_NATIONAL_DS_DIR
 
 # OWP ras models (pre-processed, ready to submit to ras2fim.py)
 HECRAS_INPUT_DEFAULT_OWP_RAS_MODELS = os.path.join(DEFAULT_BASE_DIR, "OWP_ras_models", "models")
-RSF_MODELS_CATALOG_PATH = os.path.join(DEFAULT_BASE_DIR, "OWP_ras_models", "models_catalog_[].csv")
+RSF_MODELS_CATALOG_PATH = os.path.join(DEFAULT_BASE_DIR, "OWP_ras_models", "OWP_ras_models_catalog_[].csv")
 
 # ras2fim output folders
 R2F_DEFAULT_OUTPUT_MODELS = os.path.join(DEFAULT_BASE_DIR, "output_ras2fim_models")

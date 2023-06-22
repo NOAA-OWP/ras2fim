@@ -298,6 +298,10 @@ def fn_run_ras2fim(str_huc8_arg,
     shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features.tif"), r2f_final_dir)
     shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features_meta.gpkg"), r2f_final_dir)
 
+    # TODO: use this models catalog to add columns for success/fail processing for each model and why it failed
+    # if applicable.
+    shutil.copy2(model_huc_catalog_path, r2f_final_dir)
+
 
     print("+=================================================================+")
     print("  RUN RAS2FIM - Completed                                         |")
@@ -385,7 +389,7 @@ def init_and_run_ras2fim(str_huc8_arg,
                          ' parent folders must exist. See code notes in the __main__ section for details and examples')
 
     # -------------------
-    # TODO: step system not fully working and needs to be fixed.
+    # TODO: step system not fully working and needs to be fixed or removed
     # create an output folder with checks
     #if os.path.exists(str_out_arg):
     #    if os.path.exists(os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, 'terrain_stats.csv')):
@@ -602,7 +606,7 @@ if __name__ == '__main__':
     parser.add_argument('-mc',
                         dest = "model_huc_catalog_path",
                         help = r'OPTIONAL: path to model catalog csv, filtered for the supplied HUC, file downloaded from S3.' \
-                               r' Defaults to c:\ras2fim_data\OWP_ras_models\models_catalog_[].csv and will use subsitution'\
+                               r' Defaults to c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_[].csv and will use subsitution'\
                                r' to replace the [] with the huc number.',
                         default = sv.RSF_MODELS_CATALOG_PATH,
                         required = False,

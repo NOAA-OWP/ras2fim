@@ -375,7 +375,7 @@ def make_catchments(huc_num,
         
     - model_huc_catalog_path : str
         This is the location of a models_catalog.csv or a subset of it. When the new get models by huc comes online shortly, it
-        will create a file called "models_catalog_{HUC}.csv.  By  default, that will be used here with the pattern in code
+        will create a file called "OWP_ras_models_catalog_{HUC}.csv.  By  default, that will be used here with the pattern in code
         being "models_catalog_[].csv" and will use subsitution to replace the [] with the huc number. This is an optional
         input override but will default to c:/ras2fim_data/OWP_ras_models same as other systems.
 
@@ -610,7 +610,7 @@ if __name__=="__main__":
     parser.add_argument('-mc',
                         dest = "model_huc_catalog_path",
                         help = r'OPTIONAL: path to model catalog csv, filtered for the supplied HUC, file downloaded from S3.' \
-                               r' Defaults to c:\ras2fim_data\OWP_ras_models\models_catalog_[].csv and will use subsitution'\
+                               r' Defaults to c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_[].csv and will use subsitution'\
                                r' to replace the [] with the huc number.',
                         default = sv.RSF_MODELS_CATALOG_PATH,
                         required = False,
