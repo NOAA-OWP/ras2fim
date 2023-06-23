@@ -136,23 +136,24 @@ def fn_format_flow_values(list_flow):
 def fn_append_error(str_f_id_fn,
                     str_geom_path_fn,
                     str_huc12_fn,
-                    str_directory_fn):
+                    str_directory_fn, 
+                    exception_msg):
     
     # creates a csv file of the errors found during processing
-    str_error_path = str_directory_fn + r'\error_found.csv'
+    str_error_path = os.path.join(str_directory_fn, 'error_found.csv')
     
     # if file exists then open it
     if os.path.exists(str_error_path):
         # open the csv
         df_error = pd.read_csv(str_error_path, index_col=0)
         # add the record to the file
-        ds_series = pd.Series([str_f_id_fn, str_geom_path_fn, str_huc12_fn],
-                             index=['feature_id', 'geom_path', 'huc_12'])
+        ds_series = pd.Series([str_f_id_fn, str_geom_path_fn, str_huc12_fn, exception_msg],
+                             index=['feature_id', 'geom_path', 'huc_12', 'err'])
         df_error = df_error.append(ds_series, ignore_index=True)
     else:
         # create the file and append new row
-        df_error = pd.DataFrame([[str_f_id_fn, str_geom_path_fn, str_huc12_fn]],
-                                columns=['feature_id', 'geom_path', 'huc_12'])
+        df_error = pd.DataFrame([[str_f_id_fn, str_geom_path_fn, str_huc12_fn, exception_msg]],
+                                columns=['feature_id', 'geom_path', 'huc_12', 'err'])
     
     # write out the file
     df_error.to_csv(str_error_path)
@@ -1195,8 +1196,8 @@ def fn_main_hecras(record_requested_stream):
         # does not run (example: duplicate points)
 
         river = fn_create_hecras_files(str_feature_id, str_geom_path, flt_ds_xs, flt_us_xs, int_max_q, str_hecras_path_to_create, tpl_settings)
-    except:
+    except Exception as ex:
         #print("HEC-RAS Error: " + str_geom_path)
-        fn_append_error(str_feature_id, str_geom_path, str_huc12, str_root_output_directory)
+        fn_append_error(str_feature_id, str_geom_path, str_huc12, str_root_output_directory, ex)
     
     #return(str_feature_id)

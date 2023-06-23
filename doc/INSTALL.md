@@ -23,11 +23,12 @@ Open an **Anaconda Prompt** and navigate to the cloned directory.  Your path may
 ![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_prompt.png)
 
 ### Step 5:
-In the Anaconda Promt, if this is a first time install, you can create the `ras2fim` conda environment from the cloned `environment.yml`.<br>
+In the Anaconda Prompt window, you can create the `ras2fim` conda environment from the cloned `environment.yml`.<br>
 ```
 conda env create -f environment.yml
 ```
 ![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_create_env.png)
+
 
 ### Step 6:
 Activate the newly created `ras2fim` conda environment.<br>
@@ -69,8 +70,8 @@ The default folder structure will look like this:<br>
 
 ### Step 10:
 You will now need some data.
-- `inputs`:  In the README.md, you may have already downloaded the X-National_datasets folder. You are encouraged, but not mandiatory, to move the X-National_datasets folder with its three files, inside the `inputs` folder. 
-- `OWP_ras_models\models`: While also optional, you are encouraged to move each of your models that have been pre-processed into the `OWP_ras_models\models`. Note: When you run `ras2fim.py`, each of your models likely have there own folder, and you can put as many model folders as you like in this `models` folder. When you run `ras2fim.py` it will load in all data across all files and folders inside the `OWP_ras_models\models` folder. Remember, you can put your model folders anywhere you like, this is just the default pattern.<br>
+- `inputs`:  In the README.md, you may have already downloaded the X-National_datasets folder. You are encouraged, but not mandiatory, to move the X-National_datasets folder with it's four files and one folder, inside the `inputs` folder. 
+- `OWP_ras_models\models`: While also optional, you are encouraged to move each of your models that have been pre-processed into the `OWP_ras_models\models`. Note: When you run `ras2fim.py`, each of your HECRAS models likely have there own folder, and you can put as many model folders as you like in this `models` folder. When you run `ras2fim.py` it will load in all data across all files and folders inside the `OWP_ras_models\models` folder (location overrideable). Remember, you can put your model folders anywhere you like, this is just the default pattern.<br>
 ie)<br>
 ![ras2fim default models folder structure image](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/default_models_folder_structure.png)
 <br><br>

@@ -27,18 +27,21 @@ from create_fim_rasters import fn_create_fim_rasters
 from simplify_fim_rasters import fn_simplify_fim_rasters
 from calculate_all_terrain_stats import fn_calculate_all_terrain_stats
 from run_ras2rem import fn_run_ras2rem
+from ras2catchments import make_catchments
 
 import argparse
 import os
 import shutil
 import sys
-
 import time
-import datetime
+
+from datetime import datetime, timezone
+
 import fnmatch
 from re import search
 
 import shared_variables as sv
+import shared_functions as sf
 
 # Global Variables
 b_terrain_check_only = False
@@ -66,10 +69,11 @@ def fn_run_ras2fim(str_huc8_arg,
                    str_hec_path,
                    str_terrain_override,
                    run_ras2rem,
+                   model_huc_catalog_path,
                    int_step
                    ):
     
-    flt_start_run_ras2fim = time.time()
+    start_dt = datetime.now() 
     
     print(" ")
     print("+=================================================================+")
@@ -86,6 +90,7 @@ def fn_run_ras2fim(str_huc8_arg,
     print("  ---[v] Optional: Vertical units in: " + str(vert_unit))    
     print("  ---[t] Optional: Terrain to Utilize" + str(str_terrain_override))
     print("  ---[m] Optional: Run RAS2REM: " + str(run_ras2rem))
+    print("  ---[-mc] Optional: path to models catalog - " + str(model_huc_catalog_path))    
     print("  ---[s] Optional: step to start at - " + str(int_step))
 
     print("===================================================================")
@@ -172,8 +177,8 @@ def fn_run_ras2fim(str_huc8_arg,
                                     str_field_name)
     # -------------------------------------------
 
-    # ------ Step 4: convert_tif_to_ras_hdf5 ----- 
-      
+    # ------  Step 4: convert_tif_to_ras_hdf5 ----- 
+     
     # folder of tifs created in third script (get_usgs_dem_from_shape)
     # str_terrain_from_usgs_dir
     
@@ -255,17 +260,54 @@ def fn_run_ras2fim(str_huc8_arg,
         fn_calculate_all_terrain_stats(str_hecras_out_dir)
     # -------------------------------------------------
 
+
     # ------ Step 8: run ras2rem -----
     print()
     print ("+++++++ Processing for code  STEP 8 +++++++" )
     if int_step <= 8 and run_ras2rem:
         fn_run_ras2rem(str_out_arg)
+    # -------------------------------------------------
 
-    flt_end_run_ras2fim = time.time()
-    flt_time_pass_ras2fim = (flt_end_run_ras2fim - flt_start_run_ras2fim) // 1
-    time_pass_ras2fim = datetime.timedelta(seconds=flt_time_pass_ras2fim)
-    
-    print('Total Compute Time: ' + str(time_pass_ras2fim))
+
+    # ------ Step 9: run ras2catchments -----
+    print()
+    print ("+++++++ Processing for code  STEP 9 +++++++" )
+    if int_step <= 9:
+        make_catchments(str_huc8_arg, str_out_arg, str_nation_arg, model_huc_catalog_path)
+    # -------------------------------------------------
+
+
+    # ------ Final Step: cleanup files and move final files to release_files folder -----
+    print()
+    print ("+++++++ Finalizing processing +++++++" )
+    r2f_ras2rem_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_RAS2REM) 
+    r2f_catchments_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_CATCHMENTS)   
+    r2f_final_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_FINAL)   
+
+    # Copy all files from the 06_ras2rem and the 07_ras2catchemnts directories
+    if (os.path.exists(r2f_final_dir) == True):
+        shutil.rmtree(r2f_final_dir)
+        # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
+        # so sometimes mkdir can fail if rmtree isn't done
+        time.sleep(2) # 2 seconds
+
+    os.mkdir(r2f_final_dir)
+    shutil.copy2(os.path.join(r2f_ras2rem_dir, "rem.tif"), r2f_final_dir)
+    shutil.copy2(os.path.join(r2f_ras2rem_dir, "rating_curve.csv"), r2f_final_dir)
+    shutil.copy2(os.path.join(r2f_catchments_dir, "nwm_catchments_subset.gpkg"), r2f_final_dir)
+    shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features.tif"), r2f_final_dir)
+    shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features_meta.gpkg"), r2f_final_dir)
+
+    # TODO: use this models catalog to add columns for success/fail processing for each model and why it failed
+    # if applicable.
+    shutil.copy2(model_huc_catalog_path, r2f_final_dir)
+
+
+    print("+=================================================================+")
+    print("  RUN RAS2FIM - Completed                                         |")
+    sf.print_date_time_duration(start_dt, datetime.now())
+    print("+-----------------------------------------------------------------+")
+
     
 
 def create_input_args_log (**kwargs):
@@ -286,7 +328,7 @@ def create_input_args_log (**kwargs):
         os.remove(arg_log_file)
 
     # start with the processing date
-    utc_now = datetime.datetime.now(datetime.timezone.utc)
+    utc_now = datetime.now(timezone.utc)
     str_date = utc_now.strftime("%Y-%m-%d")
 
     # The file can be parsed later by using the two colons and the line break if ever required
@@ -310,22 +352,26 @@ def init_and_run_ras2fim(str_huc8_arg,
                          vert_unit = 'check',
                          str_terrain_override = 'None Specified - using USGS WCS',
                          rem_outputs = True,
+                         model_huc_catalog_path = sv.RSF_MODELS_CATALOG_PATH,
                          str_step_override = 'None Specified - starting at the beginning'):
 
 
     ####################################################################
     ####  Some validation of input, but mostly setting up pathing ######
 
+    # -------------------
     # -w   (ie 12090301)
     if (len(str_huc8_arg) != 8):
         raise ValueError("the -w flag (HUC8) is not 8 characters long")
     if (str_huc8_arg.isnumeric() == False): # can handle leading zeros
         raise ValueError("the -w flag (HUC8) does not appear to be a HUC8")
 
+    # -------------------
     # -i  (ie OWP_ras_models\models) (HECRAS models)
     if (os.path.exists(str_ras_path_arg) == False) and (str_ras_path_arg != sv.HECRAS_INPUT_DEFAULT_OWP_RAS_MODELS):
         raise ValueError("the -i arg (ras path arg) does not appear to be a valid folder.")
-        
+
+    # -------------------        
     # -o  (ie 12090301_meters_2277_test_1) or some full custom path
     # We need to remove the the last folder name and validate that the parent paths are valid
     is_invalid_path = False
@@ -339,11 +385,11 @@ def init_and_run_ras2fim(str_huc8_arg,
             is_invalid_path = True
 
     if (is_invalid_path == True):
-        raise ValueError('The -o child folder (base path) can not pre-exist as we will create it, but the ' \
+        raise ValueError('The -o child folder (huc ras model output path) can not pre-exist, as we will create it, but the' \
                          ' parent folders must exist. See code notes in the __main__ section for details and examples')
 
-
-    # TODO: step system not fully working and needs to be fixed.
+    # -------------------
+    # TODO: step system not fully working and needs to be fixed or removed
     # create an output folder with checks
     #if os.path.exists(str_out_arg):
     #    if os.path.exists(os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, 'terrain_stats.csv')):
@@ -355,27 +401,37 @@ def init_and_run_ras2fim(str_huc8_arg,
     #else:
     os.mkdir(r2f_huc_output_dir) # pathing has already been validated and ensure the child folder does not pre-exist
 
-
+    # -------------------
     # -n  (ie: inputs\\X-National_Datasets)
     if (os.path.exists(str_nation_arg) == False) and (str_nation_arg != sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR):
         raise ValueError("the -n arg (inputs x national datasets path arg) does not appear to be a valid folder.")
 
-
+    # -------------------
     # -r  (ie: C:\Program Files (x86)\HEC\HEC-RAS\6.0)
     if (os.path.exists(str_hec_path) == False):
         raise ValueError("the -r arg (HEC-RAS engine path) does not appear to be correct.")
 
+    # -------------------
     # -t  (ie: blank or a path such as inputs\12090301_dem_meters_0_2277.tif)
     if (str_terrain_override != "None Specified - using USGS WCS"):
         if (os.path.exists(str_terrain_override) == False): # might be a full path 
             raise ValueError("the -t arg (terrain override) does not appear to be correct a valid path and file.")
 
-
+    # -------------------
     if str_step_override == "None Specified - starting at the beginning":  
         int_step = 0
     else:
-        int_step = int(str_step_override)
+        if (not str_step_override.isnumeric()):
+            raise ValueError("the -o step override is invalid.")
+        else:
+            int_step = int(str_step_override)
 
+    # -------------------
+    # adjust the model_catalog file name if applicable
+    if ("[]" in model_huc_catalog_path):
+        model_huc_catalog_path = model_huc_catalog_path.replace("[]", str_huc8_arg)
+    if (os.path.exists(model_huc_catalog_path) == False):
+        raise FileNotFoundError (f"The -mc models catalog ({model_huc_catalog_path}) does not exist. Please check your pathing.")
 
     # Save incoming args and a few new derived variables created to this point into a log file
     # Careful... when **locals() is called, it will include ALL variables in this function to this point.
@@ -428,6 +484,7 @@ def init_and_run_ras2fim(str_huc8_arg,
                    str_hec_path,
                    str_terrain_override,
                    rem_outputs,
+                   model_huc_catalog_path,
                    int_step )
 
     
@@ -546,6 +603,14 @@ if __name__ == '__main__':
                         default = 'None Specified - starting at the beginning',
                         type = str)
 
+    parser.add_argument('-mc',
+                        dest = "model_huc_catalog_path",
+                        help = r'OPTIONAL: path to model catalog csv, filtered for the supplied HUC, file downloaded from S3.' \
+                               r' Defaults to c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_[].csv and will use subsitution'\
+                               r' to replace the [] with the huc number.',
+                        default = sv.RSF_MODELS_CATALOG_PATH,
+                        required = False,
+                        type = str)
     
     args = vars(parser.parse_args())
     

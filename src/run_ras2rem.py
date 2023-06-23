@@ -16,6 +16,7 @@ import multiprocessing as mp
 from multiprocessing import Pool
 import shared_variables as sv
 
+
 def fn_make_rating_curve(r2f_hecras_dir, r2f_ras2rem_dir):
 
     '''
@@ -28,19 +29,19 @@ def fn_make_rating_curve(r2f_hecras_dir, r2f_ras2rem_dir):
     print("Making rating curve")
     rating_curve_df = pd.DataFrame()
 
-    all_rating_files=list(Path(r2f_hecras_dir).rglob('*rating_curve.csv'))
-    if len(all_rating_files)==0:
+    all_rating_files = list(Path(r2f_hecras_dir).rglob('*rating_curve.csv'))
+    if len(all_rating_files) == 0:
         print("Error: Make sure you have specified a correct input directory with at least one '*.rating curve.csv' file.")
         sys.exit(1)
     #find unit of outputs(ft vs m) using a sample rating curve file
     try:
-        sample_rating_file=pd.read_csv(all_rating_files[0])
-        SecondColumnTitle=sample_rating_file.columns[1]
+        sample_rating_file = pd.read_csv(all_rating_files[0])
+        SecondColumnTitle = sample_rating_file.columns[1]
         pattern = r"\((.*?)\)"  # Matches text between parentheses in column 2
         stage_unit = re.search(pattern, SecondColumnTitle).group(1).strip().lower()
-        if stage_unit=='ft':
+        if stage_unit == 'ft':
             current_flow_unit, target_flow_unit='cfs','cfs'
-        elif stage_unit=='m':
+        elif stage_unit == 'm':
             current_flow_unit, target_flow_unit='cms','cms'  #'m3s-1'
         else:
             raise ValueError("Rating curve values should be either in feet or meter. Check the results")
@@ -52,23 +53,28 @@ def fn_make_rating_curve(r2f_hecras_dir, r2f_ras2rem_dir):
         sys.exit(1)
 
     for file in all_rating_files:
-        featureid=file.name.split("_rating_curve.csv")[0]
-        this_file_df=pd.read_csv(file)
-        this_file_df["feature_id"]=featureid
+        featureid = file.name.split("_rating_curve.csv")[0]
+        this_file_df = pd.read_csv(file)
+        this_file_df["feature_id"] = featureid
 
         # add data that works with the existing inundation hydro table format requirements
         this_file_df['HydroID'] = featureid
-        huc = re.search(r'HUC_(\d{8})',str(file))[1] # assumes the filename and folder structure stays the same
+        huc = re.search(r'HUC_(\d{8})', str(file))[1] # assumes the filename and folder structure stays the same
         this_file_df['HUC'] = huc
         this_file_df['LakeID'] = -999
         this_file_df['last_updated'] = ''
         this_file_df['submitter'] = ''
         this_file_df['obs_source'] = ''
-        rating_curve_df=rating_curve_df.append(this_file_df)
+        rating_curve_df = rating_curve_df.append(this_file_df)
 
-    rating_curve_df.rename(columns={"AvgDepth(%s)"%stage_unit:"stage_%s"%stage_unit,        "Flow(%s)"%current_flow_unit:"discharge_%s"%target_flow_unit},inplace=True)
-    rating_curve_df=rating_curve_df[['feature_id','stage_%s'%stage_unit,'discharge_%s'%target_flow_unit,'HydroID','HUC','LakeID','last_updated','submitter','obs_source']]
+    rating_curve_df.rename(columns={"AvgDepth(%s)"%stage_unit:"stage_%s"%stage_unit,\
+                                     "Flow(%s)"%current_flow_unit:"discharge_%s"%target_flow_unit}, inplace=True)
+    
+    rating_curve_df = rating_curve_df[['feature_id', 'stage_%s'%stage_unit, 'discharge_%s'%target_flow_unit, 
+                                     'HydroID', 'HUC', 'LakeID', 'last_updated', 'submitter', 'obs_source']]
+    
     rating_curve_df.to_csv(os.path.join(r2f_ras2rem_dir,"rating_curve.csv"), index = False)
+
 
 def fn_generate_tif_for_each_rem(tpl_request):
     rem_value = tpl_request[0]
@@ -109,8 +115,6 @@ def fn_make_rems(r2f_hecras_dir, r2f_ras2rem_dir):
 
     Returns: ras2rem.tif file
     '''
-
-
     
     all_tif_files=glob.glob(r2f_hecras_dir + "/**/Depth_Grid/*.tif", recursive=True)
     if len(all_tif_files)==0:
@@ -129,14 +133,15 @@ def fn_make_rems(r2f_hecras_dir, r2f_ras2rem_dir):
 
 
     num_processors = (mp.cpu_count() - 1)
-    pool = Pool(processes = num_processors)
-    list_of_returned_results = list(tqdm.tqdm(pool.imap(fn_generate_tif_for_each_rem, rem_info_arguments),
-                                           total = len(rem_values),
-                                           desc='Creating REMs',
-                                           bar_format = "{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
-                                           ncols=67 ))
-    pool.close()
-    pool.join()
+    with Pool(processes = num_processors) as executor:    
+        #pool = Pool(processes = num_processors)
+        list_of_returned_results = list(tqdm.tqdm(executor.imap(fn_generate_tif_for_each_rem, rem_info_arguments),
+                                            total = len(rem_values),
+                                            desc='Creating REMs',
+                                            bar_format = "{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+                                            ncols=67 ))
+        #pool.close()
+        #pool.join()
 
     #now make the final rem
     print("+-----------------------------------------------------------------+")
@@ -200,19 +205,13 @@ def fn_run_ras2rem(r2f_huc_parent_dir):
     
     r2f_ras2rem_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_RAS2REM)
 
-    try:
-        if os.path.exists(r2f_ras2rem_dir):
-            shutil.rmtree(r2f_ras2rem_dir)
-        os.mkdir(r2f_ras2rem_dir)
-    except:
-        # yes.. this is weird to do nothing with the exception.
-        # later when we have error logging, we can write it to log.
-        # However in windows environments, shutil command can, on occasion,
-        # be slower to actually remove the folder then the code executes.
-        # The code simply tells windows to remove the folder, but does not wait for it to be done.
-        # This can, on occasion, result in an exception. This is a known problem in the Dev world with shutil.
-        # It can also error if someone is actually in the folder with windows explorer.
-        print() 
+    if os.path.exists(r2f_ras2rem_dir):
+        shutil.rmtree(r2f_ras2rem_dir)
+        # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
+        # so sometimes mkdir can fail if rmtree isn't done
+        time.sleep(2) # 2 seconds
+
+    os.mkdir(r2f_ras2rem_dir)
 
 
     ####################################################################
