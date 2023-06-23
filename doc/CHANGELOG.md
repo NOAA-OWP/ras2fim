@@ -16,9 +16,9 @@ The new file and folder can be found in `inputs` directories on both rasfim S3 o
 There are some other fixes that were rolled into this, some by discovery during debugging, some based on partially loaded functionality.  They include:
 - [Issue 71](https://github.com/NOAA-OWP/ras2fim/issues/71): Fix proj.db error 
 - [Issue 46](https://github.com/NOAA-OWP/ras2fim/issues/46): Develop metadata reporting system. Note: Laura had most of this written and it was rolled into this branch / PR.
-- [Issue 56](https://github.com/NOAA-OWP/ras2fim/issues/56) ras2fim - fix ras2catchments for new input data sources.  This was the original issue that started this branch and PR.
+- [Issue 56](https://github.com/NOAA-OWP/ras2fim/issues/56) ras2fim - fix ras2catchments for new input data sources.  This was the o Develop Python script to convert ras2fim rating curves to Inundation Mapping calibration formatriginal issue that started this branch and PR.
 
-Note: Currently, this edition does not have multi processing which calculating `maxments`. A `maxment` is the catchment for any particular feature based on its maximum depth value. Multi processing will be added later and was deferred due to the fact that based on current code the child process needed to pass information back to the parent process. This is very difficult and unstable. A separate issue card , [#75](https://github.com/NOAA-OWP/ras2fim/issues/75), has been added to fix this later. 
+Note: Currently, this edition does not have multi processing which calculating `maxments`. A `maxment` is the catchment for any particular feature based on its maximum depth value. Multi processing will be added later and was deferred due to the fact that based on current code the child process needed to pass information back to the parent process. This is very difficult and unstable. A separate issue card, [#75](https://github.com/NOAA-OWP/ras2fim/issues/75), has been added to fix this later. 
 
 ### Environment Upgrade Notes
 This version requires an update to the conda environment for ras2fim.  To upgrade, follow these steps (using an Anaconda / Mini Conda command terminal):
