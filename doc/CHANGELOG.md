@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.8.0 - 2023-06-15 - [PR#64](https://github.com/NOAA-OWP/ras2fim/pull/64)
+## v1.9.0 - 2023-06-15 - [PR#64](https://github.com/NOAA-OWP/ras2fim/pull/64)
 
 In a recent release, the ras2catchment product feature was included but was not completed and now is.
 
