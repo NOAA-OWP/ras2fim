@@ -20,8 +20,7 @@ _You may update this checklist before and/or after creating the PR. If you're un
 - [ ] The feature branch you're submitting as a PR is up to date (merged) with the latest `dev` branch
 - [ ] Changes adhere to [PEP-8 Style Guidelines](https://peps.python.org/pep-0008/)
 - [ ] Any _change_ in functionality is tested
-- [ ] Passes all unit tests locally (inside interactive Docker container, at `/foss_fim/`, run: `pytest unit_tests/`)
 - [ ] New functions are documented (with a description, list of inputs, and expected output)
 - [ ] Placeholder code is flagged / future todos are captured in comments
-- [ ] Project documentation has been updated ([CHANGELOG](/docs/CHANGELOG.md) and/or [README](/README.md))
+- [ ] Project documentation has been updated ([CHANGELOG](/doc/CHANGELOG.md) and/or [README](/README.md))
 - [ ] [Reviewers requested](https://help.github.com/articles/requesting-a-pull-request-review/)
