@@ -59,6 +59,19 @@ Coupled with downloading the new catchment file and WBD folder into inputs, you 
 <br/><br/>
 
 
+
+## v1.8.0 - 2023-06-14 - [PR#73](https://github.com/NOAA-OWP/ras2fim/pull/73)
+
+Introduces a new tool for the ras2fim that cycles through the ras2fim outputs and compiles the stream segment midpoints and rating curve tables. The purpose of this tool is to facilitate the use of ras2fim outputs in the FIM calibration workflow. This tool is intended to be added to the (not yet completed) ras2release workflow rather than the ras2fim workflow.
+
+### Changes
+
+- `src/compile_ras_rating_curves.py`: New file. Processes ras2fim outputs into correct format for FIM calibration.
+- `src/shared_variables.py`: Added nodata value, output vertical datum, and `c:\ras2fim_data\ras2fim_releases\` filepath to shared variables file.
+
+<br/><br/>
+
+
 ## v1.7.0 - 2023-06-07 - [PR#69](https://github.com/NOAA-OWP/ras2fim/pull/69)
 
 Each time ras2fim is run, it creates an output folder for a HUC. Inside this folder are the six output folders (01..06). A new file is now being included that records all incoming arguments that were submitted to ras2fim plus a few derived values.
