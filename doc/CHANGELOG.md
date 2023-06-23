@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.7._ - 2023-06-14 - [PR#73](https://github.com/NOAA-OWP/ras2fim/pull/73)
+## v1.8.0 - 2023-06-14 - [PR#73](https://github.com/NOAA-OWP/ras2fim/pull/73)
 
 Introduces a new tool for the ras2fim that cycles through the ras2fim outputs and compiles the stream segment midpoints and rating curve tables. The purpose of this tool is to facilitate the use of ras2fim outputs in the FIM calibration workflow. This tool is intended to be added to the (not yet completed) ras2release workflow rather than the ras2fim workflow.
 
