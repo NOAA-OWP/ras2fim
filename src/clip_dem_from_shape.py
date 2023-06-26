@@ -99,6 +99,7 @@ def fn_cut_dems_from_shapes(str_input_shp_path,
                             b_is_feet,
                             str_field_name):
 
+    flt_start_run = time.time()
 
     print(" ")
     print("+=================================================================+")
@@ -192,11 +193,18 @@ def fn_cut_dems_from_shapes(str_input_shp_path,
             xds_clipped_reproject.rio.to_raster(str_dem_out,compress='lzw',dtype="float32")
             
     print('COMPLETE')
+    flt_end_run = time.time()
+    flt_time_pass = (flt_end_run - flt_start_run) // 1
+    time_pass = datetime.timedelta(seconds=flt_time_pass)
+    
+    print('Compute Time: ' + str(time_pass))
+    print("====================================================================")    
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == '__main__':
 
-    flt_start_run = time.time()
+    
     
     parser = argparse.ArgumentParser(description='============== CUT DEMs FROM LARGER DEMS PER POLYGON SHAPEFILE  ==============')
     
@@ -260,10 +268,5 @@ if __name__ == '__main__':
                             b_is_feet,
                             str_field_name)
     
-    flt_end_run = time.time()
-    flt_time_pass = (flt_end_run - flt_start_run) // 1
-    time_pass = datetime.timedelta(seconds=flt_time_pass)
-    
-    print('Compute Time: ' + str(time_pass))
     
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

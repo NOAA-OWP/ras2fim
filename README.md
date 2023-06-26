@@ -25,7 +25,7 @@ More detail regarding RAS2FIM is located on the project's Wiki page.
 
 ## Prior to Running the Code
 ### Input Data
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/esip-logo.png" align="right" alt="esip logo" height="50">There are three (3) **"National Datasets"** that will need to be downloaded locally prior to running the RAS2FIM code.  These input data can be found in an Amazon S3 Bucket hosted by [Earth Science Information Partners (ESIP)](https://www.esipfed.org/). These data can be accessed using the AWS Command Line Interface CLI tools.  This S3 Bucket (`s3://noaa-nws-owp-fim`) is set up as a "Requester Pays" bucket. Read more about what that means [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html).<br>
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/esip-logo.png" align="right" alt="esip logo" height="50">There are a folder named **"Inputs"** that will need to be downloaded locally prior to running the RAS2FIM code.  These input data can be found in an Amazon S3 Bucket hosted by [Earth Science Information Partners (ESIP)](https://www.esipfed.org/). These data can be accessed using the AWS Command Line Interface CLI tools.  This S3 Bucket (`s3://noaa-nws-owp-fim`) is set up as a "Requester Pays" bucket. Read more about what that means [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html).<br>
 ### Configuring the AWS CLI
 1. [Install AWS CLI tools](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
 2. [Configure AWS CLI tools](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
@@ -33,16 +33,18 @@ More detail regarding RAS2FIM is located on the project's Wiki page.
 ### (1) Get AWS Folder - National Datasets
 <img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> List folder prior to download:  
 ```
-aws s3 ls s3://noaa-nws-owp-fim/ras2fim/national-datasets --request-payer requester
+aws s3 ls s3://noaa-nws-owp-fim/ras2fim/inputs --request-payer requester
 ```
 Download National Datasets: (3.82 Gb)
 ```
-aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/national-datasets X-National_Datasets --request-payer requester
+aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/inputs inputs --request-payer requester
 ```
-This download will include the following files:
+This download will include the following files / folder:
 1.  Watershed Boundary Dataset (WBD): WBD_National.gpkg (1.65 Gb)
-2.  National Water Model (NWM) Flowline Hydrofabric: nwm_flows.gpkg (1.80 Gb)
-3.  National Water Model to Watershed Boundary Lookup: nwm_wbd_lookup.nc (372 Mb)
+2.  The WBD_National.gkpg split into different gkpg files by HUC8: /WBD_HUC8/*
+3.  National Water Model (NWM) Flowline Hydrofabric: nwm_flows.gpkg (1.80 Gb)
+4.  National Water Model to Watershed Boundary Lookup: nwm_wbd_lookup.nc (372 Mb)
+5.  National Water Model (NWM) Catchments file: nwm_catchments.gpkg (9.9 GB)
 <br><br>
 
 ### (2) Install HEC-RAS verion 6.0
@@ -60,7 +62,7 @@ git clone https://github.com/NOAA-OWP/ras2fim.git
 * [HEC-RAS Version 6.0](https://www.hec.usace.army.mil/software/hec-ras/download.aspx)
 * [Anaconda](https://www.anaconda.com/products/individual) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) for Windows
 * National datasets - from AWS - See "Prior to Running the Code" section
-* Runs on a Windows OS only -Tested on Windows 10
+* Runs on a Windows OS only - Tested on Windows 10
 
 ## Installation
 
@@ -73,9 +75,9 @@ Detailed instructions on setting up an anaconda environment and running the main
 With the (1) ras2fim anaconda environment created and (2) the ras2fim git-hub folder cloned, `ras2fim` python scripts are within the `src` folder.  The main scripts is titled `ras2fim.py`.  **All scripts have a helper flag of `-h`**.  It is recommended that you run the script with the helper flag first to determine the required input. <br><br>
 ![](https://github.com/NOAA-OWP/ras2fim/blob/main/doc/conda_python_run.png)
 <br><br>
-Note: For this script there are **seven (7) required** inputs and one (1) optional input.  While this input string will greatly vary on your machine, provided is a sample input string to execute the `ras2fim.py` script.
+Note: For this script there are **three (3) required** arguments and a number of optional arguments.  While this input string will greatly vary on your machine, below is a sample input string to execute the `ras2fim.py` script (with most arguments defaulted).
 ```
-python ras2fim.py -w 10170204 -i C:\HEC\input_folder -o C:\HEC\output_folder -p EPSG:26915 -v False -n E:\X-NWS\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.0"
+python ras2fim.py -w 05030104 -p EPSG:2248 -o 05030104_meters_2248
 ```
 
 ## How to test the software
@@ -88,7 +90,7 @@ aws s3 ls s3://noaa-nws-owp-fim/ras2fim/sample-datasets --request-payer requeste
 ```
 Download Sample Input and Output datasets: (212 Mb)
 ```
-aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/sample-datasets sample-datasets --request-payer requester
+aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/sample-dataset sample-datasets --request-payer requester
 ```
 A video, showing the use of these sample data with the `ras2fim` scripts is provided.
 

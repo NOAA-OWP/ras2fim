@@ -1,7 +1,7 @@
 name: ras2fim
 channels:
-  - conda-forge
   - anaconda
+  - conda-forge
   - defaults
 dependencies:
   - affine=2.3.0=py_0
@@ -23,9 +23,9 @@ dependencies:
   - brotli=1.0.9=ha925a31_2
   - brotlipy=0.7.0=py38h2bbff1b_1003
   - bzip2=1.0.8=he774522_0
-  - ca-certificates=2023.01.10=haa95532_0
+  - ca-certificates=2023.05.30=haa95532_0
   - cached-property=1.5.2=py_0
-  - certifi=2022.12.7=py38haa95532_0
+  - certifi=2023.5.7=py38haa95532_0
   - cffi=1.15.1=py38h2bbff1b_3
   - cfitsio=3.470=he774522_6
   - charset-normalizer=2.0.4=pyhd3eb1b0_0
@@ -130,7 +130,7 @@ dependencies:
   - pytz=2021.1=pyhd3eb1b0_0
   - pywin32=227=py38he774522_1
   - pyyaml=6.0=py38h294d835_4
-  - rasterio=1.1.1=py38h2617b1b_0
+  - rasterio=1.2.10=py38h17c1fa0_0
   - rioxarray=0.6.1=pyhd8ed1ab_0
   - rtree=0.9.7=py38h2eaa2aa_1
   - s3fs=2023.3.0=py38haa95532_0
@@ -166,4 +166,6 @@ dependencies:
   - zict=2.2.0=py38haa95532_0
   - zlib=1.2.11=h62dcd97_4
   - zstd=1.4.9=h19a0ad4_0
+  - pip:
+      - keepachangelog==1.0.0
 prefix: C:\Users\rdp-user\anaconda3\envs\ras2fim
