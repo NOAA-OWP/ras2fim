@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 import os, re, sys
-import argparse, datetime, shutil, osr
+import argparse, datetime
+import shutil
 import gdal
+import osr
 import rasterio
 import rasterio.crs
 import pandas as pd
@@ -18,7 +20,7 @@ import shared_variables as sv
 # -----------------------------------------------------------------
 # Writes a metadata file into the save directory
 # -----------------------------------------------------------------
-def write_metadata_file(output_save_folder, start_time_string):
+def write_metadata_file(output_save_folder, start_time_string, midpoints_crs):
 
     """
     Overview:
@@ -50,7 +52,6 @@ def write_metadata_file(output_save_folder, start_time_string):
     metadata_content.append('  reformat_ras_rating_curve_points.gpkg (point location geopackage)')
     metadata_content.append('  reformat_ras_rating_curve_table.csv (rating curve CSV)')
     metadata_content.append('  reformat_ras_rating_curve_log.txt (output log textfile, only saved if -l argument is used)')
-    metadata_content.append('  intermediate_outputs/ (rating curve, geospatial, and output logs for each directory, only saved if -k argument is used)')
     metadata_content.append(' ')
     metadata_content.append('Metadata:')
     metadata_content.append('Column name        Source                  Type            Description')
@@ -67,8 +68,8 @@ def write_metadata_file(output_save_folder, start_time_string):
     metadata_content.append('datum_vcs          User-provided           String          desired output datum (defaults to NAVD88)')
     metadata_content.append('navd88_datum       Calculated in script    Number          elevation at midpoint at output datum ')
     metadata_content.append('elevation_navd88   Calculated in script    Number          Stage elevation at midpoint at output datum (calculated as NAVD88_datum + stage)')
-    metadata_content.append('lat                Calculated from streams Number          Latitude of midpoint associated with feature_id ')
-    metadata_content.append('lon                Calculated from streams Number          Longitude of midpoint associated with feature_id ')
+    metadata_content.append('lat                Calculated from streams Number          Latitude of midpoint associated with feature_id. CRS: '+ str(midpoints_crs))
+    metadata_content.append('lon                Calculated from streams Number          Longitude of midpoint associated with feature_id. CRS:  '+ str(midpoints_crs))
 
     metadata_name = 'README_reformat_ras_rating_curve.txt'
     metadata_path = os.path.join(output_save_folder, metadata_name)
@@ -81,9 +82,10 @@ def write_metadata_file(output_save_folder, start_time_string):
 # Reads, compiles, and reformats the rating curve info for each directory
 # -----------------------------------------------------------------
 def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename, 
-                        output_save_folder, int_output_table_label, 
+                        # output_save_folder, 
+                        int_output_table_label, 
                         int_geospatial_label, int_log_label, source, 
-                        location_type, active, input_vdatum, nodataval):
+                        location_type, active, input_vdatum, nodataval, midpoints_crs):
 
     """
     Overview:
@@ -143,6 +145,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
     
 
     """
+
     # Create empty output log
     output_log = []
     output_log.append(" ")
@@ -216,7 +219,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         huc8_list = []
 
         # Project to CRS to get the coordinates in the correct format
-        nwm_diff_prj = nwm_diff.to_crs('EPSG:4326') 
+        nwm_diff_prj = nwm_diff.to_crs(midpoints_crs) 
 
         # Get middle segment of the flowlines
         for index, row in nwm_diff_prj.iterrows():
@@ -329,8 +332,8 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
 
         for index, row in midpoints_gdf.iterrows():
 
-            # if verbose == True: # Option to print each feature_id as it processes
-            #     print(str(row['feature_id']))
+            if verbose == True: # Option to print each feature_id as it processes
+                print(str(row['feature_id']))
 
             point = row['geometry']
 
@@ -534,6 +537,9 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     input_vdatum = "NAVD88"
     output_vdatum = sv.OUTPUT_VERTICAL_DATUM
 
+    # Set CRS for midpoints data
+    midpoints_crs = 'EPSG:4326'
+
     # Settings block
     print("-----------------------------------------------------------------------------------------------")
     print("Begin rating curve compilation process.")
@@ -615,16 +621,17 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
             print("Begin iterating through directories with multiprocessor...")
             print()
 
+
         for dir in dirlist:
-            executor.submit(dir_reformat_ras_rc, dir, input_folder_path, verbose, intermediate_filename, 
-                            output_save_folder, int_output_table_label, int_geospatial_label, int_log_label, 
-                            source, location_type, active, input_vdatum, nodataval)
+            executor.submit(dir_reformat_ras_rc, dir, input_folder_path, verbose, intermediate_filename, # output_save_folder, 
+                            int_output_table_label, int_geospatial_label, int_log_label, 
+                            source, location_type, active, input_vdatum, nodataval, midpoints_crs)
 
     # # Run without multiprocessor
     # for dir in dirlist:
-    #     dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename, output_save_folder, 
+    #     dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename, # output_save_folder, 
     #                         int_output_table_label, int_geospatial_label, int_log_label, source, 
-    #                         location_type, active, input_vdatum, nodataval)
+    #                         location_type, active, input_vdatum, nodataval, midpoints_crs)
 
 
     # ------------------------------------------------------------------------------------------------
@@ -711,6 +718,7 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     output_geopackage_temp = full_geospatial
     output_geopackage_temp['geometry'] = output_geopackage_temp.apply(lambda x: Point((float(x.lon), float(x.lat))), axis=1)
     output_geopackage = gpd.GeoDataFrame(output_geopackage_temp, geometry='geometry')
+    output_geopackage = output_geopackage.set_crs(midpoints_crs)
 
     if verbose == True:
         print()
@@ -730,7 +738,7 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     # ------------------------------------------------------------------------------------------------
     # Export metadata, print filepaths and save logs (if the verbose and log arguments are selected)
 
-    write_metadata_file(output_save_folder, start_time_string)
+    write_metadata_file(output_save_folder, start_time_string, midpoints_crs)
 
     output_log.append(f"Geopackage save location: {geopackage_path}")
     output_log.append(f"Compiled rating curve csv save location: {csv_path}") 
@@ -774,7 +782,7 @@ if __name__ == '__main__':
     python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py
 
     # Maximalist run (all possible arguments):
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim_models' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves' -v -l -j 6 -k -ov -so "ras2fim" -lt "USGS" -ac "True"
+    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim_models' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves' -v -l -j 6 -ov -so "ras2fim" -lt "USGS" -ac "True"
 
     # Only input folders:
     python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim_models/subset' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves'
