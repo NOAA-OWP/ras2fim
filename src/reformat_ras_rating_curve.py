@@ -10,6 +10,7 @@ import rasterio.crs
 import pandas as pd
 import numpy as np 
 import geopandas as gpd
+from tqdm import tqdm
 from rasterio.merge import merge
 from geopandas.tools import overlay
 from shapely.geometry import LineString, Point
@@ -163,8 +164,6 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
     if not os.path.exists(intermediate_filepath):
         os.mkdir(intermediate_filepath)
 
-    print(intermediate_filepath)
-
     if os.path.isfile(rc_path) == False:
         print(f"No rating curve file available for {dir}.")
         output_log.append("Rating curve NOT available.")
@@ -274,11 +273,13 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
 
         else:
             if verbose == True:
-                print("Multiple terrain rasters found. Creating mosaic...")
+                print("Multiple terrain rasters found.")
 
             # Iterate through terrain rasters and merge into a mosaic
             raster_to_mosiac = []
-            for p in terrain_files:
+
+            for p in tqdm(terrain_files, desc='Mosaicking raster file', unit = 'files'):
+            # for p in terrain_files:
                 terrain_file_path = os.path.join(terrain_folder_path, p)
                 raster = rasterio.open(terrain_file_path)
                 raster_to_mosiac.append(raster)
@@ -310,7 +311,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
             str_unit_raster = terrain.crs.linear_units
 
             if verbose == True:
-                print("Terrain mosaic produced.")
+                print("Terrain mosaic saved.")
 
         # [Placeholder] Convert vertical datum if needed. 
         # Potential example snippet: ngvd_to_navd_ft() in NOAA-OWP/inundation-mapping/blob/dev/tools/tools_shared_functions.py (line 1099)
@@ -330,10 +331,10 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         # Extract elevation value from terrain raster
         raw_elev_list = []
 
-        for index, row in midpoints_gdf.iterrows():
+        if verbose == True:
+            print(f"Number of midpoints: {str(len(midpoints_gdf))}")
 
-            if verbose == True: # Option to print each feature_id as it processes
-                print(str(row['feature_id']))
+        for index, row in tqdm(midpoints_gdf.iterrows(), desc='Getting elevation for midpoints', unit = ' points'):
 
             point = row['geometry']
 
