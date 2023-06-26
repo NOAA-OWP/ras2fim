@@ -345,16 +345,13 @@ class Get_Ras_Models_By_HUC():
                 continue
 
             target_path = os.path.join(self.target_owp_models_folder, folder_name)
-            # folder name can have spaces (should be fixed), for the S3 call, we leave the space
-            # but for windows, we can't leave a space
-            target_path = target_path.replace(" ", "_")
             self.log_append_and_print(f"== {folder_name} - Downloading to path = {target_path}")
 
             #cmd = root_cmd + f"{src_path} {target_path} --dryrun"
             # NOTE: we are using subprocesses for now as boto3 can not download folders, only files.
             # Granted you can get a list of files matching the prefix and iterate through them but
             # it is ugly. For now, we will use 
-            cmd = root_cmd + f"'{src_path}' {target_path}"
+            cmd = root_cmd + f"\"{src_path}\" \"{target_path}\""
             if (self.is_verbose):
                 self.log_append_and_print(f"    {cmd}")
 
