@@ -116,7 +116,6 @@ class Get_Ras_Models_By_Catalog():
 
             # ----------
             # calls over to S3 using the aws creds file even though it doesn't use it directly
-            #df_all = pd.read_csv(self.s3_path_to_catalog_file, sep=",", encoding= 'unicode_escape')
             df_all = pd.read_csv(self.s3_path_to_catalog_file, header= 0, encoding= 'unicode_escape')
 
             if (df_all.empty):
