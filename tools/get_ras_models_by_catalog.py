@@ -6,11 +6,14 @@ import pandas as pd
 import shutil
 import s3fs
 import subprocess
+import sys
 import time
 import traceback
 
-#from aws_base import *
 from datetime import datetime
+
+sys.path.append('..')
+import ras2fim.src.shared_variables as sv
 
 '''
 This tool uses a HUC8 number to call over to an AWS S3 models_catalog.csv and will scan
@@ -20,23 +23,14 @@ NOTE: This script is primarily designed for NOAA/OWP use, but if you have access
 S3, models_catalog.csv and models folders, you are welcome to use it. We can not grant access to our
 NOAA / OWP S3 bucket at this time. 
 
-
-
-NOTE: For now.. a limitation exists of needing both a credentials .env (config) file with aws creds AND 
-for the user to a have run aws configure on their machine sometime in the past (aka.. the config and credentials
-files exist in the root user home ".aws" directory). You don't need to run aws configure each time you use the program
-
-
+To run this tool, you must have already ran 'aws configure' and added creds to the S3 bucket. You should
+find that you only need to setup yoru machine once with 'aws configure' and not each time you use this tool.
 
 
 Features for this tool include:
     - Ability to create a list only (log file) without actual downloads (test download).
 
-        # TODO: What am I trying to say here?
-    - For both pulling from S3 as a source as well as for the local target, the "models" will automatically be
-         added at the end of those provided arguments if/as required.
-
-    - A log file be created in the models/log folder with unique date stamps per run.
+    - A log file for the output is created with unique date/time stamp.
 
     - A "verbose" flag can be optionally added as an argument for additional processing details (note: don't over
          use this as it can make errors harder to find). To find an error, simply search the log for the word "error"
@@ -58,8 +52,7 @@ Features for this tool include:
 MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS = "download_success"
 MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON = "download_fail_reason"
 
-#class Get_Ras_Models_By_HUC(AWS_Base):
-class Get_Ras_Models_By_HUC():
+class Get_Ras_Models_By_Catalog():
 
     
     # default values listed in "__main__"  but also here in case code calls direct.. aka. not through "__main__"
@@ -67,7 +60,8 @@ class Get_Ras_Models_By_HUC():
                    s3_path_to_catalog_file, 
                    huc_number, 
                    list_only = False, 
-                   target_owp_ras_models_path = "c:\\ras2fim_data\\OWP_ras_models",
+                   target_owp_ras_models_path = sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
+                   target_owp_ras_models_csv_file = sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
                    is_verbose = False):
 
         '''
@@ -76,13 +70,11 @@ class Get_Ras_Models_By_HUC():
         - Calls over to S3 using a save aws configure creds file (needs to be in place prior to the run)
         - Reads model catalog csv (from s3_path_to_catalog), looking through the HUC list for matches. e.g. OWP_ras_models\OWP_ras_models_catalog.csv
         - If downloading folders...  (ie.. not just the list only)
-            - Empty the OWP_ras_models\models folder as we know ras2fim will automatically read all folders in that directory
-            - Download all of the folders found using data extracted from columns in the filtered models_catalog.csv file.
-                In S3, the source download folder will be the "models" folder, but put into the "models" folder here, 
-                beside the OWP_ras_models_catalog.csv or its overriden value.
+            - Empty the OWP_ras_models\models (or target models path) folder as we know ras2fim will automatically read all folders in that directory
+            - Download all of the folders found using data extracted from columns in the filtered OWP_ras_models_catalog.csv file.
                 The S3 "models" folder, MUST exist beside the model catalog file.
         - Using the OWP_ras_models_catalog.csv (or equiv), only records with the status of 'ready'
-        - Note: The target folder value will check to see if it ends with "models" and add it if needed
+        - If the target_owp_ras_models_csv_file exists, it will be overwritten without warning.
             
         Inputs
         -----------------------
@@ -90,19 +82,19 @@ class Get_Ras_Models_By_HUC():
             changes). 
         - huc_number (string)
         - list_only (True / False) : If you override to true, you can get just a csv list and not the downloads
-        - target_owp_ras_models_path (str): Local path you want the files to be loaded to. Default: c\ras2fim_data\OWP_ras_models.
-            If the path does not end with a "models" folder, the program will add the word "models" path/folder.
+        - target_owp_ras_models_path (str): Local path you want the model folders to be loaded to. Default: c\ras2fim_data\OWP_ras_models\models.
+        - target_owp_ras_models_csv_file (str): The file name and path of where to save the filtered catalog. 
+            Default: c\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_[huc number].csv.
         
         Outputs
         -----------------------
         - All of the filtered actual folders found in the s3 OWP_ras_models based on the models catalog are
             placed in the local emptied (folders only) target_owp_ras_models_path (assuming not overwritten to list only).
-         - a copy of the "OWP_ras_models_catalog.csv" from S3 will be placed in the target_owp_ras_models_path directory and includes
-            list of all downloaded files and their attributes. The name will become OWP_ras_models_catalog_{HUC}.csv. This file
+        - A filtered copy of the "OWP_ras_models_catalog.csv" from S3 will be placed in as set by target_owp_ras_models_csv_file
+            and includes list of all downloaded files and their attributes. If not overridden, the name will become OWP_ras_models_catalog_{HUC}.csv. This file
             will overwrite a pre-existing file of the same name.
 
         '''
-
 
         self.log_append_and_print("")
         start_time = datetime.now()
@@ -113,7 +105,7 @@ class Get_Ras_Models_By_HUC():
 
         # ----------
         # Validate inputs
-        self.validate_inputs(s3_path_to_catalog_file, huc_number, target_owp_ras_models_path)
+        self.validate_inputs(s3_path_to_catalog_file, huc_number, target_owp_ras_models_path, target_owp_ras_models_csv_file)
         self.list_only = list_only
         self.is_verbose = is_verbose
         # from here on, use the self. in front of variables as the variable might have been adjusted
@@ -121,8 +113,6 @@ class Get_Ras_Models_By_HUC():
         # setup an empty variable for scope reasons
         self.df_huc = pd.DataFrame()
         try:
-
-            #aws_session = super().get_aws_s3_session()
 
             # ----------
             # calls over to S3 using the aws creds file even though it doesn't use it directly
@@ -185,15 +175,18 @@ class Get_Ras_Models_By_HUC():
             # If inc_download_folders, otherwise we just stop.  Sometimes a list is wanted but not the downloads
             if (self.list_only == False):
                 # loop through df_huc records and using name, pull down 
-                num_downloaded = self.download_files(folders_to_download)
+                self.download_files(folders_to_download)
 
             self.log_append_and_print("")
             if (self.list_only == True):
                 self.log_append_and_print("List only as per (-d) flag - no downloads attempted")
-                self.log_append_and_print(f"Number of folders which would be attempted to downloaded is {len(self.df_huc)}")
+                self.log_append_and_print(f"Number of model folders which would be attempted to downloaded is {len(self.df_huc)}")
             else:
-                self.log_append_and_print("Downloads completed")
-                self.log_append_and_print(f"Number of folders downloaded {num_downloaded} (skips removed)")
+                self.log_append_and_print(f"Number of models folders successfully downloaded: {self.num_success_downloads}")
+                num_skips = self.num_pending_downloads - self.num_success_downloads
+                self.log_append_and_print(f"Number of models folders skipped / errored during download: {num_skips}")
+                if (num_skips > 0):
+                    self.log_append_and_print(f"Please review the output logs or the filtered csv for skip/error details.")
 
         except ValueError as ve:
            errMsg = "--------------------------------------" \
@@ -227,7 +220,7 @@ class Get_Ras_Models_By_HUC():
 
 
 
-    def validate_inputs(self, s3_path_to_catalog_file, huc_number, target_owp_ras_models_path, ):
+    def validate_inputs(self, s3_path_to_catalog_file, huc_number, target_owp_ras_models_path, target_owp_ras_models_csv_file):
 
         '''
         If errors are found, an exception will be raised.
@@ -243,23 +236,16 @@ class Get_Ras_Models_By_HUC():
         
         if (huc_number.isnumeric() == False):
             raise ValueError("huc number is not a number")
-
-        # target_owp_ras_models_path exists
-        if (not os.path.exists(target_owp_ras_models_path)):
-            raise ValueError(f"Target owp_ras_models folder of '{target_owp_ras_models_path}' does not exist")
         
-        # this is the target path without the "models" subfolder added
+        self.huc_number = huc_number
+       
         self.target_owp_ras_models_path = target_owp_ras_models_path
         
-        # optionally ends with \\ or no \\ (adjusted for escaping chars)
-        if (target_owp_ras_models_path.lower().endswith("\\models\\") == True):
-            self.target_owp_models_folder = target_owp_ras_models_path
-        elif (target_owp_ras_models_path.lower().endswith("\\models") == True):
-            self.target_owp_models_folder = target_owp_ras_models_path + "\\"  # add \\
-        else: 
-            self.target_owp_models_folder = f"{target_owp_ras_models_path}\\models"
-
-        self.target_filtered_csv_path = f"{self.target_owp_ras_models_path}\\OWP_ras_models_catalog_{huc_number}.csv"
+        if (target_owp_ras_models_csv_file == ""):
+            raise ValueError("target_owp_ras_models_csv_file can not be empty")
+        
+        # the string may or may not have the [] and that is ok.
+        self.target_filtered_csv_path = target_owp_ras_models_csv_file.replace("[]", huc_number)
 
         # Extract the base s3 bucket name from the catalog pathing.
         # temp remove the s3 tag
@@ -285,8 +271,13 @@ class Get_Ras_Models_By_HUC():
         self.src_owp_model_folder_path = self.bucket_name + "/" + self.src_owp_model_folder_path
         self.src_owp_model_folder_path += "models"        
 
-        self.log_append_and_print(f"Adjusted source download path for models is {self.src_owp_model_folder_path}")
-        self.log_append_and_print(f"Adjusted target path is {self.target_owp_models_folder}")
+        # The log files will go to a folder that is one level higher (a parent folder) for the models target.
+        target_owp_ras_models_path_parent = os.path.dirname(target_owp_ras_models_path)
+        self.log_folder_path = os.path.join(target_owp_ras_models_path_parent, "logs")
+
+        self.log_append_and_print(f"Source download path for models is {self.src_owp_model_folder_path}")
+        self.log_append_and_print(f"Target file name and path for the filtered csv is {self.target_filtered_csv_path}")        
+        self.log_append_and_print(f"Target path for models is {self.target_owp_ras_models_path}")
         self.log_append_and_print("")
 
 
@@ -295,24 +286,13 @@ class Get_Ras_Models_By_HUC():
         self.log_append_and_print("")
         self.log_append_and_print("......................................")
 
-        # ----------
-        # remove folders only from the local OWP_ras_models/models (or overwride), keep files
-        if (os.path.exists(self.target_owp_models_folder)):
-            shutil.rmtree(self.target_owp_models_folder)
-            # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
-            # so sometimes mkdir can fail if rmtree isn't done
-            time.sleep(2) # 2 seconds
-
-        os.mkdir(self.target_owp_models_folder)
-        if (self.is_verbose == True):
-            print(f"{self.target_owp_models_folder} created")
-
-        s3 = s3fs.S3FileSystem(anon=False, key = os.getenv('AWS_ACCESS_KEY'), secret = os.getenv('AWS_SECRET_ACCESS_KEY'))
+        s3 = s3fs.S3FileSystem()
 
         #not all will be found for download. Print the ones now found, count the rest
-        num_downloaded = 0
-        num_folders_pending = len(folder_list)
         num_processed = 0
+
+        self.num_pending_downloads = len(folder_list)
+        self.num_success_downloads = 0
 
         root_cmd = "aws s3 cp --recursive "
         for folder_name in folder_list:
@@ -335,8 +315,9 @@ class Get_Ras_Models_By_HUC():
 
             if s3.exists(src_path) == False:
                 msg = f"skipped - s3 folder of {src_path} doesn't exist"
-                self.log_append_and_print(f"== {folder_name} - {msg}")
-                progress_msg = f">>> {num_processed} of {num_folders_pending} processed"
+                self.log_append_and_print(f"== {folder_name}")
+                self.log_append_and_print(f".... {msg}")
+                progress_msg = f">>> {num_processed} of {self.num_pending_downloads} processed"
                 self.log_append_and_print(progress_msg)
 
                 # update the df (csv) to show it failed and why
@@ -344,7 +325,7 @@ class Get_Ras_Models_By_HUC():
                 self.df_huc.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = msg
                 continue
 
-            target_path = os.path.join(self.target_owp_models_folder, folder_name)
+            target_path = os.path.join(self.target_owp_ras_models_path, folder_name)
             self.log_append_and_print(f"== {folder_name} - Downloading to path = {target_path}")
 
             #cmd = root_cmd + f"{src_path} {target_path} --dryrun"
@@ -360,7 +341,7 @@ class Get_Ras_Models_By_HUC():
                 msg = "*** an error occurred\n"
                 msg += process_s3.stderr
                 self.log_append_and_print(msg)
-                progress_msg = f">>> {num_processed} of {num_folders_pending} processed"
+                progress_msg = f">>> {num_processed} of {self.num_pending_downloads} processed"
                 self.log_append_and_print(progress_msg)
 
                 # so it doesn't interfer with the delimiter
@@ -375,12 +356,12 @@ class Get_Ras_Models_By_HUC():
             self.df_huc.at[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = "True"
 
             #self.df_row[rowIndex] = df_row
-            num_downloaded += 1
+            self.num_success_downloads += 1
 
-            progress_msg = f">>> {num_processed} of {num_folders_pending} processed"
+            progress_msg = f">>> {num_processed} of {self.num_pending_downloads} processed"
             self.log_append_and_print(progress_msg)
 
-        return num_downloaded
+        return 
     
 
     def log_append_and_print(self, msg):
@@ -413,23 +394,16 @@ class Get_Ras_Models_By_HUC():
         # 
 
         # We want to attempt to log some types of exceptions if possible. Depending on where it fails,
-        # we may or may not yet have assigned self.target_owp_models_folder
-        if (hasattr(self, 'target_owp_models_folder') == False):
+        # we may or may not yet have assigned self.log_folder_path
+        if (hasattr(self, 'log_folder_path') == False):
             return
 
-        # At this point, the target_owp_models_folder has a "models" ending subfolder, so we need to as the models folder to logs
-        # May or may not have a slash on the end, but we have to be careful not to pull out the name model in the middle
-        if (self.target_owp_models_folder.endswith("\\")):
-            self.target_owp_models_folder = self.target_owp_models_folder[:len(self.target_owp_models_folder) - 1]
-
-        root_model_path = self.target_owp_models_folder[:len(self.target_owp_models_folder) - len("\\models")]
-        log_folder = os.path.join(root_model_path, "logs")
-        if (os.path.exists(log_folder) == False):
-            os.mkdir(log_folder)
+        if (os.path.exists(self.log_folder_path) == False):
+            os.mkdir(self.log_folder_path)
 
         start_time = datetime.now()
-        file_dt_string = start_time.strftime("%Y_%m_%d-%H_%M_%S")
-        log_file_path = os.path.join(log_folder, f"get_ras_models__{file_dt_string}.log")
+        file_dt_string = start_time.strftime("%Y%m%d_%H%M%S")
+        log_file_path = os.path.join(self.log_folder_path, f"get_ras_models_{self.huc_number}-{file_dt_string}.log")
 
         with open(log_file_path, 'w') as log_file:
             log_file.write(self.log_file_msg)
@@ -449,39 +423,32 @@ if __name__ == '__main__':
     # python3 ./tools/aws/get_ras_models_by_HUC.py -s s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv -u 12090301
 
     # Sample Usage with most params
-    # python3 ./tools/aws/get_ras_models_by_HUC.py -c C:\\ras2fim\\aws_creds.env -u 12090301 -s s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv -t c:\\ras2fim\\ras_models -v
+    # python3 ./tools/aws/get_ras_models_by_HUC.py -u 12090301 -s s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv
+    #  -tm c:\\ras2fim\\ras_models -tcsv c:\\ras2fim\ras_models\12090301_models_catalog.csv -v
     
     # Sample Usage to get just the list and not the model folders downloaded (and most defaults)
     # python3 ./tools/aws/get_ras_models_by_HUC.py -s s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv -u 12090301 -d
 
     # ----------------------------
-    # NOTE: There are some minor issues with s3 authentication. So.. even though we are passing in a aws creds file,
-    # for now, you need to be in your user root home directory and run aws configure (if not already done at some point)
+    # NOTE: You need to have aws credentials already run on this machine, at least once per server.
+    # This is done usually using `aws configure`.  
     # If has been run on this machine before, you will find a config file and credentials file in your root /.aws directory
     # ie) /users/{your user name}/.aws
-
-    # Ensure you have made a copy of the aws_creds_template.env file to another location and edited for your actual aws assigned
-    # creds. NOAA can not share our credentials to non NOAA/OWP personnel. See the "-c" param for defaults or you can 
-    # override it using the -c arg.
 
     # NOTE: This script assumes that each of the downloadable "model" folders are in subfolder named "models" and under where 
     # the -s / --sub_path_to_catalog file is at.
     # e.g.  s3://(some bucket)/OWP_ras_models/OWP_ras_models_catalog.csv with a "models" folder beside it with 
-    # all of teh "model" folders under that.
+    # all of the "model" folders under that.
     #     ie)  s3://(some bucket)/OWP_ras_models/OWP_ras_models_catalog.csv
     #                                           /models/
-    #                                                   /(single model subfolder number 1)
-    #                                                   /(single model subfolder number 2)
-    #                                                   /(single model subfolder number 3)    
+    #                                                   /(model number 1 folder)
+    #                                                   /(model number 2 folder)
+    #                                                   /(model number 3 folder)
     #                                                   /etc
     # And of course, your path doesn't have to match, but the pattern of the csv, "models" folder, and subfolders is critical
             
     parser = argparse.ArgumentParser(description='Communication with aws s3 data services to download OWP_ras_model folders by HUC')
-    
-    #parser.add_argument('-c','--aws_cred_env_file', 
-    #                    help='(Opt) Path to aws credentials env file. Defaults = C:\\ras2fim_data\config\\aws_hv_s3_creds.env',
-    #                    required=False, default="C:\\ras2fim_data\\config\\aws_hv_s3_creds.env")
-    
+
     # False means you get a list only, not the folders downloaded (at \OWP_ras_models\huc_OWP_ras_models.csv)
     parser.add_argument('-d','--list_only', 
                         help='(Opt) Adding this flag will result in a log file only with the list of potential downloadable folders, " \
@@ -494,9 +461,15 @@ if __name__ == '__main__':
                         help='(Reqd) s3 path and file name of models_catalog.',
                         required=True)
 
-    parser.add_argument('-t','--target_owp_ras_models_path',
-                        help='(Opt) Where to download the folders such the root ras2fim owp_ras_models folders. Defaults = c:\\ras2fim_data\\OWP_ras_models',
-                        required=False, default="c:\\ras2fim_data\\OWP_ras_models")
+    parser.add_argument('-tcsv','--target_owp_ras_models_csv_file',
+                        help='(Opt) Path and file name of where to save the filtered models catalog csv.' \
+                             ' Defaults = c:\\ras2fim_data\\OWP_ras_models\\OWP_ras_models_catalog_[huc number].csv.',
+                        required=False, default=sv.DEFAULT_RSF_MODELS_CATALOG_FILE)
+
+    parser.add_argument('-tm','--target_owp_ras_models_path',
+                        help='(Opt) Where to download the model folders such the root ras2fim owp_ras_models folders.' \
+                             ' Defaults = c:\\ras2fim_data\\OWP_ras_models\\models',
+                        required=False, default=sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH)
     
     parser.add_argument('-u','--huc_number', 
                         help='(Reqd) download model records matching this provided number',
@@ -508,13 +481,11 @@ if __name__ == '__main__':
 
     args = vars(parser.parse_args())
     
-    #obj = Get_Ras_Models_By_HUC(path_to_cred_env_file = args['aws_cred_env_file'], 
-    #                            is_verbose = args['is_verbose'])
-
-    obj = Get_Ras_Models_By_HUC()
+    obj = Get_Ras_Models_By_Catalog()
     obj.get_models(list_only = args['list_only'],
                    s3_path_to_catalog_file = args['s3_path_to_catalog_file'],
                    target_owp_ras_models_path = args['target_owp_ras_models_path'],
+                   target_owp_ras_models_csv_file = args['target_owp_ras_models_csv_file'],
                    huc_number = args['huc_number'],
                    is_verbose = args['is_verbose']) 
         
