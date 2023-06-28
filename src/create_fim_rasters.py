@@ -77,7 +77,6 @@ def fn_create_fim_rasters(str_desired_huc8,
                           str_terrain_path,
                           str_std_input_path,
                           flt_interval,
-                          flt_out_resolution,
                           b_terrain_check_only):
     
     flt_start_create_fim = time.time()
@@ -136,11 +135,6 @@ def fn_create_fim_rasters(str_desired_huc8,
     
     FLT_INTERVAL = flt_interval
     print("  ---[z]   Optional: Output Elevation Step: " + str(FLT_INTERVAL))
-    
-    INT_DESIRED_RESOLUTION = flt_out_resolution
-    print("  ---[r]   Optional: Output Raster Resolution: " + str(INT_DESIRED_RESOLUTION))
-    
-    INT_DESIRED_RESOLUTION = flt_out_resolution
     print("  ---[c]   Optional: Terrain Check Only: " + str(b_terrain_check_only))
     
     print("===================================================================")
@@ -152,7 +146,7 @@ def fn_create_fim_rasters(str_desired_huc8,
                  STR_PLAN_MIDDLE_PATH, 
                  STR_PROJECT_FOOTER_PATH, 
                  FLT_INTERVAL,
-                 INT_DESIRED_RESOLUTION,
+                 '', #this is just a fille (for a old redundant parameter) simply to keet the order of item unchanged.
                  INT_XS_BUFFER,
                  IS_CREATE_MAPS,
                  INT_NUMBER_OF_STEPS,

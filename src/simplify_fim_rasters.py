@@ -288,9 +288,9 @@ if __name__ == '__main__':
     
     parser.add_argument('-r',
                         dest = "flt_resolution",
-                        help='OPTIONAL: resolution of output raster (crs units): Default=3',
+                        help='OPTIONAL: resolution of output raster (crs units): Default=10',
                         required=False,
-                        default=3,
+                        default=10,
                         metavar='FLOAT',
                         type=float)
     
