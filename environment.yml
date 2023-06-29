@@ -168,4 +168,5 @@ dependencies:
   - zstd=1.4.9=h19a0ad4_0
   - pip:
       - keepachangelog==1.0.0
+      - rasterio==1.3.7
 prefix: C:\Users\rdp-user\anaconda3\envs\ras2fim
