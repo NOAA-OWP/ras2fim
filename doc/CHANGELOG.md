@@ -1,6 +1,24 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+(It is a hotfix after whatever is merged first)
+## v1.x.1 - 2023-06-29 - [PR#90](https://github.com/NOAA-OWP/ras2fim/pull/90)
+
+When the -m flag ( skip ras2rem), is set to False, then it should abort processing just before ras2rem and not continue on to catchments and finalization.
+
+Also found bug when the default `output_ras2fim_models` does not exist. This is only discovered if the user has not overridden the pathing for output_ras2fim_models. Remember, the -o flag can be used in two ways. 
+1. use just the new desired output folder name without pathing, which will default pathing to c:\ras2fim_data\outputs_ras2fim_models'
+2. full override the -o flag to any fully pathed location. When using this option, the parent path must exist, but the child folder can not exist. 
+
+Note: There is a bug in other parts of this code base that are being fixed as part of a different PR. Currently, it will fail as it attempts to process catchments. But to validate that this PR passes will be based on stopping processing before ras2rem or continuing on to ras2rem (and forward) and it will fail in catchments.
+
+### Changes  
+
+- `src`
+    - `ras2fim.py`:  Fix to skip catchments and finalization as describe above plus fixed discovered and mentioned above.
+
+<br/><br/>
+
 ## v1.9.0 - 2023-06-15 - [PR#64](https://github.com/NOAA-OWP/ras2fim/pull/64)
 
 In a recent release, the ras2catchment product feature was included but was not completed and now is.
