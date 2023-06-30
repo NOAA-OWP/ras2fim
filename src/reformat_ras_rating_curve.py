@@ -352,7 +352,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
 
         # Print statements and add to output log
         if verbose == True: 
-            print("Midpoints projection " + str(midpoints_gdf.crs))
+            print("Midpoints projection " + str(midpoints_gdf))
             print("Terrain projection: " + str(terrain.crs))
 
         output_log.append("Midpoints projection " + str(midpoints_gdf.crs))
@@ -821,7 +821,7 @@ if __name__ == '__main__':
     parser.add_argument('-j', '--num-workers',help='Number of concurrent processes', required=False, default=1, type=int)
     parser.add_argument('-ov', '--overwrite', help='Option to overwrite existing intermediate files in the output save folder.', 
                         required=False, default=False, action='store_true')
-    parser.add_argument('-so', '--source', help='Input a value for the "source" output column (i.e. "ras2fim", "ras2fim v2.1").', required=False, default="")
+    parser.add_argument('-so', '--source', help='Input a value for the "source" output column (i.e. "ras2fim", "ras2fim v2.1").', required=False, default="RAS2FIM")
     parser.add_argument('-lt', '--location-type', help='Input a value for the "location_type" output column (i.e. "USGS", "IFC").', required=False, default="")
     parser.add_argument('-ac', '--active', help='Input a value for the "active" column ("True" or "False")', required=False, default="")
 
