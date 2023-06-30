@@ -240,7 +240,7 @@ def fn_run_ras2fim(str_huc8_arg,
     # ------ Step 6: simplify fim rasters -----
     # ==============================================
     flt_resolution_depth_grid = 3
-    str_output_crs = "EPSG:3857"
+    #str_output_crs = "EPSG:3857"
     # ==============================================
     
     print()
@@ -248,7 +248,7 @@ def fn_run_ras2fim(str_huc8_arg,
     if int_step <= 6:
         fn_simplify_fim_rasters(str_hecras_out_dir,
                                 flt_resolution_depth_grid,
-                                str_output_crs)
+                                sv.DEFAULT_RASTER_OUTPUT_CRS)
     # ----------------------------------------
     
 
@@ -411,18 +411,6 @@ def init_and_run_ras2fim(str_huc8_arg,
         raise ValueError('The -o child folder (huc ras model output path) can not pre-exist, as we will create it, but the' \
                          ' parent folders must exist. See code notes in the __main__ section for details and examples')
 
-    # -------------------
-    # TODO: step system not fully working and needs to be fixed or removed
-    # create an output folder with checks
-    #if os.path.exists(str_out_arg):
-    #    if os.path.exists(os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, 'terrain_stats.csv')):
-    #        print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
-    #        raise SystemExit(0)
-    #    elif int_step==0:
-    #        print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
-    #        shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
-    #else:
-    os.mkdir(r2f_huc_output_dir) # pathing has already been validated and ensure the child folder does not pre-exist
 
     # -------------------
     # -n  (ie: inputs\\X-National_Datasets)
@@ -458,6 +446,11 @@ def init_and_run_ras2fim(str_huc8_arg,
 
 
     # ********************************
+    # -------------------
+    # make the folder only if all other valudation tests pass.
+    os.mkdir(r2f_huc_output_dir) # pathing has already been validated and ensure the child folder does not pre-exist
+
+    # -------------------
     # Save incoming args and a few new derived variables created to this point into a log file
     # Careful... when **locals() is called, it will include ALL variables in this function to this point.
     create_input_args_log(**locals())
