@@ -1,6 +1,17 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v_._._ - 2023-__-__- [PR#85](https://github.com/NOAA-OWP/ras2fim/pull/85)
+
+Previously, the end user of the data produced in `src/reformat_ras_rating_curve.py` had to view the metadata to see what the CRS of the geopackage is. This is inconvenient and could lead to error down the line. Adding the explicit CRS mitigates this issue. Additionally, some of the processing in `src/reformat_ras_rating_curve.py` can take a few minutes, so progress bars were added to track progress. 
+
+### Additions
+- `src/reformat_ras_rating_curve.py`: 
+  - Added progress bar to the raster mosaicking and elevation extraction processes.
+  - Add explicit CRS to geopackage output. 
+
+<br/><br/>
+
 ## v1.9.0 - 2023-06-15 - [PR#64](https://github.com/NOAA-OWP/ras2fim/pull/64)
 
 In a recent release, the ras2catchment product feature was included but was not completed and now is.
