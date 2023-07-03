@@ -153,7 +153,7 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
 # For each feature ID, finds the path for the tif with the max depth value
 def __get_maxment(feature_id, reproj_nwm_filtered_df, r2f_hecras_dir, datatyped_rems_dir):
 
-    feature_catchment_df = reproj_nwm_filtered_df[reproj_nwm_filtered_df.FEATUREID == feature_id]
+    feature_catchment_df = reproj_nwm_filtered_df[reproj_nwm_filtered_df.ID == feature_id]
 
     # Pull all relevant depth grid tiffs for this feature ID
     this_feature_id_tif_files = list(Path(r2f_hecras_dir).rglob(f'*/Depth_Grid/{feature_id}-*.tif'))
@@ -329,7 +329,7 @@ def make_catchments(huc_num,
     - r2f_huc_parent_dir : str
         The partial or full path to the ras2fim output HUC directory. That folder must already have a fully populated with 
         the "05_" depth grid tifs. 
-        This value can be the value of just the the output_ras2fim_models huc subfolder, ie 12090301_meters_2277_test_3.
+        This value can be the value of just the the output_ras2fim huc subfolder, ie 12090301_meters_2277_test_3.
            (We will use the root default pathing and become c:/ras2fim_data/outputs_ras2fim_models/12090301_meters_2277_test_3)
         OR it can be a full path to the ras2fim huc output folder. ie) c:/my_ras2fim_outputs/12090301_meters_2277_test_3.
         Either way, it needs at least the populated 05_hecras_output subfolder.
@@ -416,7 +416,8 @@ def make_catchments(huc_num,
     # -------------------    
     print("Getting all relevant catchment polys")
     print()
-    filtered_catchments_df = huc8_nwm_df.loc[huc8_nwm_df['FEATUREID'].isin(all_feature_ids)]
+    #filtered_catchments_df = huc8_nwm_df.loc[huc8_nwm_df['FEATUREID'].isin(all_feature_ids)]
+    filtered_catchments_df = huc8_nwm_df.loc[huc8_nwm_df['ID'].isin(all_feature_ids)]
     nwm_filtered_df = gpd.GeoDataFrame.copy(filtered_catchments_df)
 
     # -------------------
@@ -424,8 +425,9 @@ def make_catchments(huc_num,
     print(f"Reprojecting filtered nwm_catchments to rem rasters crs")
 
     # Use the first discovered depth file as all rems' should be the same. 
-    with rasterio.open(all_depth_grid_tif_files[0]) as rem_raster:
-        raster_crs = rem_raster.crs.wkt
+    #with rasterio.open(all_depth_grid_tif_files[0]) as rem_raster:
+    #    raster_crs = rem_raster.crs.wkt
+    raster_crs = sv.DEFAULT_RASTER_OUTPUT_CRS
 
     # Let's create one overall gpkg that has all of the relavent polys, for quick validation
     reproj_nwm_filtered_df = nwm_filtered_df.to_crs(raster_crs)
@@ -572,7 +574,7 @@ if __name__=="__main__":
     #            OR
     #            -o 12090301_meters_2277_test_2  (We will use the root default pathing and become c:/ras2fim_data/outputs_ras2fim_models/12090301_meters_2277_test_2)
     
-    parser = argparse.ArgumentParser(description='========== Create catchments for specified existing output_ras2fim_models folder ==========')
+    parser = argparse.ArgumentParser(description='========== Create catchments for specified existing output_ras2fim folder ==========')
 
     parser.add_argument('-w',
                         dest = "huc_num",
