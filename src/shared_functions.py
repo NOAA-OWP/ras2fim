@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 
 import os
+import keepachangelog
+import numpy as np
+import pandas as pd
+import rasterio
 
-
+####################################################################
 def print_date_time_duration(start_dt, end_dt):
     '''
     Process:
@@ -35,3 +39,33 @@ def print_date_time_duration(start_dt, end_dt):
     print(duration_msg)
     
     return duration_msg
+
+####################################################################
+# Scrapes the top changelog version (most recent version listed in our repo)
+def get_changelog_version(changelog_path):
+    changelog = keepachangelog.to_dict(changelog_path)
+    return list(changelog.keys())[0]
+
+
+####################################################################
+def convert_rating_curve_to_metric(ras2rem_dir):
+
+    src_path = os.path.join(ras2rem_dir, 'rating_curve.csv')
+    df = pd.read_csv(src_path)
+
+    # convert to metric if needed
+    if 'stage_m' not in df.columns: # if no meters, then only Imperial units are in the file
+        df["stage_m"] = ["{:0.2f}".format(h * 0.3048) for h in df["stage_ft"]]
+        df["discharge_cms"] = ["{:0.2f}".format(q * 0.0283168) for q in df["discharge_cfs"]]
+        df.to_csv(os.path.join(src_path), index=False)
+
+        # REM will also be in Imperial units if the incoming SRC was
+        rem_path = os.path.join(ras2rem_dir,'rem.tif')
+        with rasterio.open(rem_path) as src:
+            raster = src.read()
+            raster = np.multiply(raster, np.where(raster != 65535,0.3048,1)) # keep no-data value as-is
+            output_meta = src.meta.copy()
+        with rasterio.open(rem_path, 'w', **output_meta, compress="LZW") as dest:
+            dest.write(raster)
+
+    return

@@ -10,60 +10,31 @@ import fiona
 import fiona.transform
 import glob
 import geopandas as gpd
-import keepachangelog
+#import keepachangelog
+
 import multiprocessing as mp
+from multiprocessing import Pool
+from concurrent.futures import ProcessPoolExecutor, as_completed, wait
+
 import numpy as np
 import pandas as pd
+
 import rasterio
 import rasterio.mask
+from rasterio.merge import merge
+from rasterio import features
+
 import shutil
 import time
 
 import shared_variables as sv
 import shared_functions as sf
 
-#from multiprocessing import Pool
-#from concurrent.futures import ProcessPoolExecutor, as_completed, wait
 from pathlib import Path
-from rasterio.merge import merge
-from rasterio import features
 from shapely.geometry import Polygon
 
 
-#
-# I'd like to move this conversion to be a separate external utility,
-# but for now I think it's fine here because it's related to getting
-# everything in the right format for Hydrovis.
-#
-def convert_to_metric(ras2rem_dir):
-
-    src_path = os.path.join(ras2rem_dir, 'rating_curve.csv')
-    df = pd.read_csv(src_path)
-
-    # convert to metric if needed
-    if 'stage_m' not in df.columns: # if no meters, then only Imperial units are in the file
-        df["stage_m"] = ["{:0.2f}".format(h * 0.3048) for h in df["stage_ft"]]
-        df["discharge_cms"] = ["{:0.2f}".format(q * 0.0283168) for q in df["discharge_cfs"]]
-        df.to_csv(os.path.join(src_path), index=False)
-
-        # REM will also be in Imperial units if the incoming SRC was
-        rem_path = os.path.join(ras2rem_dir,'rem.tif')
-        with rasterio.open(rem_path) as src:
-            raster = src.read()
-            raster = np.multiply(raster, np.where(raster != 65535,0.3048,1)) # keep no-data value as-is
-            output_meta = src.meta.copy()
-        with rasterio.open(rem_path, 'w', **output_meta, compress="LZW") as dest:
-            dest.write(raster)
-
-    return
-
-
-# Scrapes the top changelog version (most recent version listed in our repo)
-def get_changelog_version(changelog_path):
-    changelog = keepachangelog.to_dict(changelog_path)
-    return list(changelog.keys())[0]
-
-
+####################################################################
 # This function creates a geopackage of Feature IDs from the raster that
 # matches the Depth Grid processing extents ("maxments") from ras2fim Step 5.
 def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_path, rating_curve_path):
@@ -170,7 +141,7 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
     gdf['terrain_match_score'] = [0] * len(gdf)
     gdf['other_notes'] = [""] * len(gdf)
 
-    gdf['ras2fim_version'] = [get_changelog_version(changelog_path)] * len(gdf)
+    gdf['ras2fim_version'] = [sf.get_changelog_version(changelog_path)] * len(gdf)
 
     # ... then we should have all the metadata we need on a per-catchment basis 
     print("** Writing out updated catchments geopackage **")
@@ -178,6 +149,7 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
 
     return
 
+####################################################################
 # For each feature ID, finds the path for the tif with the max depth value
 def __get_maxment(feature_id, reproj_nwm_filtered_df, r2f_hecras_dir, datatyped_rems_dir):
 
@@ -330,7 +302,7 @@ def __validate_make_catchments(huc_num,
     # only return the variables created or modified
     return rtn_varibles_dict
 
-
+####################################################################
 # This function geopackage of Feature IDs that correspond to the extent
 # of the Depth Grids (and subsequent REMs that also match the Depth Grids)
 def make_catchments(huc_num,
@@ -478,7 +450,9 @@ def make_catchments(huc_num,
     # get maxments.
     rasters_to_mosaic = []
 
-    # Create a copy of the REM created by ras2rem so that we make sure our final feature ID tif is
+    print("just before the single rem")
+
+    # Create a single copy of a REM created by ras2rem so that we make sure our final feature ID tif is
     # really the same size (so that we're not off by a pixel)
     r2f_rem_path = os.path.join(rtn_varibles_dict["r2f_ras2rem_dir"],'rem.tif')
     if os.path.exists(r2f_rem_path): 
@@ -498,6 +472,8 @@ def make_catchments(huc_num,
         rasters_to_mosaic.append(r2f_rem_extent_path)
     else:
         print(f"{r2f_rem_path} doesn't exist")
+
+    #feature_id_rem_path = os.path.join(datatyped_rems_dir, "datatyped_{}_{}.tif".format(feature_id, max_rem))
 
     ctr = 1
     for feature_id in all_feature_ids:
@@ -542,7 +518,7 @@ def make_catchments(huc_num,
 
     # Ensure the metric columns exist in the meta file about to be created in vectorize
     r2f_ras2rem_dir = rtn_varibles_dict.get("r2f_ras2rem_dir")
-    convert_to_metric(r2f_ras2rem_dir)
+    sf.convert_rating_curve_to_metric(r2f_ras2rem_dir)
 
     print("*** Vectorizing Feature IDs and creating metadata")
     #vectorize(mosaic_features_raster_path, changelog_path, catalog_path, os.path.join(r2f_hecras_dir,'rating_curve.csv'))
@@ -553,8 +529,13 @@ def make_catchments(huc_num,
 
     # -------------------    
     # Cleanup the temp files in datatyped_rems_dir, later this will be part of the cleanup system.
-    if (os.path.exists(datatyped_rems_dir)):
-        shutil.rmtree(datatyped_rems_dir)
+
+    # TODO: don't leave this commented out
+
+    #if (os.path.exists(datatyped_rems_dir)):
+    #    shutil.rmtree(datatyped_rems_dir)
+
+    
 
     # -------------------    
     print()
@@ -564,6 +545,7 @@ def make_catchments(huc_num,
     print("")    
 
 
+####################################################################
 if __name__=="__main__":
 
     # delete this environment variable because the updated library we need
@@ -578,17 +560,17 @@ if __name__=="__main__":
 
     # Sample usage:
     # Using all defaults:
-    #     python ras2catchments.py -w 12090301 -p 12090301_meters_2277_test_22
+    #     python ras2catchments.py -w 12090301 -o 12090301_meters_2277_test_22
 
     # Override every optional argument (and of course, you can override just the ones you like)
-    #     python ras2catchments.py -w 12090301 -p C:\ras2fim_data_rob_folder\output_ras2fim_models_2222\12090301_meters_2277_test_2
+    #     python ras2catchments.py -w 12090301 -o C:\ras2fim_data_rob_folder\output_ras2fim_models_2222\12090301_meters_2277_test_2
     #          -n E:\X-NWS\X-National_Datasets -mc c:\mydata\robs_model_catalog.csv
     
     #  - The -p arg is required, but can be either a full path (as shown above), or a simple folder name.Either way, it must have the
     #        and the 05_hecras_output and 06_ras2rem folder and populated
-    #        ie) -p c:/users/my_user/desktop/ras2fim_outputs/12090301_meters_2277_test_2
+    #        ie) -o c:/users/my_user/desktop/ras2fim_outputs/12090301_meters_2277_test_2
     #            OR
-    #            -p 12090301_meters_2277_test_3  (We will use the root default pathing and become c:/ras2fim_data/outputs_ras2fim_models/12090301_meters_2277_test_3)
+    #            -o 12090301_meters_2277_test_2  (We will use the root default pathing and become c:/ras2fim_data/outputs_ras2fim_models/12090301_meters_2277_test_2)
     
     parser = argparse.ArgumentParser(description='========== Create catchments for specified existing output_ras2fim_models folder ==========')
 
