@@ -353,6 +353,13 @@ def init_and_run_ras2fim(str_huc8_arg,
     ####  Some validation of input, but mostly setting up pathing ######
 
     # -------------------
+    #read RAS models units from both prj file and given EPSG code through -p
+    #below functions involve a series of excpetion checkings
+    epsg_code=int(str_crs_arg.split(':')[1])
+    proj_crs = pyproj.CRS.from_epsg(epsg_code)
+    model_unit=sf.confirm_models_unit(proj_crs,str_ras_path_arg)
+
+
     # -w   (ie 12090301)
     if (len(str_huc8_arg) != 8):
         raise ValueError("the -w flag (HUC8) is not 8 characters long")
@@ -423,13 +430,8 @@ def init_and_run_ras2fim(str_huc8_arg,
     # adjust the model_catalog file name if applicable
     if ("[]" in model_huc_catalog_path):
         model_huc_catalog_path = model_huc_catalog_path.replace("[]", str_huc8_arg)
-    # if (os.path.exists(model_huc_catalog_path) == False):
-    #     raise FileNotFoundError (f"The -mc models catalog ({model_huc_catalog_path}) does not exist. Please check your pathing.")
-
-    #read RAS models units from both prj file and given EPSG code through -p
-    epsg_code=int(str_crs_arg.split(':')[1])
-    proj_crs = pyproj.CRS.from_epsg(epsg_code)
-    model_unit=sf.find_models_unit(proj_crs,str_ras_path_arg)
+    if (os.path.exists(model_huc_catalog_path) == False):
+         raise FileNotFoundError (f"The -mc models catalog ({model_huc_catalog_path}) does not exist. Please check your pathing.")
 
     # Save incoming args and a few new derived variables created to this point into a log file
     # Careful... when **locals() is called, it will include ALL variables in this function to this point.
