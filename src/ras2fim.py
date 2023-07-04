@@ -232,7 +232,7 @@ def fn_run_ras2fim(str_huc8_arg,
     # ------ Step 6: simplify fim rasters -----
     # ==============================================
     flt_resolution_depth_grid = int(output_resolution)
-    str_output_crs = "EPSG:3857"
+    #str_output_crs = "EPSG:3857"
     # ==============================================
     
     print()
@@ -240,7 +240,7 @@ def fn_run_ras2fim(str_huc8_arg,
     if int_step <= 6:
         fn_simplify_fim_rasters(str_hecras_out_dir,
                                 flt_resolution_depth_grid,
-                                str_output_crs)
+                                sv.DEFAULT_RASTER_OUTPUT_CRS)
     # ----------------------------------------
     
 
