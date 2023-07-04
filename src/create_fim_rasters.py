@@ -146,7 +146,7 @@ def fn_create_fim_rasters(str_desired_huc8,
                  STR_PLAN_MIDDLE_PATH, 
                  STR_PROJECT_FOOTER_PATH, 
                  FLT_INTERVAL,
-                 '', #this is just a fille (for a old redundant parameter) simply to keet the order of item unchanged.
+                 '', #this is just a filler (for an old redundant parameter) simply to keep the order of item unchanged.
                  INT_XS_BUFFER,
                  IS_CREATE_MAPS,
                  INT_NUMBER_OF_STEPS,

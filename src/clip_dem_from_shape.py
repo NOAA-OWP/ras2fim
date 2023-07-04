@@ -232,9 +232,9 @@ if __name__ == '__main__':
 
     parser.add_argument('-b',
                         dest = "int_buffer",
-                        help='OPTIONAL: buffer for each polygon (input shape units): Default=700',
+                        help='OPTIONAL: buffer for each polygon (input shape units): Default=300',
                         required=False,
-                        default=700,
+                        default=300,
                         metavar='INTEGER',
                         type=int)
     
@@ -242,6 +242,7 @@ if __name__ == '__main__':
                         dest = "str_field_name",
                         help='OPTIONAL: unique field from input shapefile used for DEM name',
                         required=False,
+                        default='HUC_12',
                         metavar='STRING',
                         type=str)
     

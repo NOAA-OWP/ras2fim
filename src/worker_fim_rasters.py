@@ -19,6 +19,7 @@ import geopandas as gpd
 import os
 import re
 import numpy as np
+import pyproj
 
 from datetime import date
 
@@ -26,7 +27,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as tick
 
 from scipy.interpolate import interp1d
-
+import shared_functions as sf
 import win32com.client
 # windows component object model for interaction with HEC-RAS API
 # This routine uses RAS60.HECRASController (HEC-RAS v6.0.0 must be
@@ -714,26 +715,10 @@ def fn_create_hecras_files(str_feature_id,
     int_starting_flow = tpl_settings[12]
     str_plan_footer_path = tpl_settings[15]
 
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # determine the project file for the requested HEC-RAS geom
-    # read the prj and determine the units 
-    # "SI Units" or "English Units"
-    # assumed that the os is "Case in-sensitive"
-
     # get the project (HEC-RAS) file (same name and folder as geom)
-    #TODO: for consistency, we may want to use the functions below to identify model unit
-    # 'model_unit_from_ras_prj()' or model_unit_from_crs() within 'shared_functions.py
     str_read_prj_file_path = str_read_geom_file_path[:-3] + 'prj'
+    model_unit = sf.model_unit_from_ras_prj(str_read_prj_file_path)
 
-    model_unit = 'feet' # default to English Units
-    if os.path.exists(str_read_prj_file_path):
-        with open(str_read_prj_file_path) as f_prj:
-            file_contents_prj = f_prj.read()
-        if re.search(r'SI Units', file_contents_prj, re.I):
-            model_unit = 'meter'
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    #"""""""""""""""""""""""""""""""""""""""""""""""""""""""
     with open(str_read_geom_file_path) as f:
         list_all_items = []
         #For each line in geometry

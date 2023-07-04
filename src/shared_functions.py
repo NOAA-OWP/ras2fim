@@ -102,15 +102,18 @@ def model_unit_from_ras_prj(str_ras_path_arg):
 
     unit=None
     ras_prj_files = []
-    for root, dirnames, filenames in os.walk(str_ras_path_arg):
-        for filename in fnmatch.filter(filenames,'*.[Pp][Rr][Jj]'):
-            with open(os.path.join(root,filename)) as f:
-                first_file_line = f.readline()
+    if os.path.isdir(str_ras_path_arg):
+        for root, dirnames, filenames in os.walk(str_ras_path_arg):
+            for filename in fnmatch.filter(filenames,'*.[Pp][Rr][Jj]'):
+                with open(os.path.join(root,filename)) as f:
+                    first_file_line = f.readline()
 
-            # skip projection files
-            if any(x in first_file_line for x in ['PROJCS','GEOGCS','DATUM','PROJECTION']):
-                continue
-            ras_prj_files.append(os.path.join(root,filename))
+                # skip projection files
+                if any(x in first_file_line for x in ['PROJCS','GEOGCS','DATUM','PROJECTION']):
+                    continue
+                ras_prj_files.append(os.path.join(root,filename))
+    elif os.path.isfile(str_ras_path_arg):
+        ras_prj_files.append(str_ras_path_arg)
 
     Units_Found = []
     for ras_prj_file in ras_prj_files:
