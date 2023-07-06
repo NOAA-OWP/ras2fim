@@ -33,11 +33,11 @@ More detail regarding RAS2FIM is located on the project's Wiki page.
 ### (1) Get AWS Folder - National Datasets
 <img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> List folder prior to download:  
 ```
-aws s3 ls s3://noaa-nws-owp-fim/ras2fim/inputs --request-payer requester
+aws s3 ls s3://noaa-nws-owp-fim/ras2fim/inputs --no-sign-request
 ```
 Download National Datasets: (3.82 Gb)
 ```
-aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/inputs inputs --request-payer requester
+aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/inputs inputs --no-sign-request
 ```
 This download will include the following files / folder:
 1.  Watershed Boundary Dataset (WBD): WBD_National.gpkg (1.65 Gb)
@@ -63,6 +63,7 @@ git clone https://github.com/NOAA-OWP/ras2fim.git
 * [Anaconda](https://www.anaconda.com/products/individual) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) for Windows
 * National datasets - from AWS - See "Prior to Running the Code" section
 * Runs on a Windows OS only - Tested on Windows 10
+* Tested on HEC-RAS 6.0 and default pathing is also set against v6.0.
 
 ## Installation
 
@@ -74,6 +75,7 @@ Detailed instructions on setting up an anaconda environment and running the main
 
 With the (1) ras2fim anaconda environment created and (2) the ras2fim git-hub folder cloned, `ras2fim` python scripts are within the `src` folder.  The main scripts is titled `ras2fim.py`.  **All scripts have a helper flag of `-h`**.  It is recommended that you run the script with the helper flag first to determine the required input. <br><br>
 ![](https://github.com/NOAA-OWP/ras2fim/blob/main/doc/conda_python_run.png)
+** Image may be out of date slightly as parameters are being adjusted currently. Use the `-h` flag and also read the sample usage notes near the bottom of `ras2fim.py`.
 <br><br>
 Note: For this script there are **three (3) required** arguments and a number of optional arguments.  While this input string will greatly vary on your machine, below is a sample input string to execute the `ras2fim.py` script (with most arguments defaulted).
 ```
@@ -86,11 +88,11 @@ python ras2fim.py -w 05030104 -p EPSG:2248 -o 05030104_meters_2248
 
 List folder prior to download:  
 ```
-aws s3 ls s3://noaa-nws-owp-fim/ras2fim/sample-datasets --request-payer requester
+aws s3 ls s3://noaa-nws-owp-fim/ras2fim/sample-datasets --no-sign-request
 ```
 Download Sample Input and Output datasets: (212 Mb)
 ```
-aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/sample-dataset sample-datasets --request-payer requester
+aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/sample-dataset sample-datasets --no-sign-request
 ```
 A video, showing the use of these sample data with the `ras2fim` scripts is provided.
 

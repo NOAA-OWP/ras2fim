@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 
 import os
+#import inspect
 import keepachangelog
 import numpy as np
 import pandas as pd
+import platform
 import rasterio
+from tqdm import tqdm
+
+from concurrent.futures import as_completed
+
 
 ####################################################################
 def print_date_time_duration(start_dt, end_dt):
@@ -69,3 +75,33 @@ def convert_rating_curve_to_metric(ras2rem_dir):
             dest.write(raster)
 
     return
+
+####################################################################
+def is_windows():
+
+    plt = platform.system()
+    return ("Windows" in plt)
+
+
+####################################################################
+def fix_proj_path_error():
+    
+    # delete this environment variable because the updated library we need
+    # is included in the rasterio wheel
+    try:
+        # There is a known issue with rasterio and enviroment PROJ_LIB
+        # an error of `PROJ: proj_create_from_database: Cannot find proj.db`
+        # It does not stop anything it annoying. This is known hack for windows for it
+
+        #print("os.environ['PROJ_LIB''] is " + os.environ["PROJ_LIB"])
+        #if (os.environ["PROJ_LIB"]):
+            #del os.environ["PROJ_LIB"]
+
+        if (is_windows()) :
+            # first get the user and we have to build up a path
+            user_home_path = os.path.expanduser("~")
+            anaconda3_proj_path = os.path.join(user_home_path, r'anaconda3\envs\ras2fim\Library\share\proj')
+            os.environ["PROJ_LIB"] = anaconda3_proj_path
+    except Exception as e:
+        #print(e)
+        pass

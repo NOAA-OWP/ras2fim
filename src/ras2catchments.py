@@ -6,32 +6,30 @@ import os
 import argparse
 import datetime as dt
 import fiona
-#fiona.supported_drivers
 import fiona.transform
-import glob
 import geopandas as gpd
-#import keepachangelog
+import numpy as np
+import pandas as pd
+import shutil
+import sys
+import time
 
 import multiprocessing as mp
 from multiprocessing import Pool
-from concurrent.futures import ProcessPoolExecutor, as_completed, wait
-
-import numpy as np
-import pandas as pd
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import tqdm
 
 import rasterio
 import rasterio.mask
 from rasterio.merge import merge
 from rasterio import features
 
-import shutil
-import time
-
 import shared_variables as sv
 import shared_functions as sf
 
 from pathlib import Path
 from shapely.geometry import Polygon
+from functools import partial
 
 
 ####################################################################
@@ -151,7 +149,13 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
 
 ####################################################################
 # For each feature ID, finds the path for the tif with the max depth value
-def __get_maxment(feature_id, reproj_nwm_filtered_df, r2f_hecras_dir, datatyped_rems_dir):
+def __get_maxment(mxmt_args):
+
+    # Becuase of the way we are doing tdqm and multi-proc it can only take one arg but we can make it a positonal list.
+    feature_id = mxmt_args[0]
+    reproj_nwm_filtered_df = mxmt_args[1]
+    r2f_hecras_dir = mxmt_args[2]
+    datatyped_rems_dir = mxmt_args[3]
 
     feature_catchment_df = reproj_nwm_filtered_df[reproj_nwm_filtered_df.ID == feature_id]
 
@@ -302,13 +306,15 @@ def __validate_make_catchments(huc_num,
     # only return the variables created or modified
     return rtn_varibles_dict
 
+
 ####################################################################
 # This function geopackage of Feature IDs that correspond to the extent
 # of the Depth Grids (and subsequent REMs that also match the Depth Grids)
 def make_catchments(huc_num,
                     r2f_huc_parent_dir,
                     national_ds_path = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
-                    model_huc_catalog_path = sv.RSF_MODELS_CATALOG_PATH):
+                    model_huc_catalog_path = sv.RSF_MODELS_CATALOG_PATH,
+                    is_verbose = False):
     
     '''
     Overview
@@ -416,7 +422,6 @@ def make_catchments(huc_num,
     # -------------------    
     print("Getting all relevant catchment polys")
     print()
-    #filtered_catchments_df = huc8_nwm_df.loc[huc8_nwm_df['FEATUREID'].isin(all_feature_ids)]
     filtered_catchments_df = huc8_nwm_df.loc[huc8_nwm_df['ID'].isin(all_feature_ids)]
     nwm_filtered_df = gpd.GeoDataFrame.copy(filtered_catchments_df)
 
@@ -424,9 +429,6 @@ def make_catchments(huc_num,
     # We need to project the output gpkg to match the incoming raster projection.
     print(f"Reprojecting filtered nwm_catchments to rem rasters crs")
 
-    # Use the first discovered depth file as all rems' should be the same. 
-    #with rasterio.open(all_depth_grid_tif_files[0]) as rem_raster:
-    #    raster_crs = rem_raster.crs.wkt
     raster_crs = sv.DEFAULT_RASTER_OUTPUT_CRS
 
     # Let's create one overall gpkg that has all of the relavent polys, for quick validation
@@ -446,16 +448,14 @@ def make_catchments(huc_num,
     os.mkdir(datatyped_rems_dir)
 
     # -------------------
-    # Traverse through all feature IDs that we found depth grid folders earlier
-
-    # -------------------
     # get maxments.
-    rasters_to_mosaic = []
-
-    print("just before the single rem")
+    #rasters_to_mosaic = []
 
     # Create a single copy of a REM created by ras2rem so that we make sure our final feature ID tif is
     # really the same size (so that we're not off by a pixel)
+    # add nodata REM file to list of rasters to merge, so that the final merged raster has same extent
+    print("Creating rem extent file")
+    r2f_rem_extent_path = None
     r2f_rem_path = os.path.join(rtn_varibles_dict["r2f_ras2rem_dir"],'rem.tif')
     if os.path.exists(r2f_rem_path): 
         r2f_rem_extent_path = os.path.join(rtn_varibles_dict["r2f_ras2rem_dir"], \
@@ -470,37 +470,42 @@ def make_catchments(huc_num,
             output_meta.update( { "dtype":np.int32, "compress":"LZW" })
             with rasterio.open(r2f_rem_extent_path, 'w', **output_meta) as dst:
                 dst.write(rem_raster)
-        # add nodata REM file to list of rasters to merge, so that the final merged raster has same extent
-        rasters_to_mosaic.append(r2f_rem_extent_path)
+            #rasters_to_mosaic.append(r2f_rem_extent_path)
     else:
-        print(f"{r2f_rem_path} doesn't exist")
+        raise Exception(f"{r2f_rem_path} doesn't exist")
 
-    #feature_id_rem_path = os.path.join(datatyped_rems_dir, "datatyped_{}_{}.tif".format(feature_id, max_rem))
 
-    ctr = 1
+    print("Getting maxment files")
+    num_processors = (mp.cpu_count() - 1)
+    
+    # Create a list of lists with the mxmt args for the multi-proc
+    mxmts_args = []
     for feature_id in all_feature_ids:
+        mxmts_args.append([feature_id, reproj_nwm_filtered_df, r2f_hecras_dir, datatyped_rems_dir])
 
-        get_maxmt_args = {'feature_id': feature_id,
-                          'reproj_nwm_filtered_df': reproj_nwm_filtered_df,
-                          'r2f_hecras_dir': r2f_hecras_dir,
-                          'datatyped_rems_dir': datatyped_rems_dir }
 
-        print(f"Getting maxment for feature id {feature_id}  ({(ctr)} of {len(all_feature_ids)})")
-        feature_id_rem_path = __get_maxment(**get_maxmt_args)
+    rasters_paths_to_mosaic = []
+    with Pool(processes = num_processors) as executor:    
 
-        # append particular feature_id + depth value path to list
-        rasters_to_mosaic.append(feature_id_rem_path)
-        ctr = ctr + 1
+        rasters_paths_to_mosaic = list(tqdm.tqdm(executor.imap(__get_maxment, mxmts_args),
+                                        total = len(mxmts_args),
+                                        desc = f"Processing maxments with {num_processors} workers",
+                                        bar_format = "{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+                                        ncols=100 ))    
+
+
+    rasters_paths_to_mosaic.append(r2f_rem_extent_path)
 
     # -------------------
     # Merge all the feature IDs' max depths together
     print("Merging all max depths")
-    #print(rasters_to_mosaic)
-    mosaic, output = merge(list(map(rasterio.open, rasters_to_mosaic)), method="min")
+    if (is_verbose):
+        print(rasters_paths_to_mosaic)
+    mosaic, output = merge(list(map(rasterio.open, rasters_paths_to_mosaic)), method="min")
 
     # Setup the metadata for our raster
     # use the firt raster's meta data
-    with rasterio.open(rasters_to_mosaic[0]) as feature_max_depth_raster:
+    with rasterio.open(rasters_paths_to_mosaic[0]) as feature_max_depth_raster:
         output_meta = feature_max_depth_raster.meta.copy()
         output_meta.update(
             {"driver": "GTiff",
@@ -523,7 +528,6 @@ def make_catchments(huc_num,
     sf.convert_rating_curve_to_metric(r2f_ras2rem_dir)
 
     print("*** Vectorizing Feature IDs and creating metadata")
-    #vectorize(mosaic_features_raster_path, changelog_path, catalog_path, os.path.join(r2f_hecras_dir,'rating_curve.csv'))
     model_huc_catalog_path = rtn_varibles_dict.get("model_huc_catalog_path")
     current_script_path = os.path.realpath(os.path.dirname(__file__))
     catalog_md_path = os.path.join(current_script_path, '..', 'doc', 'CHANGELOG.md')
@@ -531,14 +535,9 @@ def make_catchments(huc_num,
 
     # -------------------    
     # Cleanup the temp files in datatyped_rems_dir, later this will be part of the cleanup system.
-
-    # TODO: don't leave this commented out
-
-    #if (os.path.exists(datatyped_rems_dir)):
-    #    shutil.rmtree(datatyped_rems_dir)
-
-    
-
+    if (is_verbose == False) and (os.path.exists(datatyped_rems_dir)):
+            shutil.rmtree(datatyped_rems_dir)
+   
     # -------------------    
     print()
     print("ras2catchment processing complete")
@@ -550,14 +549,10 @@ def make_catchments(huc_num,
 ####################################################################
 if __name__=="__main__":
 
-    # delete this environment variable because the updated library we need
-    # is included in the rasterio wheel
-    try:
-        #print("os.environ['PROJ_LIB''] is " + os.environ["PROJ_LIB"])
-        if (os.environ["PROJ_LIB"]):
-            del os.environ["PROJ_LIB"]
-    except Exception as e:
-        print(e)
+
+    # there is a known problem with rasterio and proj_db error
+    # this will not stop all of the errors but some (in multi-proc)
+    sf.fix_proj_path_error()
 
 
     # Sample usage:
@@ -593,7 +588,8 @@ if __name__=="__main__":
     parser.add_argument('-n',
                         dest = "national_ds_path",
                         help = r'OPTIONAL: path to national datasets: Example: E:\X-NWS\X-National_Datasets.' \
-                               r' Defaults to c:\ras2fim_data\inputs\X-National_Datasets.',
+                               r' Defaults to c:\ras2fim_data\inputs\X-National_Datasets. This is needed to subset' \
+                                ' the nwm_catchments.gkpg.',
                         default = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
                         required = False,
                         type = str)
@@ -606,6 +602,14 @@ if __name__=="__main__":
                         default = sv.RSF_MODELS_CATALOG_PATH,
                         required = False,
                         type = str)
+    
+    parser.add_argument('-v',
+                        dest = "is_verbose",
+                        help = 'OPTIONAL: if this flag is add (no value required), additional output files will be saved and extra' \
+                               ' terminal window text will be displayed (for debugging purposes)',
+                        default = False,
+                        required = False,
+                        action='store_true')    
 
     args = vars(parser.parse_args())
     
