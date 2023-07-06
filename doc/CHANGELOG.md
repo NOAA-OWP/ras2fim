@@ -1,6 +1,32 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.1x.0 - 2023-07-06 - [PR#93](https://github.com/NOAA-OWP/ras2fim/pull/93)
+
+Add multi processing when calculating `maxments` for each feature ID. 
+
+A `maxment` is the maximum depth for any feature within a catchments.
+
+Also a bug in rasterio displays an error occasionally of "PROJ: proj_create_from_database: Cannot find proj.db".  This is a known issue due to each users computer environment (not ras2fim environment).  When adding multi-proc, this error was seen for each instance of multi proc. Code was added to minimize the error. It will now display once and only once when running ras2catchments.py (not always seen as part of ras2fim.py).
+
+### Changes  
+
+- `README.md`  - small updates for the new ESIP links and a bit of text adjustments.
+- `doc`
+    - `CHANGELOG.md` - corrected a couple of critical notes in the 1.9.0 release. (plus added new notes for this release of course).
+    - `INSTALL.md` - Updated to show that we need to use `Anaconda Powershell Terminal Window` and not the non powershell version of Anaconda.
+- `src`
+    - `shared_functions.py`:  A few changes where made:
+       - ` def convert_to_metric` method moved from ras2catchments to shared_functions.
+       - Added to functions to help with the "cannot fine proj.db" error mentioned above.
+     - `ras2catchments.py`: Changes include:
+         - a little cleanup of the imports section
+         - moved the "convert_to_metric" function to `shared_functions.py` for reusability.
+         - added multi proc and a TQDM progress bar when getting maxments.
+         - added a "is_verbose" flag arg and code for additional output for debugging. This is a common feature in the fim dev (inundation mapping) code and will hopefully can be helpful here as well.
+
+<br/><br/>
+
 ## v1.10.0 - 2023-06-26 - [PR#84](https://github.com/NOAA-OWP/ras2fim/pull/84)
 
 This PR covers a couple of minor fixes:
