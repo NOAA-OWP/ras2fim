@@ -79,7 +79,7 @@ With the (1) ras2fim anaconda environment created and (2) the ras2fim git-hub fo
 <br><br>
 Note: For this script there are **three (3) required** arguments and a number of optional arguments.  While this input string will greatly vary on your machine, below is a sample input string to execute the `ras2fim.py` script (with most arguments defaulted).
 ```
-python ras2fim.py -w 05030104 -p EPSG:2248 -o 05030104_meters_2248
+python ras2fim.py -w 12090301 -p EPSG:2277 -o 12090301_meters_2277
 ```
 
 ## How to test the software

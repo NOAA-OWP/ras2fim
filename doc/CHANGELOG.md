@@ -37,8 +37,8 @@ There are some other fixes that were rolled into this, some by discovery during 
 Note: Currently, this edition does not have multi processing which calculating `maxments`. A `maxment` is the catchment for any particular feature based on its maximum depth value. Multi processing will be added later and was deferred due to the fact that based on current code the child process needed to pass information back to the parent process. This is very difficult and unstable. A separate issue card, [#75](https://github.com/NOAA-OWP/ras2fim/issues/75), has been added to fix this later. 
 
 ### Environment Upgrade Notes
-This version requires an update to the conda environment for ras2fim.  To upgrade, follow these steps (using an Anaconda / Mini Conda command terminal):
-1) If not already, type `conda deactivate ras2fim`
+This version requires an update to the conda environment for ras2fim.  To upgrade, follow these steps (using an Anaconda / Mini Conda Powershell command terminal):
+1) If you are already in a conda activateed ras2fim environment, type `conda deactivate`
 2) Ensure you are pathed into the correct branch to where the new `environment.yml` file is at, then type `conda env update -f environment.yml`. This might take a few minutes
 3) `conda activate ras2fim`
 
