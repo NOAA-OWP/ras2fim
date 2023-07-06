@@ -1,7 +1,8 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.10.0 - 2023-07-04 - [PR#92](https://github.com/NOAA-OWP/ras2fim/pull/92)
+
+## v1.11.0 - 2023-07-04 - [PR#92](https://github.com/NOAA-OWP/ras2fim/pull/92)
 
 This PR removes the V flag and added a new flag to control the spatial resolution of 'simplified' rasters. The 'model unit', which is meter or feet, is now identified by the program either using the -p projection entry (using EPSG code or providing a shp/prj file) or by processing the HEC-RAS prj files. The z unit of the given DEM must always be in meter. 
 
@@ -17,6 +18,23 @@ This PR removes the V flag and added a new flag to control the spatial resolutio
 - `src/shared_functions.py` : Added three functions to determine model units throughout the entire program 1) confirm_models_unit(), 2) model_unit_from_crs(), 3) model_unit_from_ras_prj()
 - `src/simplify_fim_rasters.py` :  Changed the default value of output resolution from 3m to 10m
 - `src/worker_fim_rasters.py` : Determined model_unit using 'model_unit_from_ras_prj()' function of shared_functions.py
+
+<br/><br/>
+
+## v1.10.0 - 2023-06-26 - [PR#84](https://github.com/NOAA-OWP/ras2fim/pull/84)
+
+This PR covers a couple of minor fixes:
+1) [Issue 72](https://github.com/NOAA-OWP/ras2fim/issues/72) - Change output ras2fim folder name: It was named `output_ras2fim_models`, now being named `output_ras2fim`.
+2) [Issue 83](https://github.com/NOAA-OWP/ras2fim/issues/83) - A change to correct a re-occurring rasterio package issue.
+3) There was also a minor bug fix in column names in the ras2catchments.py, now fixed.
+
+### Changes  
+- `src`
+    - `ras2catchments.py` - Fix to match a column name for our inputs folder nwm_catchments.gkpg. Also small text adjustments for the adjusted `output_ras2fim` folder name.  Also removed some code which loaded a depth grid TIF to figure out it's CRS and apply that to output files from catchments. Now, it just loads the CRS value from the shared_variables.py file.
+    - `ras2fim.py` - It was hardcoding `EPSG:3857` which is passed to other files and resulted in the CRS of the output depth grid TIFs. This is value is now moved up to `shared_variables.py` as a constant so other code can use it and be consistent (such as catchments).  Also changed the timing of when the new HUC output folder is created. Note: The "step" system is WIP and being removed.
+    - `reformat_ras_rating_curve.py`: Text changes for the new output folder path.
+    - `shared_variables.py`: Changed output folder name default, plus added the new default CRS constant.
+
 
 <br/><br/>
 
