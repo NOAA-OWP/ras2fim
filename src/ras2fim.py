@@ -347,12 +347,12 @@ def init_and_run_ras2fim(str_huc8_arg,
                          str_crs_arg,
                          r2f_huc_output_dir,
                          str_hec_path  = sv.DEFAULT_HECRAS_ENGINE_PATH,
-                         str_ras_path_arg = sv.HECRAS_INPUT_DEFAULT_OWP_RAS_MODELS,
+                         str_ras_path_arg = sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
                          str_nation_arg  = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
                          vert_unit = 'check',
                          str_terrain_override = 'None Specified - using USGS WCS',
                          rem_outputs = True,
-                         model_huc_catalog_path = sv.RSF_MODELS_CATALOG_PATH,
+                         model_huc_catalog_path = sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
                          str_step_override = 'None Specified - starting at the beginning'):
 
 
@@ -368,7 +368,7 @@ def init_and_run_ras2fim(str_huc8_arg,
 
     # -------------------
     # -i  (ie OWP_ras_models\models) (HECRAS models)
-    if (os.path.exists(str_ras_path_arg) == False) and (str_ras_path_arg != sv.HECRAS_INPUT_DEFAULT_OWP_RAS_MODELS):
+    if (os.path.exists(str_ras_path_arg) == False) and (str_ras_path_arg != sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH):
         raise ValueError("the -i arg (ras path arg) does not appear to be a valid folder.")
 
     # -------------------        
@@ -553,7 +553,7 @@ if __name__ == '__main__':
                         dest = "str_ras_path_arg",
                         help = r'OPTIONAL: path containing the HEC_RAS files: Example -i C:\HEC\input_folder\my_models.' \
                                r' Defaults to c:\ras2fim_datas\OWP_ras_models\models.',
-                        default = sv.HECRAS_INPUT_DEFAULT_OWP_RAS_MODELS,
+                        default = sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
                         required = False,
                         type = str)
 
@@ -601,7 +601,7 @@ if __name__ == '__main__':
                         help = r'OPTIONAL: path to model catalog csv, filtered for the supplied HUC, file downloaded from S3.' \
                                r' Defaults to c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_[].csv and will use subsitution'\
                                r' to replace the [] with the huc number.',
-                        default = sv.RSF_MODELS_CATALOG_PATH,
+                        default = sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
                         required = False,
                         type = str)
     

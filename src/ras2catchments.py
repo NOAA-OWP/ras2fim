@@ -336,7 +336,7 @@ def __validate_make_catchments(huc_num,
 def make_catchments(huc_num,
                     r2f_huc_parent_dir,
                     national_ds_path = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
-                    model_huc_catalog_path = sv.RSF_MODELS_CATALOG_PATH):
+                    model_huc_catalog_path = sv.DEFAULT_RSF_MODELS_CATALOG_FILE):
     
     '''
     Overview
@@ -621,7 +621,7 @@ if __name__=="__main__":
                         help = r'OPTIONAL: path to model catalog csv, filtered for the supplied HUC, file downloaded from S3.' \
                                r' Defaults to c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_[].csv and will use subsitution'\
                                r' to replace the [] with the huc number.',
-                        default = sv.RSF_MODELS_CATALOG_PATH,
+                        default = sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
                         required = False,
                         type = str)
 

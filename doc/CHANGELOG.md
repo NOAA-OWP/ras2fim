@@ -1,6 +1,41 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+
+## v1.11.0 - 2023-06-29 - [PR#87](https://github.com/NOAA-OWP/ras2fim/pull/87)
+
+New feature: This is a new tool which is for OWP staff only as it accesses our ras2fim S3 bucket. We can give the tool a HUC number, it will go to the models catalog csv in s3, look for valid matching models for that HUC and downloaded them to your local computer.
+
+Some criteria for downloading are:
+- The submitted HUC number exists in the OWP_ras_models_catalog.csv (previously named model_catalog.csv), in the "hucs" column
+- The models catalog `status` column must say "ready" and the `final_name_key` must not start with "1_" or "2_"
+
+When the code calls s3, it will load up the full s3 OWP_ras_models_catalog.csv (or arg override s3 csv file), and filter out all non-qualifying records, then save a copy of the new filtered version as `OWP_ras_models_catalog_{huc number}.csv`.  This csv file can now become one of the input args going into ras2fim.py (-mc flag).
+
+Features of this tool are:
+- You can add an argument of -d which gives you the downloaded filtered csv but does not actually download the model folders. It is a form of a "preview" system.
+- If you choose to download model folders as well, the newly created `OWP_ras_models_catalog_{huc number}.csv` will add two columns to show if the model was successfully downloaded or why it failed.  As we are using the `final_name_key` to tell us which S3 model folder to download, it is possible that they don't match or the model folder does not exist. This will expose that problem.
+- An processing log file is created which at this point, is nearly identical to screen output but allows for historical tracking as well as ease of automation later.
+- At the end of ras2fim.py finalization, it will make a copy of the new `OWP_ras_models_catalog_{huc number}.csv` and put it in the huc ras2fim output folder, "final" folder e.g. output folder.
+- As always, you can optionally override most arguments and most things are defaulted.
+
+See `tools\get_ras_models_by_catalog.py`, in the "main" section to see usage examples.
+
+**Note**: To use this tool, you must have a valid set of aws s3 ras2fim credentials which have been set up, generally by using `aws configure` command.  As mentioned, this tool is for OWP staff.
+
+### Additions  
+
+- `tools`
+    - `get_ras_models_by_catalog.py`: as described above.
+
+### Changes  
+- `src`
+   - `ras2catchments.py`: renamed a constants variable name.
+   - `shared_variables.py`: renamed a couple of constants variable names.
+   - `ras2fim.py`: renamed a couple of constants variable names.
+
+<br/><br/>
+
 ## v1.10.0 - 2023-06-26 - [PR#84](https://github.com/NOAA-OWP/ras2fim/pull/84)
 
 This PR covers a couple of minor fixes:
