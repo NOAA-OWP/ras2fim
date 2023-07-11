@@ -80,6 +80,17 @@ def write_metadata_file(output_save_folder, start_time_string, midpoints_crs):
             f.write(f"{line}\n")
 
 # -----------------------------------------------------------------
+# Get the unit from string 
+# -----------------------------------------------------------------
+def get_unit_from_string(string):
+    if 'meters' in string or 'meter' in string or 'm' in string or 'metre' in string or 'metres' in string:
+        return 'm'
+    elif 'feet' in string or 'foot' in string or 'ft' in string:
+        return 'ft'
+    else:
+        return 'UNKNOWN'
+
+# -----------------------------------------------------------------
 # Reads, compiles, and reformats the rating curve info for each directory
 # -----------------------------------------------------------------
 def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename, 
@@ -147,6 +158,9 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
 
     """
 
+    # Set default DEM vertical units
+    default_raster_vertical_units = 'm'
+
     # Create empty output log
     output_log = []
     output_log.append(" ")
@@ -198,7 +212,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         # Read rating curve and extract the stage and discharge units from column headers
 
         rc_df = pd.read_csv(rc_path)    
-        stage_units = rc_df.columns[rc_df.columns.str.contains('stage', case=False)][0].split('(')[1].strip(')')
+        stage_units_temp = rc_df.columns[rc_df.columns.str.contains('stage', case=False)][0].split('(')[1].strip(')')
         discharge_units = rc_df.columns[rc_df.columns.str.contains('Discharge', case=False)][0].split('(')[1].strip(')')
 
         # ------------------------------------------------------------------------------------------------
@@ -252,6 +266,14 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         # [Placeholder] Crosswalk the sites to the correct FIM feature ID if they are not already correct
 
         # ------------------------------------------------------------------------------------------------
+        # Retrieve model unit from `run_arguments.txt` file
+
+        # TODO: put this part in
+        # From Ali: pretty much in all scripts we have a variable called "model_unit" (which can be feet or meter) . You can read the "run_arguments.txt" file to get model_unit:
+
+        stop for now
+
+        # ------------------------------------------------------------------------------------------------
         # Read terrain file and get projection information
         terrain_folder_path = os.path.join(input_folder_path, dir, "03_terrain")
 
@@ -261,16 +283,34 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
             if file.endswith('.tif'):
                 terrain_files.append(file)
 
+        # Open the first (or only) terrain file with gdal to get the unit and projection
+        terrain_file_path = os.path.join(terrain_folder_path, terrain_files[0])
+        d = gdal.Open(terrain_file_path)
+        proj = osr.SpatialReference(wkt=d.GetProjection())
+        str_epsg_raster = proj.GetAttrValue('AUTHORITY', 1)
+
+        # Get the raster vertical units from the bandname
+        bandname = d.GetRasterBand(1).GetDescription()
+        raster_vertical_unit = get_unit_from_string(bandname)
+
+        # Set the raster vertical unit to meters if it cannot be found
+        if raster_vertical_unit == "UNKNOWN":
+            raster_vertical_unit = default_raster_vertical_units
+            log = f"Unable to find terrain raster vertical units. Using default raster vertical units: {default_raster_vertical_units}"
+            print(log)
+            output_log.append(log)
+
+        # If there's only one terrain file, use rasterio to open it
         if (len(terrain_files) == 1):
             terrain_file_path = os.path.join(terrain_folder_path, terrain_files[0])
+            
             terrain = rasterio.open(terrain_file_path)
 
-            # Get the projection and units of the raster
+            # Get the projection of the terrain raster
             d = gdal.Open(terrain_file_path)
             proj = osr.SpatialReference(wkt=d.GetProjection())
             str_epsg_raster = proj.GetAttrValue('AUTHORITY', 1)
-            str_unit_raster = proj.GetAttrValue('UNIT', 0)
-
+            
         else:
             if verbose == True:
                 print("Multiple terrain rasters found.")
@@ -279,7 +319,6 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
             raster_to_mosiac = []
 
             for p in tqdm(terrain_files, desc='Mosaicking raster file', unit = 'files'):
-            # for p in terrain_files:
                 terrain_file_path = os.path.join(terrain_folder_path, p)
                 raster = rasterio.open(terrain_file_path)
                 raster_to_mosiac.append(raster)
@@ -308,7 +347,8 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
 
             # Get CRS from terrain raster mosaic
             str_epsg_raster = str(terrain.crs).replace("EPSG:", "")
-            str_unit_raster = terrain.crs.linear_units
+
+            # str_unit_raster = terrain.crs.linear_units
 
             if verbose == True:
                 print("Terrain mosaic saved.")
@@ -352,7 +392,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
 
         # Print statements and add to output log
         if verbose == True: 
-            print("Midpoints projection " + str(midpoints_gdf))
+            print("Midpoints projection " + str(midpoints_gdf.crs))
             print("Terrain projection: " + str(terrain.crs))
 
         output_log.append("Midpoints projection " + str(midpoints_gdf.crs))
@@ -374,40 +414,26 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         stage_columns = rc_elev_df.filter(like='stage')
         rc_elev_df['stage'] = stage_columns.iloc[:, 0]
 
-        # Standardize unit names and provide error if needed: stage
-        if re.search(r'\b(foot|ft|feet)\b', stage_units):
-            stage_units = 'ft'
-        elif re.search(r'\b(meter|meters|m|M|metre)\b', stage_units):
-            stage_units = 'm'
-        else:
-            log = "Warning: Stage units not recognized as feet or meters."
-            output_log.append(log)
-            print(log)
-        
-        # Standardize unit names and provide error if needed: terrain raster
-        if re.search(r'\b(foot|ft|feet)\b', str_unit_raster):
-            str_unit_raster = 'ft'
-        elif re.search(r'\b(meter|meters|m|M|metre)\b', str_unit_raster):
-            str_unit_raster = 'm'
-        else:
-            log = "Warning: Raster units not recognized as feet or meters."
-            output_log.append(log)
-            print(log)
+        # Standardize unit names and provide error if needed for the stage values
+        stage_units = get_unit_from_string(stage_units_temp)
 
         # If the rating curve units aren't equal to the elevation units, convert them 
-        if str_unit_raster == stage_units:
+        if raster_vertical_unit == stage_units:
             rc_elev_df['stage_final'] = rc_elev_df['stage'] 
             log = 'Stage units and raster units are the same, no unit conversion needed.'
 
-        elif stage_units == 'ft' and str_unit_raster == 'm':
+        elif stage_units == 'ft' and raster_vertical_unit == 'm':
             rc_elev_df['stage_final'] = rc_elev_df['stage'] / 3.281  ## meter = feet / 3.281
-            log = 'Converting stage units to meter to match elevation data.'
+            stage_units = 'm' # rename stage unit label after converting
+            log = 'Converting stage units from feet to meters to match elevation data.'
 
-        elif stage_units == 'm' and str_unit_raster == 'ft':
+        elif stage_units == 'm' and raster_vertical_unit == 'ft':
             rc_elev_df['stage_final'] = rc_elev_df['stage'] / 0.3048  ## feet = meters / 0.3048
-            log = 'Converting stage units to feet to match elevation data.'
+            stage_units = 'ft' # rename stage unit label after converting
+            log = 'Converting stage units from meters to feet to match elevation data.'
+
         else:
-            log = f'Warning: No conversion available between {stage_units} and {str_unit_raster}. Stage set to nodata value ({nodataval}).'
+            log = f'Warning: No conversion available between {stage_units} and {raster_vertical_unit}. Stage set to nodata value ({nodataval}).'
             output_log.append(log)
             rc_elev_df['stage_final'] = nodataval
 
