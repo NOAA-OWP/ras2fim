@@ -34,11 +34,11 @@ import os
 import shutil
 import sys
 import time
-
+import pyproj
 from datetime import datetime, timezone
 
-import fnmatch
-from re import search
+
+
 
 import shared_variables as sv
 import shared_functions as sf
@@ -64,16 +64,17 @@ def fn_run_ras2fim(str_huc8_arg,
                    str_ras_path_arg,
                    str_out_arg,
                    str_crs_arg,
-                   vert_unit,
                    str_nation_arg,
                    str_hec_path,
                    str_terrain_override,
                    run_ras2rem,
                    model_huc_catalog_path,
-                   int_step
+                   int_step,
+                   output_resolution,
+                   model_unit
                    ):
     
-    start_dt = datetime.now() 
+    start_dt = datetime.now()
     
     print(" ")
     print("+=================================================================+")
@@ -87,20 +88,14 @@ def fn_run_ras2fim(str_huc8_arg,
     print("  ---(p) PROJECTION OF HEC-RAS MODELS: " + str(str_crs_arg))
     print("  ---(n) PATH TO NATIONAL DATASETS: " + str(str_nation_arg))     
     print("  ---(r) PATH TO HEC-RAS v6.0: " + str(str_hec_path))
-    print("  ---[v] Optional: Vertical units in: " + str(vert_unit))    
     print("  ---[t] Optional: Terrain to Utilize" + str(str_terrain_override))
     print("  ---[m] Optional: Run RAS2REM: " + str(run_ras2rem))
     print("  ---[-mc] Optional: path to models catalog - " + str(model_huc_catalog_path))    
     print("  ---[s] Optional: step to start at - " + str(int_step))
-
+    print("  --- The Ras Models unit (extracted from RAS model prj file and given EPSG code): " + model_unit)
     print("===================================================================")
     print(" ")
- 
-    # parse inputs
-    if vert_unit == "meter":
-        b_is_feet = True
-    else:
-        b_is_feet = False
+
     
     # ---- Step 1: create_shapes_from_hecras ----
     # create a folder for the shapefiles from hec-ras
@@ -165,7 +160,7 @@ def fn_run_ras2fim(str_huc8_arg,
                                        int_res,
                                        int_buffer,
                                        int_tile,
-                                       b_is_feet,
+                                       model_unit,
                                        str_field_name)
         else:
             # user has supplied the terrain file
@@ -173,7 +168,7 @@ def fn_run_ras2fim(str_huc8_arg,
                                     str_terrain_override,
                                     str_terrain_from_usgs_dir,
                                     int_buffer,
-                                    b_is_feet,
+                                    model_unit,
                                     str_field_name)
     # -------------------------------------------
 
@@ -197,7 +192,7 @@ def fn_run_ras2fim(str_huc8_arg,
                                    str_terrain_from_usgs_dir,
                                    str_hecras_terrain_dir,
                                    str_projection_path,
-                                   b_is_feet)
+                                   model_unit)
     # -------------------------------------------
     
     # ------ Step 5: create_fim_rasters ----- 
@@ -217,12 +212,10 @@ def fn_run_ras2fim(str_huc8_arg,
     
     # *** variables set - raster terrain harvesting ***
     # ==============================================
-    if b_is_feet:
+    if model_unit == 'feet':
         flt_interval = 0.5 # vertical step of average depth (0.5ft)
     else:
         flt_interval = 0.2 # vertical step of average depth (0.2m)
-        
-    flt_out_resolution = 3 # output depth raster resolution - meters
     # ==============================================
     
     if int_step <= 5:
@@ -233,14 +226,14 @@ def fn_run_ras2fim(str_huc8_arg,
                               str_hecras_terrain_dir,
                               str_std_input_path,
                               flt_interval,
-                              flt_out_resolution,
                               b_terrain_check_only)
     # -------------------------------------------
     
     # ------ Step 6: simplify fim rasters -----
     # ==============================================
-    flt_resolution_depth_grid = 3
-    str_output_crs = "EPSG:3857"
+    flt_resolution_depth_grid = int(output_resolution)
+
+    #str_output_crs = "EPSG:3857"
     # ==============================================
     
     print()
@@ -248,7 +241,7 @@ def fn_run_ras2fim(str_huc8_arg,
     if int_step <= 6:
         fn_simplify_fim_rasters(str_hecras_out_dir,
                                 flt_resolution_depth_grid,
-                                str_output_crs)
+                                sv.DEFAULT_RASTER_OUTPUT_CRS)
     # ----------------------------------------
     
 
@@ -347,19 +340,26 @@ def init_and_run_ras2fim(str_huc8_arg,
                          str_crs_arg,
                          r2f_huc_output_dir,
                          str_hec_path  = sv.DEFAULT_HECRAS_ENGINE_PATH,
-                         str_ras_path_arg = sv.HECRAS_INPUT_DEFAULT_OWP_RAS_MODELS,
+                         str_ras_path_arg = sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
                          str_nation_arg  = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
-                         vert_unit = 'check',
                          str_terrain_override = 'None Specified - using USGS WCS',
                          rem_outputs = True,
-                         model_huc_catalog_path = sv.RSF_MODELS_CATALOG_PATH,
-                         str_step_override = 'None Specified - starting at the beginning'):
+                         model_huc_catalog_path = sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
+                         str_step_override = 'None Specified - starting at the beginning',
+                         output_resolution=10):
 
 
     ####################################################################
     ####  Some validation of input, but mostly setting up pathing ######
 
     # -------------------
+    #read RAS models units from both prj file and given EPSG code through -p
+    #below functions involve a series of excpetion checkings
+    epsg_code=int(str_crs_arg.split(':')[1])
+    proj_crs = pyproj.CRS.from_epsg(epsg_code)
+    model_unit=sf.confirm_models_unit(proj_crs,str_ras_path_arg)
+
+
     # -w   (ie 12090301)
     if (len(str_huc8_arg) != 8):
         raise ValueError("the -w flag (HUC8) is not 8 characters long")
@@ -368,7 +368,7 @@ def init_and_run_ras2fim(str_huc8_arg,
 
     # -------------------
     # -i  (ie OWP_ras_models\models) (HECRAS models)
-    if (os.path.exists(str_ras_path_arg) == False) and (str_ras_path_arg != sv.HECRAS_INPUT_DEFAULT_OWP_RAS_MODELS):
+    if (os.path.exists(str_ras_path_arg) == False) and (str_ras_path_arg != sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH):
         raise ValueError("the -i arg (ras path arg) does not appear to be a valid folder.")
 
     # -------------------        
@@ -388,18 +388,6 @@ def init_and_run_ras2fim(str_huc8_arg,
         raise ValueError('The -o child folder (huc ras model output path) can not pre-exist, as we will create it, but the' \
                          ' parent folders must exist. See code notes in the __main__ section for details and examples')
 
-    # -------------------
-    # TODO: step system not fully working and needs to be fixed or removed
-    # create an output folder with checks
-    #if os.path.exists(str_out_arg):
-    #    if os.path.exists(os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, 'terrain_stats.csv')):
-    #        print(" -- ALERT: a prior sucessful run was found, delete them if you'd like to rerun ras2fim")
-    #        raise SystemExit(0)
-    #    elif int_step==0:
-    #        print(" -- ALERT: a prior partially sucessful run was found, deleteing and retrying this.")
-    #        shutil.rmtree(str_out_arg, ignore_errors=False, onerror=None)
-    #else:
-    os.mkdir(r2f_huc_output_dir) # pathing has already been validated and ensure the child folder does not pre-exist
 
     # -------------------
     # -n  (ie: inputs\\X-National_Datasets)
@@ -431,61 +419,30 @@ def init_and_run_ras2fim(str_huc8_arg,
     if ("[]" in model_huc_catalog_path):
         model_huc_catalog_path = model_huc_catalog_path.replace("[]", str_huc8_arg)
     if (os.path.exists(model_huc_catalog_path) == False):
-        raise FileNotFoundError (f"The -mc models catalog ({model_huc_catalog_path}) does not exist. Please check your pathing.")
+         raise FileNotFoundError (f"The -mc models catalog ({model_huc_catalog_path}) does not exist. Please check your pathing.")
 
+    # -------------------
+    # make the folder only if all other valudation tests pass.
+    os.mkdir(r2f_huc_output_dir) # pathing has already been validated and ensure the child folder does not pre-exist
+
+    # -------------------
     # Save incoming args and a few new derived variables created to this point into a log file
     # Careful... when **locals() is called, it will include ALL variables in this function to this point.
     create_input_args_log(**locals())
-
-    # Setup enviroment logic
-    if vert_unit == 'check':
-        matches = []
-        for root, dirnames, filenames in os.walk(str_ras_path_arg):
-            for filename in fnmatch.filter(filenames,'*.[Pp][Rr][Jj]'):
-                with open(os.path.join(root,filename)) as f:
-                    first_file_line = f.read()
-                
-                # skip projection files
-                if any(x in first_file_line for x in ['PROJCS','GEOGCS','DATUM','PROJECTION']):
-                    continue
-                
-                matches.append(os.path.join(root,filename))
-
-        identical_array = []
-        for match in matches:
-            with open(match) as f:
-                file_contents = f.read()
-            
-            if search("SI Units", file_contents):
-                identical_array.append("meter")
-            elif search("English Units", file_contents):
-                identical_array.append("foot")
-            else:
-                identical_array.append("manual")
-
-        if ("manual" in identical_array) or (identical_array.count(identical_array[0]) != len(identical_array)):
-            print(" -- ALERT: units were inconsistant for models found, investigate and correct or manually set -v flag appropritely")
-            print(identical_array)
-            raise SystemExit(0)
-
-        else:
-            if identical_array[0] == "SI Units":
-                vert_unit = "meter"
-            elif identical_array[0] == "foot":
-                vert_unit = "foot"
 
 
     fn_run_ras2fim(str_huc8_arg,
                    str_ras_path_arg,
                    r2f_huc_output_dir,
                    str_crs_arg,
-                   vert_unit,
                    str_nation_arg,
                    str_hec_path,
                    str_terrain_override,
                    rem_outputs,
                    model_huc_catalog_path,
-                   int_step )
+                   int_step,
+                   output_resolution,
+                   model_unit)
 
     
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    
@@ -560,7 +517,7 @@ if __name__ == '__main__':
                         dest = "str_ras_path_arg",
                         help = r'OPTIONAL: path containing the HEC_RAS files: Example -i C:\HEC\input_folder\my_models.' \
                                r' Defaults to c:\ras2fim_datas\OWP_ras_models\models.',
-                        default = sv.HECRAS_INPUT_DEFAULT_OWP_RAS_MODELS,
+                        default = sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
                         required = False,
                         type = str)
 
@@ -571,14 +528,7 @@ if __name__ == '__main__':
                         default = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
                         required = False,
                         type = str)
-        
-    parser.add_argument('-v',
-                        dest = "vert_unit",
-                        help='OPTIONAL: define the vertical units of the project, one of "meter" or "foot",' \
-                             ' leave black to have ras2fim check automatically (Default = check).',
-                        required = False,
-                        default = 'check',
-                        type = str)
+
 
     parser.add_argument('-t',
                         dest = "str_terrain_override",
@@ -608,9 +558,16 @@ if __name__ == '__main__':
                         help = r'OPTIONAL: path to model catalog csv, filtered for the supplied HUC, file downloaded from S3.' \
                                r' Defaults to c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_[].csv and will use subsitution'\
                                r' to replace the [] with the huc number.',
-                        default = sv.RSF_MODELS_CATALOG_PATH,
+                        default = sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
                         required = False,
                         type = str)
+
+    parser.add_argument('-res',
+                    dest = "output_resolution",
+                    help = r'OPTIONAL: Spatial resolution of flood depth rasters (Simplified Rasters). Defaults to 10.',
+                    required = False,
+                    default = 10,
+                    type = int)
     
     args = vars(parser.parse_args())
     

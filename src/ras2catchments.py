@@ -181,7 +181,7 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
 # For each feature ID, finds the path for the tif with the max depth value
 def __get_maxment(feature_id, reproj_nwm_filtered_df, r2f_hecras_dir, datatyped_rems_dir):
 
-    feature_catchment_df = reproj_nwm_filtered_df[reproj_nwm_filtered_df.FEATUREID == feature_id]
+    feature_catchment_df = reproj_nwm_filtered_df[reproj_nwm_filtered_df.ID == feature_id]
 
     # Pull all relevant depth grid tiffs for this feature ID
     this_feature_id_tif_files = list(Path(r2f_hecras_dir).rglob(f'*/Depth_Grid/{feature_id}-*.tif'))
@@ -336,7 +336,7 @@ def __validate_make_catchments(huc_num,
 def make_catchments(huc_num,
                     r2f_huc_parent_dir,
                     national_ds_path = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
-                    model_huc_catalog_path = sv.RSF_MODELS_CATALOG_PATH):
+                    model_huc_catalog_path = sv.DEFAULT_RSF_MODELS_CATALOG_FILE):
     
     '''
     Overview
@@ -357,7 +357,7 @@ def make_catchments(huc_num,
     - r2f_huc_parent_dir : str
         The partial or full path to the ras2fim output HUC directory. That folder must already have a fully populated with 
         the "05_" depth grid tifs. 
-        This value can be the value of just the the output_ras2fim_models huc subfolder, ie 12090301_meters_2277_test_3.
+        This value can be the value of just the the output_ras2fim huc subfolder, ie 12090301_meters_2277_test_3.
            (We will use the root default pathing and become c:/ras2fim_data/outputs_ras2fim_models/12090301_meters_2277_test_3)
         OR it can be a full path to the ras2fim huc output folder. ie) c:/my_ras2fim_outputs/12090301_meters_2277_test_3.
         Either way, it needs at least the populated 05_hecras_output subfolder.
@@ -444,7 +444,8 @@ def make_catchments(huc_num,
     # -------------------    
     print("Getting all relevant catchment polys")
     print()
-    filtered_catchments_df = huc8_nwm_df.loc[huc8_nwm_df['FEATUREID'].isin(all_feature_ids)]
+    #filtered_catchments_df = huc8_nwm_df.loc[huc8_nwm_df['FEATUREID'].isin(all_feature_ids)]
+    filtered_catchments_df = huc8_nwm_df.loc[huc8_nwm_df['ID'].isin(all_feature_ids)]
     nwm_filtered_df = gpd.GeoDataFrame.copy(filtered_catchments_df)
 
     # -------------------
@@ -452,8 +453,9 @@ def make_catchments(huc_num,
     print(f"Reprojecting filtered nwm_catchments to rem rasters crs")
 
     # Use the first discovered depth file as all rems' should be the same. 
-    with rasterio.open(all_depth_grid_tif_files[0]) as rem_raster:
-        raster_crs = rem_raster.crs.wkt
+    #with rasterio.open(all_depth_grid_tif_files[0]) as rem_raster:
+    #    raster_crs = rem_raster.crs.wkt
+    raster_crs = sv.DEFAULT_RASTER_OUTPUT_CRS
 
     # Let's create one overall gpkg that has all of the relavent polys, for quick validation
     reproj_nwm_filtered_df = nwm_filtered_df.to_crs(raster_crs)
@@ -581,16 +583,16 @@ if __name__=="__main__":
     #     python ras2catchments.py -w 12090301 -p 12090301_meters_2277_test_22
 
     # Override every optional argument (and of course, you can override just the ones you like)
-    #     python ras2catchments.py -w 12090301 -p C:\ras2fim_data_rob_folder\output_ras2fim_models_2222\12090301_meters_2277_test_2
+    #     python ras2catchments.py -w 12090301 -p C:\ras2fim_data_rob_folder\output_ras2fim_2222\12090301_meters_2277_test_2
     #          -n E:\X-NWS\X-National_Datasets -mc c:\mydata\robs_model_catalog.csv
     
     #  - The -p arg is required, but can be either a full path (as shown above), or a simple folder name.Either way, it must have the
     #        and the 05_hecras_output and 06_ras2rem folder and populated
     #        ie) -p c:/users/my_user/desktop/ras2fim_outputs/12090301_meters_2277_test_2
     #            OR
-    #            -p 12090301_meters_2277_test_3  (We will use the root default pathing and become c:/ras2fim_data/outputs_ras2fim_models/12090301_meters_2277_test_3)
+    #            -p 12090301_meters_2277_test_3  (We will use the root default pathing and become c:/ras2fim_data/outputs_ras2fim/12090301_meters_2277_test_3)
     
-    parser = argparse.ArgumentParser(description='========== Create catchments for specified existing output_ras2fim_models folder ==========')
+    parser = argparse.ArgumentParser(description='========== Create catchments for specified existing output_ras2fim folder ==========')
 
     parser.add_argument('-w',
                         dest = "huc_num",
@@ -619,7 +621,7 @@ if __name__=="__main__":
                         help = r'OPTIONAL: path to model catalog csv, filtered for the supplied HUC, file downloaded from S3.' \
                                r' Defaults to c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_[].csv and will use subsitution'\
                                r' to replace the [] with the huc number.',
-                        default = sv.RSF_MODELS_CATALOG_PATH,
+                        default = sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
                         required = False,
                         type = str)
 

@@ -26,9 +26,10 @@
 import os
 import subprocess
 import argparse
-
+import pyproj
 import time
 import datetime
+import shared_functions as sf
 # ************************************************************
 
 # -------------------------------------------------------
@@ -96,7 +97,7 @@ def fn_convert_tif_to_ras_hdf5(str_hec_path,
                                str_geotiff_dir,
                                str_dir_to_write_hdf5,
                                str_projection,
-                               b_in_feet):
+                               model_unit):
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     # INPUT
     flt_start_convert_tif = time.time()
@@ -125,10 +126,9 @@ def fn_convert_tif_to_ras_hdf5(str_hec_path,
     # path to walk to file geotiffs
     STR_PRJ_FILE = str_projection
     print("  ---(p) PROJECTION TO WRITE DEMS: " + str(STR_PRJ_FILE))
-    
-    # 
-    B_CONVERT_TO_VERT_FT = b_in_feet
-    print("  ---[v]   Optional: VERTICAL IN FEET: " + str(B_CONVERT_TO_VERT_FT))
+
+    print("  --- The Ras Models unit (extracted from given GIS prj file): " + model_unit)
+
     
     print("===================================================================")
     
@@ -152,7 +152,7 @@ def fn_convert_tif_to_ras_hdf5(str_hec_path,
         str_path_ras = "\"" + STR_HEC_RAS_6_PATH + "\"" + " CreateTerrain"
         str_path_ras += " units="
         
-        if B_CONVERT_TO_VERT_FT:
+        if model_unit == 'feet':
             str_path_ras += "Feet"
         else:
             str_path_ras += "Meter"
@@ -225,14 +225,7 @@ if __name__ == '__main__':
                         required=True,
                         metavar='FILE PATH',
                         type=str)
-    
-    parser.add_argument('-v',
-                        dest = "b_in_feet",
-                        help='OPTIONAL: create vertical data in feet: Default=True',
-                        required=False,
-                        default=True,
-                        metavar='T/F',
-                        type=str2bool)
+
     
     args = vars(parser.parse_args())
     
@@ -240,11 +233,17 @@ if __name__ == '__main__':
     str_geotiff_dir = args['str_geotiff_dir']
     str_dir_to_write_hdf5 = args['str_dir_to_write_hdf5']
     str_projection = args['str_projection']
-    b_in_feet = args['b_in_feet']
+
+    #find model unit using the given GIS prj file
+    with open(str_projection, 'r') as prj_file:
+        prj_text = prj_file.read()
+    proj_crs = pyproj.CRS(prj_text)
+    model_unit=sf.model_unit_from_crs(proj_crs)
+
 
     fn_convert_tif_to_ras_hdf5(str_hec_path,
                                str_geotiff_dir,
                                str_dir_to_write_hdf5,
                                str_projection,
-                               b_in_feet)
+                               model_unit)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

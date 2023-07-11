@@ -281,16 +281,18 @@ if __name__ == '__main__':
 
     parser.add_argument('-i',
                         dest = "str_input_dir",
-                        help=r'REQUIRED: directory containing RAS2FIM output:  Example: C:\HUC_10170204',
+                        help='REQUIRED: directory containing RAS2FIM output to the end of step 5 (after creating'
+                             ' Rating Curves) :  Example: C:\HUC_10170204/05_hecras_output \n '
+                             'Output is created in sub-folders "Depth_Grid" ' ,
                         required=True,
                         metavar='DIR',
                         type=str)
     
     parser.add_argument('-r',
                         dest = "flt_resolution",
-                        help='OPTIONAL: resolution of output raster (crs units): Default=3',
+                        help='OPTIONAL: resolution of output raster (crs units): Default=10',
                         required=False,
-                        default=3,
+                        default=10,
                         metavar='FLOAT',
                         type=float)
     
