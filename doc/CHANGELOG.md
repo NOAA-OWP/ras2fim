@@ -1,6 +1,42 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.12.1 - 2023-06-29 - [PR#90](https://github.com/NOAA-OWP/ras2fim/pull/90)
+
+When the -m flag ( skip ras2rem), is set to False, then it should abort processing just before ras2rem and not continue on to catchments and finalization.
+
+Also found bug when the default `output_ras2fim` does not exist. This is only discovered if the user has not overridden the pathing for output_ras2fim. Remember, the -o flag can be used in two ways. 
+1. use just the new desired output folder name without pathing, which will default pathing to c:\ras2fim_data\outputs_ras2fim'
+2. full override the -o flag to any fully pathed location. When using this option, the parent path must exist, but the child folder can not exist. 
+
+Note: There is a bug in other parts of this code base that are being fixed as part of a different PR. Currently, it will fail as it attempts to process catchments. But to validate that this PR passes will be based on stopping processing before ras2rem or continuing on to ras2rem (and forward) and it will fail in catchments.
+
+### Changes  
+
+- `src`
+    - `ras2fim.py`:  Fix to skip catchments and finalization as describe above plus fixed discovered and mentioned above.
+
+<br/><br/>
+
+
+## v1.12.0 - 2023-07-04 - [PR#92](https://github.com/NOAA-OWP/ras2fim/pull/92)
+
+This PR removes the V flag and added a new flag to control the spatial resolution of 'simplified' rasters. The 'model unit', which is meter or feet, is now identified by the program either using the -p projection entry (using EPSG code or providing a shp/prj file) or by processing the HEC-RAS prj files. The z unit of the given DEM must always be in meter. 
+
+### Additions
+- A new `src/errors.py` to hold the customized exceptions definitions for the entire program.
+### Changes
+
+- `src/clip_dem_from_shape.py`  : Changed the default buffer value from 700 to 300 to be consistent with the hard-coded value used in ras2fim.py
+- `src/convert_tif_to_ras_hdf5.py` : Determined 'model_unit' using 'model_unit_from_crs()' function of shared_functions.py
+- `src/create_fim_rasters.py`: Removed 'flt_out_resolution' argument which were not being used anywhere in the code.
+- `src/get_usgs_dem_from_shape.py`: Determined 'model_unit' using 'model_unit_from_crs()' function of shared_functions.py
+- `src/ras2fim.py` : Removed 'vert_unit,' argument and moved all codes to check the vertical unit of the code into shared_functions.py. Also, determined the model unit using 1) -p entry and 2) reading all HEC-RAS models prj files-- Used 'confirm_models_unit() function of shared_functions.py
+- `src/shared_functions.py` : Added three functions to determine model units throughout the entire program 1) confirm_models_unit(), 2) model_unit_from_crs(), 3) model_unit_from_ras_prj()
+- `src/simplify_fim_rasters.py` :  Changed the default value of output resolution from 3m to 10m
+- `src/worker_fim_rasters.py` : Determined model_unit using 'model_unit_from_ras_prj()' function of shared_functions.py
+
+<br/><br/>
 
 ## v1.12.0 - 2023-07-04 - [PR#92](https://github.com/NOAA-OWP/ras2fim/pull/92)
 

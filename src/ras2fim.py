@@ -254,10 +254,25 @@ def fn_run_ras2fim(str_huc8_arg,
     # -------------------------------------------------
 
 
+    # ------ 
+    # Abort if ras2rem disabled.
+    if (run_ras2rem == False):
+        print ()
+        print("*** The -m, process ras2rem flag, was set to false which stops the processing for ras2rem" \
+              " as well as calculating catchments and finalization.")
+        print()
+        print("+=================================================================+")
+        print("  RUN RAS2FIM - Completed                                         |")
+        sf.print_date_time_duration(start_dt, datetime.now())
+        print("+-----------------------------------------------------------------+")
+        return
+
+
     # ------ Step 8: run ras2rem -----
     print()
     print ("+++++++ Processing for code  STEP 8 +++++++" )
-    if int_step <= 8 and run_ras2rem:
+
+    if int_step <= 8:
         fn_run_ras2rem(str_out_arg)
     # -------------------------------------------------
 
@@ -380,7 +395,15 @@ def init_and_run_ras2fim(str_huc8_arg,
         if (os.path.exists(parent_dir_name) == False): # parent path must exist
             is_invalid_path = True
     else: # they provide just a child folder (base path name)
+
         r2f_huc_output_dir = os.path.join(sv.R2F_DEFAULT_OUTPUT_MODELS, r2f_huc_output_dir)
+
+        # does the default parent folder exist?
+        if (os.path.exists(sv.R2F_DEFAULT_OUTPUT_MODELS) == False):
+            raise ValueError('The -o arg (huc ras model output path) was set to assume the default parent pathing' \
+                             ' which needs to pre-exist. Please create the folder pathing for'\
+                            f' {sv.R2F_DEFAULT_OUTPUT_MODELS} or change the -o value.')
+
         if (os.path.exists(r2f_huc_output_dir) == True): # child folder must not exist
             is_invalid_path = True
 
@@ -421,6 +444,8 @@ def init_and_run_ras2fim(str_huc8_arg,
     if (os.path.exists(model_huc_catalog_path) == False):
          raise FileNotFoundError (f"The -mc models catalog ({model_huc_catalog_path}) does not exist. Please check your pathing.")
 
+
+    # ********************************
     # -------------------
     # make the folder only if all other valudation tests pass.
     os.mkdir(r2f_huc_output_dir) # pathing has already been validated and ensure the child folder does not pre-exist
