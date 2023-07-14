@@ -2,6 +2,25 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
+## v1.12.0 - 2023-07-04 - [PR#92](https://github.com/NOAA-OWP/ras2fim/pull/92)
+
+This PR removes the V flag and added a new flag to control the spatial resolution of 'simplified' rasters. The 'model unit', which is meter or feet, is now identified by the program either using the -p projection entry (using EPSG code or providing a shp/prj file) or by processing the HEC-RAS prj files. The z unit of the given DEM must always be in meter. 
+
+### Additions
+- A new `src/errors.py` to hold the customized exceptions definitions for the entire program.
+### Changes
+
+- `src/clip_dem_from_shape.py`  : Changed the default buffer value from 700 to 300 to be consistent with the hard-coded value used in ras2fim.py
+- `src/convert_tif_to_ras_hdf5.py` : Determined 'model_unit' using 'model_unit_from_crs()' function of shared_functions.py
+- `src/create_fim_rasters.py`: Removed 'flt_out_resolution' argument which were not being used anywhere in the code.
+- `src/get_usgs_dem_from_shape.py`: Determined 'model_unit' using 'model_unit_from_crs()' function of shared_functions.py
+- `src/ras2fim.py` : Removed 'vert_unit,' argument and moved all codes to check the vertical unit of the code into shared_functions.py. Also, determined the model unit using 1) -p entry and 2) reading all HEC-RAS models prj files-- Used 'confirm_models_unit() function of shared_functions.py
+- `src/shared_functions.py` : Added three functions to determine model units throughout the entire program 1) confirm_models_unit(), 2) model_unit_from_crs(), 3) model_unit_from_ras_prj()
+- `src/simplify_fim_rasters.py` :  Changed the default value of output resolution from 3m to 10m
+- `src/worker_fim_rasters.py` : Determined model_unit using 'model_unit_from_ras_prj()' function of shared_functions.py
+
+<br/><br/>
+
 ## v1.11.0 - 2023-06-29 - [PR#87](https://github.com/NOAA-OWP/ras2fim/pull/87)
 
 New feature: This is a new tool which is for OWP staff only as it accesses our ras2fim S3 bucket. We can give the tool a HUC number, it will go to the models catalog csv in s3, look for valid matching models for that HUC and downloaded them to your local computer.
@@ -49,6 +68,7 @@ This PR covers a couple of minor fixes:
     - `ras2fim.py` - It was hardcoding `EPSG:3857` which is passed to other files and resulted in the CRS of the output depth grid TIFs. This is value is now moved up to `shared_variables.py` as a constant so other code can use it and be consistent (such as catchments).  Also changed the timing of when the new HUC output folder is created. Note: The "step" system is WIP and being removed.
     - `reformat_ras_rating_curve.py`: Text changes for the new output folder path.
     - `shared_variables.py`: Changed output folder name default, plus added the new default CRS constant.
+
 
 <br/><br/>
 

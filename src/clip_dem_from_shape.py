@@ -22,7 +22,7 @@ import geopandas as gpd
 
 import string
 import random
-
+import pyproj
 import os
 
 import argparse
@@ -31,6 +31,7 @@ import time
 import datetime
 
 import tqdm
+import shared_functions as sf
 # ************************************************************
 
 # null value in the exported DEMs
@@ -96,7 +97,7 @@ def fn_cut_dems_from_shapes(str_input_shp_path,
                             str_input_terrain_path,
                             str_output_dir,
                             int_buffer,
-                            b_is_feet,
+                            model_unit,
                             str_field_name):
 
     flt_start_run = time.time()
@@ -109,9 +110,9 @@ def fn_cut_dems_from_shapes(str_input_shp_path,
     print("  ---(i) SHAPEFILE INPUT PATH: " + str_input_shp_path)
     print("  ---(t) TERRAIN INPUT PATH: " + str_input_terrain_path)
     print("  ---(o) DEM OUTPUT PATH: " + str_output_dir)
-    print("  ---[b]   Optional: BUFFER: " + str(int_buffer)) 
-    print("  ---[v]   Optional: VERTICAL IN FEET: " + str(b_is_feet)) 
+    print("  ---[b]   Optional: BUFFER: " + str(int_buffer))
     print("  ---[f]   Optional: FIELD NAME: " + str(str_field_name))
+    print("  --- The Ras Models unit (extracted from given shapefile): " + model_unit)
     print("+-----------------------------------------------------------------+")
     
     if not os.path.exists(str_output_dir):
@@ -175,7 +176,7 @@ def fn_cut_dems_from_shapes(str_input_shp_path,
             xds_clipped_reproject = xds_clipped.rio.reproject(str_shape_crs)
     
             # convert vertical meters to feet
-            if b_is_feet:
+            if model_unit == 'feet':
                 xds_clipped_reproject = xds_clipped_reproject * 3.28084
     
             # set the null data values
@@ -231,24 +232,17 @@ if __name__ == '__main__':
 
     parser.add_argument('-b',
                         dest = "int_buffer",
-                        help='OPTIONAL: buffer for each polygon (input shape units): Default=700',
+                        help='OPTIONAL: buffer for each polygon (input shape units): Default=300',
                         required=False,
-                        default=700,
+                        default=300,
                         metavar='INTEGER',
                         type=int)
-    
-    parser.add_argument('-v',
-                        dest = "b_is_feet",
-                        help='OPTIONAL: create vertical data in feet: Default=True',
-                        required=False,
-                        default=True,
-                        metavar='T/F',
-                        type=fn_str2bool)
     
     parser.add_argument('-f',
                         dest = "str_field_name",
                         help='OPTIONAL: unique field from input shapefile used for DEM name',
                         required=False,
+                        default='HUC_12',
                         metavar='STRING',
                         type=str)
     
@@ -258,14 +252,20 @@ if __name__ == '__main__':
     str_input_terrain_path = args['str_input_terrain_path']
     str_output_dir = args['str_output_dir']
     int_buffer = args['int_buffer']
-    b_is_feet = args['b_is_feet']
     str_field_name = args['str_field_name']
+
+    #find model unit using the given shapefile
+    gis_prj_path=str_input_shp_path[0:-3]+'prj'
+    with open(gis_prj_path, 'r') as prj_file:
+        prj_text = prj_file.read()
+    proj_crs = pyproj.CRS(prj_text)
+    model_unit=sf.model_unit_from_crs(proj_crs)
     
     fn_cut_dems_from_shapes(str_input_shp_path,
                             str_input_terrain_path,
                             str_output_dir,
                             int_buffer,
-                            b_is_feet,
+                            model_unit,
                             str_field_name)
     
     
