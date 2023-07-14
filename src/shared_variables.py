@@ -23,12 +23,9 @@ INPUT_DEFAULT_NWM_WBD_LOOKUP_FILE_PATH = os.path.join(INPUT_DEFAULT_X_NATIONAL_D
 INPUT_DEFAULT_INPUT_WBD_NATIONAL_FILE_PATH = os.path.join(INPUT_DEFAULT_X_NATIONAL_DS_DIR, INPUT_WBD_NATIONAL_FILE)
 INPUT_DEFAULT_NWM_FLOWS_FILE_PATH = os.path.join(INPUT_DEFAULT_X_NATIONAL_DS_DIR, INPUT_NWM_CATCHMENTS_FILE)
 
-# Yes... while a person can (for now) override the path for X-Nation... they can not for two new src datasets
-# TODO: full functionaly of these two paths are coming soon.
-
 # OWP RAS MODELS (pre-processed, ready to submit to ras2fim.py)
-HECRAS_INPUT_DEFAULT_OWP_RAS_MODELS = os.path.join(DEFAULT_BASE_DIR, "OWP_ras_models", "models")
-RSF_MODELS_CATALOG_PATH = os.path.join(DEFAULT_BASE_DIR, "OWP_ras_models", "OWP_ras_models_catalog_[].csv")
+DEFAULT_OWP_RAS_MODELS_MODEL_PATH = os.path.join(DEFAULT_BASE_DIR, "OWP_ras_models", "models")
+DEFAULT_RSF_MODELS_CATALOG_FILE = os.path.join(DEFAULT_BASE_DIR, "OWP_ras_models", "OWP_ras_models_catalog_[].csv")
 
 # RAS2FIM OUTPUT FOLDERS 
 R2F_DEFAULT_OUTPUT_MODELS = os.path.join(DEFAULT_BASE_DIR, "output_ras2fim")
