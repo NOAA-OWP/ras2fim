@@ -1,6 +1,32 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.13.0 - 2023-07-06 - [PR#93](https://github.com/NOAA-OWP/ras2fim/pull/93)
+
+Add multi processing when calculating `maxments` for each feature ID. 
+
+A `maxment` is the maximum depth for any feature within a catchments.
+
+Also a bug in rasterio displays an error occasionally of "PROJ: proj_create_from_database: Cannot find proj.db".  This is a known issue due to each users computer environment (not ras2fim environment).  When adding multi-proc, this error was seen for each instance of multi proc. Code was added to minimize the error. It will now display once and only once when running ras2catchments.py (not always seen as part of ras2fim.py).
+
+### Changes  
+
+- `README.md`  - small updates for the new ESIP links and a bit of text adjustments.
+- `doc`
+    - `CHANGELOG.md` - corrected a couple of critical notes in the 1.9.0 release. (plus added new notes for this release of course).
+    - `INSTALL.md` - Updated to show that we need to use `Anaconda Powershell Terminal Window` and not the non powershell version of Anaconda.
+- `src`
+    - `shared_functions.py`:  A few changes where made:
+       - ` def convert_to_metric` method moved from ras2catchments to shared_functions.
+       - Added to functions to help with the "cannot fine proj.db" error mentioned above.
+     - `ras2catchments.py`: Changes include:
+         - a little cleanup of the imports section
+         - moved the "convert_to_metric" function to `shared_functions.py` for reusability.
+         - added multi proc and a TQDM progress bar when getting maxments.
+         - added a "is_verbose" flag arg and code for additional output for debugging. This is a common feature in the fim dev (inundation mapping) code and will hopefully can be helpful here as well.
+
+<br/><br/>
+
 ## v1.12.1 - 2023-06-29 - [PR#90](https://github.com/NOAA-OWP/ras2fim/pull/90)
 
 When the -m flag ( skip ras2rem), is set to False, then it should abort processing just before ras2rem and not continue on to catchments and finalization.
@@ -15,26 +41,6 @@ Note: There is a bug in other parts of this code base that are being fixed as pa
 
 - `src`
     - `ras2fim.py`:  Fix to skip catchments and finalization as describe above plus fixed discovered and mentioned above.
-
-<br/><br/>
-
-
-## v1.12.0 - 2023-07-04 - [PR#92](https://github.com/NOAA-OWP/ras2fim/pull/92)
-
-This PR removes the V flag and added a new flag to control the spatial resolution of 'simplified' rasters. The 'model unit', which is meter or feet, is now identified by the program either using the -p projection entry (using EPSG code or providing a shp/prj file) or by processing the HEC-RAS prj files. The z unit of the given DEM must always be in meter. 
-
-### Additions
-- A new `src/errors.py` to hold the customized exceptions definitions for the entire program.
-### Changes
-
-- `src/clip_dem_from_shape.py`  : Changed the default buffer value from 700 to 300 to be consistent with the hard-coded value used in ras2fim.py
-- `src/convert_tif_to_ras_hdf5.py` : Determined 'model_unit' using 'model_unit_from_crs()' function of shared_functions.py
-- `src/create_fim_rasters.py`: Removed 'flt_out_resolution' argument which were not being used anywhere in the code.
-- `src/get_usgs_dem_from_shape.py`: Determined 'model_unit' using 'model_unit_from_crs()' function of shared_functions.py
-- `src/ras2fim.py` : Removed 'vert_unit,' argument and moved all codes to check the vertical unit of the code into shared_functions.py. Also, determined the model unit using 1) -p entry and 2) reading all HEC-RAS models prj files-- Used 'confirm_models_unit() function of shared_functions.py
-- `src/shared_functions.py` : Added three functions to determine model units throughout the entire program 1) confirm_models_unit(), 2) model_unit_from_crs(), 3) model_unit_from_ras_prj()
-- `src/simplify_fim_rasters.py` :  Changed the default value of output resolution from 3m to 10m
-- `src/worker_fim_rasters.py` : Determined model_unit using 'model_unit_from_ras_prj()' function of shared_functions.py
 
 <br/><br/>
 
@@ -88,6 +94,7 @@ See `tools\get_ras_models_by_catalog.py`, in the "main" section to see usage exa
    - `ras2catchments.py`: renamed a constants variable name.
    - `shared_variables.py`: renamed a couple of constants variable names.
    - `ras2fim.py`: renamed a couple of constants variable names.
+>>>>>>> 85334574faf0ca5c742523d93a7754b2a4b1f522
 
 <br/><br/>
 
@@ -128,8 +135,8 @@ There are some other fixes that were rolled into this, some by discovery during 
 Note: Currently, this edition does not have multi processing which calculating `maxments`. A `maxment` is the catchment for any particular feature based on its maximum depth value. Multi processing will be added later and was deferred due to the fact that based on current code the child process needed to pass information back to the parent process. This is very difficult and unstable. A separate issue card, [#75](https://github.com/NOAA-OWP/ras2fim/issues/75), has been added to fix this later. 
 
 ### Environment Upgrade Notes
-This version requires an update to the conda environment for ras2fim.  To upgrade, follow these steps (using an Anaconda / Mini Conda command terminal):
-1) If not already, type `conda deactivate ras2fim`
+This version requires an update to the conda environment for ras2fim.  To upgrade, follow these steps (using an Anaconda / Mini Conda Powershell command terminal):
+1) If you are already in a conda activateed ras2fim environment, type `conda deactivate`
 2) Ensure you are pathed into the correct branch to where the new `environment.yml` file is at, then type `conda env update -f environment.yml`. This might take a few minutes
 3) `conda activate ras2fim`
 

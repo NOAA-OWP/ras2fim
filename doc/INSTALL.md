@@ -19,11 +19,11 @@ Clone a copy of the `ras2fim` repository on to your local machine.<br>
     git clone https://github.com/NOAA-OWP/ras2fim.git
 ```
 ### Step 4:
-Open an **Anaconda Prompt** and navigate to the cloned directory.  Your path may vary.<br>
+Open an **Anaconda Powershell Prompt** and navigate to the cloned directory.  Your path may vary.<br>
 ![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_prompt.png)
 
 ### Step 5:
-In the Anaconda Prompt window, you can create the `ras2fim` conda environment from the cloned `environment.yml`.<br>
+In the Anaconda Powershell Prompt window, you can create the `ras2fim` conda environment from the cloned `environment.yml`.<br>
 ```
 conda env create -f environment.yml
 ```
