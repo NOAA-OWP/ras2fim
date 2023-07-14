@@ -1,7 +1,6 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-(It is a hotfix after whatever is merged first)
 ## v1.12.1 - 2023-06-29 - [PR#90](https://github.com/NOAA-OWP/ras2fim/pull/90)
 
 When the -m flag ( skip ras2rem), is set to False, then it should abort processing just before ras2rem and not continue on to catchments and finalization.
