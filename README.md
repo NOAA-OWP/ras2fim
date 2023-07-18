@@ -25,15 +25,15 @@ More detail regarding RAS2FIM is located on the project's Wiki page.
 
 ## Default Folder Structure
 
-While ras2fim.py and other tools have optional parameters allowing pathing to any folder(s), we do have a recommended folder structure based on c: drive.
+While ras2fim.py and other tools have optional parameters allowing pathing to any folder(s), we do recommended folder structure as shown below based on your `c:` drive.
 
-![ras2fim default folder structure image](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/default_folder_structure.png)
+![ras2fim default folder structure image](https://github.com/NOAA-OWP/ras2fim/blob/dev-update-docs/doc/default_folder_structure.png)
 
 All documentation in this repo are based on the default folder structure.
 
 ## Downloading Data from ESIP
 
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/esip-logo.png" align="right" alt="esip logo" height="50">There are folders and files that will need to be downloaded locally prior to running the RAS2FIM code or viewing samples.  Thsse data can be found in an Amazon S3 Bucket hosted by [Earth Science Information Partners (ESIP)](https://www.esipfed.org/). These data can be accessed using the AWS Command Line Interface (CLI) tools. AWS CLI install information described below.  The ESIP / NOAA NWS OWP FIM S3 Bucket (`s3://noaa-nws-owp-fim`) is set up as allow for anonymous free downloads.<br>
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/esip-logo.png" align="right" alt="esip logo" height="50">There are folders and files that will need to be downloaded locally prior to running the RAS2FIM code.  This data can be found in an Amazon S3 Bucket hosted by [Earth Science Information Partners (ESIP)](https://www.esipfed.org/). The data can be accessed using the AWS Command Line Interface (CLI) tools. AWS CLI installation details are shown below.  The ESIP / NOAA NWS OWP FIM S3 Bucket (`s3://noaa-nws-owp-fim`) is set up to allow for anonymous free downloads.<br>
 
 ### Configuring the AWS CLI
 
@@ -50,26 +50,29 @@ aws s3 ls s3://noaa-nws-owp-fim --no-sign-request
 
 
 ## Output Samples
-If you want to review what a sample output for a ras2fim.py processing run looks like, you can dowload a folder that was generated using five models in the HUC8 of 12090301.
+If you want to review a sample output for ras2fim.py, you can dowload a folder that was generated using five models in 12090301 HUC8.
 ```
 aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/output_ras2fim C:\ras2fim_data\output_ras2fim --no-sign-request
 ```
 
-## Prior to Running the Code (if you choose to do some test processing)
+## Prior to Running the Code (if you choose to do some processing)
 
-To do some test processing, you will download additional ESIP folders which include the `inputs`, and the `OWP_ras_models` folders. We have provided a small sample set of five `models` based on the HUC8 of 12090301.  The `model` folders are folders, one per model, that has gone through preprocessing steps to convert the raw HEC-RAS data from providers such as BLE, and adjusted to be ready to processed via `ras2fim.py`. ras2fim.py will create output rating curves, REMs and other output files.
+To do some test processing, you will download additional ESIP folders which include the `inputs`, and the `OWP_ras_models` folders. We have provided a small sample set of five `models` based on 12090301 HUC8.  The `model` folders are folders, one per model, that has gone through preprocessing steps to convert the raw HEC-RAS data from providers such as BLE, and adjusted to be ready to processed via `ras2fim.py`. `ras2fim.py` will create output rating curves, REMs and other output files.
 
 While not yet determined, we may publish more `models` later, however, you are also welcome to create our own `models` and use the `ras2fim.py` tools.
 
-The OWP tools to preprocess HECRAS data to OWP_ras_models is not yet available.
+The OWP tools to preprocess HEC-RAS data to OWP_ras_models is not yet available.
 
 
 ### (1) Get AWS Folder - Inputs
 <img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/AWS_logo.png" align="right" alt="aws logo" height="50">
-It will download files and folders into a subfolder named `X-National_datasets` (14.3 Gb)
+The downloaded `inputs` folder is appx 14.3 Gb.
 ```
 aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/inputs c:\ras2fim_data\inputs --no-sign-request
 ```
+
+
+<br>
 This download will include the following files / folder:
 1.  Watershed Boundary Dataset (WBD): WBD_National.gpkg
 2.  The WBD_National.gkpg split into different gkpg files by HUC8: /WBD_HUC8/*
@@ -77,7 +80,7 @@ This download will include the following files / folder:
 4.  National Water Model to Watershed Boundary Lookup: nwm_wbd_lookup.nc
 5.  National Water Model (NWM) Catchments file: nwm_catchments.gpkg
 
-** Note:** A simple polygon for most HUC8s exist in the /WBD_HUC8 folder. You can download only the HUC8_{huc8 number}.gkpg of your choice(s) if you like. We have load most for your convenience.
+**Note:** A simple polygon for most HUC8s exist in the /WBD_HUC8 folder. You can download only the HUC8_{huc8 number}.gkpg of your choice(s) if you like. We have load most for your convenience.
 
 ### (2) Get AWS Folder - OWP_ras_models folder and OWP_ras_models_catalog.csv
 
