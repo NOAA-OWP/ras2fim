@@ -18,7 +18,7 @@ class NoConflatedModelError(Exception):
     '''
 
 
-def check_conflated_models_number (conflated_number):
+def check_conflated_models_count (conflated_number):
     try:
         if conflated_number  == 0:
             raise NoConflatedModelError ("No HEC-RAS model was conflated into National Water Model (NWM) reaches in "
