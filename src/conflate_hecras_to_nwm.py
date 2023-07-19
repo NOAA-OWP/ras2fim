@@ -38,6 +38,8 @@ import datetime
 import warnings
 
 import shared_variables as sv
+import errors
+
 
 # $$$$$$$$$$$$$$$$$$$$$$
 def fn_wkt_loads(x):
@@ -544,6 +546,9 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     
     # load the stream QC lines
     df_processed_lines = pd.read_csv(str_str_qc_csv_File)
+
+    #check the number of conflated models and stop the code if the number is 0
+    status=errors.check_conflated_models_number(len(df_processed_lines))
     
     gdf_non_match = pd.merge(
         gdf_nwm_stream_lines,
