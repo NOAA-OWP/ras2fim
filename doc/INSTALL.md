@@ -1,6 +1,6 @@
 ## Creating a RAS2FIM environment
 
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/master/doc/ras2fim_logo_20211018.png" align="right"
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/ras2fim_logo_20211018.png" align="right"
      alt="ras2fim logo" width="120" height="120">
      
 You will need to set up an Anaconda/Python environment for developing `ras2fim` that is separate from the "default" environment that you use in your own work/research.  This will allow you to utilize `ras2fim` without worrying about corrupting the Anaconda/Python environment on which your other work depends.
@@ -18,7 +18,7 @@ If you have not already done so, ensure `git` has been installed and clone a cop
 ```
 ### Step 3:
 Open an **Anaconda Powershell Prompt** and navigate to the cloned directory.  Your path may vary.<br>
-![](https://github.com/NOAA-OWP/ras2fim/blob/master/doc/conda_prompt.png)
+![](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/conda_prompt.png)
 
 ### Step 4:
 Next create the `ras2fim` conda environment from the cloned `environment.yml`.<br>
