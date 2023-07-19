@@ -8,20 +8,26 @@
 
   - **Technology stack**: Scripts were all developed in Python 3.8.11.  Use is intended within a custom 'ras2fim' [Anaconda environment](https://www.anaconda.com/products/individual) running on a Windows OS.  Prior to running these scripts, the user is required to install and run [HEC-RAS v 6.0](https://www.hec.usace.army.mil/software/hec-ras/download.aspx).<br><br>
   - **Status**:  Version 1 - Inital release.  Refer to to the [CHANGELOG](CHANGELOG.md).<br><br>
-  - **Overview Video**: [Link to overview video of ras2fim](https://www.youtube.com/watch?v=TDDTRSUplVA)<br><br>
-  - **Related Project**:  Inspiration for this repository was to develop flood inundation map libraries to replace Height Above Nearest Drainage (HAND) as calculated with the [FIM inundation mapping](https://github.com/NOAA-OWP/inundation-mapping) repository.
+  - **Related Project**:  Inspiration for this repository was to develop flood inundation map libraries to replace Height Above Nearest Drainage (HAND) as calculated with the [FIM inundation mapping](https://github.com/NOAA-OWP/inundation-mapping) repository.<br><br>
+  - **Overview Video**: [Link to overview video of ras2fim](https://www.youtube.com/watch?v=TDDTRSUplVA)<br>
+          Since the video was first produced, ras2fim has continue to evolve, but there are still valuable information in the video that you want to view. Notes for viewing:<br>
+          The total runtime is 5 min and 41 seconds.<br>
+          - The first part of the video shows folder pathing that has since been update and this part should be ignored. Updated folder pathing including donwloading from ESIP S3 is discussed later in this  document.<br>
+          - The second part, at appx 1:00 in, shows examples of how to run ras2fim.py and its parameters. This is also now out of date and should be ignored.<br>
+          - When the video gets too appx 1:45 seconds and shows the ras2fim.py actively processing, it is still largely applicable.<br>
+<br>
 
 **RAS2FIM Wiki**:
 More detail regarding RAS2FIM is located on the project's Wiki page.
 <p align="center">
 <a href="https://github.com/NOAA-OWP/ras2fim/wiki">
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/button_go-to-rasfim-wiki.png" alt="Go To Wiki" width="342">
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/button_go-to-rasfim-wiki.png" alt="Go To Wiki" width="342">
 </a>
 </p>
 
 **Overview**:
-![](https://github.com/NOAA-OWP/ras2fim/blob/main/doc/ras2fim_overview.png)
-![](https://github.com/NOAA-OWP/ras2fim/blob/main/doc/ras2fim_sample_output.png)
+![](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/ras2fim_overview.png)
+![](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/ras2fim_sample_output.png)
 
 ## Default Folder Structure
 
@@ -63,7 +69,7 @@ The OWP tools to preprocess HEC-RAS data to OWP_ras_models is not yet available.
 <br><br>
 
 ### (1) Get AWS Folder - Inputs
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> The downloaded inputs folder is appx 14.3 Gb, if you download all files including the full `WBD_HUC8` folder.
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> The downloaded inputs folder is appx 14.3 Gb.
 ```
 aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/inputs c:\ras2fim_data\inputs --no-sign-request
 ```
@@ -74,8 +80,6 @@ This download will include the following files / folders:
 3. National Water Model (NWM) Flowline Hydrofabric: nwm_flows.gpkg
 4. National Water Model to Watershed Boundary Lookup: nwm_wbd_lookup.nc
 5. National Water Model (NWM) Catchments file: nwm_catchments.gpkg
-
-**Note:** A simple polygon for most HUC8s exist in the `WBD_HUC8` folder. You can download just specific HUC8 gpkg(s) of your choice if you like, instead of the entire WBD_HUC8 directory. We have load most for your convenience.
 <br><br>
 
 ### (2) Get AWS Folder - OWP_ras_models folder and OWP_ras_models_catalog.csv
