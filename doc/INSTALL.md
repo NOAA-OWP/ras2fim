@@ -62,7 +62,7 @@ To begin processing, change directories into the source git code `src` subfolder
 
 
 The main script is titled `ras2fim.py`.  **All scripts have a helper flag of `-h`**.  It is recommended that you run the script with the helper flag first to determine the required input. Also read the sample usage notes near the bottom of `ras2fim.py` code file.<br><br>
-![](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/conda_python_run.png)
+![](https://github.com/NOAA-OWP/ras2fim/blob/dev-update-docs/doc/conda_python_run.png)
 <br>
 ***--- Image may be out of date slightly as parameters are being adjusted currently ---***
 <br><br>
@@ -72,10 +72,11 @@ python ras2fim.py -w 12090301 -p EPSG:2277 -o 12090301_meters_2277
 ```
 
 **Note:** The `-p` argument is the incoming projection of the models that are about to be processed. Any HEC-RAS model folders, such as folders from OWP_ras_models\models, must match that projection. The `-res` argument defaults to `10` but it must match the resolution of the incoming HEC-RAS model files. You will need the `-t` DEM resolution to also match the the stated resolution.  At this point, only 10 meter has been tested, and more details and options coming soon.
+<br><br>
 
 ### Editors
 
-You can use any editor you like, but if you are a fan of VSCode and have it installed, you can type `code` in your Anaconda Powershell Prompt window and it will launch VSCode as your editor. With some VSCode additional setup, you will be able to do line-by-line debugging f you like.  [Click here](https://code.visualstudio.com/docs/python/debugging) for more details.
+You can use any editor you like, but if you are a fan of VSCode and have it installed, you can type `code` in your Anaconda Powershell Prompt window and it will launch VSCode as your editor. With some VSCode additional setup, you will be able to do line-by-line (step) debugging if you like.  [Click here](https://code.visualstudio.com/docs/python/debugging) for more details.
 
 <br>
 <br>
