@@ -64,7 +64,7 @@ To begin processing, change directories into the source git code `src` subfolder
 The main script is titled `ras2fim.py`.  **All scripts have a helper flag of `-h`**.  It is recommended that you run the script with the helper flag first to determine the required input. Also read the sample usage notes near the bottom of `ras2fim.py` code file.<br><br>
 ![](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/conda_python_run.png)
 <br>
-***--- Image may be out of date slightly as parameters are being adjusted currently---***
+***--- Image may be out of date slightly as parameters are being adjusted currently ---***
 <br><br>
 **Note**: Currently, there are **three (3) required** arguments and a number of optional arguments. Below is a sample input string to execute the `ras2fim.py` script with most arguments defaulted. The defaults arguments are based on the default folder structure shown in the [README](../README.md)
 ```
