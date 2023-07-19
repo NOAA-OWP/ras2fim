@@ -1,6 +1,22 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.13.1 - 2023-07-19 - [PR#101](https://github.com/NOAA-OWP/ras2fim/pull/101)
+
+This bug fix will check the result of conflation step (step 2) and stop the code if no conflated model exists.
+
+Ras2fim needs at least one conflated model (one HEC-RAS model that its cross sections intersect with NWM reaches). If none of the user provided HEC-RAS models conflates to NWM reaches in the given HUC8, then the code should inform the user and terminate. The file "***_stream_qc.csv" in folder '02_shapes_from_conflation' is the best place to check for this situation.
+
+### Changes
+- `src/conflate_hecras_to_nwm.py` 
+	called the "errors.check_conflated_models_count()" function to check the number of records in the "***_stream_qc.csv" file.
+
+- `src/errors.py` 
+	Added the definition of "errors.check_conflated_models_count()" function
+
+<br/><br/>
+
+
 ## v1.13.0 - 2023-07-06 - [PR#93](https://github.com/NOAA-OWP/ras2fim/pull/93)
 
 Add multi processing when calculating `maxments` for each feature ID. 
