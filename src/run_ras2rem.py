@@ -254,12 +254,12 @@ if __name__=="__main__":
     parser.add_argument('-p',
                         dest = "r2f_huc_parent_dir",
                         help = r'REQUIRED:'
-                               r'This should be the path to the folder containing the ras2fim "05_hecras_output" subfolder. '
+                               r' This should be the path to the folder containing the ras2fim "05_hecras_output" subfolder. '
                                'The ras2rem results will be created in a folder called "06_ras2rem" in the same parent directory.\n' \
                                r' There are two options: 1) Providing a full path' \
                                r' 2) Providing only huc folder name, when following AWS data structure.' \
                                 ' Please see the embedded notes in the __main__ section of the code for details and examples.',
-                        required = True,
+                        required = True, metavar='',
                         type = str) 
 
     args = vars(parser.parse_args())

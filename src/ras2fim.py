@@ -513,28 +513,26 @@ if __name__ == '__main__':
     parser.add_argument('-w',
                         dest = "str_huc8_arg",
                         help = 'REQUIRED: HUC-8 watershed that is being evaluated: Example: 10170204',
-                        required = True,
+                        required = True, metavar='',
                         type = str)  # has to be string so it doesn't strip the leading zero
 
     parser.add_argument('-p',
                         dest = "str_crs_arg",
                         help = r'REQUIRED: projection of HEC-RAS models: Example EPSG:2277',
-                        required = True,
-                        type = str)
+                        required = True, metavar='', type = str)
 
     parser.add_argument('-o',
                         dest = "r2f_huc_output_dir",
                         help = r'REQUIRED: This can be used in one of two ways. You can submit either a full path' \
                                r' such as c:\users\my_user\Desktop\myoutput OR you can add a simple final folder name.' \
                                 ' Please see the embedded notes in the __main__ section of the code for details and  examples.',
-                        required = True,
-                        type = str) 
+                        required = True, metavar='', type = str) 
     
     parser.add_argument('-r',
                         dest = "str_hec_path",
                         help = r'OPTIONAL: path to HEC-RAS 6.0: Defaults to C:\Program Files (x86)\HEC\HEC-RAS\6.0' \
                                r' but you can override it, Example: "C:\Program Files (x86)\HEC\HEC-RAS\6.3" (wrap in quotes)',
-                        required = False,
+                        required = False, metavar='',
                         default = sv.DEFAULT_HECRAS_ENGINE_PATH,
                         type = str)
 
@@ -543,7 +541,7 @@ if __name__ == '__main__':
                         help = r'OPTIONAL: path containing the HEC_RAS files: Example -i C:\HEC\input_folder\my_models.' \
                                r' Defaults to c:\ras2fim_datas\OWP_ras_models\models.',
                         default = sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
-                        required = False,
+                        required = False, metavar='',
                         type = str)
 
     parser.add_argument('-n',
@@ -551,7 +549,7 @@ if __name__ == '__main__':
                         help = r'OPTIONAL: path to national datasets: Example: E:\X-NWS\X-National_Datasets.' \
                                r' Defaults to c:\ras2fim_data\inputs\X-National_Datasets.',
                         default = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
-                        required = False,
+                        required = False, metavar='',
                         type = str)
 
 
@@ -559,14 +557,14 @@ if __name__ == '__main__':
                         dest = "str_terrain_override",
                         help = r'OPTIONAL: full path to DEM Tif to use for mapping: Example: c:\ras2fim_data\inputs\some_dem.tif.' \
                                r'Defaults to calling USGS website, but note.. it can be unstable and throw 404 and 500 errors.',
-                        required = False,
+                        required = False, metavar='',
                         default = 'None Specified - using USGS WCS',
                         type = str)
 
     parser.add_argument('-m',
                         dest = "rem_outputs",
                         help = r'OPTIONAL: flag to dictate including RAS2REM execution: Enter false to skip, defaults to TRUE.',
-                        required = False,
+                        required = False, 
                         default = True,
                         metavar = 'T/F',
                         type = str2bool)
@@ -574,7 +572,7 @@ if __name__ == '__main__':
     parser.add_argument('-s',
                         dest = "str_step_override",
                         help = r'OPTIONAL: step of processing to start on. Note: This feature is temporarily not working.',
-                        required = False,
+                        required = False, metavar='',
                         default = 'None Specified - starting at the beginning',
                         type = str)
 
@@ -584,13 +582,13 @@ if __name__ == '__main__':
                                r' Defaults to c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_[].csv and will use subsitution'\
                                r' to replace the [] with the huc number.',
                         default = sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
-                        required = False,
+                        required = False, metavar='',
                         type = str)
 
     parser.add_argument('-res',
                     dest = "output_resolution",
                     help = r'OPTIONAL: Spatial resolution of flood depth rasters (Simplified Rasters). Defaults to 10.',
-                    required = False,
+                    required = False, metavar='',
                     default = 10,
                     type = int)
     
