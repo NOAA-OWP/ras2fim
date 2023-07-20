@@ -88,7 +88,7 @@ def model_unit_from_crs(proj_crs):
         unit = proj_crs.axis_info[0].unit_name
         if "foot" in unit:
             unit='feet'
-        elif 'metre' in unit:
+        elif 'meter' in unit:
             unit='meter'
         else:
             raise ModelUnitError("Make sure you have entered a correct projection code.\
