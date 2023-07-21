@@ -290,6 +290,10 @@ class Get_Ras_Models_By_Catalog():
         self.projection = projection
 
         #---------------
+        if (target_owp_ras_models_csv_file == ""):
+            raise ValueError("target_owp_ras_models_csv_file can not be empty")
+        
+        #---------------
         self.target_owp_ras_models_path = target_owp_ras_models_path
 
         if (list_only == False):
@@ -301,10 +305,6 @@ class Get_Ras_Models_By_Catalog():
 
             os.mkdir(self.target_owp_ras_models_path)
 
-        #---------------
-        if (target_owp_ras_models_csv_file == ""):
-            raise ValueError("target_owp_ras_models_csv_file can not be empty")
-        
         # the string may or may not have the [] and that is ok.
         self.target_filtered_csv_path = target_owp_ras_models_csv_file.replace("[]", huc_number)
 
