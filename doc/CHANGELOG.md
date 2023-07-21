@@ -1,6 +1,30 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.x.x - 2023-07-20 - [PR#105](https://github.com/NOAA-OWP/ras2fim/pull/105)
+
+One HUC may have models with multiple CRS's, but as this is an input param to ras2fim.py, where ras2fim.py needs to know the incoming CRS, then we need to have get_models_by_catalog have an additional filter to pull records to find records in the master S3 OWP_ras_models_catalog.csv by csv. It already has huc and status as filters.
+
+-------------
+Also noticed an issue with some of the -h help outputs for some files. So I added the attribute of `metavar-`''` to some files and most argparser objects.
+
+Images of before and after the fix can be seen in the PR Notes.
+
+-----------
+### Changes  
+- `src`
+     - `ras2catchments.py`: Added some of the metavar args
+     - `ras2fim.py`: Added some of the metavar args and did a small bit of style adj.
+     - `run_ras2rem.py`: Added some of the metavar args
+
+- `tools`
+    - `get_ras_models_by_catalog.py`: Changes include:
+        - adding the new csv required input arg
+        - re-ordered the argparser parser objects and added the new metavar arg.
+        - Change the input arg for `list-only` from `-d` to `-f`
+
+<br/><br/>
+
 ## v1.13.0 - 2023-07-06 - [PR#93](https://github.com/NOAA-OWP/ras2fim/pull/93)
 
 Add multi processing when calculating `maxments` for each feature ID. 
