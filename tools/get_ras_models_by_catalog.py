@@ -117,7 +117,13 @@ class Get_Ras_Models_By_Catalog():
 
         # ----------
         # Validate inputs
-        self.__validate_inputs(s3_path_to_catalog_file, huc_number, projection, target_owp_ras_models_path, target_owp_ras_models_csv_file)
+        self.__validate_inputs(s3_path_to_catalog_file, 
+                               huc_number, 
+                               projection, 
+                               target_owp_ras_models_path, 
+                               target_owp_ras_models_csv_file,
+                               list_only)
+        
         self.list_only = list_only
         self.is_verbose = is_verbose
         # from here on, use the self. in front of variables as the variable might have been adjusted
@@ -245,7 +251,8 @@ class Get_Ras_Models_By_Catalog():
 
 
 
-    def __validate_inputs(self, s3_path_to_catalog_file, huc_number, projection, target_owp_ras_models_path, target_owp_ras_models_csv_file):
+    def __validate_inputs(self, s3_path_to_catalog_file, huc_number, projection, 
+                          target_owp_ras_models_path, target_owp_ras_models_csv_file, list_only):
 
         '''
         Validates input but also sets up key variables
@@ -269,18 +276,31 @@ class Get_Ras_Models_By_Catalog():
         if (projection is None) or (projection == ""):  # Possible if not coming via the __main__ (also possible)
             raise ValueError("projection (-p) value not set")
 
+        projection = projection.upper()
+
         # CRS pattern must be in '4 alpha chars' + ':' + 4 or 5 digits.  ie) EPSG:2277 or ESRI:102739
         # reg of re.match(r'^[a-zA-Z]{4}:[1-9]{4,6}$', projection) == False): split against the color
         projection_seg = projection.split(":")
         if (len(projection_seg) != 2):
             raise ValueError("crs value appears to be incorrect (four letters, then a colon, then 4 or 5 numbers). e.g. ESRI:102739")
        
+        if (projection_seg[0] != 'ESRI' and projection_seg[0] != 'EPSG'):
+            raise ValueError("crs value appears to be incorrect. Expected to start with EPSG or ESRI")
 
         self.projection = projection
 
         #---------------
         self.target_owp_ras_models_path = target_owp_ras_models_path
-        
+
+        if (list_only == False):
+            if (os.path.exists(self.target_owp_ras_models_path)):
+                shutil.rmtree(self.target_owp_ras_models_path)
+                # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
+                # so sometimes mkdir can fail if rmtree isn't done
+                time.sleep(2) # 2 seconds
+
+            os.mkdir(self.target_owp_ras_models_path)
+
         #---------------
         if (target_owp_ras_models_csv_file == ""):
             raise ValueError("target_owp_ras_models_csv_file can not be empty")
