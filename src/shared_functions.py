@@ -145,9 +145,9 @@ def model_unit_from_ras_prj(str_ras_path_arg):
             unit=Units_Found[0]
 
         elif len(set(Units_Found))==2 :
-            raise ModelUnitError("Ras2fim excepts HEC-RAS models with similar unit (either US Customary or "
-                                 "International/Metric). The provided dataset has a mix use of these units. "
-                                 "Verify you HEC-RAS models units and try again. ")
+            raise ModelUnitError("Ras2fim only accepts HEC-RAS models with similar units (either U.S. Customary or "
+                                 "International/Metric). The provided dataset uses a mix of these units. "
+                                 "Verify your HEC-RAS models units and try again.")
 
     except ModelUnitError as e:
         print(e)
