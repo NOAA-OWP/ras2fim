@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.14.1 - 2023-07-19 - [PR#101](https://github.com/NOAA-OWP/ras2fim/pull/101)
+## v1.14.1 - 2023-07-24 - [PR#101](https://github.com/NOAA-OWP/ras2fim/pull/101)
 
 This bug fix will check the result of conflation step (step 2) and stop the code if no conflated model exists.
 
@@ -13,7 +13,7 @@ Ras2fim needs at least one conflated model (one HEC-RAS model that its cross sec
 
 - `src/errors.py` 
 	Added the definition of "errors.check_conflated_models_count()" function
-=======
+
 ## v1.14.0 - 2023-07-20 - [PR#105](https://github.com/NOAA-OWP/ras2fim/pull/105)
 
 One HUC may have models with multiple CRS's, but as this is an input param to ras2fim.py, where ras2fim.py needs to know the incoming CRS, then we need to have get_models_by_catalog have an additional filter to pull records to find records in the master S3 OWP_ras_models_catalog.csv by csv. It already has huc and status as filters.
