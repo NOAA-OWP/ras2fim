@@ -1,6 +1,18 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.13.1 - 2023-07-24 - [PR#103](https://github.com/NOAA-OWP/ras2fim/pull/103)
+
+Previously, ras2fim could only accommodate projections in the EPSG format. This PR is a quick fix to how the projection is processed to accommodate projection codes in the ESRI format.
+
+### Changes  
+
+- `src/ras2fim.py`: Replaced `CRS.from_epsg` with `CRS.from_string` in order to accommodate ESRI projections.
+- `src/shared_functions.py`: Edited error message for clarity.
+
+<br/><br/>
+
+
 ## v1.13.0 - 2023-07-06 - [PR#93](https://github.com/NOAA-OWP/ras2fim/pull/93)
 
 Add multi processing when calculating `maxments` for each feature ID. 
