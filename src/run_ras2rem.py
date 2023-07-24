@@ -250,10 +250,11 @@ if __name__=="__main__":
                         help = r'REQUIRED:'
                                r'The path to the parent folder containing the ras2fim outputs . '
                                'The ras2rem results will be created in the folder "06_metric/ras2rem" in the same parent directory.\n' \
+
                                r' There are two options: 1) Providing a full path' \
                                r' 2) Providing only huc folder name, when following AWS data structure.' \
                                 ' Please see the embedded notes in the __main__ section of the code for details and examples.',
-                        required = True,
+                        required = True, metavar='',
                         type = str) 
 
     args = vars(parser.parse_args())
