@@ -153,11 +153,8 @@ def __get_maxment(mxmt_args):
 
     # Becuase of the way we are doing tdqm and multi-proc it can only take one arg but we can make it a positonal list.
     feature_id = mxmt_args[0]
-    reproj_nwm_filtered_df = mxmt_args[1]
-    r2f_hecras_dir = mxmt_args[2]
-    datatyped_rems_dir = mxmt_args[3]
-
-    feature_catchment_df = reproj_nwm_filtered_df[reproj_nwm_filtered_df.ID == feature_id]
+    r2f_hecras_dir = mxmt_args[1]
+    datatyped_rems_dir = mxmt_args[2]
 
     # Pull all relevant depth grid tiffs for this feature ID
     this_feature_id_tif_files = list(Path(r2f_hecras_dir).rglob(f'*/Depth_Grid/{feature_id}-*.tif'))
@@ -178,17 +175,8 @@ def __get_maxment(mxmt_args):
     feature_max_depth_raster = rasterio.open(max_rem_file)
 
     # -------------------
-    # ... apply polygon as mask to initial raster. Will only pull one feature ID at a time. 
-    # Clips depth grid to catchment boundary to create "maxment"
-    masked_raster, transform = rasterio.mask.mask(feature_max_depth_raster,
-                                                  feature_catchment_df.geometry, 
-                                                  nodata = feature_max_depth_raster.nodata, 
-                                                  filled = True, 
-                                                  invert = False)
-
-    # -------------------
     # Force datatypes to be 32-bit integers
-    long_raster_vals = np.array(masked_raster, dtype = np.int32)
+    long_raster_vals = np.array(feature_max_depth_raster.read(), dtype = np.int32)
     long_raster_vals[long_raster_vals != feature_max_depth_raster.nodata] = np.int32(feature_id)
         
     # -------------------
@@ -239,26 +227,6 @@ def __validate_make_catchments(huc_num,
     rtn_varibles_dict["r2f_huc_parent_dir"] = r2f_huc_parent_dir
 
     # -------------------
-    # -n  (ie: inputs\\X-National_Datasets) 
-    if (os.path.exists(national_ds_path) == False):
-        raise FileNotFoundError("the -n arg (inputs x national datasets path arg) does not exits. Please correct and retry.")
-
-    # -------------------
-    # the relavent WBD HUC8 gpkg
-    wbd_huc8_dir = os.path.join(national_ds_path, sv.INPUT_WBD_HUC8_DIR)
-    wbd_huc8_file = os.path.join(wbd_huc8_dir, f"HUC8_{huc_num}.gpkg")
-    if (os.path.exists(wbd_huc8_file) == False):
-        raise FileNotFoundError (f"The {wbd_huc8_file} file does not exist and is required.")
-    rtn_varibles_dict["wbd_huc8_file"] = wbd_huc8_file
-
-    # -------------------
-    # The source nwm file
-    src_nwm_catchments_file = os.path.join(national_ds_path, sv.INPUT_NWM_CATCHMENTS_FILE) 
-    if (os.path.exists(src_nwm_catchments_file) == False):
-        raise FileNotFoundError(f"The {src_nwm_catchments_file} file does not exist and is required.")
-    rtn_varibles_dict["src_nwm_catchments_file"] = src_nwm_catchments_file
-
-    # -------------------
     # AND the 05 directory must already exist 
     r2f_hecras_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
     if (os.path.exists(r2f_hecras_dir) == False):
@@ -295,10 +263,6 @@ def __validate_make_catchments(huc_num,
     rtn_varibles_dict["r2f_catchments_dir"] = r2f_catchments_dir
 
     # -------------------
-    catchments_subset_file = os.path.join(r2f_catchments_dir, "nwm_catchments_subset.gpkg")
-    rtn_varibles_dict["catchments_subset_file"] = catchments_subset_file
-
-    # -------------------
     rating_curve_path = os.path.join(r2f_ras2rem_dir,'rating_curve.csv')
     rtn_varibles_dict["rating_curve_path"] = rating_curve_path
 
@@ -321,10 +285,6 @@ def make_catchments(huc_num,
     ----------
     Using rem tif outputs from ras2rem, and the file names of those tif in the 05_hecras_output folders
     and its subfolders, we create a list of unique feature id's being used.
-
-    Next, using the nwm_catchments.gkpg, we clip it down to the relavent HUC8 to manage volume and speed,
-    then extract all catchment polygons matching related feature ids.  We reproject the new filtered
-    catchemnts.gkpg to match the projection from one of the REM's and save the .gpkg    
 
     Parameters
     ----------
@@ -408,32 +368,6 @@ def make_catchments(huc_num,
 
     print(f"The number of unique feature ID's is {num_features}")
 
-    # The following file needs to point to a NWM catchments shapefile (local.. not S3 (for now))
-    
-    # -------------------    
-    print()
-    print("Subsetting NWM Catchments from HUC8, no buffer")
-    print()
-
-    # subset the nwm_catchments CONUS gkpg to the huc8 to speed it up
-    huc8_wbd_db = gpd.read_file(rtn_varibles_dict.get("wbd_huc8_file"))
-    huc8_nwm_df = gpd.read_file(rtn_varibles_dict.get("src_nwm_catchments_file"), mask = huc8_wbd_db)
-    
-    # -------------------    
-    print("Getting all relevant catchment polys")
-    print()
-    filtered_catchments_df = huc8_nwm_df.loc[huc8_nwm_df['ID'].isin(all_feature_ids)]
-    nwm_filtered_df = gpd.GeoDataFrame.copy(filtered_catchments_df)
-
-    # -------------------
-    # We need to project the output gpkg to match the incoming raster projection.
-    print(f"Reprojecting filtered nwm_catchments to rem rasters crs")
-
-    raster_crs = sv.DEFAULT_RASTER_OUTPUT_CRS
-
-    # Let's create one overall gpkg that has all of the relavent polys, for quick validation
-    reproj_nwm_filtered_df = nwm_filtered_df.to_crs(raster_crs)
-    reproj_nwm_filtered_df.to_file(rtn_varibles_dict.get("catchments_subset_file"), driver='GPKG')
 
     # -------------------
     # Create folder for datatyped rems
@@ -466,8 +400,9 @@ def make_catchments(huc_num,
             # a new numpy n-d array, but then we'd need to setup a lot of parameters to match those of 
             # rem_raster)
             rem_raster = np.where(np.isnan(rem_raster),65535,65535)
+            rem_raster = np.where(rem_raster == src.nodata,65535,65535)
             output_meta = src.meta.copy()
-            output_meta.update( { "dtype":np.int32, "compress":"LZW" })
+            output_meta.update( { "dtype":np.int32, "compress":"LZW","nodata":65535 })
             with rasterio.open(r2f_rem_extent_path, 'w', **output_meta) as dst:
                 dst.write(rem_raster)
             #rasters_to_mosaic.append(r2f_rem_extent_path)
@@ -481,7 +416,7 @@ def make_catchments(huc_num,
     # Create a list of lists with the mxmt args for the multi-proc
     mxmts_args = []
     for feature_id in all_feature_ids:
-        mxmts_args.append([feature_id, reproj_nwm_filtered_df, r2f_hecras_dir, datatyped_rems_dir])
+        mxmts_args.append([feature_id, r2f_hecras_dir, datatyped_rems_dir])
 
 
     rasters_paths_to_mosaic = []
@@ -563,7 +498,7 @@ if __name__=="__main__":
     #     python ras2catchments.py -w 12090301 -o C:\ras2fim_data_rob_folder\output_ras2fim_models_2222\12090301_meters_2277_test_2
     #          -n E:\X-NWS\X-National_Datasets -mc c:\mydata\robs_model_catalog.csv
     
-    #  - The -p arg is required, but can be either a full path (as shown above), or a simple folder name.Either way, it must have the
+    #  - The -p arg is required, but can be either a full path (as shown above), or a simple folder name. Either way, it must have the
     #        and the 05_hecras_output and 06_ras2rem folder and populated
     #        ie) -o c:/users/my_user/desktop/ras2fim_outputs/12090301_meters_2277_test_2
     #            OR
@@ -585,14 +520,6 @@ if __name__=="__main__":
                         required = True, metavar='',
                         type = str) 
 
-    parser.add_argument('-n',
-                        dest = "national_ds_path",
-                        help = r'OPTIONAL: path to national datasets: Example: E:\X-NWS\X-National_Datasets.' \
-                               r' Defaults to c:\ras2fim_data\inputs\X-National_Datasets. This is needed to subset' \
-                                ' the nwm_catchments.gkpg.',
-                        default = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
-                        required = False, metavar='',
-                        type = str)
 
     parser.add_argument('-mc',
                         dest = "model_huc_catalog_path",
