@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 from datetime import datetime
 import pandas as pd
+import shutil
 import geopandas as gpd
 import rasterio
 import errno
@@ -11,9 +12,11 @@ from concurrent.futures import ProcessPoolExecutor, as_completed, wait
 VIZ_PROJECTION ='PROJCS["WGS_1984_Web_Mercator_Auxiliary_Sphere",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Mercator_Auxiliary_Sphere"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",0.0],PARAMETER["Standard_Parallel_1",0.0],PARAMETER["Auxiliary_Sphere_Type",0.0],UNIT["Meter",1.0]]'
 from shapely.geometry.polygon import Polygon
 from shapely.geometry.multipolygon import MultiPolygon
+from shapely.geometry import MultiPolygon, Polygon, LineString, Point
 
 
-def produce_geo_rating_curves(feature_id, huc, rating_curve, depth_grid_list, version, output_folder):
+
+def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, output_folder):
     """
     For a single feature_id, the function produces a version of a RAS2FIM rating curve 
     which includes the geometry of the extent for each stage/flow.
@@ -34,6 +37,8 @@ def produce_geo_rating_curves(feature_id, huc, rating_curve, depth_grid_list, ve
     # Loop through depth grids and store up geometries to collate into a single rating curve.
     iteration = 0
     for depth_grid in depth_grid_list:
+        if 'proj' in depth_grid:
+            continue
         # Open depth_grid using rasterio.
         depth_src = rasterio.open(depth_grid)
         depth_array = depth_src.read(1)
@@ -56,16 +61,26 @@ def produce_geo_rating_curves(feature_id, huc, rating_curve, depth_grid_list, ve
         results = ({'properties': {'extent': 1}, 'geometry': s} for i, (s, v) in enumerate(shapes(reclass_depth_array, mask=reclass_depth_array>0)))
 
         # Convert list of shapes to polygon, then dissolve
-        extent_poly = gpd.GeoDataFrame.from_features(list(results), crs=VIZ_PROJECTION)
+        extent_poly = gpd.GeoDataFrame.from_features(list(results), crs=depth_src.crs)
         extent_poly_diss = extent_poly.dissolve(by='extent')
-        extent_poly_diss = extent_poly_diss.to_crs(VIZ_PROJECTION)
+#        extent_poly_diss = extent_poly_diss.to_crs(VIZ_PROJECTION)
         extent_poly_diss["geometry"] = [MultiPolygon([feature]) if type(feature) == Polygon else feature for feature in extent_poly_diss["geometry"]]
+
+#        extent_poly_diss['geometry'] = extent_poly_diss.apply(lambda row: make_valid(row.geometry), axis=1)
 
         # -- Add more attributes -- #
         extent_poly_diss['version'] = version
         extent_poly_diss['feature_id'] = feature_id
         extent_poly_diss['stage_ft'] = stage_ft
-
+        
+#        extent_poly_diss = extent_poly_diss.make_valid()
+        
+        extent_poly_diss['valid'] = extent_poly_diss.is_valid
+        extent_poly_diss = extent_poly_diss[extent_poly_diss['valid'] == True]
+        
+        extent_poly_diss.to_file(os.path.join(output_folder, feature_id + '_' + str(stage_ft) + '.shp'), driver = 'ESRI Shapefile')
+        if len(extent_poly_diss) == 0:
+            continue
         # TODO add remainder of ras2fim attributes from catchment layer
 
         if iteration < 1:  # Initialize the rolling huc_rating_curve_geo
@@ -73,8 +88,14 @@ def produce_geo_rating_curves(feature_id, huc, rating_curve, depth_grid_list, ve
         else:
             rating_curve_geo_df = pd.merge(rating_curve_df, extent_poly_diss, left_on='AvgDepth(ft)', right_on='stage_ft', how='right')
             feature_id_rating_curve_geo = pd.concat([feature_id_rating_curve_geo, rating_curve_geo_df])
+        
         iteration += 1 
 
+#    print("Making valid...")
+#    feature_id_rating_curve_geo['valid'] = feature_id_rating_curve_geo.is_valid  # Add geometry validity column
+#    feature_id_rating_curve_geo = feature_id_rating_curve_geo[feature_id_rating_curve_geo['valid'] == True]
+    
+    print("Writing to CSV...")
     feature_id_rating_curve_geo.to_csv(os.path.join(output_folder, feature_id + '_' + huc + '_rating_curve_geo.csv'))
 
 
@@ -110,7 +131,7 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
             print("The output directory, " + output_folder + ", already exists. Use the overwrite flag (-o) to overwrite.")
             quit()
         else:
-            os.remove(output_folder)
+            shutil.rmtree(output_folder)
             os.mkdir(output_folder)
         
     # Define path to step 5 outputs
@@ -143,12 +164,12 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
     print("Multiprocessing " + str(len(dictionary)) + " feature_ids using " + str(job_number) + " jobs...")
     with ProcessPoolExecutor(max_workers=job_number) as executor:
         for feature_id in dictionary:
-            executor.submit(produce_geo_rating_curves, feature_id, dictionary[feature_id]['huc'], 
-                            dictionary[feature_id]['rating_curve'], dictionary[feature_id]['depth_grids'], 
-                            version, output_folder)
+#            executor.submit(produce_geocurves, feature_id, dictionary[feature_id]['huc'], 
+#                            dictionary[feature_id]['rating_curve'], dictionary[feature_id]['depth_grids'], 
+#                            version, output_folder)
             
-#            produce_geo_rating_curves(feature_id, dictionary[feature_id]['huc'], dictionary[feature_id]['rating_curve'], 
-#                                      dictionary[feature_id]['depth_grids'], version, output_folder)
+            produce_geocurves(feature_id, dictionary[feature_id]['huc'], dictionary[feature_id]['rating_curve'], 
+                                      dictionary[feature_id]['depth_grids'], version, output_folder)
             
     # Calculate duration
     end_time = datetime.now()
@@ -170,6 +191,8 @@ if __name__ == '__main__':
     parser.add_argument('-j','--job_number',help='Number of processes to use', required=False, default=1, type=int)
     parser.add_argument('-t', '--output_folder', help = 'Target: Where the output folder will be', required = False)
     parser.add_argument('-o','--overwrite', help='Overwrite files', required=False, action="store_true")
+    
+    #TODO Add -mc flag and use ras2catchments logic
     
     args = vars(parser.parse_args())
     manage_geo_rating_curves_production(**args)
