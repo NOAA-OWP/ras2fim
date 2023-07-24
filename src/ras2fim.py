@@ -241,7 +241,8 @@ def fn_run_ras2fim(str_huc8_arg,
     if int_step <= 6:
         fn_simplify_fim_rasters(str_hecras_out_dir,
                                 flt_resolution_depth_grid,
-                                sv.DEFAULT_RASTER_OUTPUT_CRS)
+                                sv.DEFAULT_RASTER_OUTPUT_CRS,
+                                model_unit)
     # ----------------------------------------
     
 
@@ -273,7 +274,7 @@ def fn_run_ras2fim(str_huc8_arg,
     print ("+++++++ Processing for code  STEP 8 +++++++" )
 
     if int_step <= 8:
-        fn_run_ras2rem(str_out_arg)
+        fn_run_ras2rem(str_out_arg, model_unit)
     # -------------------------------------------------
 
 
@@ -373,7 +374,6 @@ def init_and_run_ras2fim(str_huc8_arg,
     epsg_code=int(str_crs_arg.split(':')[1])
     proj_crs = pyproj.CRS.from_epsg(epsg_code)
     model_unit=sf.confirm_models_unit(proj_crs,str_ras_path_arg)
-
 
     # -w   (ie 12090301)
     if (len(str_huc8_arg) != 8):

@@ -11,7 +11,7 @@ import pyproj
 import rasterio
 import re
 import sys
-
+from pathlib import Path
 from errors import ModelUnitError
 
 
@@ -213,3 +213,27 @@ def fix_proj_path_error():
     except Exception as e:
         #print(e)
         pass
+
+##########################################################################
+def find_model_unit_from_rating_curves(r2f_hecras_outputs_dir):
+    all_rating_files = list(Path(r2f_hecras_outputs_dir).rglob('*rating_curve.csv'))
+    try:
+        sample_rating_file = pd.read_csv(all_rating_files[0])
+        SecondColumnTitle = sample_rating_file.columns[1]
+        pattern = r"\((.*?)\)"  # Matches text between parentheses in column 2
+        stage_unit = re.search(pattern, SecondColumnTitle).group(1).strip().lower()
+        if stage_unit == 'ft':
+            model_unit = 'feet'
+        elif stage_unit == 'm':
+            model_unit = 'meter'
+        else:
+            raise ValueError("Rating curve values should be either in feet or meter. Check the results")
+
+        return model_unit
+    except ValueError as e:
+        print("Error:", e)
+        sys.exit(1)
+    except:
+        print("Error: Make sure you have specified a correct input directory with has at least one '*.rating curve.csv' file.")
+        sys.exit(1)
+

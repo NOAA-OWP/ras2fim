@@ -15,41 +15,25 @@ import tqdm
 import multiprocessing as mp
 from multiprocessing import Pool
 import shared_variables as sv
+import shared_functions as sf
 
 
-def fn_make_rating_curve(r2f_hecras_dir, r2f_ras2rem_dir):
+def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir,model_unit):
 
     '''
     Args:
-        r2f_hecras_dir: directory containing all fim raster  (the huc model 05_hecras_outputs)
+        r2f_hecras_outputs_dir: directory containing HEC-RAS outputs
         r2f_ras2rem_dir: directory to write output file (rating_curve.csv)
+        model_unit :model unit of HEC-RAS models that is either meter or feet
 
     Returns: rating_curve.csv file
     '''
     print("Making rating curve")
     rating_curve_df = pd.DataFrame()
 
-    all_rating_files = list(Path(r2f_hecras_dir).rglob('*rating_curve.csv'))
+    all_rating_files = list(Path(r2f_hecras_outputs_dir).rglob('*rating_curve.csv'))
     if len(all_rating_files) == 0:
         print("Error: Make sure you have specified a correct input directory with at least one '*.rating curve.csv' file.")
-        sys.exit(1)
-    #find unit of outputs(ft vs m) using a sample rating curve file
-    try:
-        sample_rating_file = pd.read_csv(all_rating_files[0])
-        SecondColumnTitle = sample_rating_file.columns[1]
-        pattern = r"\((.*?)\)"  # Matches text between parentheses in column 2
-        stage_unit = re.search(pattern, SecondColumnTitle).group(1).strip().lower()
-        if stage_unit == 'ft':
-            current_flow_unit, target_flow_unit='cfs','cfs'
-        elif stage_unit == 'm':
-            current_flow_unit, target_flow_unit='cms','cms'  #'m3s-1'
-        else:
-            raise ValueError("Rating curve values should be either in feet or meter. Check the results")
-    except ValueError as e:
-        print("Error:", e)
-        sys.exit(1)
-    except:
-        print("Error: Make sure you have specified a correct input directory with has at least one '*.rating curve.csv' file.")
         sys.exit(1)
 
     for file in all_rating_files:
@@ -67,10 +51,19 @@ def fn_make_rating_curve(r2f_hecras_dir, r2f_ras2rem_dir):
         this_file_df['obs_source'] = ''
         rating_curve_df = rating_curve_df.append(this_file_df)
 
-    rating_curve_df.rename(columns={"AvgDepth(%s)"%stage_unit:"stage_%s"%stage_unit,\
-                                     "Flow(%s)"%current_flow_unit:"discharge_%s"%target_flow_unit}, inplace=True)
-    
-    rating_curve_df = rating_curve_df[['feature_id', 'stage_%s'%stage_unit, 'discharge_%s'%target_flow_unit, 
+    #if model_unit is feet, convert values into metric and rename columns to be consistent with hydro table format
+    if model_unit == 'feet':
+        rating_curve_df["stage_m"] = np.round(rating_curve_df["AvgDepth(ft)"].values * 0.3048 ,3) #also round to 3 digits
+        rating_curve_df["discharge_cms"] = np.round(rating_curve_df["Flow(cfs)"].values * 0.3048 ** 3, 3)
+
+        #drop the columns with original feet data
+        rating_curve_df.drop(columns=["AvgDepth(ft)","Flow(cfs)"], inplace=True)
+    else:
+        #when model unit is meter, only rename the columns to be consistent with hydro table format
+        rating_curve_df.rename(columns={"AvgDepth(m)":"stage_m", "Flow(cms)":"discharge_cms"}, inplace=True)
+
+    #reorder columns
+    rating_curve_df = rating_curve_df[['feature_id', 'stage_m', 'discharge_cms',
                                      'HydroID', 'HUC', 'LakeID', 'last_updated', 'submitter', 'obs_source']]
     
     rating_curve_df.to_csv(os.path.join(r2f_ras2rem_dir,"rating_curve.csv"), index = False)
@@ -81,7 +74,8 @@ def fn_generate_tif_for_each_rem(tpl_request):
     Input_dir = tpl_request[1]
     Output_dir = tpl_request[2]
 
-    all_tif_files=glob.glob(Input_dir + "/**/Depth_Grid/*.tif", recursive=True)
+    # all_tif_files=glob.glob(Input_dir + "*.tif", recursive=True)
+    all_tif_files=list(Path(Input_dir).rglob('*.tif'))
     raster_to_mosiac = []
     this_rem_tif_files= [file  for file in all_tif_files if os.path.basename(file).endswith("-%s.tif"%rem_value)]
     for p in this_rem_tif_files:
@@ -107,16 +101,16 @@ def fn_generate_tif_for_each_rem(tpl_request):
         tiffile.write(mosaic)
     return  rem_value
 
-def fn_make_rems(r2f_hecras_dir, r2f_ras2rem_dir):
+def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
     '''
     Args:
-        r2f_hecras_dir: directory containing all fim raster  (the huc model 05_hecras_outputs)
-        r2f_ras2rem_dir: directory to write output file (rating_curve.csv)
+        r2f_simplified_grids_dir: directory containing simplified grids
+        r2f_ras2rem_dir: directory to write output rem.tif file
 
-    Returns: ras2rem.tif file
+    Returns: rem.tif file
     '''
-    
-    all_tif_files=glob.glob(r2f_hecras_dir + "/**/Depth_Grid/*.tif", recursive=True)
+
+    all_tif_files=list(Path(r2f_simplified_grids_dir).rglob('*.tif'))
     if len(all_tif_files)==0:
         print("Error: Make sure you have specified a correct input directory with at least one '*.tif' file.")
         sys.exit(1)
@@ -129,7 +123,7 @@ def fn_make_rems(r2f_hecras_dir, r2f_ras2rem_dir):
     #make argument for multiprocessing
     rem_info_arguments = []
     for rem_value in rem_values:
-        rem_info_arguments.append((rem_value,r2f_hecras_dir,r2f_ras2rem_dir))
+        rem_info_arguments.append((rem_value,r2f_simplified_grids_dir,r2f_ras2rem_dir))
 
 
     num_processors = (mp.cpu_count() - 1)
@@ -140,8 +134,6 @@ def fn_make_rems(r2f_hecras_dir, r2f_ras2rem_dir):
                                             desc='Creating REMs',
                                             bar_format = "{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
                                             ncols=67 ))
-        #pool.close()
-        #pool.join()
 
     #now make the final rem
     print("+-----------------------------------------------------------------+")
@@ -176,7 +168,7 @@ def fn_make_rems(r2f_hecras_dir, r2f_ras2rem_dir):
         os.remove(p)
 
 
-def fn_run_ras2rem(r2f_huc_parent_dir):
+def fn_run_ras2rem(r2f_huc_parent_dir,model_unit):
     
     ####################################################################
     # Input validation and variable setup
@@ -198,12 +190,13 @@ def fn_run_ras2rem(r2f_huc_parent_dir):
                          " for the related huc and verify the path.")
 
     # AND the 05 directory must already exist 
-    r2f_hecras_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-    if (os.path.exists(r2f_hecras_dir) == False):
+    r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    if (os.path.exists(r2f_hecras_outputs_dir) == False):
         raise ValueError(f"The {sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT} folder does not exist." \
                          f" Please ensure ras2fim has been run and created a valid {sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT} folder.")
     
-    r2f_ras2rem_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_RAS2REM)
+    r2f_simplified_grids_dir=os.path.join(r2f_huc_parent_dir,sv.R2F_OUTPUT_DIR_METRIC, sv.R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS)
+    r2f_ras2rem_dir = os.path.join(r2f_huc_parent_dir,sv.R2F_OUTPUT_DIR_METRIC, sv.R2F_OUTPUT_DIR_RAS2REM)
 
     if os.path.exists(r2f_ras2rem_dir):
         shutil.rmtree(r2f_ras2rem_dir)
@@ -218,15 +211,17 @@ def fn_run_ras2rem(r2f_huc_parent_dir):
     ####  Start processing ######
     print("+=================================================================+")
     print("|                       Run ras2rem                               |")
-    print("  --- RAS2FIM ras2fim HUC folder path: " + str(r2f_huc_parent_dir))    
-    print("  --- RAS2FIM ras2fim HECRES Input Path: " + str(r2f_hecras_dir))
-    print("  --- RAS2REM ras2rem Output Path: " + str(r2f_ras2rem_dir))
+    print("  --- (p) RAS2FIM parent output path: " + str(r2f_huc_parent_dir))
+    print("  --- HEC-RAS outputs path: " + str(r2f_hecras_outputs_dir))
+    print("  --- HEC-RAS outputs unit: " + model_unit)
+    print("  --- RAS2FIM 'simplified' depth grids path: " + str(r2f_simplified_grids_dir))
+    print("  --- RAS2REM Outputs directory: " + str(r2f_ras2rem_dir))
     print("+-----------------------------------------------------------------+")    
 
     flt_start_ras2rem = time.time()
 
-    fn_make_rating_curve(r2f_hecras_dir, r2f_ras2rem_dir)
-    fn_make_rems(r2f_hecras_dir, r2f_ras2rem_dir)
+    fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir,model_unit)
+    fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir)
 
     flt_end_ras2rem = time.time()
     flt_time_pass_ras2rem = (flt_end_ras2rem - flt_start_ras2rem) // 1
@@ -247,15 +242,14 @@ if __name__=="__main__":
     #            OR
     #            -p 12090301_meters_2277_test_3  (We will use the root default pathing and become c:/ras2fim_data/outputs_ras2fim_models/12090301_meters_2277_test_3)
 
-    # *** NOTE: If the "06_ras2rem" folder exists, it will be deleted and a new one created.
 
     parser = argparse.ArgumentParser(description='==== Run RAS2REM ===')
 
     parser.add_argument('-p',
                         dest = "r2f_huc_parent_dir",
                         help = r'REQUIRED:'
-                               r'This should be the path to the folder containing the ras2fim "05_hecras_output" subfolder. '
-                               'The ras2rem results will be created in a folder called "06_ras2rem" in the same parent directory.\n' \
+                               r'The path to the parent folder containing the ras2fim outputs . '
+                               'The ras2rem results will be created in the folder "06_metric/ras2rem" in the same parent directory.\n' \
                                r' There are two options: 1) Providing a full path' \
                                r' 2) Providing only huc folder name, when following AWS data structure.' \
                                 ' Please see the embedded notes in the __main__ section of the code for details and examples.',
@@ -263,8 +257,14 @@ if __name__=="__main__":
                         type = str) 
 
     args = vars(parser.parse_args())
+    r2f_huc_parent_dir = args['r2f_huc_parent_dir']
+
+
+    #find model_unit of HEC-RAS outputs (ft vs m) using a sample rating curve file
+    r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    model_unit=sf.find_model_unit_from_rating_curves(r2f_hecras_outputs_dir)
     
-    fn_run_ras2rem(**args)
+    fn_run_ras2rem(r2f_huc_parent_dir, model_unit)
 
 
 
