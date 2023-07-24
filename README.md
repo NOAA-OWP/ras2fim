@@ -10,9 +10,9 @@
   - **Status**:  Version 1 - Inital release.  Refer to to the [CHANGELOG](CHANGELOG.md).<br><br>
   - **Related Project**:  Inspiration for this repository was to develop flood inundation map libraries to replace Height Above Nearest Drainage (HAND) as calculated with the [FIM inundation mapping](https://github.com/NOAA-OWP/inundation-mapping) repository.<br><br>
   - **Overview Video**: [Link to overview video of ras2fim](https://www.youtube.com/watch?v=TDDTRSUplVA)<br>
-          Since the video was first produced, ras2fim has continue to evolve, but there are still valuable information in the video that you want to view. Notes for viewing:<br>
+          Since the video was first produced, ras2fim has continued to evolve, but there is still valuable information in the video that you want to view. Notes for viewing:<br>
           The total runtime is 5 min and 41 seconds.<br>
-          - The first part of the video shows folder pathing that has since been update and this part should be ignored. Updated folder pathing including donwloading from ESIP S3 is discussed later in this  document.<br>
+          - The first part of the video shows folder pathing that has since been update and this part should be ignored. Updated folder pathing including donwloading from ESIP S3 is discussed later in this document.<br>
           - The second part, at appx 1:00 in, shows examples of how to run ras2fim.py and its parameters. This is also now out of date and should be ignored.<br>
           - When the video gets too appx 1:45 seconds and shows the ras2fim.py actively processing, it is still largely applicable.<br>
 <br>
@@ -33,7 +33,7 @@ More detail regarding RAS2FIM is located on the project's Wiki page.
 
 While ras2fim.py and other tools have optional parameters allowing pathing to any folder(s), we do recommended folder structure as shown below based on your `c:` drive.
 
-![ras2fim default folder structure image](https://github.com/NOAA-OWP/ras2fim/blob/dev-update-docs/doc/default_folder_structure.png)
+![ras2fim default folder structure image](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/default_folder_structure.png)
 
 All documentation in this repo are based on the default folder structure.
 
