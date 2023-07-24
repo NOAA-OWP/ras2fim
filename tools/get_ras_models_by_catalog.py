@@ -3,6 +3,7 @@
 import os
 import argparse
 import pandas as pd
+import re
 import shutil
 import s3fs
 import subprocess
@@ -41,6 +42,10 @@ Features for this tool include:
     - This script can find huc numbers in the models catalog "hucs" field regardless of string format in that column. 
          It does assume that models catalog has ensure that leading zero's exist.
 
+    - This script further filters model records to the matching crs value. Why? ras2fim.py has an input param for its crs (-p)
+         and only models matching that crs can be processed at one time. If we have one HUC that has some models in one projection
+         and some models in another projection, they must be processed via ras2fim.py separately with separate output folders.
+
     - As the models folders are about to be downloaded, all subfolders in the local "models" folder will first be removed,
          as ras2fim.py processes all folders in that directory.
 
@@ -59,6 +64,7 @@ class Get_Ras_Models_By_Catalog():
     def get_models(self, 
                    s3_path_to_catalog_file, 
                    huc_number, 
+                   projection,
                    list_only = False, 
                    target_owp_ras_models_path = sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
                    target_owp_ras_models_csv_file = sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
@@ -73,7 +79,11 @@ class Get_Ras_Models_By_Catalog():
             - Empty the OWP_ras_models\models (or target models path) folder as we know ras2fim will automatically read all folders in that directory
             - Download all of the folders found using data extracted from columns in the filtered OWP_ras_models_catalog.csv file.
                 The S3 "models" folder, MUST exist beside the model catalog file.
-        - Using the OWP_ras_models_catalog.csv (or equiv), only records with the status of 'ready'
+        - Uses the OWP_ras_models_catalog.csv (or equiv), only records with the status of 'ready'
+        - Current filters when used against the OWP_ras_models_catalog.csv:
+              - 'status' column = 'ready'
+              - 'hucs' column includes the provided huc_number. Note.. more than one huc can be in that column.
+              - 'crs' column matchs the incoming projection value (case-sensitive)
         - If the target_owp_ras_models_csv_file exists, it will be overwritten without warning.
             
         Inputs
@@ -81,6 +91,8 @@ class Get_Ras_Models_By_Catalog():
         - s3_path_to_catalog_file (str) : e.g. s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv (left as full pathing in case of pathing
             changes). 
         - huc_number (string)
+        - projection (string): To calculate which model folders are to be downloaded, you need the HUC number and the case-senstive CRS number.
+            The projection value must match the 'crs' column in the master copy in S3  (OWP_ras_models_catalog.csv)
         - list_only (True / False) : If you override to true, you can get just a csv list and not the downloads
         - target_owp_ras_models_path (str): Local path you want the model folders to be loaded to. Default: c\ras2fim_data\OWP_ras_models\models.
         - target_owp_ras_models_csv_file (str): The file name and path of where to save the filtered catalog. 
@@ -92,7 +104,7 @@ class Get_Ras_Models_By_Catalog():
             placed in the local emptied (folders only) target_owp_ras_models_path (assuming not overwritten to list only).
         - A filtered copy of the "OWP_ras_models_catalog.csv" from S3 will be placed in as set by target_owp_ras_models_csv_file
             and includes list of all downloaded files and their attributes. If not overridden, the name will become OWP_ras_models_catalog_{HUC}.csv. This file
-            will overwrite a pre-existing file of the same name.
+            will overwrite a pre-existing file of the same name. The new OWP_ras_models_catalog_{HUC}.csv is required for ras2fim.py processing.
 
         '''
 
@@ -105,13 +117,19 @@ class Get_Ras_Models_By_Catalog():
 
         # ----------
         # Validate inputs
-        self.validate_inputs(s3_path_to_catalog_file, huc_number, target_owp_ras_models_path, target_owp_ras_models_csv_file)
+        self.__validate_inputs(s3_path_to_catalog_file, 
+                               huc_number, 
+                               projection, 
+                               target_owp_ras_models_path, 
+                               target_owp_ras_models_csv_file,
+                               list_only)
+        
         self.list_only = list_only
         self.is_verbose = is_verbose
         # from here on, use the self. in front of variables as the variable might have been adjusted
 
         # setup an empty variable for scope reasons
-        self.df_huc = pd.DataFrame()
+        self.df_filtered = pd.DataFrame()
         try:
 
             # ----------
@@ -128,21 +146,31 @@ class Get_Ras_Models_By_Catalog():
                 self.log_append_and_print(f"models catalog raw record count = {len(df_all)}")
 
             # ----------
-            # look for records that are ready, contains the huc number and does not start with 1_ or 20_
-            self.df_huc = df_all.loc[(df_all['status'] == 'ready') & 
-                                     (df_all['final_name_key'].str.startswith("1_") == False) & 
-                                     (df_all['final_name_key'].str.startswith("2_") == False) & 
-                                     (df_all['hucs'].str.contains(str(huc_number), na = False))]
 
-            if (self.df_huc.empty):
-                self.log_append_and_print(f"No valid records return for {huc_number}. Note: some may have been filtered out. " \
-                      "Current filter are: status is ready; final_name_key does not start with 1_ or 2_; " \
-                       "and huc number exists in the huc column." )
+            filter_msg = "Note: some may have been filtered out. Current filters are: status is ready;" \
+                         " final_name_key does not start with 1_ or 2_; huc number exists in the huc column;" \
+                         " and matching crs column values." 
+
+            # look for records that are ready, contains the huc number and does not start with 1_ or 20_
+            df_huc = df_all.loc[(df_all['status'] == 'ready') & 
+                                (df_all['final_name_key'].str.startswith("1_") == False) & 
+                                (df_all['final_name_key'].str.startswith("2_") == False) & 
+                                (df_all['hucs'].str.contains(str(self.huc_number), na = False))]
+
+            if (df_huc.empty):
+                self.log_append_and_print(f"No valid records return for {self.huc_number}. {filter_msg}")
                 return
 
-            self.df_huc.reset_index(inplace=True)
+            # ----------
+            # Now filter based on CRS
+            self.df_filtered = df_huc.loc[(df_huc['crs'] == self.projection)]
+            if (self.df_filtered.empty):
+                self.log_append_and_print(f"No valid records return for {huc_number} and crs {self.projection}. {filter_msg}")
+                return
 
-            self.log_append_and_print(f"Number of model records after filtering is {len(self.df_huc)} (pre-download).")
+            self.df_filtered.reset_index(inplace=True)
+
+            self.log_append_and_print(f"Number of model records after filtering is {len(self.df_filtered)} (pre-download).")
 
             if (self.is_verbose == True):
 
@@ -150,16 +178,16 @@ class Get_Ras_Models_By_Catalog():
                 with pd.option_context('display.max_columns', None):                    
                     print("df_huc list")
                     pd.set_option('display.max_colwidth', None)
-                    print(self.df_huc)
+                    print(self.df_filtered)
                     # don't log this
                 
             # first add two columns, one to say if download succesful (T/F), the other to say download fail reason
             pd.options.mode.chained_assignment = None
-            self.df_huc.loc[:, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = ''
-            self.df_huc.loc[:, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = ''
+            self.df_filtered.loc[:, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = ''
+            self.df_filtered.loc[:, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = ''
 
             # we will save it initially but update it and save it again as it goes
-            self.df_huc.to_csv(self.target_filtered_csv_path, index=False)
+            self.df_filtered.to_csv(self.target_filtered_csv_path, index=False)
             self.log_append_and_print(f"Filtered model catalog saved to : {self.target_filtered_csv_path}")
             if (self.list_only == False):                          
                 self.log_append_and_print("Note: This csv represents all filtered models folders that are pending to be downloaded.\n" \
@@ -167,19 +195,23 @@ class Get_Ras_Models_By_Catalog():
 
 
             # make list from the models_catalog.final_name_key which should be the list of folder names to be downloaded
-            folders_to_download = self.df_huc["final_name_key"].tolist()
+            folders_to_download = self.df_filtered["final_name_key"].tolist()
             folders_to_download.sort()
 
             # ----------
             # If inc_download_folders, otherwise we just stop.  Sometimes a list is wanted but not the downloads
             if (self.list_only == False):
                 # loop through df_huc records and using name, pull down 
+                # TODO: Add a progress bar and multi proc, BUT....
+                # S3 does not like two many simulations downloads at a time. It has to do with the network speed of your machine.
+                # Just keep an eye on it when multi threading.
+                # For now, it is pretty fast anyways.
                 self.download_files(folders_to_download)
 
             self.log_append_and_print("")
             if (self.list_only == True):
-                self.log_append_and_print("List only as per (-d) flag - no downloads attempted")
-                self.log_append_and_print(f"Number of model folders which would be attempted to downloaded is {len(self.df_huc)}")
+                self.log_append_and_print("List only as per (-f) flag - no downloads attempted")
+                self.log_append_and_print(f"Number of model folders which would be attempted to downloaded is {len(self.df_filtered)}")
             else:
                 self.log_append_and_print(f"Number of models folders successfully downloaded: {self.num_success_downloads}")
                 num_skips = self.num_pending_downloads - self.num_success_downloads
@@ -202,8 +234,8 @@ class Get_Ras_Models_By_Catalog():
            self.log_append_and_print(errMsg)
 
         # resaved with the updates to the download columns
-        if (self.df_huc.empty == False) and (self.list_only == False):
-            self.df_huc.to_csv(self.target_filtered_csv_path, index=False)
+        if (self.df_filtered.empty == False) and (self.list_only == False):
+            self.df_filtered.to_csv(self.target_filtered_csv_path, index=False)
             self.log_append_and_print(f"Filtered model catalog has been update.")
 
         end_time = datetime.now()
@@ -219,14 +251,16 @@ class Get_Ras_Models_By_Catalog():
 
 
 
-    def validate_inputs(self, s3_path_to_catalog_file, huc_number, target_owp_ras_models_path, target_owp_ras_models_csv_file):
+    def __validate_inputs(self, s3_path_to_catalog_file, huc_number, projection, 
+                          target_owp_ras_models_path, target_owp_ras_models_csv_file, list_only):
 
         '''
+        Validates input but also sets up key variables
+
         If errors are found, an exception will be raised.
         '''
 
-        # huc number is valid
-
+        #---------------
         if (huc_number is None):  # Possible if not coming via the __main__ (also possible)
             raise ValueError("huc number not set")
 
@@ -237,15 +271,44 @@ class Get_Ras_Models_By_Catalog():
             raise ValueError("huc number is not a number")
         
         self.huc_number = huc_number
+
+        #---------------
+        if (projection is None) or (projection == ""):  # Possible if not coming via the __main__ (also possible)
+            raise ValueError("projection (-p) value not set")
+
+        projection = projection.upper()
+
+        # CRS pattern must be in '4 alpha chars' + ':' + 4 or 5 digits.  ie) EPSG:2277 or ESRI:102739
+        # reg of re.match(r'^[a-zA-Z]{4}:[1-9]{4,6}$', projection) == False): split against the color
+        projection_seg = projection.split(":")
+        if (len(projection_seg) != 2):
+            raise ValueError("crs value appears to be incorrect (four letters, then a colon, then 4 or 5 numbers). e.g. ESRI:102739")
        
-        self.target_owp_ras_models_path = target_owp_ras_models_path
-        
+        if (projection_seg[0] != 'ESRI' and projection_seg[0] != 'EPSG'):
+            raise ValueError("crs value appears to be incorrect. Expected to start with EPSG or ESRI")
+
+        self.projection = projection
+
+        #---------------
         if (target_owp_ras_models_csv_file == ""):
             raise ValueError("target_owp_ras_models_csv_file can not be empty")
         
+        #---------------
+        self.target_owp_ras_models_path = target_owp_ras_models_path
+
+        if (list_only == False):
+            if (os.path.exists(self.target_owp_ras_models_path)):
+                shutil.rmtree(self.target_owp_ras_models_path)
+                # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
+                # so sometimes mkdir can fail if rmtree isn't done
+                time.sleep(2) # 2 seconds
+
+            os.mkdir(self.target_owp_ras_models_path)
+
         # the string may or may not have the [] and that is ok.
         self.target_filtered_csv_path = target_owp_ras_models_csv_file.replace("[]", huc_number)
 
+        #---------------
         # Extract the base s3 bucket name from the catalog pathing.
         # temp remove the s3 tag
         # note: the path was already used and validated
@@ -270,6 +333,7 @@ class Get_Ras_Models_By_Catalog():
         self.src_owp_model_folder_path = self.bucket_name + "/" + self.src_owp_model_folder_path
         self.src_owp_model_folder_path += "models"        
 
+        #---------------
         # The log files will go to a folder that is one level higher (a parent folder) for the models target.
         target_owp_ras_models_path_parent = os.path.dirname(target_owp_ras_models_path)
         self.log_folder_path = os.path.join(target_owp_ras_models_path_parent, "logs")
@@ -304,7 +368,7 @@ class Get_Ras_Models_By_Catalog():
             print(src_path)
 
             # Get row so we can can update it
-            rowIndexes = self.df_huc.index[self.df_huc['final_name_key']==folder_name].tolist()
+            rowIndexes = self.df_filtered.index[self.df_filtered['final_name_key']==folder_name].tolist()
             if (len(rowIndexes) != 1):
                 msg = f"Sorry, something went wrong looking the specific record with a final_name_key of {folder_name}"
                 self.log_append_and_print(f"== {msg}")
@@ -320,8 +384,8 @@ class Get_Ras_Models_By_Catalog():
                 self.log_append_and_print(progress_msg)
 
                 # update the df (csv) to show it failed and why
-                self.df_huc.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = "False"
-                self.df_huc.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = msg
+                self.df_filtered.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = "False"
+                self.df_filtered.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = msg
                 continue
 
             target_path = os.path.join(self.target_owp_ras_models_path, folder_name)
@@ -347,12 +411,12 @@ class Get_Ras_Models_By_Catalog():
                 msg = msg.replace(",", " ")
 
                 # update the df (csv) to show it failed and why
-                self.df_huc.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = "False"
-                self.df_huc.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = msg
+                self.df_filtered.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = "False"
+                self.df_filtered.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = msg
                 continue
 
             self.log_append_and_print(f" ----- successful")
-            self.df_huc.at[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = "True"
+            self.df_filtered.at[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = "True"
 
             #self.df_row[rowIndex] = df_row
             self.num_success_downloads += 1
@@ -419,14 +483,14 @@ if __name__ == '__main__':
 
     # ----------------------------
     # Sample Usage (min required args) (also downloads related folders)
-    # python3 ./tools/get_ras_models_by_catalog.py -s s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv -u 12090301
+    # python3 ./tools/get_ras_models_by_catalog.py -s s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv -u 12090301 -p ESRI:102739
 
     # Sample Usage with most params
     # python3 ./tools/get_ras_models_by_catalog.py -u 12090301 -s s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv
-    #  -tm c:\\ras2fim\\ras_models -tcsv c:\\ras2fim\ras_models\12090301_models_catalog.csv -v
+    #  -tm c:\\ras2fim\\ras_models -tcsv c:\\ras2fim\ras_models\12090301_models_catalog.csv -v -p ESRI:102739
     
     # Sample Usage to get just the list and not the model folders downloaded (and most defaults)
-    # python3 ./tools/get_ras_models_by_catalog.py -s s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv -u 12090301 -d
+    # python3 ./tools/get_ras_models_by_catalog.py -s s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv -u 12090301 -p EPSG:2277 -f
 
     # ----------------------------
     # NOTE: You need to have aws credentials already run on this machine, at least once per server.
@@ -449,33 +513,41 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Communication with aws s3 data services to download OWP_ras_model folders by HUC')
 
     # False means you get a list only, not the folders downloaded (at \OWP_ras_models\huc_OWP_ras_models.csv)
-    parser.add_argument('-d','--list_only', 
-                        help='(Opt) Adding this flag will result in a log file only with the list of potential downloadable folders, " \
-                        "but not actually download the folders. Default = False (download files)',
-                        required=False, default=False, action='store_true')
 
     # can't default due to security.  ie) s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv
     # Note: the actual models folders are assumed to be a folder named "models" beside the models_catalog.csv
-    parser.add_argument('-s','--s3_path_to_catalog_file', 
-                        help='(Reqd) s3 path and file name of models_catalog.',
-                        required=True)
+    parser.add_argument('-s', '--s3_path_to_catalog_file', 
+                        help='REQUIRED: S3 path and file name of models_catalog.',
+                        required=True, metavar='')
+
+    parser.add_argument('-u','--huc_number', 
+                        help='REQUIRED: Download model records matching this provided number',
+                        required=True, metavar='')
+
+    parser.add_argument('-p','--projection', 
+                        help='REQUIRED: All model folders have an applicable crs value, but one HUC might have some models in one'\
+                            ' crs and another set of models in a different crs. This results in one HUC having' \
+                            ' to be processed twice (one per crs). Please enter the crs value from the OWP_ras_models_catalog.csv' \
+                            ' to help filter the correct models you need. Example: EPSG:2277 (case sensitive)',
+                        required=True, metavar='', type=str)
+
+    parser.add_argument('-f','--list_only', 
+                        help='OPTIONAL: Adding this flag will result in a log file only with the list of potential downloadable folders, " \
+                        "but not actually download the folders. Default = False (download files)',
+                        required=False, default=False, action='store_true')
 
     parser.add_argument('-tcsv','--target_owp_ras_models_csv_file',
-                        help='(Opt) Path and file name of where to save the filtered models catalog csv.' \
+                        help='OPTIONAL: Path and file name of where to save the filtered models catalog csv.' \
                              ' Defaults = c:\\ras2fim_data\\OWP_ras_models\\OWP_ras_models_catalog_[huc number].csv.',
-                        required=False, default=sv.DEFAULT_RSF_MODELS_CATALOG_FILE)
+                        required=False, default=sv.DEFAULT_RSF_MODELS_CATALOG_FILE, metavar='')
 
     parser.add_argument('-tm','--target_owp_ras_models_path',
-                        help='(Opt) Where to download the model folders such the root ras2fim owp_ras_models folders.' \
+                        help='OPTIONAL: Where to download the model folders such the root ras2fim owp_ras_models folders.' \
                              ' Defaults = c:\\ras2fim_data\\OWP_ras_models\\models',
-                        required=False, default=sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH)
-    
-    parser.add_argument('-u','--huc_number', 
-                        help='(Reqd) download model records matching this provided number',
-                        required=True)
+                        required=False, default=sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH, metavar='')
 
     parser.add_argument('-v','--is_verbose', 
-                        help='(Opt) Adding this flag will give additional tracing output. Default = False (no extra output)',
+                        help='OPTIONAL: Adding this flag will give additional tracing output. Default = False (no extra output)',
                         required=False, default=False, action='store_true')
 
     args = vars(parser.parse_args())
@@ -486,6 +558,7 @@ if __name__ == '__main__':
                    target_owp_ras_models_path = args['target_owp_ras_models_path'],
                    target_owp_ras_models_csv_file = args['target_owp_ras_models_csv_file'],
                    huc_number = args['huc_number'],
+                   projection = args['projection'],
                    is_verbose = args['is_verbose']) 
         
 

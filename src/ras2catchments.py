@@ -574,7 +574,7 @@ if __name__=="__main__":
     parser.add_argument('-w',
                         dest = "huc_num",
                         help = 'REQUIRED: HUC-8 watershed that is being evaluated: Example: 10170204',
-                        required = True,
+                        required = True, metavar='',
                         type = str)
 
     parser.add_argument('-o',
@@ -582,7 +582,7 @@ if __name__=="__main__":
                         help = r'REQUIRED: This can be used in one of two ways. You can submit either a full path' \
                                r' such as c:\users\my_user\Desktop\myoutput OR you can add a simple ras2fim output huc folder name.' \
                                 ' Please see the embedded notes in the __main__ section of the code for details and  examples.',
-                        required = True,
+                        required = True, metavar='',
                         type = str) 
 
     parser.add_argument('-n',
@@ -591,7 +591,7 @@ if __name__=="__main__":
                                r' Defaults to c:\ras2fim_data\inputs\X-National_Datasets. This is needed to subset' \
                                 ' the nwm_catchments.gkpg.',
                         default = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
-                        required = False,
+                        required = False, metavar='',
                         type = str)
 
     parser.add_argument('-mc',
@@ -600,7 +600,7 @@ if __name__=="__main__":
                                r' Defaults to c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_[].csv and will use subsitution'\
                                r' to replace the [] with the huc number.',
                         default = sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
-                        required = False,
+                        required = False, metavar='',
                         type = str)
     
     parser.add_argument('-v',
