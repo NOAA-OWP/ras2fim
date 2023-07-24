@@ -368,12 +368,10 @@ def init_and_run_ras2fim(str_huc8_arg,
     ####  Some validation of input, but mostly setting up pathing ######
 
     # -------------------
-    #read RAS models units from both prj file and given EPSG code through -p
-    #below functions involve a series of excpetion checkings
-    epsg_code=int(str_crs_arg.split(':')[1])
-    proj_crs = pyproj.CRS.from_epsg(epsg_code)
-    model_unit=sf.confirm_models_unit(proj_crs,str_ras_path_arg)
-
+    # Read RAS models units from both prj file and given EPSG code through -p
+    # Functions below check for a series of exceptions 
+    proj_crs = pyproj.CRS.from_string(str_crs_arg) 
+    model_unit = sf.confirm_models_unit(proj_crs, str_ras_path_arg)
 
     # -w   (ie 12090301)
     if (len(str_huc8_arg) != 8):
