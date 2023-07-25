@@ -63,14 +63,14 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, o
             extent_poly_diss["geometry"] = [MultiPolygon([feature]) if type(feature) == Polygon else feature for feature in extent_poly_diss["geometry"]]
             
             # Write polygon
-            inundation_polygon = os.path.join(output_folder, feature_id + '_' + str(stage_ft) + '.shp')
+            inundation_polygon = os.path.join(output_folder, feature_id + '_' + huc + '_' + str(stage_ft) + '_ft '+ '.gpkg')
             # -- Add more attributes -- #
             extent_poly_diss['version'] = version
             extent_poly_diss['feature_id'] = feature_id
             extent_poly_diss['stage_ft'] = stage_ft
             extent_poly_diss['path'] = inundation_polygon
             
-            extent_poly_diss.to_file(inundation_polygon, driver='ESRI Shapefile')
+            extent_poly_diss.to_file(inundation_polygon, driver='GPKG')
             if iteration < 1:  # Initialize the rolling huc_rating_curve_geo
                 feature_id_rating_curve_geo = pd.merge(rating_curve_df, extent_poly_diss, left_on='AvgDepth(ft)', right_on='stage_ft', how='right')
             else:
