@@ -77,61 +77,7 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, o
                 rating_curve_geo_df = pd.merge(rating_curve_df, extent_poly_diss, left_on='AvgDepth(ft)', right_on='stage_ft', how='right')
                 feature_id_rating_curve_geo = pd.concat([feature_id_rating_curve_geo, rating_curve_geo_df])
             iteration += 1 
-        
-        
-        """
-        # Open depth_grid using rasterio.
-        depth_src = rasterio.open(depth_grid)
-        depth_array = depth_src.read(1)
-
-        # Use numpy.where operation to reclassify depth_array on the condition that the pixel values are > 0.
-        reclass_depth_array = np.where((depth_array>0) & (depth_array != depth_src.nodata), 1, 0).astype('uint8')
-
-        # Save resulting array to new tif with appropriate name.
-        is_all_zero = np.all((reclass_depth_array == 0))
-
-        # Only continue if there are actually pixel values above zero.
-        if is_all_zero:
-            continue
-
-        # Interpolate flow from given stage.
-        stage_ft = float(os.path.split(depth_grid)[1].split('-')[1].strip('.tif'))/10
-        # interpolated_flow_cfs = np.interp(stage_ft,rating_curve_df.loc[:,'AvgDepth(ft)'],rating_curve_df.loc[:,'Flow(cfs)'])
-
-        # Aggregate shapes
-        results = ({'properties': {'extent': 1}, 'geometry': s} for i, (s, v) in enumerate(shapes(reclass_depth_array, mask=reclass_depth_array>0)))
-
-        # Convert list of shapes to polygon, then dissolve
-        extent_poly = gpd.GeoDataFrame.from_features(list(results), crs=depth_src.crs)
-        extent_poly_diss = extent_poly.dissolve(by='extent')
-#        extent_poly_diss = extent_poly_diss.to_crs(VIZ_PROJECTION)
-        extent_poly_diss["geometry"] = [MultiPolygon([feature]) if type(feature) == Polygon else feature for feature in extent_poly_diss["geometry"]]
-
-#        extent_poly_diss['geometry'] = extent_poly_diss.apply(lambda row: make_valid(row.geometry), axis=1)
-
-        # -- Add more attributes -- #
-        extent_poly_diss['version'] = version
-        extent_poly_diss['feature_id'] = feature_id
-        extent_poly_diss['stage_ft'] = stage_ft
-        
-#        extent_poly_diss = extent_poly_diss.make_valid()
-        
-        extent_poly_diss['valid'] = extent_poly_diss.is_valid
-        extent_poly_diss = extent_poly_diss[extent_poly_diss['valid'] == True]
-        
-        extent_poly_diss.to_file(os.path.join(output_folder, feature_id + '_' + str(stage_ft) + '.shp'), driver = 'ESRI Shapefile')
-        if len(extent_poly_diss) == 0:
-            continue
-        # TODO add remainder of ras2fim attributes from catchment layer
-
-        if iteration < 1:  # Initialize the rolling huc_rating_curve_geo
-            feature_id_rating_curve_geo = pd.merge(rating_curve_df, extent_poly_diss, left_on='AvgDepth(ft)', right_on='stage_ft', how='right')
-        else:
-            rating_curve_geo_df = pd.merge(rating_curve_df, extent_poly_diss, left_on='AvgDepth(ft)', right_on='stage_ft', how='right')
-            feature_id_rating_curve_geo = pd.concat([feature_id_rating_curve_geo, rating_curve_geo_df])
-        
-        iteration += 1 
-        """
+    
 
 #    print("Making valid...")
 #    feature_id_rating_curve_geo['valid'] = feature_id_rating_curve_geo.is_valid  # Add geometry validity column
