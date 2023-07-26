@@ -39,7 +39,7 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
 
 
     if (os.path.exists(rating_curve_path) == False):
-        raise Exception(f"The file rating_curve.csv does not exist. It needs to be in the {sv.R2F_OUTPUT_DIR_RAS2REM} subfolder." \
+        raise Exception(f"The file rating_curve.csv does not exist. It needs to be in the {sv.R2F_OUTPUT_DIR_METRIC} subfolder." \
                         f" Ensure ras2fim has been run and created a the file.")
 
     # as in the r2f_features_{huc_num}.tif  (we can assume it is here are we created it in this file)
@@ -268,11 +268,11 @@ def __validate_make_catchments(huc_num,
 
     # -------------------
     # AND the 06 directory must already exist 
-    r2f_ras2rem_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_RAS2REM)
-    if (os.path.exists(r2f_ras2rem_dir) == False):
-        raise FileNotFoundError(f"The ras2fim huc output, {sv.R2F_OUTPUT_DIR_RAS2REM} subfolder does not exist." \
-                        f" Ensure ras2fim has been run and created a valid {sv.R2F_OUTPUT_DIR_RAS2REM} folder.")
-    rtn_varibles_dict["r2f_ras2rem_dir"] = r2f_ras2rem_dir
+    r2f_06_metric_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_METRIC)
+    if (os.path.exists(r2f_06_metric_dir) == False):
+        raise FileNotFoundError(f"The ras2fim huc output, {sv.R2F_OUTPUT_DIR_METRIC} subfolder does not exist." \
+                        f" Ensure ras2fim has been run and created a valid {sv.R2F_OUTPUT_DIR_METRIC} folder.")
+    rtn_varibles_dict["r2f_06_metric_dir"] = r2f_06_metric_dir
 
     # -------------------
     # adjust the model_catalog file name if applicable
@@ -299,7 +299,7 @@ def __validate_make_catchments(huc_num,
     rtn_varibles_dict["catchments_subset_file"] = catchments_subset_file
 
     # -------------------
-    rating_curve_path = os.path.join(r2f_ras2rem_dir,'rating_curve.csv')
+    rating_curve_path = os.path.join(r2f_06_metric_dir,'rating_curve.csv')
     rtn_varibles_dict["rating_curve_path"] = rating_curve_path
 
     # -------------------
@@ -456,9 +456,9 @@ def make_catchments(huc_num,
     # add nodata REM file to list of rasters to merge, so that the final merged raster has same extent
     print("Creating rem extent file")
     r2f_rem_extent_path = None
-    r2f_rem_path = os.path.join(rtn_varibles_dict["r2f_ras2rem_dir"],'rem.tif')
+    r2f_rem_path = os.path.join(rtn_varibles_dict["r2f_06_metric_dir"], sv.R2F_OUTPUT_DIR_RAS2REM, 'rem.tif')
     if os.path.exists(r2f_rem_path): 
-        r2f_rem_extent_path = os.path.join(rtn_varibles_dict["r2f_ras2rem_dir"], \
+        r2f_rem_extent_path = os.path.join(rtn_varibles_dict["r2f_06_metric_dir"], \
                                            'rem_extent_nodata.tif')
         with rasterio.open(r2f_rem_path) as src:
             rem_raster = src.read()
@@ -524,8 +524,8 @@ def make_catchments(huc_num,
         print(f"** Writing final features mosaiced to {mosaic_features_raster_path}")
 
     # Ensure the metric columns exist in the meta file about to be created in vectorize
-    r2f_ras2rem_dir = rtn_varibles_dict.get("r2f_ras2rem_dir")
-    sf.convert_rating_curve_to_metric(r2f_ras2rem_dir)
+    r2f_06_metric_dir = rtn_varibles_dict.get("r2f_06_metric_dir")
+    sf.convert_rating_curve_to_metric(r2f_06_metric_dir)
 
     print("*** Vectorizing Feature IDs and creating metadata")
     model_huc_catalog_path = rtn_varibles_dict.get("model_huc_catalog_path")
