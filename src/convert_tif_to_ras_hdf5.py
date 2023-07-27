@@ -30,6 +30,7 @@ import pyproj
 import time
 import datetime
 import shared_functions as sf
+
 # ************************************************************
 
 # -------------------------------------------------------
@@ -49,18 +50,6 @@ def fn_get_filepaths(str_directory, str_file_suffix):
 
     return list_file_paths
 # -------------------------------------------------------
-
-# $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
-# $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
 # Print iterations progress
