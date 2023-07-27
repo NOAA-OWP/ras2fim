@@ -289,11 +289,11 @@ def fn_run_ras2fim(str_huc8_arg,
     # ------ Final Step: cleanup files and move final files to release_files folder -----
     print()
     print ("+++++++ Finalizing processing +++++++" )
-    r2f_ras2rem_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_RAS2REM) 
+    r2f_ras2rem_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_METRIC, sv.R2F_OUTPUT_DIR_RAS2REM) 
     r2f_catchments_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_CATCHMENTS)   
     r2f_final_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_FINAL)   
 
-    # Copy all files from the 06_ras2rem and the 07_ras2catchemnts directories
+    # Copy some key files from the 06_metric and the 07_ras2catchemnts directories
     if (os.path.exists(r2f_final_dir) == True):
         shutil.rmtree(r2f_final_dir)
         # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
