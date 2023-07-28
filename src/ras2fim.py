@@ -52,12 +52,12 @@ b_terrain_check_only = False
 
 def init_and_run_ras2fim(str_huc8_arg, 
                          str_crs_arg,
-                         r2fm_output_parent_dir = sv.R2F_DEFAULT_OUTPUT_MODELS,
+                         r2f_output_dir = sv.R2F_DEFAULT_OUTPUT_MODELS,
                          str_hec_path  = sv.DEFAULT_HECRAS_ENGINE_PATH,
                          str_ras_path_arg = sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
                          str_nation_arg  = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
                          str_terrain_override = 'None Specified - using USGS WCS',
-                         rem_outputs = False,
+                         run_ras2rem = False,
                          model_huc_catalog_path = sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
                          str_step_override = 'None Specified - starting at the beginning',
                          output_resolution = 10):
@@ -89,13 +89,13 @@ def init_and_run_ras2fim(str_huc8_arg,
         raise ValueError("the -i arg (ras path arg) does not appear to be a valid folder.")
 
     # -------------------        
-    if (os.path.exists(r2fm_output_parent_dir) == False): # parent path must exist
-        raise ValueError(f'The path of {r2fm_output_parent_dir} can not be found. Either the default path of '\
+    if (os.path.exists(r2f_output_dir) == False): # parent path must exist
+        raise ValueError(f'The path of {r2f_output_dir} can not be found. Either the default path of '\
                          f'{sv.R2F_DEFAULT_OUTPUT_MODELS} or a path provided in the -o argument must exist.')
 
     # -------------------
     get_stnd_r2f_output_folder_name = sf.get_stnd_r2f_output_folder_name(str_huc8_arg, str_crs_arg)
-    r2f_huc_output_dir = os.path.join(r2fm_output_parent_dir, get_stnd_r2f_output_folder_name)
+    r2f_huc_output_dir = os.path.join(r2f_output_dir, get_stnd_r2f_output_folder_name)
 
     if (os.path.exists(r2f_huc_output_dir) == True): 
         raise ValueError(f'The path of {r2f_huc_output_dir} already exists. Please delete it and restart.')
@@ -152,7 +152,7 @@ def init_and_run_ras2fim(str_huc8_arg,
                    str_nation_arg,
                    str_hec_path,
                    str_terrain_override,
-                   rem_outputs,
+                   run_ras2rem,
                    model_huc_catalog_path,
                    int_step,
                    output_resolution,
@@ -346,7 +346,8 @@ def fn_run_ras2fim(str_huc8_arg,
     if int_step <= 6:
         fn_simplify_fim_rasters(str_hecras_out_dir,
                                 flt_resolution_depth_grid,
-                                sv.DEFAULT_RASTER_OUTPUT_CRS)
+                                sv.DEFAULT_RASTER_OUTPUT_CRS,
+                                model_unit)
     # ----------------------------------------
     
 
@@ -359,6 +360,7 @@ def fn_run_ras2fim(str_huc8_arg,
     # -------------------------------------------------
 
     # ------ 
+    
     # Abort if ras2rem disabled (which is now the default)
     if (run_ras2rem == False):
 
@@ -378,6 +380,10 @@ def fn_run_ras2fim(str_huc8_arg,
 
         # TODO: use this models catalog to add columns for success/fail processing for each model and why it failed
         # if applicable.
+
+        print("This product is undergoing an update and temporarily will end up with only one file in the 'final' folder.")
+        print("Versions coming in the near future will have a number of gpkg files.")
+
         shutil.copy2(model_huc_catalog_path, r2f_final_dir)
 
         print("+=================================================================+")
@@ -396,7 +402,7 @@ def fn_run_ras2fim(str_huc8_arg,
     print ("+++++++ Processing for code  STEP 8 +++++++" )
 
     if int_step <= 8:
-        fn_run_ras2rem(r2f_huc_output_dir)
+        fn_run_ras2rem(r2f_huc_output_dir, model_unit)
     # -------------------------------------------------
 
 
@@ -411,11 +417,11 @@ def fn_run_ras2fim(str_huc8_arg,
     # ------ Final Step: cleanup files and move final files to release_files folder -----
     print()
     print ("+++++++ Finalizing processing +++++++" )
-    r2f_ras2rem_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_RAS2REM) 
+    r2f_ras2rem_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_METRIC, sv.R2F_OUTPUT_DIR_RAS2REM) 
     r2f_catchments_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_CATCHMENTS)   
     r2f_final_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_FINAL)   
 
-    # Copy all files from the 06_ras2rem and the 07_ras2catchemnts directories
+    # Copy some key files from the 06_metric and the 07_ras2catchemnts directories
     if (os.path.exists(r2f_final_dir) == True):
         shutil.rmtree(r2f_final_dir)
         # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
@@ -473,7 +479,6 @@ def create_input_args_log (**kwargs):
             arg_file.write("%s == %s\n" % (key, value))
 
 
-
     
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    
 
@@ -526,11 +531,11 @@ if __name__ == '__main__':
                         required = True, metavar='', type = str)
 
     parser.add_argument('-o',
-                        dest = "r2fm_output_parent_dir",
+                        dest = "r2f_output_dir",
                         help = 'OPTIONAL: An ras2fim output folder will be created and automatically named. ' \
                                'It will default to ' + sv.R2F_DEFAULT_OUTPUT_MODELS + ', however by using this arg, '\
                                'you can override that path.',
-                        required = True, metavar='', 
+                        required = False, metavar='', 
                         default = sv.R2F_DEFAULT_OUTPUT_MODELS,
                         type = str) 
     
@@ -567,7 +572,7 @@ if __name__ == '__main__':
                         type = str)
 
     parser.add_argument('-m', 
-                        dest = "rem_outputs",
+                        dest = "run_ras2rem",
                         help = 'OPTIONAL: flag to dictate including RAS2REM execution: Enter True to include, defaults to False.',
                         required = False, 
                         default = False,
@@ -598,4 +603,4 @@ if __name__ == '__main__':
     
     args = vars(parser.parse_args())
     
-    fn_run_ras2fim(**args)
+    init_and_run_ras2fim(**args)

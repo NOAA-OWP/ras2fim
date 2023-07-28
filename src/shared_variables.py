@@ -34,7 +34,9 @@ R2F_OUTPUT_DIR_SHAPES_FROM_CONF  = "02_shapes_from_conflation"
 R2F_OUTPUT_DIR_TERRAIN  = "03_terrain"
 R2F_OUTPUT_DIR_HECRAS_TERRAIN  = "04_hecras_terrain"
 R2F_OUTPUT_DIR_HECRAS_OUTPUT  = "05_hecras_output"
-R2F_OUTPUT_DIR_RAS2REM  = "06_ras2rem"
+R2F_OUTPUT_DIR_METRIC = "06_metric"
+R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS = "Depth_Grid"
+R2F_OUTPUT_DIR_RAS2REM  = "ras2rem"
 R2F_OUTPUT_DIR_CATCHMENTS  = "07_catchments"
 R2F_OUTPUT_DIR_FINAL  = "final"
 
@@ -47,7 +49,7 @@ DEFAULT_NODATA_VAL = (0 - 9999)
 OUTPUT_VERTICAL_DATUM = "NAVD88"
 
 #DEFAULT VALUES
-DEFAULT_RASTER_OUTPUT_CRS = "EPSG:3857"
+DEFAULT_RASTER_OUTPUT_CRS = "EPSG:5070"
 
 # NOTE: Default Date output pattern is YYMMDD  (as in 230725). See shared_function.get_stnd_date()
 # NOTE: For the default r2fm output folder pattern, see shared_functions.(get_stnd_r2f_output_folder_name)
