@@ -210,7 +210,13 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
             last_part= '\\'.join(list_path_parts[-4:-2])
             str_folder_to_create = first_part + '\\' + sv.R2F_OUTPUT_DIR_METRIC+'\\'+sv.R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS+'\\'+last_part
             os.makedirs(str_folder_to_create, exist_ok=True)
-            
+
+            # Path for the depth grid tifs are: e.g
+            #    \06_metric\Depth_Grid\HUC_120401010302\1466236\1466236-1.tif (and more tifs)
+
+            # It's twin rating curve from its path in 05 are. e.g) 
+            #    \05_hecras_output\HUC_120401010302\1466236\Rating_Curve\1466236_rating_curve.csv
+
         else:
             str_current_comid = ''
             # there are nested TIFs, so don't process
@@ -295,8 +301,8 @@ if __name__ == '__main__':
 
     parser.add_argument('-i',
                         dest = "r2f_huc_parent_dir",
-                        help='REQUIRED: The path to the parent folder containing the ras2fim outputs . '
-                             'Output is created in folder "06_Metric/Depth_Grid" ' ,
+                        help='REQUIRED: The path to the parent folder containing the ras2fim outputs for a given HUC. '
+                             'Output is created in sub-folders "Depth_Grid" ' ,
                         required=True,
                         metavar='DIR',
                         type=str)

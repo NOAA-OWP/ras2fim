@@ -181,17 +181,17 @@ def extract_ras(args, huc):
             ras_rc = pd.read_csv(ras_rc_dir / rc_file)
             
             # Get max depth for selecting depth grid
-            rc_max_depth = int(ras_rc['AvgDepth(m)'].max() * 10)
+            rc_max_depth = int(ras_rc['stage_m'].max() * 10)
             
             # Interpolate flow at each interval flow
-            interp_depth = np.interp(val_discharge['discharge'], ras_rc['Flow(cms)'], ras_rc['AvgDepth(m)'], left = np.nan, right = np.nan) 
+            interp_depth = np.interp(val_discharge['discharge'], ras_rc['discharge_cms'], ras_rc['stage_m'], left = np.nan, right = np.nan) 
             interp_depth = interp_depth.item()
             
             if not pd.isna(interp_depth):
                         
                 # Query rating curve: must be >= interpolated depth within 1 ft
                 # Generate extent grids
-                benchmark = min(ras_rc.loc[ras_rc['AvgDepth(m)']>=interp_depth]['AvgDepth(m)'])
+                benchmark = min(ras_rc.loc[ras_rc['stage_m']>=interp_depth]['stage_m'])
                 
                 if (not benchmark == None) and (benchmark - interp_depth <= 0.3048): # see https://github.com/NOAA-OWP/cahaba/wiki/Evaluating-HAND-Performance, Fig A.5
                 
@@ -229,8 +229,8 @@ def extract_ras(args, huc):
                                                 'recurr_interval': interval,
                                                 'ras_rc_max_depth': rc_max_depth,
                                                 'interp_depth': interp_depth,
-                                                'ras_rc_min_flow': ras_rc['Flow(cms)'].min(),
-                                                'ras_rc_max_flow': ras_rc['Flow(cms)'].max(),
+                                                'ras_rc_min_flow': ras_rc['discharge_cms'].min(),
+                                                'ras_rc_max_flow': ras_rc['discharge_cms'].max(),
                                                 'NWM_recurr_flow': val_discharge['discharge'].item(),
                                                 'category': 'missing in search window'}
                                             , ignore_index = True)
@@ -243,8 +243,8 @@ def extract_ras(args, huc):
                                                 'recurr_interval': interval,
                                                 'ras_rc_max_depth': rc_max_depth,
                                                 'interp_depth': None,
-                                                'ras_rc_min_flow': ras_rc['Flow(cms)'].min(),
-                                                'ras_rc_max_flow': ras_rc['Flow(cms)'].max(),
+                                                'ras_rc_min_flow': ras_rc['discharge_cms'].min(),
+                                                'ras_rc_max_flow': ras_rc['discharge_cms'].max(),
                                                 'NWM_recurr_flow': val_discharge['discharge'].item(),
                                                 'category': 'out of range'}
                                             , ignore_index = True)
