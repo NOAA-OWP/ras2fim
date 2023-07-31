@@ -1,6 +1,41 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.15.0 - 2023-07-24 - [PR#113](https://github.com/NOAA-OWP/ras2fim/pull/113)
+
+By this PR:
+1. The results of `simplify_fim_rasters.py` is now saved in output folder `06_metric/Depth_Grid`. Also, if HEC-RAS models units are in feet:
+    - Pixel values of the simplified depth grids (z unit) are converted into meter. 
+    - File names of resulting depth grids (like "featureid-remvalue.tif") are updated with rem values in meter. 
+
+2. The results of `run_ras2rem.py` is now saved in output folder `06_metric/ras2rem` in which:
+    - Rating curve values are in meter and m^3/s
+    - `rem.tif` file has projection of EPSG:5070 and pixel values (z unit) are in meter. 
+
+Note that this PR is not addressing standardization for the results of step 9 ( `make_catchments` function), and @RobHanna-NOAA will work on that section, if needed. 
+
+### Changes  
+- `src/ras2fim.py` : Passed "model_unit" argument into `fn_simplify_fim_rasters` and `fn_run_ras2rem` functions, so these functions can convert the results into metric when HEC-RAS models unit are in feet.
+
+- `src/simplify_fim_rasters.py` 
+  1. The results of this step is now saved in output folder `06_metric/Depth_Grid` 
+  2. If model unit is in feet, pixel values of the simplified depth grids (z unit) are converted into meter and file names of resulting depth grids (like "featureid-remvalue.tif") are updated with rem values in meter. 
+
+- `src/run_ras2rem.py` :
+  1. The results of ras2rem is now saved in output folder `06_metric/ras2rem`.
+  2. If model unit is in feet, rating curve values are converted into meter and rounded into 3 digits. 
+
+- `src/shared_variables.py` 
+  1. Changed the CRS of the standardized outputs to be EPSG:5070. 
+
+- `src/shared_functions.py` 
+  1. Added a new function called `find_model_unit_from_rating_curves` to get 'model_unit' of HEC-RAS models, if we already have rating curve results from a successful run of ras2fim for step 5 (`fn_create_fim_rasters` function). This is applicable only when a user wants to directly run  `simplify_fim_rasters.py` or `run_ras2rem.py`. 
+
+- `src/ras2catchments.py` : Changed pathing for location of the new depth grids.
+
+<br/><br/>
+
+
 ## v1.14.0 - 2023-07-20 - [PR#105](https://github.com/NOAA-OWP/ras2fim/pull/105)
 
 One HUC may have models with multiple CRS's, but as this is an input param to ras2fim.py, where ras2fim.py needs to know the incoming CRS, then we need to have get_models_by_catalog have an additional filter to pull records to find records in the master S3 OWP_ras_models_catalog.csv by csv. It already has huc and status as filters.

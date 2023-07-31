@@ -10,6 +10,7 @@ import fiona.transform
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import pyproj
 import shutil
 import sys
 import time
@@ -32,6 +33,10 @@ from shapely.geometry import Polygon
 from functools import partial
 
 
+# NOTE: This tool is about to be deprecated. If it is re-used... double check the right sizes for maxments.
+
+
+
 ####################################################################
 # This function creates a geopackage of Feature IDs from the raster that
 # matches the Depth Grid processing extents ("maxments") from ras2fim Step 5.
@@ -39,7 +44,7 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
 
 
     if (os.path.exists(rating_curve_path) == False):
-        raise Exception(f"The file rating_curve.csv does not exist. It needs to be in the {sv.R2F_OUTPUT_DIR_RAS2REM} subfolder." \
+        raise Exception(f"The file rating_curve.csv does not exist. It needs to be in the {sv.R2F_OUTPUT_DIR_METRIC} subfolder." \
                         f" Ensure ras2fim has been run and created a the file.")
 
     # as in the r2f_features_{huc_num}.tif  (we can assume it is here are we created it in this file)
@@ -154,26 +159,28 @@ def __get_maxment(mxmt_args):
     # Becuase of the way we are doing tdqm and multi-proc it can only take one arg but we can make it a positonal list.
     feature_id = mxmt_args[0]
     reproj_nwm_filtered_df = mxmt_args[1]
-    r2f_hecras_dir = mxmt_args[2]
+    r2f_06_metric_dir = mxmt_args[2]
     datatyped_rems_dir = mxmt_args[3]
 
     feature_catchment_df = reproj_nwm_filtered_df[reproj_nwm_filtered_df.ID == feature_id]
 
     # Pull all relevant depth grid tiffs for this feature ID
-    this_feature_id_tif_files = list(Path(r2f_hecras_dir).rglob(f'*/Depth_Grid/{feature_id}-*.tif'))
-
+    feature_id_tif_paths = list(Path(r2f_06_metric_dir).glob(f'**/{feature_id}-*.tif'))
+#
     # easier to watch progress but can't take last record as the numerics are not zero padded.
-    this_feature_id_tif_files.sort()
+    feature_id_tif_paths.sort()
 
     # -------------------
     max_rem = -1
     max_rem_file = ""
     # Look through all depth grid tiffs associated with this feature ID and find the max depth value and file
-    for p in this_feature_id_tif_files:
-        rem = int(str(p).split('\\')[-1].split('-')[1].rstrip('.tif')) # get rem value from filename
-        if(rem > max_rem):
-            max_rem = rem
-            max_rem_file = p
+    for file_name in feature_id_tif_paths:
+        # cut off the .tif at the end.
+        adj_file_name = str(file_name).replace(".tif", "")
+        depth_value = int(adj_file_name.split('-')[-1]) # get rem (depth) value from filename (last segment)
+        if(depth_value > max_rem):
+            max_rem = depth_value
+            max_rem_file = file_name
 
     feature_max_depth_raster = rasterio.open(max_rem_file)
 
@@ -194,8 +201,9 @@ def __get_maxment(mxmt_args):
     # -------------------
     # write 32-bit integer versions of our feature ID data, to ensure datatyping
     feature_id_rem_path = os.path.join(datatyped_rems_dir, "datatyped_{}_{}.tif".format(feature_id, max_rem))
+    proj_crs = pyproj.CRS.from_string(sv.DEFAULT_RASTER_OUTPUT_CRS) 
     output_meta = feature_max_depth_raster.meta.copy()
-    output_meta.update({"dtype":np.int32})
+    output_meta.update({"dtype":np.int32, "crs": proj_crs })
     with rasterio.open(feature_id_rem_path, "w", **output_meta) as m:
         m.write(long_raster_vals)
 
@@ -259,20 +267,12 @@ def __validate_make_catchments(huc_num,
     rtn_varibles_dict["src_nwm_catchments_file"] = src_nwm_catchments_file
 
     # -------------------
-    # AND the 05 directory must already exist 
-    r2f_hecras_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-    if (os.path.exists(r2f_hecras_dir) == False):
-        raise FileNotFoundError(f"The ras2fim huc output, {sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT} subfolder does not exist." \
-                        f" Ensure ras2fim has been run and created a valid {sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT} folder.")
-    rtn_varibles_dict["r2f_hecras_dir"] = r2f_hecras_dir
-
-    # -------------------
     # AND the 06 directory must already exist 
-    r2f_ras2rem_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_RAS2REM)
-    if (os.path.exists(r2f_ras2rem_dir) == False):
-        raise FileNotFoundError(f"The ras2fim huc output, {sv.R2F_OUTPUT_DIR_RAS2REM} subfolder does not exist." \
-                        f" Ensure ras2fim has been run and created a valid {sv.R2F_OUTPUT_DIR_RAS2REM} folder.")
-    rtn_varibles_dict["r2f_ras2rem_dir"] = r2f_ras2rem_dir
+    r2f_06_metric_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_METRIC)
+    if (os.path.exists(r2f_06_metric_dir) == False):
+        raise FileNotFoundError(f"The ras2fim huc output, {sv.R2F_OUTPUT_DIR_METRIC} subfolder does not exist." \
+                        f" Ensure ras2fim has been run and created a valid {sv.R2F_OUTPUT_DIR_METRIC} folder.")
+    rtn_varibles_dict["r2f_06_metric_dir"] = r2f_06_metric_dir
 
     # -------------------
     # adjust the model_catalog file name if applicable
@@ -299,7 +299,7 @@ def __validate_make_catchments(huc_num,
     rtn_varibles_dict["catchments_subset_file"] = catchments_subset_file
 
     # -------------------
-    rating_curve_path = os.path.join(r2f_ras2rem_dir,'rating_curve.csv')
+    rating_curve_path = os.path.join(r2f_06_metric_dir,'rating_curve.csv')
     rtn_varibles_dict["rating_curve_path"] = rating_curve_path
 
     # -------------------
@@ -378,15 +378,27 @@ def make_catchments(huc_num,
     # -------------------
     # Make a list of all tif file in the 05_  Depth_Grid (focusing on the depth not the feature ID)
     # TODO: We can change this to extract from the rating curve file.
-    r2f_hecras_dir = rtn_varibles_dict.get("r2f_hecras_dir")
-    all_depth_grid_tif_files=list(Path(r2f_hecras_dir).rglob('*/Depth_Grid/*.tif'))
-    if (len(all_depth_grid_tif_files) == 0):
-        raise Exception("No depth grid tif's found. Please ensure that ras2fim has been run and the 05_hecras_output" \
-                        " has depth grid tifs in the pattern of {featureID-{depth value}.tif. ie) 5789848-18.tif")
+    r2f_06_metric_dir = rtn_varibles_dict.get("r2f_06_metric_dir")
 
     # -------------------
-    # this is a list of partial file paths but stripping off the end of the file name after the feature id
-    feature_id_values = list(map(lambda var:str(var).split(".tif")[0].split("-")[-2], all_depth_grid_tif_files))
+    # Get a list of features (using the file names)
+
+    depth_grid_path = os.path.join(r2f_06_metric_dir, sv.R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS)
+    print(f"depth_grid_path is {depth_grid_path}")
+
+    all_depth_grid_tif_files=list(Path(r2f_06_metric_dir).glob('**/*-*.tif'))
+    if (len(all_depth_grid_tif_files) == 0):
+        raise Exception("No depth grid tif's found. Please ensure that ras2fim has been run and the 06_metrics" \
+                        " has depth grid tifs in the pattern of {featureID-{depth value}.tif. ie) 5789848-18.tif")
+
+    feature_file_names = list(map(lambda var: str(var).rsplit('\\', 1)[1], all_depth_grid_tif_files))
+    if (len(feature_file_names) == 0):
+        # in case the file name pattern changed
+        raise Exception("Feature Id's are extracted from depth grid tif file names using"\
+                        " the pattern of {featureID-{depth value}.tif. ie) 5789848-18.tif." \
+                        " No files found matching the pattern.")
+
+    feature_id_values = list(map(lambda var: str(var).rsplit('-')[0], feature_file_names))
     if (len(feature_id_values) == 0):
         # in case the file name pattern changed
         raise Exception("Feature Id's are extracted from depth grid tif file names using"\
@@ -397,19 +409,11 @@ def make_catchments(huc_num,
     # Make a list of all unique feature id,
     # strip out the rest of the path keeping just the feature ids
     all_feature_ids = list(set(feature_id_values))
-    all_feature_ids = [int(str(x).split('\\')[-1].split('-')[0]) for x in all_feature_ids]
+    all_feature_ids = [int(x) for x in all_feature_ids]
     
-    num_features = len(all_feature_ids)
-    if (num_features == 0):
-        # in case the file name pattern changed
-        raise Exception("Feature Id's are extracted from depth grid tif file names using"\
-                        " the pattern of {featureID-{depth value}.tif. ie) 5789848-18.tif." \
-                        " No files found matching the pattern.")
-
-    print(f"The number of unique feature ID's is {num_features}")
+    print(f"The number of unique feature ID's is {len(all_feature_ids)}")
 
     # The following file needs to point to a NWM catchments shapefile (local.. not S3 (for now))
-    
     # -------------------    
     print()
     print("Subsetting NWM Catchments from HUC8, no buffer")
@@ -429,10 +433,8 @@ def make_catchments(huc_num,
     # We need to project the output gpkg to match the incoming raster projection.
     print(f"Reprojecting filtered nwm_catchments to rem rasters crs")
 
-    raster_crs = sv.DEFAULT_RASTER_OUTPUT_CRS
-
     # Let's create one overall gpkg that has all of the relavent polys, for quick validation
-    reproj_nwm_filtered_df = nwm_filtered_df.to_crs(raster_crs)
+    reproj_nwm_filtered_df = nwm_filtered_df.to_crs(sv.DEFAULT_RASTER_OUTPUT_CRS)
     reproj_nwm_filtered_df.to_file(rtn_varibles_dict.get("catchments_subset_file"), driver='GPKG')
 
     # -------------------
@@ -451,24 +453,27 @@ def make_catchments(huc_num,
     # get maxments.
     #rasters_to_mosaic = []
 
+    proj_crs = pyproj.CRS.from_string(sv.DEFAULT_RASTER_OUTPUT_CRS) 
+
     # Create a single copy of a REM created by ras2rem so that we make sure our final feature ID tif is
     # really the same size (so that we're not off by a pixel)
     # add nodata REM file to list of rasters to merge, so that the final merged raster has same extent
     print("Creating rem extent file")
     r2f_rem_extent_path = None
-    r2f_rem_path = os.path.join(rtn_varibles_dict["r2f_ras2rem_dir"],'rem.tif')
+    r2f_rem_path = os.path.join(rtn_varibles_dict["r2f_06_metric_dir"], sv.R2F_OUTPUT_DIR_RAS2REM, 'rem.tif')
     if os.path.exists(r2f_rem_path): 
-        r2f_rem_extent_path = os.path.join(rtn_varibles_dict["r2f_ras2rem_dir"], \
+        r2f_rem_extent_path = os.path.join(rtn_varibles_dict["r2f_06_metric_dir"], \
                                            'rem_extent_nodata.tif')
         with rasterio.open(r2f_rem_path) as src:
             rem_raster = src.read()
-            # create a raster with exact dimesions of REM but with all nodata (yes, we could do this as 
-            # a new numpy n-d array, but then we'd need to setup a lot of parameters to match those of 
-            # rem_raster)
             rem_raster = np.where(np.isnan(rem_raster),65535,65535)
             output_meta = src.meta.copy()
-            output_meta.update( { "dtype":np.int32, "compress":"LZW" })
+            output_meta.update( {
+                 "dtype":np.int32,
+                 "compress":"LZW",
+                 "crs": proj_crs })
             with rasterio.open(r2f_rem_extent_path, 'w', **output_meta) as dst:
+                # reproject crs.
                 dst.write(rem_raster)
             #rasters_to_mosaic.append(r2f_rem_extent_path)
     else:
@@ -476,15 +481,16 @@ def make_catchments(huc_num,
 
 
     print("Getting maxment files")
+
     num_processors = (mp.cpu_count() - 1)
     
     # Create a list of lists with the mxmt args for the multi-proc
     mxmts_args = []
     for feature_id in all_feature_ids:
-        mxmts_args.append([feature_id, reproj_nwm_filtered_df, r2f_hecras_dir, datatyped_rems_dir])
-
+        mxmts_args.append([feature_id, reproj_nwm_filtered_df, r2f_06_metric_dir, datatyped_rems_dir])
 
     rasters_paths_to_mosaic = []
+
     with Pool(processes = num_processors) as executor:    
 
         rasters_paths_to_mosaic = list(tqdm.tqdm(executor.imap(__get_maxment, mxmts_args),
@@ -513,6 +519,7 @@ def make_catchments(huc_num,
             "width": mosaic.shape[2],
             "transform": output,
             "dtype":np.int32,
+            "crs": proj_crs
             }
         )
 
@@ -524,19 +531,25 @@ def make_catchments(huc_num,
         print(f"** Writing final features mosaiced to {mosaic_features_raster_path}")
 
     # Ensure the metric columns exist in the meta file about to be created in vectorize
-    r2f_ras2rem_dir = rtn_varibles_dict.get("r2f_ras2rem_dir")
-    sf.convert_rating_curve_to_metric(r2f_ras2rem_dir)
+    r2f_06_metric_dir = rtn_varibles_dict.get("r2f_06_metric_dir")
+    rating_curve_path = os.path.join(r2f_06_metric_dir, sv.R2F_OUTPUT_DIR_RAS2REM)
+    sf.convert_rating_curve_to_metric(rating_curve_path)
 
     print("*** Vectorizing Feature IDs and creating metadata")
     model_huc_catalog_path = rtn_varibles_dict.get("model_huc_catalog_path")
     current_script_path = os.path.realpath(os.path.dirname(__file__))
     catalog_md_path = os.path.join(current_script_path, '..', 'doc', 'CHANGELOG.md')
-    vectorize(mosaic_features_raster_path, catalog_md_path, model_huc_catalog_path, rtn_varibles_dict.get("rating_curve_path"))
+    rating_curve_file = os.path.join(rating_curve_path, "rating_curve.csv")
+    vectorize(mosaic_features_raster_path, catalog_md_path, model_huc_catalog_path, rating_curve_file)
 
     # -------------------    
     # Cleanup the temp files in datatyped_rems_dir, later this will be part of the cleanup system.
     if (is_verbose == False) and (os.path.exists(datatyped_rems_dir)):
             shutil.rmtree(datatyped_rems_dir)
+            # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
+            # so sometimes mkdir can fail if rmtree isn't done
+            time.sleep(2) # 2 seconds
+
    
     # -------------------    
     print()
@@ -548,6 +561,10 @@ def make_catchments(huc_num,
 
 ####################################################################
 if __name__=="__main__":
+
+
+    # NOTE: This tool is about to be deprecated. This version is having projection issues
+    # which will not be solved at this time.
 
 
     # there is a known problem with rasterio and proj_db error

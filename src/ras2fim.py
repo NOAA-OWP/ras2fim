@@ -241,7 +241,8 @@ def fn_run_ras2fim(str_huc8_arg,
     if int_step <= 6:
         fn_simplify_fim_rasters(str_hecras_out_dir,
                                 flt_resolution_depth_grid,
-                                sv.DEFAULT_RASTER_OUTPUT_CRS)
+                                sv.DEFAULT_RASTER_OUTPUT_CRS,
+                                model_unit)
     # ----------------------------------------
     
 
@@ -273,7 +274,7 @@ def fn_run_ras2fim(str_huc8_arg,
     print ("+++++++ Processing for code  STEP 8 +++++++" )
 
     if int_step <= 8:
-        fn_run_ras2rem(str_out_arg)
+        fn_run_ras2rem(str_out_arg, model_unit)
     # -------------------------------------------------
 
 
@@ -288,11 +289,11 @@ def fn_run_ras2fim(str_huc8_arg,
     # ------ Final Step: cleanup files and move final files to release_files folder -----
     print()
     print ("+++++++ Finalizing processing +++++++" )
-    r2f_ras2rem_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_RAS2REM) 
+    r2f_ras2rem_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_METRIC, sv.R2F_OUTPUT_DIR_RAS2REM) 
     r2f_catchments_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_CATCHMENTS)   
     r2f_final_dir = os.path.join(str_out_arg, sv.R2F_OUTPUT_DIR_FINAL)   
 
-    # Copy all files from the 06_ras2rem and the 07_ras2catchemnts directories
+    # Copy some key files from the 06_metric and the 07_ras2catchemnts directories
     if (os.path.exists(r2f_final_dir) == True):
         shutil.rmtree(r2f_final_dir)
         # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
@@ -372,6 +373,7 @@ def init_and_run_ras2fim(str_huc8_arg,
     # Functions below check for a series of exceptions 
     proj_crs = pyproj.CRS.from_string(str_crs_arg) 
     model_unit = sf.confirm_models_unit(proj_crs, str_ras_path_arg)
+
 
     # -w   (ie 12090301)
     if (len(str_huc8_arg) != 8):
