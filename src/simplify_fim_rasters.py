@@ -21,6 +21,7 @@ import geopandas as gpd
 import rioxarray as rxr
 from rioxarray import merge
 import multiprocessing as mp
+import numpy as np
 import shared_functions as sf
 import shared_variables as sv
 import tqdm
@@ -241,11 +242,14 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
                     if str_dem_digits_only[0] == "0":
                         str_dem_digits_only = str_dem_digits_only[1:]
 
-                    #make sure to update the name of the file with metric values
+                    # make sure to update the name of the file to be in millimeter
+                    #(the "str_dem_digits_only" is 10 times the actual stage, so first needs to be divided by 10)
                     if model_unit == 'feet':
-                        str_dem_digits_only=str(int(float(str_dem_digits_only)*0.3048))
+                        str_dem_digits_only=str(int(np.round(1000*0.3048*(float(str_dem_digits_only)/10),3)))
 
-                    
+                    else:
+                        str_dem_digits_only=str(int(np.round(1000*(float(str_dem_digits_only)/10),3)))
+
                     # file path to write file
                     str_create_filename = str_folder_to_create + "\\" + str_current_comid + '-' +  str_dem_digits_only + '.tif'
                     
