@@ -246,8 +246,10 @@ def fn_create_rating_curve(list_int_step_flows_fn,
     if model_unit == 'feet':
         # we need to add meter columns and convert feet to metric
         df_rating_curve["discharge_cms"] = np.round(df_rating_curve["discharge_cfs"].values * 0.3048 ** 3, 3)
-        df_rating_curve["stage_m"] = np.round(df_rating_curve["stage_ft"].values * 0.3048, 3) #also round to 2 digits
-        df_rating_curve["stage_mm"] = (int(df_rating_curve["stage_m"] * 1000)) # change to millimeters
+        df_rating_curve["stage_m"] = np.round(df_rating_curve["stage_ft"].values * 0.3048, 3)
+
+    df_rating_curve["stage_mm"] = df_rating_curve["stage_m"] * 1000 # change to millimeters
+    df_rating_curve["stage_mm"] = df_rating_curve["stage_mm"].astype('int')
 
     str_csv_path = str_rating_path_to_create + '\\' + str_feature_id_fn + '_rating_curve.csv'
 
@@ -1193,11 +1195,13 @@ def fn_main_hecras(record_requested_stream):
         river = fn_create_hecras_files(str_feature_id, str_geom_path, flt_ds_xs, flt_us_xs, int_max_q, str_hecras_path_to_create, tpl_settings)
     except Exception as ex:
         #print("HEC-RAS Error: " + str_geom_path)
-        # print(ex)  # TODO: log more details including stack trace.
-        errMsg = str(ex) + " :: " + traceback.format_exc()
+        print("*******************")
+        print("Error:")
+        print(f"   str_feature_id = {str_feature_id}")        
+        errMsg = str(ex) + " \n   " + traceback.format_exc()
         print(errMsg)
-        print(f"str_feature_id = {str_feature_id}")
-        print("for more details.. see the 05_hecras_output / errors_found.log")
+        print("   for more details.. see the 05_hecras_output / errors_found.log")
         fn_append_error(str_feature_id, str_geom_path, str_huc12, str_root_output_directory, errMsg)
+        print("*******************")        
     
     #return(str_feature_id)
