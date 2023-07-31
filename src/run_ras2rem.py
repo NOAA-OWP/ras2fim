@@ -112,7 +112,7 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
     #make argument for multiprocessing
     rem_info_arguments = []
     for rem_value in rem_values:
-        rem_info_arguments.append((rem_value,r2f_simplified_grids_dir,r2f_ras2rem_dir))
+        rem_info_arguments.append((rem_value, r2f_simplified_grids_dir, r2f_ras2rem_dir))
 
 
     num_processors = (mp.cpu_count() - 1)
@@ -157,7 +157,7 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
         os.remove(p)
 
 
-def fn_run_ras2rem(r2f_huc_parent_dir,model_unit):
+def fn_run_ras2rem(r2f_huc_parent_dir, model_unit):
     
     ####################################################################
     # Input validation and variable setup
@@ -209,7 +209,7 @@ def fn_run_ras2rem(r2f_huc_parent_dir,model_unit):
 
     flt_start_ras2rem = time.time()
 
-    fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir,model_unit)
+    fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir, model_unit)
     fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir)
 
     flt_end_ras2rem = time.time()
@@ -239,7 +239,6 @@ if __name__=="__main__":
                         help = r'REQUIRED:'
                                r'The path to the parent folder containing the ras2fim outputs . '
                                'The ras2rem results will be created in the folder "06_metric/ras2rem" in the same parent directory.\n' \
-
                                r' There are two options: 1) Providing a full path' \
                                r' 2) Providing only huc folder name, when following AWS data structure.' \
                                 ' Please see the embedded notes in the __main__ section of the code for details and examples.',
@@ -247,14 +246,8 @@ if __name__=="__main__":
                         type = str) 
 
     args = vars(parser.parse_args())
-    r2f_huc_parent_dir = args['r2f_huc_parent_dir']
-
-
-    #find model_unit of HEC-RAS outputs (ft vs m) using a sample rating curve file
-    r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-    model_unit=sf.find_model_unit_from_rating_curves(r2f_hecras_outputs_dir)
     
-    fn_run_ras2rem(r2f_huc_parent_dir, model_unit)
+    fn_run_ras2rem(**args)
 
 
 

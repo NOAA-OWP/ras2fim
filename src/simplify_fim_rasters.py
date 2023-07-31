@@ -20,14 +20,15 @@ import geopandas as gpd
 
 import rioxarray as rxr
 from rioxarray import merge
-import shared_functions as sf
 import multiprocessing as mp
+import shared_functions as sf
+import shared_variables as sv
 import tqdm
+import time
 from time import sleep
 
-import time
 import datetime
-import shared_variables as sv
+
 
 
 import argparse
@@ -301,8 +302,8 @@ if __name__ == '__main__':
 
     parser.add_argument('-i',
                         dest = "r2f_huc_parent_dir",
-                        help='REQUIRED: The path to the parent folder containing the ras2fim outputs for a given HUC. '
-                             'Output is created in sub-folders "Depth_Grid" ' ,
+                        help='REQUIRED: The path to the parent folder containing the ras2fim outputs . '
+                             'Output is created in sub-folders "06_Metric/Depth_Grid" ' ,
                         required=True,
                         metavar='DIR',
                         type=str)

@@ -50,6 +50,3 @@ OUTPUT_VERTICAL_DATUM = "NAVD88"
 
 #DEFAULT VALUES
 DEFAULT_RASTER_OUTPUT_CRS = "EPSG:5070"
-
-# NOTE: Default Date output pattern is YYMMDD  (as in 230725). See shared_function.get_stnd_date()
-# NOTE: For the default r2fm output folder pattern, see shared_functions.(get_stnd_r2f_output_folder_name)

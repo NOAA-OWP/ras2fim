@@ -478,7 +478,6 @@ def create_input_args_log (**kwargs):
         for key, value in kwargs.items():
             arg_file.write("%s == %s\n" % (key, value))
 
-
     
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    
 
