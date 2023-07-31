@@ -44,33 +44,24 @@ import shared_variables as sv
 
 # ************************
 
+
 def fn_open_hecras(str_ras_project_path):
     # Function - runs HEC-RAS (active plan) and closes the file
 
-    with win32com.client.Dispatch("RAS60.HECRASController") as hec:
-        try:
-            #hec.ShowRas()
+    hec = win32com.client.Dispatch("RAS60.HECRASController")
+    #hec.ShowRas()
 
-            # opening HEC-RAS
-            hec.Project_Open(str_ras_project_path)
+    # opening HEC-RAS
+    hec.Project_Open(str_ras_project_path)
 
-            # to be populated: number and list of messages, blocking mode
-            NMsg, TabMsg, block = None, None, True
+    # to be populated: number and list of messages, blocking mode
+    NMsg, TabMsg, block = None, None, True
 
-            # computations of the current plan
-            # We need to compute.  Opening RAS Mapper creates the Geom HDF
-            v1, NMsg, TabMsg, v2 = hec.Compute_CurrentPlan(NMsg, TabMsg, block)
+    # computations of the current plan
+    # We need to compute.  Opening RAS Mapper creates the Geom HDF
+    v1, NMsg, TabMsg, v2 = hec.Compute_CurrentPlan(NMsg, TabMsg, block)
 
-        except Exception as ex:
-            # rethrow the exception, the key is that we need to clean, 
-            # logging later will log this
-            raise
-
-        finally:
-            # why do a finally? Even if the hec object is cleaned up by python, sometimes
-            #hec doesn't get the message and it leaves orphaned open hec windows (and object)
-            # Especially if an exception is thrown in here. Locks up system threads (see task window)
-            hec.QuitRas()  # close HEC-RAS - means it will ALWAYS close and del will be taking care of by "with"
+    hec.QuitRas()   # close HEC-RAS
     
 # ************************
 
