@@ -31,6 +31,7 @@ Note that this PR is not addressing standardization for the results of step 9 ( 
 - `src/shared_functions.py` 
   1. Added a new function called `find_model_unit_from_rating_curves` to get 'model_unit' of HEC-RAS models, if we already have rating curve results from a successful run of ras2fim for step 5 (`fn_create_fim_rasters` function). This is applicable only when a user wants to directly run  `simplify_fim_rasters.py` or `run_ras2rem.py`. 
 
+- `src/ras2catchments.py` : Changed pathing for location of the new depth grids.
 
 <br/><br/>
 
