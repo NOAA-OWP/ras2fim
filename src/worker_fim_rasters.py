@@ -168,7 +168,8 @@ def fn_create_rating_curve(list_int_step_flows_fn,
                            list_step_profiles_fn,
                            str_feature_id_fn,
                            str_path_to_create_fn,
-                           model_unit):
+                           model_unit, 
+                           list_water_surface_elev_fn):
 
     str_file_name = str_feature_id_fn + '_rating_curve.png'
 
@@ -231,16 +232,28 @@ def fn_create_rating_curve(list_int_step_flows_fn,
     plt.cla()
     plt.close('all')
 
+    print("length of list of water surface elevation: ") ## debug
+    print(len(list_water_surface_elev_fn)) ##debug
+    print("length of list_int_step_flows_fn: ") ## debug
+    print(len(list_int_step_flows_fn)) ##debug
+    print("length of list_step_profiles_fn: ") ## debug
+    print(len(list_step_profiles_fn)) ##debug
+    print("creating CSV for the rating curve......")
+
     # Create CSV for the rating curve
     if model_unit == 'meter':
         d = {'Flow(cms)': list_int_step_flows_fn,
-             'AvgDepth(m)': list_step_profiles_fn}
+             'AvgDepth(m)': list_step_profiles_fn,
+             'WaterSurfaceElevation(m)': list_water_surface_elev_fn}
     else:
         d = {'Flow(cfs)': list_int_step_flows_fn,
-             'AvgDepth(ft)': list_step_profiles_fn}
+             'AvgDepth(ft)': list_step_profiles_fn, 
+             'WaterSurfaceElevation(ft)': list_water_surface_elev_fn}
+    print('made array for rating curve....') ##debug
 
     df_rating_curve = pd.DataFrame(d)
-
+    print(" ==================== created df rating curve (should have WSE) ====================") ## debug
+    print(df_rating_curve) ## debug
     str_csv_path = str_rating_path_to_create + '\\' + str_feature_id_fn + '_rating_curve.csv'
 
     df_rating_curve.to_csv(str_csv_path, index=False)
@@ -528,8 +541,8 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
                                                          TabRS,
                                                          TabNTyp)
 
-    # HEC-RAS ID of output variables: Max channel depth, channel reach length
-    int_max_depth_id, int_node_chan_length = 4, 42
+    # HEC-RAS ID of output variables: Max channel depth, channel reach length, and water surface elevation
+    int_max_depth_id, int_node_chan_length, int_water_surface_elev = 4, 42, 2
 
     # ----------------------------------
     # Create a list of the simulated flows
@@ -544,6 +557,10 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
     # **********************************
     # intialize list of the computed average depths
     list_avg_depth = []
+
+    # initialize list of water surface elevations
+    list_avg_water_surface_elev = []
+    list_water_surface_elev = []
     
     for int_prof in range(int_number_of_steps):
         
@@ -553,12 +570,14 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
             if TabNTyp[i] == "":
                 int_xs_node_count += 1
     
-        # initalize four numpy arrays
+        # initalize six numpy arrays
         arr_max_depth = np.empty([int_xs_node_count], dtype=float)
         arr_channel_length = np.empty([int_xs_node_count], dtype=float)
         arr_avg_depth = np.empty([int_xs_node_count], dtype=float)
         arr_multiply = np.empty([int_xs_node_count], dtype=float)
-    
+        arr_water_surface_elev = np.empty([int_xs_node_count], dtype=float)
+        arr_avg_water_surface_elev = np.empty([int_xs_node_count], dtype=float)
+
         int_count_nodes = 0
     
         for i in range(0, NNod):
@@ -566,11 +585,15 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
                 
                 # reading max depth in cross section
                 arr_max_depth[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(RivID, RchID, i+1, 0, int_prof+1, int_max_depth_id)
+
+                # reading water surface elevation in cross section
+                arr_water_surface_elev[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(RivID, RchID, i+1, 0, int_prof+1, int_water_surface_elev)
+
                 # reading the distance between cross sections (center of channel)
                 arr_channel_length[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(RivID, RchID, i+1, 0, int_prof+1, int_node_chan_length)
     
                 int_count_nodes += 1
-    
+        
         # Revise the last channel length to zero
         arr_channel_length[len(arr_channel_length) - 1] = 0
     
@@ -580,6 +603,10 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
             if k != (len(arr_max_depth)) - 1:
                 # get the average depth between two sections
                 arr_avg_depth[k] = (arr_max_depth[k] + arr_max_depth[k+1]) / 2
+
+                # get the average water surface elevation between two sections
+                arr_avg_water_surface_elev[k] = (arr_water_surface_elev[k] + arr_water_surface_elev[k+1]) / 2
+
             k += 1
         
         # average depth between two cross sections times channel length
@@ -588,6 +615,12 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
         # compute the average depth on the reach
         flt_avg_depth = (np.sum(arr_multiply)) / (np.sum(arr_channel_length))
         list_avg_depth.append(flt_avg_depth)
+
+        # append the water surface elevation to the output list
+        list_avg_water_surface_elev.append(arr_avg_water_surface_elev)
+        list_water_surface_elev.append(arr_water_surface_elev)
+
+
     # **********************************
 
     # ------------------------------------------
@@ -642,7 +675,8 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
                            list_step_profiles, 
                            str_feature_id, 
                            str_path_to_create, 
-                           model_unit)
+                           model_unit, 
+                           list_water_surface_elev) ## add stream elevation here?
     # ------------------------------------------
 
     hec.QuitRas()  # close HEC-RAS
