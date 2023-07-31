@@ -245,8 +245,9 @@ def fn_create_rating_curve(list_int_step_flows_fn,
 
     if model_unit == 'feet':
         # we need to add meter columns and convert feet to metric
-        df_rating_curve["discharge_cms"] = np.round(df_rating_curve["discharge_cfs"].values * 0.3048 ** 3, 2)
-        df_rating_curve["stage_m"] = np.round(df_rating_curve["stage_ft"].values * 0.3048, 2) #also round to 2 digits
+        df_rating_curve["discharge_cms"] = np.round(df_rating_curve["discharge_cfs"].values * 0.3048 ** 3, 3)
+        df_rating_curve["stage_m"] = np.round(df_rating_curve["stage_ft"].values * 0.3048, 3) #also round to 2 digits
+        df_rating_curve["stage_mm"] = (int(df_rating_curve["stage_m"] * 1000)) # change to millimeters
 
     str_csv_path = str_rating_path_to_create + '\\' + str_feature_id_fn + '_rating_curve.csv'
 
