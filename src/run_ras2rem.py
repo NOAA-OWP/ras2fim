@@ -238,7 +238,7 @@ if __name__=="__main__":
                         dest = "r2f_huc_parent_dir",
                         help = r'REQUIRED:'
                                r'The path to the parent folder containing the ras2fim outputs . '
-                               'The ras2rem results will be created in the folder "06_metric/ras2rem" in the same parent directory.\n' \
+                                'The ras2rem results will be created in the folder "06_metric/ras2rem" in the same parent directory.\n' \
                                r' There are two options: 1) Providing a full path' \
                                r' 2) Providing only huc folder name, when following AWS data structure.' \
                                 ' Please see the embedded notes in the __main__ section of the code for details and examples.',
@@ -247,7 +247,14 @@ if __name__=="__main__":
 
     args = vars(parser.parse_args())
     
-    fn_run_ras2rem(**args)
+    r2f_huc_parent_dir = args['r2f_huc_parent_dir']
+
+    #find model_unit of HEC-RAS outputs (ft vs m) using a sample rating curve file
+    r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    model_unit=sf.find_model_unit_from_rating_curves(r2f_hecras_outputs_dir)
+    
+    fn_run_ras2rem(r2f_huc_parent_dir, model_unit)
+
 
 
 

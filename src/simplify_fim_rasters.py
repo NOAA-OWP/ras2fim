@@ -28,10 +28,8 @@ import time
 from time import sleep
 
 import datetime
-
-
-
 import argparse
+
 # ************************************************************
 
 # buffer distance of the input flood polygon - in CRS units
