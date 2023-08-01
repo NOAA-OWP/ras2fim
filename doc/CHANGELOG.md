@@ -1,6 +1,17 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.16.1 - 2023-08-01 - [PR#124](https://github.com/NOAA-OWP/ras2fim/pull/124)
+
+Precision and rounding were creating a minor problem with an exact match of stage_m and stage_mm (millimeters).   It was a matter of the order of precision versus rounding.
+
+### Changes  
+
+- `src`
+   - `worker_fim_rasters.py`: Now the calcs for stage_m with a precision of 3, then multiply it by 1000, otherwise, precisions is based on 3,048 and not 0.3048.
+
+<br/><br/>
+
 ## v1.16.0 - 2023-07-31 - [PR#115](https://github.com/NOAA-OWP/ras2fim/pull/115)
 
 This PR covers two items, both are pretty small, and a couple bug fixes.
