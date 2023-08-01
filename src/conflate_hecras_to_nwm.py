@@ -545,7 +545,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     print("Number of feature_id's matched: "+str(df_summary_data['feature_id'].nunique()))
 
     #check the number of conflated models and stop the code if the number is 0
-    status=errors.check_conflated_models_count(len(df_summary_data))
+    status = errors.check_conflated_models_count(len(df_summary_data))
     
     gdf_nwm_stream_lines = gpd.read_file(str_filepath_nwm_stream)
     
