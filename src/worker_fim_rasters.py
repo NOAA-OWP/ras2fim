@@ -19,6 +19,8 @@ import geopandas as gpd
 import os
 import re
 import numpy as np
+import pyproj
+import traceback
 
 from datetime import date
 
@@ -26,7 +28,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as tick
 
 from scipy.interpolate import interp1d
-
+import shared_functions as sf
 import win32com.client
 # windows component object model for interaction with HEC-RAS API
 # This routine uses RAS60.HECRASController (HEC-RAS v6.0.0 must be
@@ -136,23 +138,24 @@ def fn_format_flow_values(list_flow):
 def fn_append_error(str_f_id_fn,
                     str_geom_path_fn,
                     str_huc12_fn,
-                    str_directory_fn):
+                    str_directory_fn, 
+                    exception_msg):
     
     # creates a csv file of the errors found during processing
-    str_error_path = str_directory_fn + r'\error_found.csv'
+    str_error_path = os.path.join(str_directory_fn, 'error_found.csv')
     
     # if file exists then open it
     if os.path.exists(str_error_path):
         # open the csv
         df_error = pd.read_csv(str_error_path, index_col=0)
         # add the record to the file
-        ds_series = pd.Series([str_f_id_fn, str_geom_path_fn, str_huc12_fn],
-                             index=['feature_id', 'geom_path', 'huc_12'])
+        ds_series = pd.Series([str_f_id_fn, str_geom_path_fn, str_huc12_fn, exception_msg],
+                             index=['feature_id', 'geom_path', 'huc_12', 'err'])
         df_error = df_error.append(ds_series, ignore_index=True)
     else:
         # create the file and append new row
-        df_error = pd.DataFrame([[str_f_id_fn, str_geom_path_fn, str_huc12_fn]],
-                                columns=['feature_id', 'geom_path', 'huc_12'])
+        df_error = pd.DataFrame([[str_f_id_fn, str_geom_path_fn, str_huc12_fn, exception_msg]],
+                                columns=['feature_id', 'geom_path', 'huc_12', 'err'])
     
     # write out the file
     df_error.to_csv(str_error_path)
@@ -166,7 +169,7 @@ def fn_create_rating_curve(list_int_step_flows_fn,
                            list_step_profiles_fn,
                            str_feature_id_fn,
                            str_path_to_create_fn,
-                           b_is_metric_rating):
+                           model_unit):
 
     str_file_name = str_feature_id_fn + '_rating_curve.png'
 
@@ -212,7 +215,7 @@ def fn_create_rating_curve(list_int_step_flows_fn,
 
     plt.xticks(rotation=90)
     
-    if b_is_metric_rating:
+    if model_unit == 'meter':
         plt.ylabel('Average Depth (m)')
         plt.xlabel('Discharge (m^3/s)')
     else:
@@ -230,14 +233,25 @@ def fn_create_rating_curve(list_int_step_flows_fn,
     plt.close('all')
 
     # Create CSV for the rating curve
-    if b_is_metric_rating:
-        d = {'Flow(cms)': list_int_step_flows_fn,
-             'AvgDepth(m)': list_step_profiles_fn}
+    # list_step_profiles_fn is already decimal (1.5)
+    if model_unit == 'meter':
+        d = {'discharge_cms': list_int_step_flows_fn,
+             'stage_m': list_step_profiles_fn}
     else:
-        d = {'Flow(cfs)': list_int_step_flows_fn,
-             'AvgDepth(ft)': list_step_profiles_fn}
-
+        d = {'discharge_cfs': list_int_step_flows_fn,
+             'stage_ft': list_step_profiles_fn}
+        
     df_rating_curve = pd.DataFrame(d)
+
+    if model_unit == 'feet':
+        # we need to add meter columns and convert feet to metric
+        df_rating_curve["discharge_cms"] = np.round(df_rating_curve["discharge_cfs"].values * 0.3048 ** 3, 3)
+        df_rating_curve["stage_m"] = np.round(df_rating_curve["stage_ft"].values * 0.3048, 3)
+        df_rating_curve["stage_mm"] = np.round(df_rating_curve["stage_ft"].values * 0.3048 * 1000, 3)
+    else:
+        df_rating_curve["stage_mm"] = df_rating_curve["stage_m"] * 1000 # change to millimeters
+        
+    df_rating_curve["stage_mm"] = df_rating_curve["stage_mm"].astype('int')
 
     str_csv_path = str_rating_path_to_create + '\\' + str_feature_id_fn + '_rating_curve.csv'
 
@@ -248,7 +262,7 @@ def fn_create_rating_curve(list_int_step_flows_fn,
 def fn_create_flow_file_second_pass(str_ras_project_fn,
                                     list_int_stepflows_fn,
                                     list_step_profiles_fn,
-                                    b_is_metric_second_pass_fn):
+                                    model_unit):
 
     # Function to create a flow file for the 'second pass'
     str_ras_flow_path = str_ras_project_fn[:-3]+'f01'
@@ -297,7 +311,7 @@ def fn_create_flow_file_second_pass(str_ras_project_fn,
     str_flow_file += "Number of Profiles= " + str(int_fn_num_profiles) + '\n'
 
     # write a list of the step depth profiles
-    if b_is_metric_second_pass_fn:
+    if model_unit == 'meter':
         str_flow_file += fn_create_profile_names(list_step_profiles_fn, 'm') + '\n'
     else:
         str_flow_file += fn_create_profile_names(list_step_profiles_fn, 'ft') + '\n'
@@ -334,7 +348,7 @@ def fn_create_flow_file_second_pass(str_ras_project_fn,
 def fn_create_ras_mapper_xml(str_feature_id_fn,
                              str_ras_projectpath_fn,
                              list_step_profiles_xml_fn,
-                             b_is_metric_xml_fn,
+                             model_unit,
                              tpl_settings):
     
     # get settings from tpl_settings
@@ -388,7 +402,7 @@ def fn_create_ras_mapper_xml(str_feature_id_fn,
         str_ras_mapper_file += '      <Layer Name="depth" Type="RAS'
         str_ras_mapper_file += 'ResultsMap" Checked="True" Filename=".'
         
-        if b_is_metric_xml_fn:
+        if model_unit=='meter':
             str_ras_mapper_file += '\\' + 'BLE_' + str_feature_id_fn + '\\' + 'Depth (' + str(i) + 'm).vrt">' + '\n'
         else:
             str_ras_mapper_file += '\\' + 'BLE_' + str_feature_id_fn + '\\' + 'Depth (' + str(i) + 'ft).vrt">' + '\n'
@@ -400,7 +414,7 @@ def fn_create_ras_mapper_xml(str_feature_id_fn,
         str_ras_mapper_file += '        <MapParameters MapType="depth" Layer'
         str_ras_mapper_file += 'Name="Depth" OutputMode="Stored Current '
         
-        if b_is_metric_xml_fn:
+        if model_unit=='meter':
             str_ras_mapper_file += 'Terrain" StoredFilename=".' + '\\BLE_' + str_feature_id_fn + '\\Depth (' + str(i) + 'm).vrt"'
         else:
             str_ras_mapper_file += 'Terrain" StoredFilename=".' + '\\BLE_' + str_feature_id_fn + '\\Depth (' + str(i) + 'ft).vrt"'
@@ -448,6 +462,8 @@ def fn_create_ras_mapper_xml(str_feature_id_fn,
     file.close()
 # +++++++++++++++++++++++++
 
+#  Jul 30, 2023 - Deprecated
+'''
 # """"""""""""""""""""""""""
 def fn_create_study_area(str_polygon_path_fn, str_feature_id_poly_fn, tpl_settings):
     
@@ -492,9 +508,10 @@ def fn_create_study_area(str_polygon_path_fn, str_feature_id_poly_fn, tpl_settin
 
     gdf_flood_depth_envelope.to_file(str_output_path)
 # """"""""""""""""""""""""""
+'''
 
 # ...........................
-def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn, tpl_settings):
+def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
     
     # get settings from tpl_settings
     flt_interval = tpl_settings[7]
@@ -640,7 +657,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn, tpl_s
                            list_step_profiles, 
                            str_feature_id, 
                            str_path_to_create, 
-                           b_is_geom_metric_fn)
+                           model_unit)
     # ------------------------------------------
 
     hec.QuitRas()  # close HEC-RAS
@@ -650,7 +667,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn, tpl_s
     fn_create_flow_file_second_pass(str_ras_projectpath,
                                     list_int_step_flows,
                                     list_step_profiles,
-                                    b_is_geom_metric_fn)
+                                    model_unit)
 
 
     if len(list_int_step_flows) > 0:
@@ -658,7 +675,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, b_is_geom_metric_fn, tpl_s
         fn_create_ras_mapper_xml(str_feature_id,
                                  str_ras_projectpath,
                                  list_step_profiles,
-                                 b_is_geom_metric_fn,
+                                 model_unit,
                                  tpl_settings)
         # *************************************************
 
@@ -713,27 +730,10 @@ def fn_create_hecras_files(str_feature_id,
     int_starting_flow = tpl_settings[12]
     str_plan_footer_path = tpl_settings[15]
 
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # determine the project file for the requested HEC-RAS geom
-    # read the prj and determine the units 
-    # "SI Units" or "English Units"
-    # assumed that the os is "Case in-sensitive"
-
     # get the project (HEC-RAS) file (same name and folder as geom)
     str_read_prj_file_path = str_read_geom_file_path[:-3] + 'prj'
+    model_unit = sf.model_unit_from_ras_prj(str_read_prj_file_path)
 
-    b_is_geom_metric = False # default to English Units
-
-    if os.path.exists(str_read_prj_file_path):
-
-        with open(str_read_prj_file_path) as f_prj:
-            file_contents_prj = f_prj.read()
-
-        if re.search(r'SI Units', file_contents_prj, re.I):
-            b_is_geom_metric = True
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    #"""""""""""""""""""""""""""""""""""""""""""""""""""""""
     with open(str_read_geom_file_path) as f:
         list_all_items = []
         #For each line in geometry
@@ -1105,7 +1105,7 @@ def fn_create_hecras_files(str_feature_id,
     str_projectfile += "Default Exp/Contr=0.3,0.1" + '\n'
 
     # set up project as either SI of English Units
-    if b_is_geom_metric:
+    if model_unit == 'meter':
         str_projectfile += 'SI Units' + '\n'
     else:
         # English Units
@@ -1127,7 +1127,7 @@ def fn_create_hecras_files(str_feature_id,
     b_terrain_check_only = tpl_settings[16]
     if not b_terrain_check_only:
         # run the hec-ras model 
-        fn_run_hecras(str_ras_projectpath, int_max_flow, b_is_geom_metric, tpl_settings)
+        fn_run_hecras(str_ras_projectpath, int_max_flow, model_unit, tpl_settings)
     #######################
 
     #return (pd_series_stats)
@@ -1195,8 +1195,15 @@ def fn_main_hecras(record_requested_stream):
         # does not run (example: duplicate points)
 
         river = fn_create_hecras_files(str_feature_id, str_geom_path, flt_ds_xs, flt_us_xs, int_max_q, str_hecras_path_to_create, tpl_settings)
-    except:
+    except Exception as ex:
         #print("HEC-RAS Error: " + str_geom_path)
-        fn_append_error(str_feature_id, str_geom_path, str_huc12, str_root_output_directory)
+        print("*******************")
+        print("Error:")
+        print(f"   str_feature_id = {str_feature_id}")        
+        errMsg = str(ex) + " \n   " + traceback.format_exc()
+        print(errMsg)
+        print("   for more details.. see the 05_hecras_output / errors_found.log")
+        fn_append_error(str_feature_id, str_geom_path, str_huc12, str_root_output_directory, errMsg)
+        print("*******************")        
     
     #return(str_feature_id)

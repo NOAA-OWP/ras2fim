@@ -1,7 +1,302 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.7._ - 2023-06-14 - [PR#73](https://github.com/NOAA-OWP/ras2fim/pull/73)
+## v1.16.0 - 2023-07-31 - [PR#115](https://github.com/NOAA-OWP/ras2fim/pull/115)
+
+This PR covers two items, both are pretty small, and a couple bug fixes.
+
+1) [Issue 108](https://github.com/NOAA-OWP/ras2fim/issues/108) - Standardizing the final huc output folder name
+2) [Issue 116](https://github.com/NOAA-OWP/ras2fim/issues/116) - Change default for ras2rem to be false (aka. not run)
+
+Issue 108:
+**It will ensure that a user can no longer change the  `output_ras2fim`/huc folder name as before.  In past versions you could change the path and huc folder name, but now the huc folder name is fully calculated, but you can still change the parent path.** 
+
+Issue 116:
+The default now will stop just before ras2rem and catchments, but there continues to be a "finalization" step. At the default behavior, the temporarily only current output is a copy of the input argument of the filtered model catalog csv.
+
+During the merge from dev-standardize-outputs, some additional bugs fixes were discovered as well as some required critical enhancements for very near future PRs around `canned polys`. The new `canned poly's` is a significant change in the final outputs from ras2fim.py and will be explained in more details as it is integrated.
+
+3) The pending canned poly's system required rating curves to always have metric columns (discharge_m, stage_m). This existed already in the ras2rem model but needed to be moved to when the rating curve as first created. Why? With the new canned poly system, it will no longer use the ras2rem functionally. Another columned named "stage_mm" was also added which is the same value as "stage_m" but in millimeters instead of meters.
+
+4) Depth grid tif's names were changed to be millimeter based for better precision, they were previously meters (as int) and lots some precision.  e.g. old file name of 1465666-1.tif  is now 1465666-1066.tif.
+
+5) During tracing of a development bug, it was discovered that a bug in a pre-existing partial error logging system. Some run-time errors were recorded the error but no stack trace so we were unable to see where it failed. I added stack tracing info to the error logging as well as printing to screen. Without this fix, it was very difficult to find the error.  Also.. the partial pre-existing logging system, suppresses errors which were not on the screen and were not obvious in its output error csv. When all of my models failed later in the code stack, without this fix, I was super hard to find the suppressed farther up the code stream. Over time, we will continue to upgrade logging. 
+
+6) There were a number of duplicate copies of a function called fn_str2bool, which many were not in use. The one that were in use, became obsolete with a better pattern added when using input arguments for incoming values that are "true / false" in nature.
+
+7) a new validator was created for ensuring valid crs's to added to ras2fim input args. Other places can use this feature, but this can be plugged in later.
+
+### Additions  
+- `src`
+    -`shared_validators`: A new script which initially includes code to validate crs input.
+
+### Changes  
+- `doc`
+    - `INSTALL.md`:  Updated notes based on ras2fim.py input change for output folder name
+- `src`
+   - `clip_dem_from_shape.py`:  remove unused function and small style fixes.
+   - `convert_tif_to_ras_hdf5.py`: remove unused function and small style fixes. 
+   - `create_fim_rasters.py`: Changed one input to better convention which triggered an unnecessary function.
+   - `get_usgs_dem_from_shape.py`: remove unused function and small style fixes. 
+   - `ras2fim.py`:  A few changes
+        - Change the input for the output path from including the final hec out folder name and path, to now just the path. The output folder name is now calculated using the  pattern of {huc_number}_{crs}_{yymmdd}.  ie) 12090301_2277_230729. This final folder name can no longer be overridden but the folder pathing can (as before).
+        - Added code to validate that the incoming crs parameter was valid.
+        - Moved the `init_and_run_ras2fim` function to the top of the file versus lower in the code. Why? It is already expected to have other new code call directly to ras2fim.py functions and not through command line arguments. Moving the function higher increases visibility to future coders.
+        - Changed the `-m` (run_ras2rem) flag to now be defaulted to `false`, ie). the default behavior is to no longer run ras2rem or catchments code. This also triggers some changes to the "finalization" processes.
+    - `run_ras2rem.py`:  remove some code to add metric columns as it was moved up in the code stream.
+    - `shared_functions.py`: Added two new functions to help with standardization of code (not output standardization but code standardization)
+    - `simplified_fim_rasters.py`:  Changed the name of the depth grid tif output file name.
+    - `worker_fim_rasters.py`: A couple of changes:
+        - Changed rating curve column name from `Flow(cfs)` and `AvgDepth(ft)` to `discharge_cfs` and `stage_ft`. Note: check code product wide and made changes to match the new column names.
+        - Added two new metric columns if the columns don't already exist based on unit. This included foot to metric conversion. 
+        - A new column was added named `stage_mm` but which is the `stage_m` column changed to millimeters.
+- `tools`
+    - `convert_ras2fim_to_recurr_validation_datasets.py`:  Replaced values of `AvgDepth(m)` with `stage_m` and `flow(cms)` to `discharge_cms`.
+    - `get_ras_models_by_catalog.py`.  Added a TODO note.
+
+<br/><br/>
+
+## v1.15.0 - 2023-07-24 - [PR#113](https://github.com/NOAA-OWP/ras2fim/pull/113)
+
+By this PR:
+1. The results of `simplify_fim_rasters.py` is now saved in output folder `06_metric/Depth_Grid`. Also, if HEC-RAS models units are in feet:
+    - Pixel values of the simplified depth grids (z unit) are converted into meter. 
+    - File names of resulting depth grids (like "featureid-remvalue.tif") are updated with rem values in meter. 
+
+2. The results of `run_ras2rem.py` is now saved in output folder `06_metric/ras2rem` in which:
+    - Rating curve values are in meter and m^3/s
+    - `rem.tif` file has projection of EPSG:5070 and pixel values (z unit) are in meter. 
+
+Note that this PR is not addressing standardization for the results of step 9 ( `make_catchments` function), and @RobHanna-NOAA will work on that section, if needed. 
+
+### Changes  
+- `src/ras2fim.py` : Passed "model_unit" argument into `fn_simplify_fim_rasters` and `fn_run_ras2rem` functions, so these functions can convert the results into metric when HEC-RAS models unit are in feet.
+
+- `src/simplify_fim_rasters.py` 
+  1. The results of this step is now saved in output folder `06_metric/Depth_Grid` 
+  2. If model unit is in feet, pixel values of the simplified depth grids (z unit) are converted into meter and file names of resulting depth grids (like "featureid-remvalue.tif") are updated with rem values in meter. 
+
+- `src/run_ras2rem.py` :
+  1. The results of ras2rem is now saved in output folder `06_metric/ras2rem`.
+  2. If model unit is in feet, rating curve values are converted into meter and rounded into 3 digits. 
+
+- `src/shared_variables.py` 
+  1. Changed the CRS of the standardized outputs to be EPSG:5070. 
+
+- `src/shared_functions.py` 
+  1. Added a new function called `find_model_unit_from_rating_curves` to get 'model_unit' of HEC-RAS models, if we already have rating curve results from a successful run of ras2fim for step 5 (`fn_create_fim_rasters` function). This is applicable only when a user wants to directly run  `simplify_fim_rasters.py` or `run_ras2rem.py`. 
+
+- `src/ras2catchments.py` : Changed pathing for location of the 
+<br/><br/>
+
+
+## v1.14.0 - 2023-07-20 - [PR#105](https://github.com/NOAA-OWP/ras2fim/pull/105)
+
+One HUC may have models with multiple CRS's, but as this is an input param to ras2fim.py, where ras2fim.py needs to know the incoming CRS, then we need to have get_models_by_catalog have an additional filter to pull records to find records in the master S3 OWP_ras_models_catalog.csv by csv. It already has huc and status as filters.
+
+Also noticed an issue with some of the -h help outputs for some files. So I added the attribute of `metavar-`''` to some files and most argparser objects.
+Images of before and after the fix can be seen in the PR Notes.
+
+### Changes  
+- `src`
+     - `ras2catchments.py`: Added some of the metavar args
+     - `ras2fim.py`: Added some of the metavar args and did a small bit of style adj.
+     - `run_ras2rem.py`: Added some of the metavar args
+
+- `tools`
+    - `get_ras_models_by_catalog.py`: Changes include:
+        - adding the new csv required input arg
+        - re-ordered the argparser parser objects and added the new metavar arg.
+        - Change the input arg for `list-only` from `-d` to `-f`
+
+<br/><br/>
+
+## v1.13.1 - 2023-07-24 - [PR#103](https://github.com/NOAA-OWP/ras2fim/pull/103)
+
+Previously, ras2fim could only accommodate projections in the EPSG format. This PR is a quick fix to how the projection is processed to accommodate projection codes in the ESRI format.
+
+### Changes  
+
+- `src/ras2fim.py`: Replaced `CRS.from_epsg` with `CRS.from_string` in order to accommodate ESRI projections.
+- `src/shared_functions.py`: Edited error message for clarity.
+
+<br/><br/>
+
+
+## v1.13.0 - 2023-07-06 - [PR#93](https://github.com/NOAA-OWP/ras2fim/pull/93)
+
+Add multi processing when calculating `maxments` for each feature ID. 
+
+A `maxment` is the maximum depth for any feature within a catchments.
+
+Also a bug in rasterio displays an error occasionally of "PROJ: proj_create_from_database: Cannot find proj.db".  This is a known issue due to each users computer environment (not ras2fim environment).  When adding multi-proc, this error was seen for each instance of multi proc. Code was added to minimize the error. It will now display once and only once when running ras2catchments.py (not always seen as part of ras2fim.py).
+
+### Changes  
+
+- `README.md`  - small updates for the new ESIP links and a bit of text adjustments.
+- `doc`
+    - `CHANGELOG.md` - corrected a couple of critical notes in the 1.9.0 release. (plus added new notes for this release of course).
+    - `INSTALL.md` - Updated to show that we need to use `Anaconda Powershell Terminal Window` and not the non powershell version of Anaconda.
+- `src`
+    - `shared_functions.py`:  A few changes where made:
+       - ` def convert_to_metric` method moved from ras2catchments to shared_functions.
+       - Added to functions to help with the "cannot fine proj.db" error mentioned above.
+     - `ras2catchments.py`: Changes include:
+         - a little cleanup of the imports section
+         - moved the "convert_to_metric" function to `shared_functions.py` for reusability.
+         - added multi proc and a TQDM progress bar when getting maxments.
+         - added a "is_verbose" flag arg and code for additional output for debugging. This is a common feature in the fim dev (inundation mapping) code and will hopefully can be helpful here as well.
+
+<br/><br/>
+
+## v1.12.1 - 2023-06-29 - [PR#90](https://github.com/NOAA-OWP/ras2fim/pull/90)
+
+When the -m flag ( skip ras2rem), is set to False, then it should abort processing just before ras2rem and not continue on to catchments and finalization.
+
+Also found bug when the default `output_ras2fim` does not exist. This is only discovered if the user has not overridden the pathing for output_ras2fim. Remember, the -o flag can be used in two ways. 
+1. use just the new desired output folder name without pathing, which will default pathing to c:\ras2fim_data\outputs_ras2fim'
+2. full override the -o flag to any fully pathed location. When using this option, the parent path must exist, but the child folder can not exist. 
+
+Note: There is a bug in other parts of this code base that are being fixed as part of a different PR. Currently, it will fail as it attempts to process catchments. But to validate that this PR passes will be based on stopping processing before ras2rem or continuing on to ras2rem (and forward) and it will fail in catchments.
+
+### Changes  
+
+- `src`
+    - `ras2fim.py`:  Fix to skip catchments and finalization as describe above plus fixed discovered and mentioned above.
+
+<br/><br/>
+
+## v1.12.0 - 2023-07-04 - [PR#92](https://github.com/NOAA-OWP/ras2fim/pull/92)
+
+This PR removes the V flag and added a new flag to control the spatial resolution of 'simplified' rasters. The 'model unit', which is meter or feet, is now identified by the program either using the -p projection entry (using EPSG code or providing a shp/prj file) or by processing the HEC-RAS prj files. The z unit of the given DEM must always be in meter. 
+
+### Additions
+- A new `src/errors.py` to hold the customized exceptions definitions for the entire program.
+### Changes
+
+- `src/clip_dem_from_shape.py`  : Changed the default buffer value from 700 to 300 to be consistent with the hard-coded value used in ras2fim.py
+- `src/convert_tif_to_ras_hdf5.py` : Determined 'model_unit' using 'model_unit_from_crs()' function of shared_functions.py
+- `src/create_fim_rasters.py`: Removed 'flt_out_resolution' argument which were not being used anywhere in the code.
+- `src/get_usgs_dem_from_shape.py`: Determined 'model_unit' using 'model_unit_from_crs()' function of shared_functions.py
+- `src/ras2fim.py` : Removed 'vert_unit,' argument and moved all codes to check the vertical unit of the code into shared_functions.py. Also, determined the model unit using 1) -p entry and 2) reading all HEC-RAS models prj files-- Used 'confirm_models_unit() function of shared_functions.py
+- `src/shared_functions.py` : Added three functions to determine model units throughout the entire program 1) confirm_models_unit(), 2) model_unit_from_crs(), 3) model_unit_from_ras_prj()
+- `src/simplify_fim_rasters.py` :  Changed the default value of output resolution from 3m to 10m
+- `src/worker_fim_rasters.py` : Determined model_unit using 'model_unit_from_ras_prj()' function of shared_functions.py
+
+<br/><br/>
+
+## v1.11.0 - 2023-06-29 - [PR#87](https://github.com/NOAA-OWP/ras2fim/pull/87)
+
+New feature: This is a new tool which is for OWP staff only as it accesses our ras2fim S3 bucket. We can give the tool a HUC number, it will go to the models catalog csv in s3, look for valid matching models for that HUC and downloaded them to your local computer.
+
+Some criteria for downloading are:
+- The submitted HUC number exists in the OWP_ras_models_catalog.csv (previously named model_catalog.csv), in the "hucs" column
+- The models catalog `status` column must say "ready" and the `final_name_key` must not start with "1_" or "2_"
+
+When the code calls s3, it will load up the full s3 OWP_ras_models_catalog.csv (or arg override s3 csv file), and filter out all non-qualifying records, then save a copy of the new filtered version as `OWP_ras_models_catalog_{huc number}.csv`.  This csv file can now become one of the input args going into ras2fim.py (-mc flag).
+
+Features of this tool are:
+- You can add an argument of -d which gives you the downloaded filtered csv but does not actually download the model folders. It is a form of a "preview" system.
+- If you choose to download model folders as well, the newly created `OWP_ras_models_catalog_{huc number}.csv` will add two columns to show if the model was successfully downloaded or why it failed.  As we are using the `final_name_key` to tell us which S3 model folder to download, it is possible that they don't match or the model folder does not exist. This will expose that problem.
+- An processing log file is created which at this point, is nearly identical to screen output but allows for historical tracking as well as ease of automation later.
+- At the end of ras2fim.py finalization, it will make a copy of the new `OWP_ras_models_catalog_{huc number}.csv` and put it in the huc ras2fim output folder, "final" folder e.g. output folder.
+- As always, you can optionally override most arguments and most things are defaulted.
+
+See `tools\get_ras_models_by_catalog.py`, in the "main" section to see usage examples.
+
+**Note**: To use this tool, you must have a valid set of aws s3 ras2fim credentials which have been set up, generally by using `aws configure` command.  As mentioned, this tool is for OWP staff.
+
+### Additions  
+
+- `tools`
+    - `get_ras_models_by_catalog.py`: as described above.
+
+### Changes  
+- `src`
+   - `ras2catchments.py`: renamed a constants variable name.
+   - `shared_variables.py`: renamed a couple of constants variable names.
+   - `ras2fim.py`: renamed a couple of constants variable names.
+>>>>>>> 85334574faf0ca5c742523d93a7754b2a4b1f522
+
+<br/><br/>
+
+## v1.10.0 - 2023-06-26 - [PR#84](https://github.com/NOAA-OWP/ras2fim/pull/84)
+
+This PR covers a couple of minor fixes:
+1) [Issue 72](https://github.com/NOAA-OWP/ras2fim/issues/72) - Change output ras2fim folder name: It was named `output_ras2fim_models`, now being named `output_ras2fim`.
+2) [Issue 83](https://github.com/NOAA-OWP/ras2fim/issues/83) - A change to correct a re-occurring rasterio package issue.
+3) There was also a minor bug fix in column names in the ras2catchments.py, now fixed.
+
+### Changes  
+- `src`
+    - `ras2catchments.py` - Fix to match a column name for our inputs folder nwm_catchments.gkpg. Also small text adjustments for the adjusted `output_ras2fim` folder name.  Also removed some code which loaded a depth grid TIF to figure out it's CRS and apply that to output files from catchments. Now, it just loads the CRS value from the shared_variables.py file.
+    - `ras2fim.py` - It was hardcoding `EPSG:3857` which is passed to other files and resulted in the CRS of the output depth grid TIFs. This is value is now moved up to `shared_variables.py` as a constant so other code can use it and be consistent (such as catchments).  Also changed the timing of when the new HUC output folder is created. Note: The "step" system is WIP and being removed.
+    - `reformat_ras_rating_curve.py`: Text changes for the new output folder path.
+    - `shared_variables.py`: Changed output folder name default, plus added the new default CRS constant.
+
+
+<br/><br/>
+
+## v1.9.0 - 2023-06-15 - [PR#64](https://github.com/NOAA-OWP/ras2fim/pull/64)
+
+In a recent release, the ras2catchment product feature was included but was not completed and now is.
+
+The ras2catchment product feature looks at depth grid files names created by `ras2fim`, the extract the river features ID that are relevant.  Using that list of relevant feature IDs,  extract the relevant catchment polygons from `nwm_catchments.gkpg`, creating its own catchments gkpg.
+
+New input files are required for this release to be tested and used. One file and one folder need to be downloaded in the `X-National_Datasets` folder, or your equivalent. The new file and folder are:
+- `nwm_catchments.gpkg`:  It needs to be sitting beside the original three files of `nwm_flows.gpkg`, `nwm_wbd_lookup.nc`, and `WBD_National.gpkg`.  
+- A folder named `WBD_HUC8` needs to  be downloaded and place inside the `X-National_Datasets` or equiv.  The `WBD_HUC8` folder includes a gkpg for each HUC8 from the a full WBD national gkpg. They were split to separate HUC8 files for system performance.
+
+The new file and folder can be found in `inputs` directories on both rasfim S3 or ESIP S3.
+
+There are some other fixes that were rolled into this, some by discovery during debugging, some based on partially loaded functionality.  They include:
+- [Issue 71](https://github.com/NOAA-OWP/ras2fim/issues/71): Fix proj.db error 
+- [Issue 46](https://github.com/NOAA-OWP/ras2fim/issues/46): Develop metadata reporting system. Note: Laura had most of this written and it was rolled into this branch / PR.
+- [Issue 56](https://github.com/NOAA-OWP/ras2fim/issues/56) ras2fim - fix ras2catchments for new input data sources.  This was the o Develop Python script to convert ras2fim rating curves to Inundation Mapping calibration formatriginal issue that started this branch and PR.
+
+Note: Currently, this edition does not have multi processing which calculating `maxments`. A `maxment` is the catchment for any particular feature based on its maximum depth value. Multi processing will be added later and was deferred due to the fact that based on current code the child process needed to pass information back to the parent process. This is very difficult and unstable. A separate issue card, [#75](https://github.com/NOAA-OWP/ras2fim/issues/75), has been added to fix this later. 
+
+### Environment Upgrade Notes
+This version requires an update to the conda environment for ras2fim.  To upgrade, follow these steps (using an Anaconda / Mini Conda Powershell command terminal):
+1) If you are already in a conda activateed ras2fim environment, type `conda deactivate`
+2) Ensure you are pathed into the correct branch to where the new `environment.yml` file is at, then type `conda env update -f environment.yml`. This might take a few minutes
+3) `conda activate ras2fim`
+
+Coupled with downloading the new catchment file and WBD folder into inputs, you should be ready to go. 
+
+### Additions 
+
+- `src`
+    - `shared_functions.py`: Includes a common duration calculating function, now used by both ras2fim and ras2catchments.py. This file can be shared for common functionality across all files in the code. Common shared functions help with consistency, avoid duplication and ease of implementation. Other code blocks have already been detected as being duplicated and may be moved into this file at a later time.  The first function is for calculating and printing date / time duration.
+
+### Changes  
+
+- `README.md`: Has been updated to talk about downloading all `X-National_Datasets` files and folder now in the `Inputs` directory. Previous versions of this page talked about getting three files from a folder in ESIP called `National Datasets`. Now both ESIP and ras2fim S3 have an identical `inputs` folder.  This md file now also talks the new file and WBD_HUC8 folder in its required downloads.
+- `INSTALL.md`: Updated to talk about the new inputs instead of the original three files.
+- `environment.yml`: Changes to upgrade the rasterio package upgrade. Also added a new package called `keepachangelog` which has to be loaded via PIP as it is not available in any of the conda repos.
+- `src`
+    - `clip_dem_from_shape.py`: Added a simple time duration calculator. Needed for timing tests.
+    - `ras2catchments.py`: Changes include:
+        - This has been rebuilt in recognition that it had a fair bit of temporary duplication code from `run_ras2rem`. 
+        - Added code making a metadata gpkg, pulling the version number from the CHANGELOG.md to put into the meta data
+        - Upgraded input validation. 
+        - This file expects a valid model_catalog.csv, usually found in OWP_ras_models folder, which provides more meta data. A new optional param has been added to provide a specific model catalog file. By default, it will look for a file called `models_catalog_{huc}.csv`. It should match the "ras model" folders being submitted to `ras2fim.py`. 
+    -  `ras2fim.py`: Changes include:
+        - Updated to change the duration output system to come from the new `shared_functions.py` file replacing it's original duration calc code. 
+        - The `step` feature has been partially repaired as it had an error in it, but has not been fully fixed or tested. A separate issue card and PR will be coming. 
+        -  In the meantime, the code now has re-instated the code feature of not allowing a user to re-execute ras2fim.py against a folder that already exists.  
+        - Updates to add ras2catchments.py into the overall process flow.
+        - A new section to copy "final" files from the ras2rem and catchments folder. The new `final` subfolder has the files required for release, as in final product files.
+        - A few styling updates
+    -  `run_ras2rem.py`: Some minor style changes (mostly spacing), but also added a "with" wrapper around the multi processing "pool" code, to be more PEP-8 compliant. 
+    - `shared_variables.py`: to add new pathing and constants for changes above.
+    - `worker_fim_raster.py`: During debugging, it was noticed that the pre-existing system for logging errors in this file, logged some info such as model name, but failed to log the reason for the exception.
+
+<br/><br/>
+
+
+
+## v1.8.0 - 2023-06-14 - [PR#73](https://github.com/NOAA-OWP/ras2fim/pull/73)
 
 Introduces a new tool for the ras2fim that cycles through the ras2fim outputs and compiles the stream segment midpoints and rating curve tables. The purpose of this tool is to facilitate the use of ras2fim outputs in the FIM calibration workflow. This tool is intended to be added to the (not yet completed) ras2release workflow rather than the ras2fim workflow.
 
@@ -11,6 +306,7 @@ Introduces a new tool for the ras2fim that cycles through the ras2fim outputs an
 - `src/shared_variables.py`: Added nodata value, output vertical datum, and `c:\ras2fim_data\ras2fim_releases\` filepath to shared variables file.
 
 <br/><br/>
+
 
 ## v1.7.0 - 2023-06-07 - [PR#69](https://github.com/NOAA-OWP/ras2fim/pull/69)
 
@@ -83,7 +379,6 @@ PR related to issue [51](https://github.com/NOAA-OWP/ras2fim/issues/51).
     - `nws_ras2fim_entwine_dem_from_shp.py`: cleanup for redundant info and screen output.
   
 <br/><br/>
-
 
 ## v1.4.0 - 2023-05-03 - [PR#43](https://github.com/NOAA-OWP/ras2fim/pull/43)
 

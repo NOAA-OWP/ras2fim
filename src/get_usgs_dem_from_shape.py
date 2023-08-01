@@ -43,14 +43,15 @@ from rasterio.merge import merge
 
 import string
 import random
-
+import pyproj
 from multiprocessing.pool import ThreadPool
-
+import shared_functions as sf
 import rioxarray as rxr
 
 import time
 import datetime
 import warnings
+
 # ************************************************************
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,19 +62,6 @@ def is_valid_file(parser, arg):
         # File exists so return the directory
         return arg
         return open(arg, 'r')  # return an open file handle
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-# $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
-# $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
 # -------------------------------------------------
 def fn_get_random_string(int_letter_len_fn, int_num_len_fn):
@@ -165,7 +153,7 @@ def fn_get_usgs_dem_from_shape(str_input_path,
                                int_res,
                                int_buffer,
                                int_tile,
-                               b_is_feet,
+                               model_unit,
                                str_field_name):
     
     flt_start_get_usgs_dem = time.time()
@@ -199,15 +187,13 @@ def fn_get_usgs_dem_from_shape(str_input_path,
     
     # requested tile size in lambert units (meters)
     INT_TILE_X = INT_TILE_Y = int_tile
-    print("  ---[t]   Optional: TILE SIZE: " + str(INT_TILE_X) + " meters") 
-
-    # requested tile size in lambert units (meters)
-    B_CONVERT_TO_VERT_FT = b_is_feet
-    print("  ---[v]   Optional: VERTICAL IN FEET: " + str(B_CONVERT_TO_VERT_FT)) 
+    print("  ---[t]   Optional: TILE SIZE: " + str(INT_TILE_X) + " meters")
 
     # requested tile size in lambert units (meters)
     STR_FIELD_TO_LABEL = str_field_name
-    print("  ---[f]   Optional: FIELD NAME: " + str(STR_FIELD_TO_LABEL)) 
+    print("  ---[f]   Optional: FIELD NAME: " + str(STR_FIELD_TO_LABEL))
+
+    print("  --- The Ras Models unit (extracted from given shapefile): " + model_unit)
     
     print("===================================================================")
     
@@ -444,7 +430,7 @@ def fn_get_usgs_dem_from_shape(str_input_path,
             # reproject the raster to the same projection as the input shapefile
             usgs_wcs_local_proj = usgs_wcs_dem.rio.reproject(str_crs_model)
     
-            if B_CONVERT_TO_VERT_FT:
+            if model_unit == 'feet':
                 # scale the raster from meters to feet
                 usgs_wcs_local_proj = usgs_wcs_local_proj * 3.28084
     
@@ -523,14 +509,7 @@ if __name__ == '__main__':
                         default=1500,
                         metavar='INTEGER',
                         type=int)
-    
-    parser.add_argument('-v',
-                        dest = "b_is_feet",
-                        help='OPTIONAL: create vertical data in feet: Default=True',
-                        required=False,
-                        default=True,
-                        metavar='T/F',
-                        type=str2bool)
+
     
     parser.add_argument('-f',
                         dest = "str_field_name",
@@ -546,15 +525,21 @@ if __name__ == '__main__':
     int_res = args['int_res']
     int_buffer = args['int_buffer']
     int_tile = args['int_tile']
-    b_is_feet = args['b_is_feet']
     str_field_name = args['str_field_name']
+
+    #find model unit using the given shapefile
+    gis_prj_path=str_input_path[0:-3]+'prj'
+    with open(gis_prj_path, 'r') as prj_file:
+        prj_text = prj_file.read()
+    proj_crs = pyproj.CRS(prj_text)
+    model_unit=sf.model_unit_from_crs(proj_crs)
     
     fn_get_usgs_dem_from_shape(str_input_path,
                                str_output_dir,
                                int_res,
                                int_buffer,
                                int_tile,
-                               b_is_feet,
+                               model_unit,
                                str_field_name)
     
     flt_end_run = time.time()
