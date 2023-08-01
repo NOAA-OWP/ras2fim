@@ -2,6 +2,7 @@
 
 import os
 
+import argparse
 import fnmatch
 import keepachangelog
 import numpy as np
@@ -11,8 +12,12 @@ import pyproj
 import rasterio
 import re
 import sys
-from pathlib import Path
+
+import shared_validators as svd
+
+from datetime import datetime as dt
 from errors import ModelUnitError
+from pathlib import Path
 
 
 ####################################################################
@@ -237,3 +242,42 @@ def find_model_unit_from_rating_curves(r2f_hecras_outputs_dir):
         print("Error: Make sure you have specified a correct input directory with has at least one '*.rating curve.csv' file.")
         sys.exit(1)
 
+
+####################################################################
+def get_stnd_date():
+    
+    # return YYMMDD as in 230725
+    return dt.now().strftime("%y%m%d")
+
+
+####################################################################
+def get_stnd_r2f_output_folder_name(huc_number, crs):
+
+    '''
+    Inputs:
+        - huc (str)
+        - crs (str):  ie) ESPG:2277 or ESRI:107239. Note, must start with ESRI or EPSG (non case-sensitive)
+
+    '''
+    
+    # returns pattern of {HUC}_{CRS_number}_{stnd date}. e.g 12090301_2277_230725
+
+    # -------------------
+    if (len(str(huc_number)) != 8):
+        raise ValueError("huc number is not eight characters in length")
+
+    if (huc_number.isnumeric() == False):
+        raise ValueError("huc number is not a number")
+
+    # -------------------
+    # validate and split out the crs number.
+    is_valid_crs, err_msg, crs_number = svd.is_valid_crs(crs)
+
+    if (is_valid_crs == False):
+        raise ValueError(err_msg)
+    
+    std_date = get_stnd_date()
+
+    folder_name = f"{huc_number}_{crs_number}_{std_date}"
+
+    return folder_name

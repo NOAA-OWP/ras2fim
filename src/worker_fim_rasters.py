@@ -20,6 +20,7 @@ import os
 import re
 import numpy as np
 import pyproj
+import traceback
 
 from datetime import date
 
@@ -232,14 +233,25 @@ def fn_create_rating_curve(list_int_step_flows_fn,
     plt.close('all')
 
     # Create CSV for the rating curve
+    # list_step_profiles_fn is already decimal (1.5)
     if model_unit == 'meter':
-        d = {'Flow(cms)': list_int_step_flows_fn,
-             'AvgDepth(m)': list_step_profiles_fn}
+        d = {'discharge_cms': list_int_step_flows_fn,
+             'stage_m': list_step_profiles_fn}
     else:
-        d = {'Flow(cfs)': list_int_step_flows_fn,
-             'AvgDepth(ft)': list_step_profiles_fn}
-
+        d = {'discharge_cfs': list_int_step_flows_fn,
+             'stage_ft': list_step_profiles_fn}
+        
     df_rating_curve = pd.DataFrame(d)
+
+    if model_unit == 'feet':
+        # we need to add meter columns and convert feet to metric
+        df_rating_curve["discharge_cms"] = np.round(df_rating_curve["discharge_cfs"].values * 0.3048 ** 3, 3)
+        df_rating_curve["stage_m"] = np.round(df_rating_curve["stage_ft"].values * 0.3048, 3)
+        df_rating_curve["stage_mm"] = np.round(df_rating_curve["stage_ft"].values * 0.3048 * 1000, 3)
+    else:
+        df_rating_curve["stage_mm"] = df_rating_curve["stage_m"] * 1000 # change to millimeters
+        
+    df_rating_curve["stage_mm"] = df_rating_curve["stage_mm"].astype('int')
 
     str_csv_path = str_rating_path_to_create + '\\' + str_feature_id_fn + '_rating_curve.csv'
 
@@ -450,6 +462,8 @@ def fn_create_ras_mapper_xml(str_feature_id_fn,
     file.close()
 # +++++++++++++++++++++++++
 
+#  Jul 30, 2023 - Deprecated
+'''
 # """"""""""""""""""""""""""
 def fn_create_study_area(str_polygon_path_fn, str_feature_id_poly_fn, tpl_settings):
     
@@ -494,6 +508,7 @@ def fn_create_study_area(str_polygon_path_fn, str_feature_id_poly_fn, tpl_settin
 
     gdf_flood_depth_envelope.to_file(str_output_path)
 # """"""""""""""""""""""""""
+'''
 
 # ...........................
 def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
@@ -1182,6 +1197,13 @@ def fn_main_hecras(record_requested_stream):
         river = fn_create_hecras_files(str_feature_id, str_geom_path, flt_ds_xs, flt_us_xs, int_max_q, str_hecras_path_to_create, tpl_settings)
     except Exception as ex:
         #print("HEC-RAS Error: " + str_geom_path)
-        fn_append_error(str_feature_id, str_geom_path, str_huc12, str_root_output_directory, ex)
+        print("*******************")
+        print("Error:")
+        print(f"   str_feature_id = {str_feature_id}")        
+        errMsg = str(ex) + " \n   " + traceback.format_exc()
+        print(errMsg)
+        print("   for more details.. see the 05_hecras_output / errors_found.log")
+        fn_append_error(str_feature_id, str_geom_path, str_huc12, str_root_output_directory, errMsg)
+        print("*******************")        
     
     #return(str_feature_id)

@@ -395,6 +395,12 @@ class Get_Ras_Models_By_Catalog():
             # NOTE: we are using subprocesses for now as boto3 can not download folders, only files.
             # Granted you can get a list of files matching the prefix and iterate through them but
             # it is ugly. For now, we will use 
+
+            # TODO: what if the target folder already exists. ie) duplicate entry in the final_name_key 
+            # column of the master models catalog csv.
+            # We need to pre-search the csv and record duplicates
+
+
             cmd = root_cmd + f"\"{src_path}\" \"{target_path}\""
             if (self.is_verbose):
                 self.log_append_and_print(f"    {cmd}")

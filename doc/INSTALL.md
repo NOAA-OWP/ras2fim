@@ -66,9 +66,9 @@ The main script is titled `ras2fim.py`.  **All scripts have a helper flag of `-h
 <br>
 ***--- Image may be out of date slightly as parameters are being adjusted currently ---***
 <br><br>
-**Note**: Currently, there are **three (3) required** arguments and a number of optional arguments. Below is a sample input string to execute the `ras2fim.py` script with most arguments defaulted. The defaults arguments are based on the default folder structure shown in the [README](../README.md)
+**Note**: Currently, there are **two required** arguments and a number of optional arguments. Below is a sample input string to execute the `ras2fim.py` script with most arguments defaulted. The defaults arguments are based on the default folder structure shown in the [README](../README.md)
 ```
-python ras2fim.py -w 12090301 -p EPSG:2277 -o 12090301_meters_2277
+python ras2fim.py -w 12090301 -p EPSG:2277 
 ```
 
 **Note:** The `-p` argument is the incoming projection of the models that are about to be processed. Any HEC-RAS model folders, such as folders from OWP_ras_models\models, must match that projection. The `-res` argument defaults to `10` but it must match the resolution of the incoming HEC-RAS model files. You will need the `-t` DEM resolution to also match the the stated resolution.  At this point, only 10 meter has been tested, and more details and options coming soon.
