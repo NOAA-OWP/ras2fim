@@ -486,11 +486,10 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
             # Create a shapefile of the intersected points
     
             schema = {'geometry': 'Point', 'properties': {}}
-    
+
             with collection(str_xs_on_feature_id_pt,
                             "w",
                             "ESRI Shapefile",
-                            #schema, crs=from_epsg(ble_prj[5:])) as output:
                             schema, crs = ble_prj) as output:
                 # ~~~~~~~~~~~~~~~~~~~~
                 # Slice ble_prj to remove the "epsg:"

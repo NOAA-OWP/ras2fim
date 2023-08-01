@@ -24,19 +24,8 @@ import datetime
 
 # ras2fim python worker for multiprocessing
 import worker_fim_rasters
-# ************************************************************
 
-# $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
-# $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+# ************************************************************
 
 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
@@ -320,8 +309,7 @@ if __name__ == '__main__':
                         help='OPTIONAL: check terrain only-skip HEC-RAS simulation and mapping: Default=False',
                         required=False,
                         default=False,
-                        metavar='T/F',
-                        type=str2bool)
+                        action='store_true')
     
     args = vars(parser.parse_args())
     # --------------------------------

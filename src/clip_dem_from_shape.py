@@ -32,6 +32,7 @@ import datetime
 
 import tqdm
 import shared_functions as sf
+
 # ************************************************************
 
 # null value in the exported DEMs
@@ -67,20 +68,6 @@ def fn_get_random_string(int_letter_len_fn, int_num_len_fn):
     str_total += ''.join(random.choice(numbers) for i in range(int_num_len_fn))
     
     return str_total
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-# $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-def fn_str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
-# $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -90,7 +77,7 @@ def fn_is_valid_file(parser, arg):
     else:
         # File exists so return the directory
         return arg
-        return open(arg, 'r')  # return an open file handle
+        #return open(arg, 'r')  # return an open file handle
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 def fn_cut_dems_from_shapes(str_input_shp_path,
