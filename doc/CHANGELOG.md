@@ -1,6 +1,41 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+
+## v1.____ - 2023-08-02 - [PR#126](https://github.com/NOAA-OWP/ras2fim/pull/126)
+
+Adjusts  `worker_fim_rasters.py` to export water surface elevation alongside the stage and discharge in the rating curve. It also changes `reformat_rating_curve.py` so it can accept the water surface elevation and makes the script function properly without ras2rem being run (i.e. it compiles the rating curve, a functionality that used to be run with ras2rem). 
+
+This PR includes the code updates that were previously described in [PR#85](https://github.com/NOAA-OWP/ras2fim/pull/85), so that PR no longer needs to be approved and merged into dev.
+
+Resolves [Issue #81 ](https://github.com/NOAA-OWP/ras2fim/issues/81), [Issue #95 ](https://github.com/NOAA-OWP/ras2fim/issues/95) and [Issue #119 ](https://github.com/NOAA-OWP/ras2fim/issues/119).
+
+### Additions  
+
+- `src/worker_fim_rasters.py`:
+  - Reads in water surface elevation from HEC-RAS cross sections
+  - Creates a list of water surface elevation values at the desired increments
+  - Added WaterSurfaceElevation to output rating curve dataframe
+
+- `src/reformat_ras_rating_curve.py`: 
+  - Added progress bar to the raster mosaicking and elevation extraction processes, explicit CRS to geopackage output, a function for normalizing unit names (`get_unit_from_string`) 
+  - Added function from ras2rem for compiling the rating curves within a directory, which had previously been done in ras2rem (`fn_make_rating_curve`)
+  - Added update to pull unit, crs, and huc8 name from `run_arguments.txt` file
+  - Added WaterSurfaceElevation column to output csv and geopackage
+
+### Changes  
+
+- `src/reformat_ras_rating_curve.py`: 
+  - Fixed order of inputs given to the executor to run `dir_reformat_ras_rc`
+
+### Removals 
+
+- `src/reformat_ras_rating_curve.py`: 
+  - Removed hardcoded CRS's, instead using CRS from `run_arguments.txt`
+
+<br/><br/>
+
+
 ## v1.16.0 - 2023-07-31 - [PR#115](https://github.com/NOAA-OWP/ras2fim/pull/115)
 
 This PR covers two items, both are pretty small, and a couple bug fixes.
