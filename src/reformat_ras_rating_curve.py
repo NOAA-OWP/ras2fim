@@ -108,7 +108,7 @@ def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir, out_unit, dir)
         r2f_ras2rem_dir: directory to write output file (rating_curve.csv)
         model_unit :model unit of HEC-RAS models that is either meter or feet
 
-    Returns: rating_curve.csv file
+    Returns: rating curve csv file
     '''
     print("Making merged rating curve")
     rating_curve_df = pd.DataFrame()
@@ -134,9 +134,7 @@ def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir, out_unit, dir)
         this_file_df['obs_source'] = ''
         rating_curve_df = rating_curve_df.append(this_file_df)
 
-    print(rating_curve_df) ## debug
-
-    #reorder columns
+    # Reorder columns
     if out_unit == 'ft':
         rating_curve_df = rating_curve_df[['feature_id', 'stage_ft', 'discharge_cfs', 'WaterSurfaceElevation_ft',
                                      'HydroID', 'HUC', 'LakeID', 'last_updated', 'submitter', 'obs_source']]
@@ -148,9 +146,9 @@ def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir, out_unit, dir)
 
     rc_name = 'r2rem_rating_curve_' + str(dir) + '.csv'
     rc_save_path = os.path.join(r2f_ras2rem_dir,rc_name)
-    print(f'saving rating curve to: {rc_save_path}') ## debug
-
     rating_curve_df.to_csv(rc_save_path, index = False)
+
+    print(f'Compiled rating curve saved to: {rc_save_path}') ## debug
 
 # -----------------------------------------------------------------
 # Reads, compiles, and reformats the rating curve info for all directories
@@ -322,9 +320,6 @@ def dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
 
         rc_df = pd.read_csv(rc_path) 
 
-        print('rc_df:') ## debug
-        print(rc_df) ##debug
-
         # Find the first column that contains the string 'stage'
         stage_column = next((col for col in rc_df.columns if 'stage' in col), None) 
         
@@ -432,10 +427,9 @@ def dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
             'midpoint_lat': midpoint_y_list
             })
 
-        # [Placeholder] Crosswalk the sites to the correct FIM feature ID if they are not already correct
-
         # ------------------------------------------------------------------------------------------------
-        # Read terrain file and get projection information
+        # Read terrain file and get projection information 
+        # TODO: Might be able to retire the elevation extraction (in favor of just using water surface elevation)
 
         if verbose == True:
             print(' ')
@@ -538,6 +532,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
             print('Projections:')
             print("    Midpoints projection " + str(midpoints_gdf.crs))
             print("    Terrain projection: " + str(terrain.crs))
+            print(" ")
 
         output_log.append("Midpoints projection " + str(midpoints_gdf.crs))
         output_log.append("Terrain projection: " + str(terrain.crs))
@@ -555,12 +550,6 @@ def dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
         # Join raw elevation to rating curve using feature_id 
         rc_elev_df = pd.merge(rc_df, midpoints_gdf[['feature_id', 'huc8', 'Raw_elevation', 'midpoint_lat', 'midpoint_lon']], 
                               left_on='feature_id', right_on='feature_id', how='left')
-        
-        print('rc elev df after joining with rating curve:')
-        print(list(rc_elev_df.columns))
-
-        # Drop the redundant feature_id column 
-        # rc_elev_df = rc_elev_df.drop('feature_id', axis=1)
 
         # ------------------------------------------------------------------------------------------------
         # Evaluate and convert elevation and stage units if needed
@@ -569,16 +558,13 @@ def dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
             print(' ')
             print("Standardizing units...")
 
-        if verbose == True: ## TODO: maybe remove eventually
+        if verbose == True: # TODO: maybe remove overly verbose comments eventually
             print(f'    Stage units: {stage_units}')
             print(f'    Terrain data units: {raster_vertical_unit}')
             print(f'    Output units: {out_unit}')
 
         # Standardize out unit
         out_unit = get_unit_from_string(out_unit)
-
-        # Placeholder: Convert elevation based on a datum difference
-        # If there is no datum conversion, the datum and the navd88_datum columns are both equal to each other
 
         # Evaluate elevation units
         if raster_vertical_unit != out_unit:
