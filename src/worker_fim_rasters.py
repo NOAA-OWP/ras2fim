@@ -20,6 +20,7 @@ import os
 import re
 import numpy as np
 import pyproj
+import traceback
 
 from datetime import date
 
@@ -169,7 +170,8 @@ def fn_create_rating_curve(list_int_step_flows_fn,
                            str_feature_id_fn,
                            str_path_to_create_fn,
                            model_unit, 
-                           list_water_surface_elev_fn):
+                           min_wse_fn):
+                        #    list_int_step_flows_wse_fn):
 
     str_file_name = str_feature_id_fn + '_rating_curve.png'
 
@@ -232,28 +234,42 @@ def fn_create_rating_curve(list_int_step_flows_fn,
     plt.cla()
     plt.close('all')
 
-    print("length of list of water surface elevation: ") ## debug
-    print(len(list_water_surface_elev_fn)) ##debug
-    print("length of list_int_step_flows_fn: ") ## debug
-    print(len(list_int_step_flows_fn)) ##debug
-    print("length of list_step_profiles_fn: ") ## debug
-    print(len(list_step_profiles_fn)) ##debug
-    print("creating CSV for the rating curve......")
+    # print("length of list of water surface elevation: ") ## debug
+    # print(len(list_int_step_flows_wse_fn)) ##debug
+    # print("length of list_int_step_flows_fn: ") ## debug
+    # print(len(list_int_step_flows_fn)) ##debug
+    # print("length of list_step_profiles_fn: ") ## debug
+    # print(len(list_step_profiles_fn)) ##debug
+    print("creating CSV for the rating curve......") 
+
+    # Stage + minimum water surface elevation = water surface elevation ED
+    wse = list_step_profiles_fn + min_wse_fn
 
     # Create CSV for the rating curve
+    # list_step_profiles_fn is already decimal (1.5)
     if model_unit == 'meter':
-        d = {'Flow(cms)': list_int_step_flows_fn,
-             'AvgDepth(m)': list_step_profiles_fn,
-             'WaterSurfaceElevation(m)': list_water_surface_elev_fn}
+        d = {'discharge_cms': list_int_step_flows_fn,
+             'stage_m': list_step_profiles_fn,
+             'WaterSurfaceElevation_m': wse} #list_int_step_flows_wse_fn}
     else:
-        d = {'Flow(cfs)': list_int_step_flows_fn,
-             'AvgDepth(ft)': list_step_profiles_fn, 
-             'WaterSurfaceElevation(ft)': list_water_surface_elev_fn}
+        d = {'discharge_cfs': list_int_step_flows_fn,
+             'stage_ft': list_step_profiles_fn, 
+             'WaterSurfaceElevation_ft': wse} #list_int_step_flows_wse_fn}
     print('made array for rating curve....') ##debug
-
+        
     df_rating_curve = pd.DataFrame(d)
-    print(" ==================== created df rating curve (should have WSE) ====================") ## debug
-    print(df_rating_curve) ## debug
+
+    if model_unit == 'feet':
+        # we need to add meter columns and convert feet to metric
+        df_rating_curve["discharge_cms"] = np.round(df_rating_curve["discharge_cfs"].values * 0.3048 ** 3, 3)
+        df_rating_curve["stage_m"] = np.round(df_rating_curve["stage_ft"].values * 0.3048, 3)
+        df_rating_curve["WaterSurfaceElevation_m"] = np.round(df_rating_curve["WaterSurfaceElevation_ft"].values * 0.3048, 3)
+        df_rating_curve["stage_mm"] = np.round(df_rating_curve["stage_ft"].values * 0.3048 * 1000, 3)
+    else:
+        df_rating_curve["stage_mm"] = df_rating_curve["stage_m"] * 1000 # change to millimeters
+        
+    df_rating_curve["stage_mm"] = df_rating_curve["stage_mm"].astype('int')
+
     str_csv_path = str_rating_path_to_create + '\\' + str_feature_id_fn + '_rating_curve.csv'
 
     df_rating_curve.to_csv(str_csv_path, index=False)
@@ -463,6 +479,8 @@ def fn_create_ras_mapper_xml(str_feature_id_fn,
     file.close()
 # +++++++++++++++++++++++++
 
+#  Jul 30, 2023 - Deprecated
+'''
 # """"""""""""""""""""""""""
 def fn_create_study_area(str_polygon_path_fn, str_feature_id_poly_fn, tpl_settings):
     
@@ -507,6 +525,7 @@ def fn_create_study_area(str_polygon_path_fn, str_feature_id_poly_fn, tpl_settin
 
     gdf_flood_depth_envelope.to_file(str_output_path)
 # """"""""""""""""""""""""""
+'''
 
 # ...........................
 def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
@@ -560,7 +579,6 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
 
     # initialize list of water surface elevations
     list_avg_water_surface_elev = []
-    list_water_surface_elev = []
     
     for int_prof in range(int_number_of_steps):
         
@@ -604,11 +622,8 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
                 # get the average depth between two sections
                 arr_avg_depth[k] = (arr_max_depth[k] + arr_max_depth[k+1]) / 2
 
-                # get the average water surface elevation between two sections
-                arr_avg_water_surface_elev[k] = (arr_water_surface_elev[k] + arr_water_surface_elev[k+1]) / 2
-
             k += 1
-        
+
         # average depth between two cross sections times channel length
         arr_multiply = arr_avg_depth * arr_channel_length
     
@@ -616,10 +631,43 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
         flt_avg_depth = (np.sum(arr_multiply)) / (np.sum(arr_channel_length))
         list_avg_depth.append(flt_avg_depth)
 
-        # append the water surface elevation to the output list
-        list_avg_water_surface_elev.append(arr_avg_water_surface_elev)
-        list_water_surface_elev.append(arr_water_surface_elev)
+        ## NOW DO THE SAME FOR WSE ##debug 
 
+        # compute an average WSE between cross sections
+        k = 0
+        for x in arr_max_depth:
+            if k != (len(arr_max_depth)) - 1:
+
+                # get the average water surface elevation between two sections
+                arr_avg_water_surface_elev[k] = (arr_water_surface_elev[k] + arr_water_surface_elev[k+1]) / 2
+
+            k += 1
+        
+        # average depth between two cross sections times channel length
+        arr_multiply_wse = arr_avg_water_surface_elev * arr_channel_length
+    
+        # compute the average depth on the reach
+        flt_avg_wse = (np.sum(arr_multiply_wse)) / (np.sum(arr_channel_length))
+        list_avg_water_surface_elev.append(flt_avg_wse)
+
+        # # append the water surface elevation to the output list
+        # list_avg_water_surface_elev.append(arr_avg_water_surface_elev)
+        # list_water_surface_elev.append(arr_water_surface_elev)
+
+    print('example variables: ')
+    print(f'arr_max_depth {arr_max_depth}')
+    # print(f'arr_channel_length {arr_channel_length}')
+    # print(f'arr_avg_depth {arr_avg_depth}')
+    # print(f'arr_multiply {arr_multiply}')
+    print(f'arr_water_surface_elev {arr_water_surface_elev}')
+    print(f'arr_avg_water_surface_elev {arr_avg_water_surface_elev}')
+
+
+    # print(f'length of list avg depth: {len(list_avg_depth)}') ## debug
+    # print(f'length of list avg wse: {len(list_avg_water_surface_elev)}') ## debug
+
+    # print('list avg depth') ## debug
+    # print(list_avg_depth)
 
     # **********************************
 
@@ -630,11 +678,17 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
     # f is the linear interpolator
     f = interp1d(list_avg_depth, list_flow_steps)
 
+
     # Get the max value of the Averge Depth List
     int_max_depth = int(max(list_avg_depth) // flt_interval)
-
     # Get the min value of Average Depth List
     int_min_depth = int((min(list_avg_depth) // flt_interval) + 1)
+
+    # print(f'int_max_depth: {int_max_depth}') ## debug
+    # print(f'int_min_depth: {int_min_depth}')
+    # print(f'flt_interval: {flt_interval}')
+    # print('linear interpolator: ')
+    # print(f)
 
     list_step_profiles = []
 
@@ -648,14 +702,101 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         list_step_profiles.append(int_depth_interval)
 
+    print('list step profiles:') ## debug
+    print(list_step_profiles) ## debug
+
     # get interpolated flow values of interval depths
     arr_step_flows = f(list_step_profiles)
+
+    print('arr step flows') ## debug
+    print(arr_step_flows) ## debug
 
     # convert the linear interpolation array to a list
     list_step_flows = arr_step_flows.tolist()
 
     # convert list of interpolated float values to integer list
     list_int_step_flows = [int(i) for i in list_step_flows]
+
+    ## ED
+    min_wse = min(list_avg_water_surface_elev)
+
+    print(f'minimum water surface elevation: {min_wse}') ## debug
+
+
+
+
+    # ## FOR WSE: *******************************************************
+    # print('running WSE segment now!..............') ## debug
+    # print(list_avg_water_surface_elev) ## debug
+
+    # # Get the max value of the water surface elevation List
+    # # maxlist_wse = max(list_avg_water_surface_elev) ## debug
+    # # if len(maxlist_wse) > 1:
+    # #     maxval_wse = maxlist_wse[0]
+    # # else:
+    # #     maxval_wse = maxlist_wse
+    # int_max_wse = int(max(list_avg_water_surface_elev) // flt_interval)
+
+    # print(f'int_max_wse: {int_max_wse}') ## debug
+
+    # # Get the min value of water surface elevation List
+    # # minlist_wse =  ## debug
+    # # if len(minlist_wse) > 1:
+    # #     minval_wse = minlist_wse[0]
+    # # else:
+    # #     minval_wse = minlist_wse
+    # int_min_wse = int((min(list_avg_water_surface_elev) // flt_interval) + 1)
+
+    # print(f'int_min_wse: {int_min_wse}') ## debug
+
+    # print()
+    # print('INTERPOLATOR INPUTS: ****************************************************') ## debug
+    # print(f'list_avg_depth: {list_avg_depth}')
+    # print(f'list flow steps: {list_flow_steps}')
+    # print(f'list_avg_water_surface elev: {list_avg_water_surface_elev}')
+    # print('****************************************************')
+
+    # # linear interpolation
+    # f = interp1d(list_avg_water_surface_elev, list_flow_steps)
+    # # f = interp1d(list_avg_water_surface_elev, list_avg_depth) ## test
+
+
+    # list_step_profiles_wse = []
+
+    # # Create a list of the profiles at desired increments
+    # for i in range(int_max_wse - int_min_wse + 1):
+    #     int_wse_interval = (i + int_min_wse) * flt_interval
+
+    #     # round this to nearest 1/10th
+    #     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #     int_wse_interval = round(int_wse_interval, 1)
+    #     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #     list_step_profiles_wse.append(int_wse_interval)
+
+
+    # # get interpolated flow values of interval depths
+    # arr_step_flows_wse = f(list_avg_water_surface_elev) ## it seems like the interpolator is where things are going wrong
+    
+
+    # # convert the linear interpolation array to a list
+    # list_step_flows_wse = arr_step_flows_wse.tolist()
+
+    # # convert list of interpolated float values to integer list
+    # list_int_step_flows_wse = [int(i) for i in list_step_flows_wse]
+
+    # print(f'list_step_profiles_wse: {list_step_profiles_wse}') ## debug
+    # print(f'arr step flows wse: {arr_step_flows_wse}') ## debug
+    # print(f'list step flows wse: {list_step_flows_wse}') ## debug
+    # print(f'list_int_step_flows_wse: {list_int_step_flows_wse}') ## debug
+
+    # # print(f'list step profiles: {list_step_profiles}') ## debug
+    # # print(f'list step profiles length: {len(list_step_profiles)}') ## debug
+    # # print(f'list wse step profiles: {list_step_profiles_wse}') ## debug
+    # # print(f'list wse step profiles length: {len(list_step_profiles_wse)}') ## debug
+    # # print(f'list step flows length: {len(list_step_flows)}') ## debug
+    # # print(f'list step flows WSE length: {len(list_step_flows_wse)}') ## debug
+    # print('done with WSE segment now!..............') ## debug
+
 
     # ............
     # Get the feature_id and the path to create
@@ -676,7 +817,8 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
                            str_feature_id, 
                            str_path_to_create, 
                            model_unit, 
-                           list_water_surface_elev) ## add stream elevation here?
+                           min_wse)
+                        #    list_int_step_flows_wse) ## add stream elevation here?
     # ------------------------------------------
 
     hec.QuitRas()  # close HEC-RAS
@@ -1216,6 +1358,13 @@ def fn_main_hecras(record_requested_stream):
         river = fn_create_hecras_files(str_feature_id, str_geom_path, flt_ds_xs, flt_us_xs, int_max_q, str_hecras_path_to_create, tpl_settings)
     except Exception as ex:
         #print("HEC-RAS Error: " + str_geom_path)
-        fn_append_error(str_feature_id, str_geom_path, str_huc12, str_root_output_directory, ex)
+        print("*******************")
+        print("Error:")
+        print(f"   str_feature_id = {str_feature_id}")        
+        errMsg = str(ex) + " \n   " + traceback.format_exc()
+        print(errMsg)
+        print("   for more details.. see the 05_hecras_output / errors_found.log")
+        fn_append_error(str_feature_id, str_geom_path, str_huc12, str_root_output_directory, errMsg)
+        print("*******************")        
     
     #return(str_feature_id)
