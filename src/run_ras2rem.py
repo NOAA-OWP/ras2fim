@@ -28,7 +28,7 @@ def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir,model_unit):
 
     Returns: rating_curve.csv file
     '''
-    print("Making rating curve")
+    print("Making merged rating curve")
     rating_curve_df = pd.DataFrame()
 
     all_rating_files = list(Path(r2f_hecras_outputs_dir).rglob('*rating_curve.csv'))
@@ -50,17 +50,6 @@ def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir,model_unit):
         this_file_df['submitter'] = ''
         this_file_df['obs_source'] = ''
         rating_curve_df = rating_curve_df.append(this_file_df)
-
-    #if model_unit is feet, convert values into metric and rename columns to be consistent with hydro table format
-    if model_unit == 'feet':
-        rating_curve_df["stage_m"] = np.round(rating_curve_df["AvgDepth(ft)"].values * 0.3048 ,3) #also round to 3 digits
-        rating_curve_df["discharge_cms"] = np.round(rating_curve_df["Flow(cfs)"].values * 0.3048 ** 3, 3)
-
-        #drop the columns with original feet data
-        rating_curve_df.drop(columns=["AvgDepth(ft)","Flow(cfs)"], inplace=True)
-    else:
-        #when model unit is meter, only rename the columns to be consistent with hydro table format
-        rating_curve_df.rename(columns={"AvgDepth(m)":"stage_m", "Flow(cms)":"discharge_cms"}, inplace=True)
 
     #reorder columns
     rating_curve_df = rating_curve_df[['feature_id', 'stage_m', 'discharge_cms',
@@ -123,7 +112,7 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
     #make argument for multiprocessing
     rem_info_arguments = []
     for rem_value in rem_values:
-        rem_info_arguments.append((rem_value,r2f_simplified_grids_dir,r2f_ras2rem_dir))
+        rem_info_arguments.append((rem_value, r2f_simplified_grids_dir, r2f_ras2rem_dir))
 
 
     num_processors = (mp.cpu_count() - 1)
@@ -168,7 +157,7 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
         os.remove(p)
 
 
-def fn_run_ras2rem(r2f_huc_parent_dir,model_unit):
+def fn_run_ras2rem(r2f_huc_parent_dir, model_unit):
     
     ####################################################################
     # Input validation and variable setup
@@ -220,7 +209,7 @@ def fn_run_ras2rem(r2f_huc_parent_dir,model_unit):
 
     flt_start_ras2rem = time.time()
 
-    fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir,model_unit)
+    fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir, model_unit)
     fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir)
 
     flt_end_ras2rem = time.time()
@@ -249,8 +238,7 @@ if __name__=="__main__":
                         dest = "r2f_huc_parent_dir",
                         help = r'REQUIRED:'
                                r'The path to the parent folder containing the ras2fim outputs . '
-                               'The ras2rem results will be created in the folder "06_metric/ras2rem" in the same parent directory.\n' \
-
+                                'The ras2rem results will be created in the folder "06_metric/ras2rem" in the same parent directory.\n' \
                                r' There are two options: 1) Providing a full path' \
                                r' 2) Providing only huc folder name, when following AWS data structure.' \
                                 ' Please see the embedded notes in the __main__ section of the code for details and examples.',
@@ -258,14 +246,15 @@ if __name__=="__main__":
                         type = str) 
 
     args = vars(parser.parse_args())
+    
     r2f_huc_parent_dir = args['r2f_huc_parent_dir']
-
 
     #find model_unit of HEC-RAS outputs (ft vs m) using a sample rating curve file
     r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
     model_unit=sf.find_model_unit_from_rating_curves(r2f_hecras_outputs_dir)
     
     fn_run_ras2rem(r2f_huc_parent_dir, model_unit)
+
 
 
 

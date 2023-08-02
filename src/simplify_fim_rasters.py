@@ -20,17 +20,17 @@ import geopandas as gpd
 
 import rioxarray as rxr
 from rioxarray import merge
-import shared_functions as sf
 import multiprocessing as mp
+import numpy as np
+import shared_functions as sf
+import shared_variables as sv
 import tqdm
+import time
 from time import sleep
 
-import time
 import datetime
-import shared_variables as sv
-
-
 import argparse
+
 # ************************************************************
 
 # buffer distance of the input flood polygon - in CRS units
@@ -210,7 +210,13 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
             last_part= '\\'.join(list_path_parts[-4:-2])
             str_folder_to_create = first_part + '\\' + sv.R2F_OUTPUT_DIR_METRIC+'\\'+sv.R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS+'\\'+last_part
             os.makedirs(str_folder_to_create, exist_ok=True)
-            
+
+            # Path for the depth grid tifs are: e.g
+            #    \06_metric\Depth_Grid\HUC_120401010302\1466236\1466236-1.tif (and more tifs)
+
+            # It's twin rating curve from its path in 05 are. e.g) 
+            #    \05_hecras_output\HUC_120401010302\1466236\Rating_Curve\1466236_rating_curve.csv
+
         else:
             str_current_comid = ''
             # there are nested TIFs, so don't process
@@ -236,11 +242,14 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
                     if str_dem_digits_only[0] == "0":
                         str_dem_digits_only = str_dem_digits_only[1:]
 
-                    #make sure to update the name of the file with metric values
+                    # make sure to update the name of the file to be in millimeter
+                    #(the "str_dem_digits_only" is 10 times the actual stage, so first needs to be divided by 10)
                     if model_unit == 'feet':
-                        str_dem_digits_only=str(int(float(str_dem_digits_only)*0.3048))
+                        str_dem_digits_only=str(int(np.round(1000*0.3048*(float(str_dem_digits_only)/10),3)))
 
-                    
+                    else:
+                        str_dem_digits_only=str(int(np.round(1000*(float(str_dem_digits_only)/10),3)))
+
                     # file path to write file
                     str_create_filename = str_folder_to_create + "\\" + str_current_comid + '-' +  str_dem_digits_only + '.tif'
                     
@@ -296,7 +305,7 @@ if __name__ == '__main__':
     parser.add_argument('-i',
                         dest = "r2f_huc_parent_dir",
                         help='REQUIRED: The path to the parent folder containing the ras2fim outputs . '
-                             'Output is created in folder "06_Metric/Depth_Grid" ' ,
+                             'Output is created in sub-folders "06_Metric/Depth_Grid" ' ,
                         required=True,
                         metavar='DIR',
                         type=str)

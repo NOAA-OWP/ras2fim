@@ -252,10 +252,13 @@ def fn_create_rating_curve(list_int_step_flows_fn,
         df_rating_curve["discharge_cms"] = np.round(df_rating_curve["discharge_cfs"].values * 0.3048 ** 3, 3)
         df_rating_curve["stage_m"] = np.round(df_rating_curve["stage_ft"].values * 0.3048, 3)
         df_rating_curve["WaterSurfaceElevation_m"] = np.round(df_rating_curve["WaterSurfaceElevation_ft"].values * 0.3048, 3)
-        df_rating_curve["stage_mm"] = np.round(df_rating_curve["stage_ft"].values * 0.3048 * 1000, 3)
     else:
-        df_rating_curve["stage_mm"] = df_rating_curve["stage_m"] * 1000 # change to millimeters
+        # need rounding (precison control even for unit of meters)
+        df_rating_curve["discharge_cms"] = np.round(df_rating_curve["discharge_cfs"].values, 3)
+        df_rating_curve["stage_m"] = np.round(df_rating_curve["stage_ft"].values, 3)
+        df_rating_curve["WaterSurfaceElevation_m"] = np.round(df_rating_curve["WaterSurfaceElevation_ft"].values, 3)
         
+    df_rating_curve["stage_mm"] = df_rating_curve["stage_m"] * 1000 # change to millimeters
     df_rating_curve["stage_mm"] = df_rating_curve["stage_mm"].astype('int')
 
     str_csv_path = str_rating_path_to_create + '\\' + str_feature_id_fn + '_rating_curve.csv'
