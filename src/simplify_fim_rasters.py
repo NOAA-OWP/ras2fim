@@ -233,20 +233,14 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
     
                     # parse the step of the grid contained in () on filename
                     str_file_name = os.path.split(k)[1]
-                    print("+++++++++++++++++++++++")
-                    print(f"str_file_name is {str_file_name}")
                     str_dem_name = re.search(pattern_parenth, str_file_name).group(1)
-                    print(f"str_dem_name is {str_dem_name}")
     
                     # parse to digits only - replaces anythign that is not a number
-
                     str_dem_digits_only = re.sub("[^0-9]","",str_dem_name)
 
                     # remove leading zeros
                     if str_dem_digits_only[0] == "0":
                         str_dem_digits_only = str_dem_digits_only[1:]
-
-                    print(f"str_dem_with_dot (2) is {str_dem_digits_only}")
 
                     # which assumes a level of precision of from the file name of 1 (only one decimal after the dot)
                     # TODO: re-address precision here ??
