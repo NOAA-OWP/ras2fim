@@ -169,7 +169,9 @@ def fn_create_rating_curve(list_int_step_flows_fn,
                            list_step_profiles_fn,
                            str_feature_id_fn,
                            str_path_to_create_fn,
-                           model_unit):
+                           model_unit, 
+                           list_step_profiles_wse):
+                        #    list_int_step_flows_wse_fn):
 
     str_file_name = str_feature_id_fn + '_rating_curve.png'
 
@@ -236,22 +238,35 @@ def fn_create_rating_curve(list_int_step_flows_fn,
     # list_step_profiles_fn is already decimal (1.5)
     if model_unit == 'meter':
         d = {'discharge_cms': list_int_step_flows_fn,
-             'stage_m': list_step_profiles_fn}
+             'stage_m': list_step_profiles_fn,
+             'WaterSurfaceElevation_m': list_step_profiles_wse} #list_int_step_flows_wse_fn}
     else:
         d = {'discharge_cfs': list_int_step_flows_fn,
-             'stage_ft': list_step_profiles_fn}
+             'stage_ft': list_step_profiles_fn, 
+             'WaterSurfaceElevation_ft': list_step_profiles_wse} #list_int_step_flows_wse_fn}
         
     df_rating_curve = pd.DataFrame(d)
 
-    if model_unit == 'feet':
+    if model_unit == 'feet': 
         # we need to add meter columns and convert feet to metric
         df_rating_curve["discharge_cms"] = np.round(df_rating_curve["discharge_cfs"].values * 0.3048 ** 3, 3)
         df_rating_curve["stage_m"] = np.round(df_rating_curve["stage_ft"].values * 0.3048, 3)
-        df_rating_curve["stage_mm"] = np.round(df_rating_curve["stage_ft"].values * 0.3048 * 1000, 3)
-    else:
+
+        #next two lines duplicated so the columns are beside the stage_m columns
         df_rating_curve["stage_mm"] = df_rating_curve["stage_m"] * 1000 # change to millimeters
-        
-    df_rating_curve["stage_mm"] = df_rating_curve["stage_mm"].astype('int')
+        df_rating_curve["stage_mm"] = df_rating_curve["stage_mm"].astype('int')
+
+        df_rating_curve["WaterSurfaceElevation_m"] = np.round(df_rating_curve["WaterSurfaceElevation_ft"].values * 0.3048, 3)
+    else:
+        # need rounding (precison control even for unit of meters)
+        df_rating_curve["discharge_cms"] = np.round(df_rating_curve["discharge_cfs"].values, 3)
+        df_rating_curve["stage_m"] = np.round(df_rating_curve["stage_ft"].values, 3)
+
+        #next two lines duplicated so the columns are beside the stage_m columns
+        df_rating_curve["stage_mm"] = df_rating_curve["stage_m"] * 1000 # change to millimeters
+        df_rating_curve["stage_mm"] = df_rating_curve["stage_mm"].astype('int')
+
+        df_rating_curve["WaterSurfaceElevation_m"] = np.round(df_rating_curve["WaterSurfaceElevation_ft"].values, 3)
 
     str_csv_path = str_rating_path_to_create + '\\' + str_feature_id_fn + '_rating_curve.csv'
 
@@ -543,22 +558,27 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
                                                          TabRS,
                                                          TabNTyp)
 
-    # HEC-RAS ID of output variables: Max channel depth, channel reach length
-    int_max_depth_id, int_node_chan_length = 4, 42
+    # HEC-RAS ID of output variables: Max channel depth, channel reach length, and water surface elevation
+    int_max_depth_id, int_node_chan_length, int_water_surface_elev = 4, 42, 2
 
     # ----------------------------------
     # Create a list of the simulated flows
+    # TODO: Maybe rename these variables 
     list_flow_steps = []
 
     int_delta_flow_step = int(int_peak_flow // (int_number_of_steps - 2))
 
     for i in range(int_number_of_steps):
         list_flow_steps.append((i*int_delta_flow_step) + int_starting_flow )
+    
     # ----------------------------------
 
     # **********************************
     # intialize list of the computed average depths
     list_avg_depth = []
+
+    # initialize list of water surface elevations
+    list_avg_water_surface_elev = []
     
     for int_prof in range(int_number_of_steps):
         
@@ -568,12 +588,14 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
             if TabNTyp[i] == "":
                 int_xs_node_count += 1
     
-        # initalize four numpy arrays
+        # initalize six numpy arrays
         arr_max_depth = np.empty([int_xs_node_count], dtype=float)
         arr_channel_length = np.empty([int_xs_node_count], dtype=float)
         arr_avg_depth = np.empty([int_xs_node_count], dtype=float)
         arr_multiply = np.empty([int_xs_node_count], dtype=float)
-    
+        arr_water_surface_elev = np.empty([int_xs_node_count], dtype=float)
+        arr_avg_water_surface_elev = np.empty([int_xs_node_count], dtype=float)
+
         int_count_nodes = 0
     
         for i in range(0, NNod):
@@ -581,11 +603,15 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
                 
                 # reading max depth in cross section
                 arr_max_depth[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(RivID, RchID, i+1, 0, int_prof+1, int_max_depth_id)
+
+                # reading water surface elevation in cross section
+                arr_water_surface_elev[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(RivID, RchID, i+1, 0, int_prof+1, int_water_surface_elev)
+
                 # reading the distance between cross sections (center of channel)
                 arr_channel_length[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(RivID, RchID, i+1, 0, int_prof+1, int_node_chan_length)
     
                 int_count_nodes += 1
-    
+
         # Revise the last channel length to zero
         arr_channel_length[len(arr_channel_length) - 1] = 0
     
@@ -595,14 +621,33 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
             if k != (len(arr_max_depth)) - 1:
                 # get the average depth between two sections
                 arr_avg_depth[k] = (arr_max_depth[k] + arr_max_depth[k+1]) / 2
+
             k += 1
-        
+
         # average depth between two cross sections times channel length
         arr_multiply = arr_avg_depth * arr_channel_length
     
         # compute the average depth on the reach
         flt_avg_depth = (np.sum(arr_multiply)) / (np.sum(arr_channel_length))
         list_avg_depth.append(flt_avg_depth)
+
+        # compute an average WSE between cross sections
+        k = 0
+        for x in arr_water_surface_elev: 
+            if k != (len(arr_water_surface_elev)) - 1:
+
+                # get the average water surface elevation between two sections
+                arr_avg_water_surface_elev[k] = (arr_water_surface_elev[k] + arr_water_surface_elev[k+1]) / 2
+
+            k += 1
+        
+        # average WSE between two cross sections times channel length
+        arr_multiply_wse = arr_avg_water_surface_elev * arr_channel_length
+    
+        # compute the average WSE on the reach
+        flt_avg_wse = (np.sum(arr_multiply_wse)) / (np.sum(arr_channel_length))
+        list_avg_water_surface_elev.append(flt_avg_wse)
+
     # **********************************
 
     # ------------------------------------------
@@ -614,7 +659,6 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
 
     # Get the max value of the Averge Depth List
     int_max_depth = int(max(list_avg_depth) // flt_interval)
-
     # Get the min value of Average Depth List
     int_min_depth = int((min(list_avg_depth) // flt_interval) + 1)
 
@@ -639,6 +683,37 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
     # convert list of interpolated float values to integer list
     list_int_step_flows = [int(i) for i in list_step_flows]
 
+    int_max_wse = int(max(list_avg_water_surface_elev) // flt_interval)
+    int_min_wse = int((min(list_avg_water_surface_elev) // flt_interval) + 1)
+
+    print()
+
+
+    list_step_profiles_wse = []
+
+    # Create a list of the profiles at desired increments
+    for i in range(int_max_wse - int_min_wse + 1):
+
+        int_wse_interval = (i + int_min_wse) * flt_interval
+
+        # round this to nearest 1/10th
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        int_wse_interval = round(int_wse_interval, 1)
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        list_step_profiles_wse.append(int_wse_interval)
+
+    # # linear interpolation
+    # h = interp1d(list_avg_water_surface_elev, list_flow_steps)
+
+    # # get interpolated flow values of interval depths
+    # arr_step_flows_wse = h(list_step_profiles_wse) ## it seems like the interpolator is where things are going wrong
+    
+    # # convert the linear interpolation array to a list
+    # list_step_flows_wse = arr_step_flows_wse.tolist()
+
+    # # convert list of interpolated float values to integer list
+    # list_int_step_flows_wse = [int(i) for i in list_step_flows_wse]
+
     # ............
     # Get the feature_id and the path to create
     list_path = str_ras_projectpath.split(os.sep)
@@ -657,7 +732,8 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
                            list_step_profiles, 
                            str_feature_id, 
                            str_path_to_create, 
-                           model_unit)
+                           model_unit, 
+                           list_step_profiles_wse)
     # ------------------------------------------
 
     hec.QuitRas()  # close HEC-RAS
