@@ -20,16 +20,17 @@ import geopandas as gpd
 
 import rioxarray as rxr
 from rioxarray import merge
-
 import multiprocessing as mp
+import numpy as np
+import shared_functions as sf
+import shared_variables as sv
 import tqdm
+import time
 from time import sleep
 
-import time
 import datetime
-
-
 import argparse
+
 # ************************************************************
 
 # buffer distance of the input flood polygon - in CRS units
@@ -82,7 +83,7 @@ def fn_create_grid(list_of_df_row):
     #     str_output_crs = coordinate ref system of the output raster
     #     flt_desired_res = resolution of the output raster
     
-    str_polygon_path, str_file_to_create_path, str_dem_path, str_output_crs, flt_desired_res = list_of_df_row
+    str_polygon_path, str_file_to_create_path, str_dem_path, str_output_crs, flt_desired_res, model_unit = list_of_df_row
     
     # read in the HEC-RAS generatated polygon of the last elevation step
     gdf_flood_limits = gpd.read_file(str_polygon_path)
@@ -104,6 +105,10 @@ def fn_create_grid(list_of_df_row):
 
         # reproject the DEM to the requested CRS
         xds_clipped_reproject = xds_clipped.rio.reproject(str_output_crs)
+
+        #convert the pixel values to meter, if model unit is in feet
+        if model_unit == 'feet':
+            xds_clipped_reproject = xds_clipped_reproject * 0.3048
 
         # change the depth values to integers representing 1/10th interval steps
         # Example - a cell value of 25 = a depth of 2.5 units (feet or meters)
@@ -132,9 +137,10 @@ def fn_create_grid(list_of_df_row):
 # **********************************
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def fn_simplify_fim_rasters(str_input_dir,
+def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
                             flt_resolution,
-                            str_output_crs):
+                            str_output_crs,
+                            model_unit):
     
     flt_start_simplify_fim = time.time()
 
@@ -143,12 +149,13 @@ def fn_simplify_fim_rasters(str_input_dir,
     print("|                SIMPLIFIED GEOTIFFS FOR RAS2FIM                  |")
     print("+-----------------------------------------------------------------+")
 
-    STR_MAP_OUTPUT = str_input_dir
-    print("  ---(i) INPUT PATH: " + str(STR_MAP_OUTPUT))
+    STR_MAP_OUTPUT = r2f_hecras_outputs_dir
+    print("  ---(i) INPUT PATH (HEC-RAS outputs): " + str(STR_MAP_OUTPUT))
+    print("  --- HEC-RAS outputs unit: " + model_unit)
     
     # output interval of the flood depth raster - in CRS units
     FLT_DESIRED_RES = flt_resolution
-    print("  ---[r]   Optional: RESOLUTION: " + str(FLT_DESIRED_RES)) 
+    print("  ---[r]   Optional: RESOLUTION: " + str(FLT_DESIRED_RES) + " m")
     
     # requested tile size in lambert units (meters)
     STR_OUTPUT_CRS = str_output_crs
@@ -199,10 +206,17 @@ def fn_simplify_fim_rasters(str_input_dir,
             str_current_comid = list_path_parts[-3]
             
             # directory to create output dem's
-            str_folder_to_create = '\\'.join(list_path_parts[:-2])
-            str_folder_to_create = str_folder_to_create + '\\' + 'Depth_Grid'
+            first_part= '\\'.join(list_path_parts[:-5])
+            last_part= '\\'.join(list_path_parts[-4:-2])
+            str_folder_to_create = first_part + '\\' + sv.R2F_OUTPUT_DIR_METRIC+'\\'+sv.R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS+'\\'+last_part
             os.makedirs(str_folder_to_create, exist_ok=True)
-            
+
+            # Path for the depth grid tifs are: e.g
+            #    \06_metric\Depth_Grid\HUC_120401010302\1466236\1466236-1.tif (and more tifs)
+
+            # It's twin rating curve from its path in 05 are. e.g) 
+            #    \05_hecras_output\HUC_120401010302\1466236\Rating_Curve\1466236_rating_curve.csv
+
         else:
             str_current_comid = ''
             # there are nested TIFs, so don't process
@@ -227,7 +241,15 @@ def fn_simplify_fim_rasters(str_input_dir,
                     # remove leading zeros
                     if str_dem_digits_only[0] == "0":
                         str_dem_digits_only = str_dem_digits_only[1:]
-                    
+
+                    # make sure to update the name of the file to be in millimeter
+                    #(the "str_dem_digits_only" is 10 times the actual stage, so first needs to be divided by 10)
+                    if model_unit == 'feet':
+                        str_dem_digits_only=str(int(np.round(1000*0.3048*(float(str_dem_digits_only)/10),3)))
+
+                    else:
+                        str_dem_digits_only=str(int(np.round(1000*(float(str_dem_digits_only)/10),3)))
+
                     # file path to write file
                     str_create_filename = str_folder_to_create + "\\" + str_current_comid + '-' +  str_dem_digits_only + '.tif'
                     
@@ -247,6 +269,7 @@ def fn_simplify_fim_rasters(str_input_dir,
         # multi-processing
         df_grids_to_convert['output_crs'] = STR_OUTPUT_CRS
         df_grids_to_convert['desired_res'] = FLT_DESIRED_RES
+        df_grids_to_convert['model_unit'] = model_unit
         
         list_dataframe_args = df_grids_to_convert.values.tolist()
         
@@ -280,17 +303,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='===== CREATE SIMPLIFIED FLOOD DEPTH RASTER FILES (TIF) =====')
 
     parser.add_argument('-i',
-                        dest = "str_input_dir",
-                        help=r'REQUIRED: directory containing RAS2FIM output:  Example: C:\HUC_10170204',
+                        dest = "r2f_huc_parent_dir",
+                        help='REQUIRED: The path to the parent folder containing the ras2fim outputs . '
+                             'Output is created in sub-folders "06_Metric/Depth_Grid" ' ,
                         required=True,
                         metavar='DIR',
                         type=str)
     
     parser.add_argument('-r',
                         dest = "flt_resolution",
-                        help='OPTIONAL: resolution of output raster (crs units): Default=3',
+                        help='OPTIONAL: resolution of output raster (crs units): Default=10',
                         required=False,
-                        default=3,
+                        default=10,
                         metavar='FLOAT',
                         type=float)
     
@@ -302,13 +326,18 @@ if __name__ == '__main__':
                         metavar='STRING',
                         type=str)
 
+
     args = vars(parser.parse_args())
     
-    str_input_dir = args['str_input_dir']
+    r2f_huc_parent_dir = args['r2f_huc_parent_dir']
     flt_resolution = args['flt_resolution']
     str_output_crs = args['str_output_crs']
+
+    #find model_unit of HEC-RAS outputs (ft vs m) using a sample rating curve file
+    r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    model_unit=sf.find_model_unit_from_rating_curves(r2f_hecras_outputs_dir)
     
-    fn_simplify_fim_rasters(str_input_dir,
+    fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
                             flt_resolution,
-                            str_output_crs)
+                            str_output_crs,model_unit)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

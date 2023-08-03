@@ -24,19 +24,8 @@ import datetime
 
 # ras2fim python worker for multiprocessing
 import worker_fim_rasters
-# ************************************************************
 
-# $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
-# $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+# ************************************************************
 
 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
@@ -77,7 +66,6 @@ def fn_create_fim_rasters(str_desired_huc8,
                           str_terrain_path,
                           str_std_input_path,
                           flt_interval,
-                          flt_out_resolution,
                           b_terrain_check_only):
     
     flt_start_create_fim = time.time()
@@ -136,11 +124,6 @@ def fn_create_fim_rasters(str_desired_huc8,
     
     FLT_INTERVAL = flt_interval
     print("  ---[z]   Optional: Output Elevation Step: " + str(FLT_INTERVAL))
-    
-    INT_DESIRED_RESOLUTION = flt_out_resolution
-    print("  ---[r]   Optional: Output Raster Resolution: " + str(INT_DESIRED_RESOLUTION))
-    
-    INT_DESIRED_RESOLUTION = flt_out_resolution
     print("  ---[c]   Optional: Terrain Check Only: " + str(b_terrain_check_only))
     
     print("===================================================================")
@@ -152,7 +135,7 @@ def fn_create_fim_rasters(str_desired_huc8,
                  STR_PLAN_MIDDLE_PATH, 
                  STR_PROJECT_FOOTER_PATH, 
                  FLT_INTERVAL,
-                 INT_DESIRED_RESOLUTION,
+                 '', #this is just a filler (for an old redundant parameter) simply to keep the order of item unchanged.
                  INT_XS_BUFFER,
                  IS_CREATE_MAPS,
                  INT_NUMBER_OF_STEPS,
@@ -270,35 +253,36 @@ if __name__ == '__main__':
     
     parser.add_argument('-w',
                         dest = "str_desired_huc8",
-                        help=r'REQUIRED: the desired huc-8 watershed: Example:  10170204',
+                        help=r'REQUIRED: the desired huc-8 watershed: Example:  12090301',
                         required=True,
                         metavar='STRING',
                         type=str)
 
     parser.add_argument('-i',
                         dest = "str_input_folder",
-                        help=r'REQUIRED: directory containing pre-processed (2 of 2) data: Example: D:\pre_2_output',
+                        help=r'REQUIRED: directory containing results of conflation (step 2): Example: C:\ras2fim_12090301\02_shapes_from_conflation',
                         required=True,
                         metavar='DIR',
                         type=str)
     
     parser.add_argument('-o',
                         dest = "str_output_folder",
-                        help=r'REQUIRED: path to write ras2fim output files: Example: D:\ras_output',
+                        help=r'REQUIRED: path to write ras2fim output files: Example: C:\ras2fim_12090301\05_hecras_output',
                         required=True,
                         metavar='DIR',
                         type=str)
     
     parser.add_argument('-p',
                         dest = "str_projection_path",
-                        help=r'REQUIRED: path the to the projection file: Example: D:\pre_2_output\10170204_ble_streams_ln.prj',
+                        help=r'REQUIRED: path the to the projection file: Example: '
+                             r'C:\ras2fim_12090301\02_shapes_from_conflation\12090301_huc_12_ar.prj',
                         required=True,
                         metavar='FILE',
                         type=str)
     
     parser.add_argument('-t',
                         dest = "str_terrain_path",
-                        help=r'REQUIRED: path the to hdf5 terrain: Example: D:\04_hecras_terrain',
+                        help=r'REQUIRED: path the to hdf5 terrain folder: Example: C:\ras2fim_12090301\04_hecras_terrain',
                         required=True,
                         metavar='FILE',
                         type=str)
@@ -318,22 +302,14 @@ if __name__ == '__main__':
                         default=0.5,
                         metavar='FLOAT',
                         type=float)
-    
-    parser.add_argument('-r',
-                        dest = "flt_out_resolution",
-                        help=r'  OPTIONAL: resolution of output grids: Example: 1.5 : Default: 3.0',
-                        required=False,
-                        default=3.0,
-                        metavar='FLOAT',
-                        type=float)
+
     
     parser.add_argument('-c',
                         dest = "b_terrain_check_only",
                         help='OPTIONAL: check terrain only-skip HEC-RAS simulation and mapping: Default=False',
                         required=False,
                         default=False,
-                        metavar='T/F',
-                        type=str2bool)
+                        action='store_true')
     
     args = vars(parser.parse_args())
     # --------------------------------
@@ -345,7 +321,6 @@ if __name__ == '__main__':
     str_terrain_path = args['str_terrain_path']
     str_std_input_path = args['str_std_input_path']
     flt_interval = args['flt_interval']
-    flt_out_resolution = args['flt_out_resolution']
     b_terrain_check_only = args['b_terrain_check_only']
     
     fn_create_fim_rasters(str_desired_huc8,
@@ -355,6 +330,5 @@ if __name__ == '__main__':
                           str_terrain_path,
                           str_std_input_path,
                           flt_interval,
-                          flt_out_resolution,
                           b_terrain_check_only)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
