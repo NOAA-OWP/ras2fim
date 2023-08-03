@@ -35,6 +35,20 @@ Resolves [Issue #81 ](https://github.com/NOAA-OWP/ras2fim/issues/81), [Issue #95
 
 <br/><br/>
 
+## v1.16.1 - 2023-07-19 - [PR#101](https://github.com/NOAA-OWP/ras2fim/pull/101)
+
+This bug fix will check the result of conflation step (step 2) and stop the code if no conflated model exists.
+
+Ras2fim needs at least one conflated model (one HEC-RAS model that its cross sections intersect with NWM reaches). If none of the user provided HEC-RAS models conflates to NWM reaches in the given HUC8, then the code should inform the user and terminate. The file "***_stream_qc.csv" in folder '02_shapes_from_conflation' is the best place to check for this situation.
+
+### Changes
+- `src/conflate_hecras_to_nwm.py` 
+	called the "errors.check_conflated_models_count()" function to check the number of records in the "***_stream_qc.csv" file.
+
+- `src/errors.py` 
+	Added the definition of "errors.check_conflated_models_count()" function
+
+<br/><br/>
 
 ## v1.16.0 - 2023-07-31 - [PR#115](https://github.com/NOAA-OWP/ras2fim/pull/115)
 
