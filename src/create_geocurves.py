@@ -13,7 +13,7 @@ VIZ_PROJECTION ='PROJCS["WGS_1984_Web_Mercator_Auxiliary_Sphere",GEOGCS["GCS_WGS
 from shapely.geometry.polygon import Polygon
 from shapely.geometry.multipolygon import MultiPolygon
 from shapely.geometry import MultiPolygon, Polygon, LineString, Point
-#from shapely.validation import make_valid
+from shared_functions import get_changelog_version
 
 
 
@@ -38,24 +38,16 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, o
     # Loop through depth grids and store up geometries to collate into a single rating curve.
     iteration = 0
     for depth_grid in depth_grid_list:
-        print(depth_grid)
-
         # Interpolate flow from given stage.
         stage_mm = float(os.path.split(depth_grid)[1].split('-')[1].strip('.tif'))
-        stage_m = stage_mm/1000.0
-        print(stage_m)
-        # interpolated_flow_cfs = np.interp(stage_ft,rating_curve_df.loc[:,'AvgDepth(ft)'],rating_curve_df.loc[:,'Flow(cfs)'])
+#        stage_m = stage_mm/1000.0
+        
         with rasterio.open(depth_grid) as src:
             # Open inundation_raster using rasterio.
             image = src.read(1)
-#            mask = image > 0
-#            print("Producing merged polygon...")
-        
-#            print(src.crs)
+            
             # Use numpy.where operation to reclassify depth_array on the condition that the pixel values are > 0.
             reclass_inundation_array = np.where((image>0) & (image != src.nodata), 1, 0).astype('uint8')
-
-#            results = ({'properties': {'extent': 1}, 'geometry': s} for i, (s, v) in enumerate(shapes(image, mask=mask,transform=src.transform)))
 
             # Aggregate shapes
             results = ({'properties': {'extent': 1}, 'geometry': s} for i, (s, v) in enumerate(shapes(reclass_inundation_array, mask=reclass_inundation_array>0,transform=src.transform)))
@@ -69,37 +61,30 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, o
                 print(huc)
                 print(feature_id)
                 continue
-#            
-            # Write polygon
-            inundation_polygon = os.path.join(output_folder, feature_id + '_' + huc + '_' + str(stage_mm) + '_mm '+ '.gpkg')
+
             # -- Add more attributes -- #
             extent_poly_diss['version'] = version
             extent_poly_diss['feature_id'] = feature_id
             extent_poly_diss['stage_mm_join'] = stage_mm
-            extent_poly_diss['path'] = inundation_polygon
             
-#            extent_poly_diss['geometry'] = extent_poly_diss.apply(lambda row: make_valid(row.geometry), axis=1)
+            # Get version number
+            
+            
             try:
                 extent_poly_diss['valid'] = extent_poly_diss.is_valid
             except:
                 continue
-#            extent_poly_diss = extent_poly_diss[extent_poly_diss['valid'] == True]
-            
-#            wkt = extent_poly_diss.geom.apply(lambda x: x.wkt)
-            
-            extent_poly_diss.to_file(inundation_polygon, driver='GPKG')
+                        
+#            extent_poly_diss.to_file(inundation_polygon, driver='GPKG')
+#            inundation_polygon = os.path.join(output_folder, feature_id + '_' + huc + '_' + str(stage_mm) + '_mm '+ '.gpkg')
+                
             if iteration < 1:  # Initialize the rolling huc_rating_curve_geo
                 feature_id_rating_curve_geo = pd.merge(rating_curve_df, extent_poly_diss, left_on='stage_mm', right_on='stage_mm_join', how='right')
             else:
                 rating_curve_geo_df = pd.merge(rating_curve_df, extent_poly_diss, left_on='stage_mm', right_on='stage_mm_join', how='right')
                 feature_id_rating_curve_geo = pd.concat([feature_id_rating_curve_geo, rating_curve_geo_df])
             iteration += 1 
-    
-
-#    print("Making valid...")
-#    feature_id_rating_curve_geo['valid'] = feature_id_rating_curve_geo.is_valid  # Add geometry validity column
-#    feature_id_rating_curve_geo = feature_id_rating_curve_geo[feature_id_rating_curve_geo['valid'] == True]
-#    
+      
     print("Writing to CSV...")
     feature_id_rating_curve_geo.to_csv(os.path.join(output_folder, feature_id + '_' + huc + '_rating_curve_geo.csv'))
 
@@ -160,7 +145,7 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
             try:
                 depth_grid_list = os.listdir(depth_grid_dir)
             except FileNotFoundError:
-                print(depth_grid_dir)
+#                print(depth_grid_dir)
                 continue
             full_path_depth_grid_list = []
             for depth_grid in depth_grid_list:
@@ -170,12 +155,12 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
     print("Multiprocessing " + str(len(dictionary)) + " feature_ids using " + str(job_number) + " jobs...")
     with ProcessPoolExecutor(max_workers=job_number) as executor:
         for feature_id in dictionary:
-            executor.submit(produce_geocurves, feature_id, dictionary[feature_id]['huc'], 
-                            dictionary[feature_id]['rating_curve'], dictionary[feature_id]['depth_grids'], 
-                            version, output_folder)
+#            executor.submit(produce_geocurves, feature_id, dictionary[feature_id]['huc'], 
+#                            dictionary[feature_id]['rating_curve'], dictionary[feature_id]['depth_grids'], 
+#                            version, output_folder)
             
-#            produce_geocurves(feature_id, dictionary[feature_id]['huc'], dictionary[feature_id]['rating_curve'], 
-#                                      dictionary[feature_id]['depth_grids'], version, output_folder)
+            produce_geocurves(feature_id, dictionary[feature_id]['huc'], dictionary[feature_id]['rating_curve'], 
+                                      dictionary[feature_id]['depth_grids'], version, output_folder)
             
     # Calculate duration
     end_time = datetime.now()
