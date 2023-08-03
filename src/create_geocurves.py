@@ -67,9 +67,6 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, o
             extent_poly_diss['feature_id'] = feature_id
             extent_poly_diss['stage_mm_join'] = stage_mm
             
-            # Get version number
-            
-            
             try:
                 extent_poly_diss['valid'] = extent_poly_diss.is_valid
             except:
@@ -130,6 +127,12 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
         print("No hec_ras output found for step 5. Expected folder path: " + hec_ras_output_path)
         quit()
     
+    # Check version arg input.
+    if os.path.isfile(version):
+        version = get_changelog_version(version)
+    
+    print(version)
+    
     # Set up multiprocessing
     dictionary = {}
     local_dir_list = os.listdir(hec_ras_output_path)
@@ -177,8 +180,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'Produce Geo Rating Curves for RAS2FIM')
     parser.add_argument('-f', '--ras2fim_output_dir', help='Path to directory containing RAS2FIM outputs',
                         required=True)
-    parser.add_argument('-v', '--version', help='RAS2FIM Version number',
-                        required=True)
+    parser.add_argument('-v', '--version', help='RAS2FIM Version number, or supply path to repo Changelog',
+                        required=False, default='Unspecified')
     parser.add_argument('-j','--job_number',help='Number of processes to use', required=False, default=1, type=int)
     parser.add_argument('-t', '--output_folder', help = 'Target: Where the output folder will be', required = False)
     parser.add_argument('-o','--overwrite', help='Overwrite files', required=False, action="store_true")
