@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.xx.1 - 2023-07-19 - [PR#101](https://github.com/NOAA-OWP/ras2fim/pull/101)
+## v1.16.1 - 2023-07-19 - [PR#101](https://github.com/NOAA-OWP/ras2fim/pull/101)
 
 This bug fix will check the result of conflation step (step 2) and stop the code if no conflated model exists.
 
