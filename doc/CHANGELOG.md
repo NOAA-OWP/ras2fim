@@ -1,6 +1,16 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.x.1 - 2023-08-03 - [PR#128](https://github.com/NOAA-OWP/ras2fim/pull/128)
+
+Removed some unnecessary debug print lines. 
+
+### Changes  
+- `src`
+    - `simplify_fim_rasters.py`: as described.
+
+<br/><br/>
+
 ## v1.17.0 - 2023-08-02 - [PR#126](https://github.com/NOAA-OWP/ras2fim/pull/126)
 
 Adjusts  `worker_fim_rasters.py` to export water surface elevation alongside the stage and discharge in the rating curve. It also changes `reformat_rating_curve.py` so it can accept the water surface elevation and makes the script function properly without ras2rem being run (i.e. it compiles the rating curve, a functionality that used to be run with ras2rem). 
