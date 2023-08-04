@@ -9,12 +9,10 @@ import rasterio
 import errno
 from rasterio.features import shapes
 from concurrent.futures import ProcessPoolExecutor, as_completed, wait
-VIZ_PROJECTION ='PROJCS["WGS_1984_Web_Mercator_Auxiliary_Sphere",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Mercator_Auxiliary_Sphere"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",0.0],PARAMETER["Standard_Parallel_1",0.0],PARAMETER["Auxiliary_Sphere_Type",0.0],UNIT["Meter",1.0]]'
 from shapely.geometry.polygon import Polygon
 from shapely.geometry.multipolygon import MultiPolygon
 from shapely.geometry import MultiPolygon, Polygon, LineString, Point
 from shared_functions import get_changelog_version
-
 
 
 def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, output_folder):
@@ -50,13 +48,15 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, o
             reclass_inundation_array = np.where((image>0) & (image != src.nodata), 1, 0).astype('uint8')
 
             # Aggregate shapes
-            results = ({'properties': {'extent': 1}, 'geometry': s} for i, (s, v) in enumerate(shapes(reclass_inundation_array, mask=reclass_inundation_array>0,transform=src.transform)))
+            results = ({'properties': {'extent': 1}, 'geometry': s} for i, (s, v) in enumerate(shapes(reclass_inundation_array, 
+                       mask=reclass_inundation_array>0,transform=src.transform)))
     
             # Convert list of shapes to polygon, then dissolve
             extent_poly = gpd.GeoDataFrame.from_features(list(results), crs='EPSG:5070')
             try:
                 extent_poly_diss = extent_poly.dissolve(by='extent')
-                extent_poly_diss["geometry"] = [MultiPolygon([feature]) if type(feature) == Polygon else feature for feature in extent_poly_diss["geometry"]]
+                extent_poly_diss["geometry"] = [MultiPolygon([feature]) if type(feature) == Polygon else feature for 
+                                feature in extent_poly_diss["geometry"]]
             except AttributeError:
                 print(huc)
                 print(feature_id)
@@ -130,9 +130,7 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
     # Check version arg input.
     if os.path.isfile(version):
         version = get_changelog_version(version)
-    
-    print(version)
-    
+        
     # Set up multiprocessing
     dictionary = {}
     local_dir_list = os.listdir(hec_ras_output_path)
@@ -155,15 +153,18 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
                 full_path_depth_grid_list.append(os.path.join(depth_grid_dir, depth_grid))
             dictionary.update({feature_id: {'huc': huc, 'rating_curve': rating_curve_path, 'depth_grids': full_path_depth_grid_list}})
         
-    print("Multiprocessing " + str(len(dictionary)) + " feature_ids using " + str(job_number) + " jobs...")
-    with ProcessPoolExecutor(max_workers=job_number) as executor:
-        for feature_id in dictionary:
-#            executor.submit(produce_geocurves, feature_id, dictionary[feature_id]['huc'], 
-#                            dictionary[feature_id]['rating_curve'], dictionary[feature_id]['depth_grids'], 
-#                            version, output_folder)
-            
-            produce_geocurves(feature_id, dictionary[feature_id]['huc'], dictionary[feature_id]['rating_curve'], 
+    if job_number == 1:
+        print("Serially processing " + str(len(dictionary)) + " feature_ids...")
+        produce_geocurves(feature_id, dictionary[feature_id]['huc'], dictionary[feature_id]['rating_curve'], 
                                       dictionary[feature_id]['depth_grids'], version, output_folder)
+    
+    else:
+        print("Multiprocessing " + str(len(dictionary)) + " feature_ids using " + str(job_number) + " jobs...")
+        with ProcessPoolExecutor(max_workers=job_number) as executor:
+            for feature_id in dictionary:
+                executor.submit(produce_geocurves, feature_id, dictionary[feature_id]['huc'], 
+                                dictionary[feature_id]['rating_curve'], dictionary[feature_id]['depth_grids'], 
+                                version, output_folder)
             
     # Calculate duration
     end_time = datetime.now()
