@@ -3,11 +3,17 @@ We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 ## v1.x.1 - 2023-08-03 - [PR#128](https://github.com/NOAA-OWP/ras2fim/pull/128)
 
+Rating curves were erroring out as a mismatch of number of items in a column with the wse (Water Surface Elevation) data list having one extra element in some scenarios.
+
 Removed some unnecessary debug print lines. 
+
+Plus renamed a few columns in the rating_curves.csv
 
 ### Changes  
 - `src`
-    - `simplify_fim_rasters.py`: as described.
+    - `reformat_ras_rating_curve.py`: reflect column names in rating_curve.csv
+    - `simplify_fim_rasters.py`:  comment out some unneeded debugging lines.
+    - `worker_fim_rasters.py`:  Redo out the formula for calculating the wse data list
 
 <br/><br/>
 
