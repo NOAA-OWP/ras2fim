@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.x.1 - 2023-08-03 - [PR#128](https://github.com/NOAA-OWP/ras2fim/pull/128)
+## v1.18.0 - 2023-08-03 - [PR#128](https://github.com/NOAA-OWP/ras2fim/pull/128)
 
 Rating curves were erroring out as a mismatch of number of items in a column with the wse (Water Surface Elevation) data list having one extra element in some scenarios.
 
