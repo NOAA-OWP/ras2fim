@@ -38,6 +38,8 @@ import datetime
 import warnings
 
 import shared_variables as sv
+import errors
+
 
 # $$$$$$$$$$$$$$$$$$$$$$
 def fn_wkt_loads(x):
@@ -488,8 +490,8 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
             with collection(str_xs_on_feature_id_pt,
                             "w",
                             "ESRI Shapefile",
-                             schema, crs = ble_prj) as output:
-                 # ~~~~~~~~~~~~~~~~~~~~
+                            schema, crs = ble_prj) as output:
+                # ~~~~~~~~~~~~~~~~~~~~
                 # Slice ble_prj to remove the "epsg:"
                 # ~~~~~~~~~~~~~~~~~~~~
     
@@ -540,6 +542,11 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     str_str_qc_csv_File = STR_OUT_PATH + "\\" + str_huc8 + "_stream_qc.csv"
     df_summary_data.to_csv(str_str_qc_csv_File)
     
+    print("Number of feature_id's matched: "+str(df_summary_data['feature_id'].nunique()))
+
+    #check the number of conflated models and stop the code if the number is 0
+    status = errors.check_conflated_models_count(len(df_summary_data))
+    
     gdf_nwm_stream_lines = gpd.read_file(str_filepath_nwm_stream)
     
     # load the stream QC lines
@@ -563,8 +570,6 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     # write the shapefile
     gdf_non_match.to_file(str_filepath_nwm_stream)
     
-    print()
-    print("Number of feature_id's matched: "+str(df_summary_data['feature_id'].nunique()))
     print()
     print('COMPLETE')
     

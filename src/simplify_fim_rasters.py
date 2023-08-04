@@ -235,23 +235,31 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
                     str_file_name = os.path.split(k)[1]
                     str_dem_name = re.search(pattern_parenth, str_file_name).group(1)
     
-                    # parse to digits only
+                    # parse to digits only - replaces anythign that is not a number
                     str_dem_digits_only = re.sub("[^0-9]","",str_dem_name)
-    
+
                     # remove leading zeros
                     if str_dem_digits_only[0] == "0":
                         str_dem_digits_only = str_dem_digits_only[1:]
 
+                    # which assumes a level of precision of from the file name of 1 (only one decimal after the dot)
+                    # TODO: re-address precision here ??
+                    stage_increment_val = float(str_dem_digits_only) / 10
+
                     # make sure to update the name of the file to be in millimeter
                     #(the "str_dem_digits_only" is 10 times the actual stage, so first needs to be divided by 10)
                     if model_unit == 'feet':
-                        str_dem_digits_only=str(int(np.round(1000*0.3048*(float(str_dem_digits_only)/10),3)))
-
+                        stage_m = np.round(stage_increment_val * 0.3048, 3)
+                        stage_mm = int(stage_m * 1000)
+                        str_dem_digits_only = str(int(stage_mm))
                     else:
-                        str_dem_digits_only=str(int(np.round(1000*(float(str_dem_digits_only)/10),3)))
+                        stage_m = np.round(stage_increment_val, 3)
+                        stage_mm = int(stage_m * 1000)
+                        str_dem_digits_only = str(int(stage_mm))
 
                     # file path to write file
-                    str_create_filename = str_folder_to_create + "\\" + str_current_comid + '-' +  str_dem_digits_only + '.tif'
+
+                    str_create_filename = str_folder_to_create + "\\" + str_current_comid + '-' + str_dem_digits_only + '.tif'
                     
                     # create the converted grids
                     dict_new_row = {'current_dem_path':k,

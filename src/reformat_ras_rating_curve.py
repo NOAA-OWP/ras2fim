@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
-import os, re, sys
-import argparse, datetime, shutil, osr
-import gdal
+import os, sys, re
+import argparse, datetime
+# import gdal
+# import osr
 import rasterio
 import rasterio.crs
 import pandas as pd
-import numpy as np 
 import geopandas as gpd
+from tqdm import tqdm
+from pathlib import Path
 from rasterio.merge import merge
 from geopandas.tools import overlay
 from shapely.geometry import LineString, Point
@@ -18,7 +20,7 @@ import shared_variables as sv
 # -----------------------------------------------------------------
 # Writes a metadata file into the save directory
 # -----------------------------------------------------------------
-def write_metadata_file(output_save_folder, start_time_string):
+def write_metadata_file(output_save_folder, start_time_string, midpoints_crs):
 
     """
     Overview:
@@ -50,7 +52,6 @@ def write_metadata_file(output_save_folder, start_time_string):
     metadata_content.append('  reformat_ras_rating_curve_points.gpkg (point location geopackage)')
     metadata_content.append('  reformat_ras_rating_curve_table.csv (rating curve CSV)')
     metadata_content.append('  reformat_ras_rating_curve_log.txt (output log textfile, only saved if -l argument is used)')
-    metadata_content.append('  intermediate_outputs/ (rating curve, geospatial, and output logs for each directory, only saved if -k argument is used)')
     metadata_content.append(' ')
     metadata_content.append('Metadata:')
     metadata_content.append('Column name        Source                  Type            Description')
@@ -67,8 +68,8 @@ def write_metadata_file(output_save_folder, start_time_string):
     metadata_content.append('datum_vcs          User-provided           String          desired output datum (defaults to NAVD88)')
     metadata_content.append('navd88_datum       Calculated in script    Number          elevation at midpoint at output datum ')
     metadata_content.append('elevation_navd88   Calculated in script    Number          Stage elevation at midpoint at output datum (calculated as NAVD88_datum + stage)')
-    metadata_content.append('lat                Calculated from streams Number          Latitude of midpoint associated with feature_id ')
-    metadata_content.append('lon                Calculated from streams Number          Longitude of midpoint associated with feature_id ')
+    metadata_content.append('lat                Calculated from streams Number          Latitude of midpoint associated with feature_id. CRS: '+ str(midpoints_crs))
+    metadata_content.append('lon                Calculated from streams Number          Longitude of midpoint associated with feature_id. CRS:  '+ str(midpoints_crs))
 
     metadata_name = 'README_reformat_ras_rating_curve.txt'
     metadata_path = os.path.join(output_save_folder, metadata_name)
@@ -78,12 +79,84 @@ def write_metadata_file(output_save_folder, start_time_string):
             f.write(f"{line}\n")
 
 # -----------------------------------------------------------------
-# Reads, compiles, and reformats the rating curve info for each directory
+# Functions for handling units
 # -----------------------------------------------------------------
-def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename, 
-                        output_save_folder, int_output_table_label, 
-                        int_geospatial_label, int_log_label, source, 
-                        location_type, active, input_vdatum, nodataval):
+def get_unit_from_string(string):
+    if 'meters' in string or 'meter' in string or 'm' in string or 'metre' in string or 'metres' in string:
+        return 'm'
+    elif 'feet' in string or 'foot' in string or 'ft' in string:
+        return 'ft'
+    else:
+        return 'UNKNOWN'
+
+def feet_to_meters(number):
+        converted_value = number / 3.281 # meter = feet / 3.281
+        return converted_value
+
+def meters_to_feet(number):
+        converted_value = number / 0.3048  # feet = meters / 0.3048
+        return converted_value
+
+# -----------------------------------------------------------------
+# Compiles rating curve segments for each dir
+# -----------------------------------------------------------------
+def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir, out_unit, dir):
+
+    '''
+    Args:
+        r2f_hecras_outputs_dir: directory containing HEC-RAS outputs
+        r2f_ras2rem_dir: directory to write output file (rating_curve.csv)
+        model_unit :model unit of HEC-RAS models that is either meter or feet
+
+    Returns: rating curve csv file
+    '''
+    print("Making merged rating curve")
+    rating_curve_df = pd.DataFrame()
+
+    all_rating_files = list(Path(r2f_hecras_outputs_dir).rglob('*rating_curve.csv'))
+
+    if len(all_rating_files) == 0:
+        print("Error: Make sure you have specified a correct input directory with at least one '*.rating curve.csv' file.")
+        sys.exit(1)
+
+    for file in all_rating_files:
+        featureid = file.name.split("_rating_curve.csv")[0]
+        this_file_df = pd.read_csv(file)
+        this_file_df["feature_id"] = featureid
+
+        # add data that works with the existing inundation hydro table format requirements
+        this_file_df['HydroID'] = featureid
+        huc = re.search(r'HUC_(\d{8})', str(file))[1] # assumes the filename and folder structure stays the same
+        this_file_df['HUC'] = huc
+        this_file_df['LakeID'] = -999
+        this_file_df['last_updated'] = ''
+        this_file_df['submitter'] = ''
+        this_file_df['obs_source'] = ''
+        rating_curve_df = rating_curve_df.append(this_file_df)
+
+    # Reorder columns
+    if out_unit == 'ft':
+        rating_curve_df = rating_curve_df[['feature_id', 'stage_ft', 'discharge_cfs', 'wse_ft',
+                                     'HydroID', 'HUC', 'LakeID', 'last_updated', 'submitter', 'obs_source']]
+    elif out_unit == 'm':
+        rating_curve_df = rating_curve_df[['feature_id', 'stage_m', 'discharge_cms', 'wse_m',
+                                'HydroID', 'HUC', 'LakeID', 'last_updated', 'submitter', 'obs_source']]
+    else:
+        print(f'ERROR: Output model unit ({out_unit}) not recognized. No rating curve saved.')
+
+    rc_name = 'r2rem_rating_curve_' + str(dir) + '.csv'
+    rc_save_path = os.path.join(r2f_ras2rem_dir,rc_name)
+    rating_curve_df.to_csv(rc_save_path, index = False)
+
+    print(f'Compiled rating curve saved to: {rc_save_path}') ## debug
+
+# -----------------------------------------------------------------
+# Reads, compiles, and reformats the rating curve info for all directories
+# -----------------------------------------------------------------
+def dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename, 
+                        int_output_table_label, int_geospatial_label, int_log_label, 
+                        source, location_type, active, verbose, nodataval, 
+                        input_vdatum, midpoints_crs, out_unit):
 
     """
     Overview:
@@ -139,10 +212,11 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         vertical datum of the input ras2fim data (defaults to "NAVD88", only used to fill the datum column)
     
     - nodataval: int
-        value to use for no data (from ___ ## defaults file??)
+        value to use for no data (from shared variables)
     
 
     """
+
     # Create empty output log
     output_log = []
     output_log.append(" ")
@@ -150,20 +224,68 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
 
     if verbose == True:
         print()
+        print('======================')
         print(f"Directory: {dir}")
-    
-    # Check for rating curve, get metadata and read it in if it exists
-    rc_path = os.path.join(input_folder_path, dir, "06_ras2rem", "rating_curve.csv")
+        print()
 
     # Create intermediate output file within directory (08_adjusted_src)
     intermediate_filepath = os.path.join(input_folder_path, dir, intermediate_filename)
     if not os.path.exists(intermediate_filepath):
         os.mkdir(intermediate_filepath)
+    
+    # ------------------------------------------------------------------------------------------------
+    # Retrieve information from `run_arguments.txt` file
 
-    print(intermediate_filepath)
+    # Read run_arguments.txt file
+    run_arguments_filepath = os.path.join(input_folder_path, dir, "run_arguments.txt")
+
+    # Open the file and read all lines from the file
+    try:
+        with open(run_arguments_filepath, 'r') as file:
+            lines = file.readlines()
+    except:
+        print("Unable to open run_arguments.txt, skipping this directory.")
+
+    # Search for and extract the model_unit
+    for line in lines:
+        if 'model_unit ==' in line:
+            model_unit = line.split('==')[1].strip()
+        elif 'str_huc8_arg ==' in line:
+            str_huc8_arg = line.split('==')[1].strip()
+        elif 'proj_crs ==' in line: 
+            proj_crs = line.split('==')[1].strip()                
+
+    # Remove 'EPSG:' label if it is present ( ## proj_crs replaced str_epsg_raster)
+    proj_crs = proj_crs.lower().replace("epsg:", "")
+
+    # Standardize the model unit and output unit
+    model_unit = get_unit_from_string(model_unit)
+    out_unit = get_unit_from_string(out_unit)
+    
+    # Code assumes that the raster vertical unit matches the model unit
+    raster_vertical_unit = model_unit 
+
+    if verbose == True: 
+        print()
+        print('Model settings:')
+        print(f'    model_unit: {model_unit}')
+        print(f'    str_huc8_arg: {str_huc8_arg}')
+        print(f'    proj_crs: {proj_crs}')
+        print(f'    out_unit: {out_unit}')
+        print('    WARNING: Code assumes that the raster vertical unit is the same as `model_unit` provided in run_arguments.txt')
+
+    # Compile rating curves with ras2rem rating curve function
+    model_path = os.path.join(input_folder_path, dir)
+    fn_make_rating_curve(model_path, intermediate_filepath, out_unit, dir)
+
+    # Get directory rating curve name
+    rc_name = 'r2rem_rating_curve_' + str(dir) + '.csv'
+    rc_path = os.path.join(intermediate_filepath, rc_name)
+
+    # ------------------------------------------------------------------------------------------------
 
     if os.path.isfile(rc_path) == False:
-        print(f"No rating curve file available for {dir}.")
+        print(f"No rating curve file available for {dir}, skipping this directory.")
         output_log.append("Rating curve NOT available.")
         dir_log_filename = str(dir) + int_log_label
         dir_log_filepath = os.path.join(intermediate_filepath, dir_log_filename)
@@ -173,34 +295,92 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
                 f.write(f"{line}\n")
 
     else:
-        if verbose == True: 
-            print(f"Rating curve CSV available.") 
         output_log.append("Rating curve CSV available.")
 
         # ------------------------------------------------------------------------------------------------
-        # Get filepaths for the geospatial data
+        # Manually build filepaths for the geospatial data
 
         root_dir = os.path.join(input_folder_path, dir)
-        nwm_no_match_ext = '_no_match_nwm_lines.shp'
-        nwm_all_lines_ext = '_nwm_streams_ln.shp'
+        shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF
 
-        # Find filepaths for NWM streams and NWM streams no match 
-        for dirpath, dirnames, filenames in os.walk(root_dir):
-            for filename in filenames:
-                if filename.endswith(nwm_no_match_ext):
-                    nwm_no_match_filepath = os.path.join(dirpath, filename)
-                elif filename.endswith(nwm_all_lines_ext):
-                    nwm_all_lines_filepath = os.path.join(dirpath, filename)
+        nwm_no_match_filename = str_huc8_arg + '_no_match_nwm_lines.shp'
+        nwm_all_lines_filename =  str_huc8_arg + '_nwm_streams_ln.shp'
 
+        nwm_no_match_filepath = os.path.join(root_dir, shapes_file, nwm_no_match_filename)
+        nwm_all_lines_filepath = os.path.join(root_dir, shapes_file, nwm_all_lines_filename)
+
+        if not os.path.exists(nwm_no_match_filepath):
+            print(f"Error: No file at {nwm_no_match_filepath}")
+
+        if not os.path.exists(nwm_all_lines_filepath):
+            print(f"Error: No file at {nwm_all_lines_filepath}")
+        
         # ------------------------------------------------------------------------------------------------
         # Read rating curve and extract the stage and discharge units from column headers
 
-        rc_df = pd.read_csv(rc_path)    
-        stage_units = rc_df.columns[rc_df.columns.str.contains('stage', case=False)][0].split('(')[1].strip(')')
-        discharge_units = rc_df.columns[rc_df.columns.str.contains('Discharge', case=False)][0].split('(')[1].strip(')')
+        rc_df = pd.read_csv(rc_path) 
+
+        # Find the first column that contains the string 'stage'
+        stage_column = next((col for col in rc_df.columns if 'stage' in col), None) 
+        
+        if stage_column:
+            # Create a new column called 'stage' with the values from the found column
+            rc_df['stage'] = rc_df[stage_column]
+
+            # Extract the string after the '_' character in the column name ## TODO: see if this unit handling is no longer needed
+            stage_units = stage_column.split('_')[1]
+
+            # Standardize unit name
+            stage_units = get_unit_from_string(stage_units)
+
+            # Print the stage_units value
+            if verbose == True:
+                print("    stage_units:", stage_units)
+
+        else:
+            print("No column containing 'stage' found in the dataframe.")
+
+        # Find the first column containing 'discharge' (case insensitive) in the column header
+        discharge_columns = [col for col in rc_df.columns if 'discharge' in col.lower()]
+
+        if discharge_columns:
+
+            # Select the first discharge column and rename it to 'flow'
+            selected_column = discharge_columns[0]
+            rc_df['flow'] = rc_df[selected_column]
+
+            # Extract the string after the '_' character in the column name
+            discharge_units = selected_column.split('_')[1]            
+        else:
+            # Handle the case where no discharge columns are found
+            discharge_units = None
+
+        # Find the first column that contains the string 'wse'
+        wse_column = next((col for col in rc_df.columns if 'wse' in col), None) 
+        
+        if wse_column:
+            # Create a new column called 'wse' with the values from the found column
+            rc_df['wse'] = rc_df[wse_column]
+
+            # Extract the string after the '_' character in the column name ## TODO: see if this unit handling is no longer needed
+            wse_units = wse_column.split('_')[1]
+
+            # Standardize unit name
+            wse_units = get_unit_from_string(wse_units)
+
+            # Print the units value
+            if verbose == True:
+                print("    wse_units:", wse_units)
+
+        else:
+            print("No column containing 'wse' found in the dataframe.")
 
         # ------------------------------------------------------------------------------------------------
         # Read in the shapefile for the directory, project geodatabase, and get lat and lon of centroids
+
+        if verbose == True:
+            print(' ')
+            print("Reading shapefiles and generating stream midpoints...")
 
         # Read shapefiles
         nwm_no_match_shp = gpd.read_file(nwm_no_match_filepath)
@@ -216,7 +396,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         huc8_list = []
 
         # Project to CRS to get the coordinates in the correct format
-        nwm_diff_prj = nwm_diff.to_crs('EPSG:4326') 
+        nwm_diff_prj = nwm_diff.to_crs(midpoints_crs) 
 
         # Get middle segment of the flowlines
         for index, row in nwm_diff_prj.iterrows():
@@ -247,10 +427,14 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
             'midpoint_lat': midpoint_y_list
             })
 
-        # [Placeholder] Crosswalk the sites to the correct FIM feature ID if they are not already correct
-
         # ------------------------------------------------------------------------------------------------
-        # Read terrain file and get projection information
+        # Read terrain file and get projection information 
+        # TODO: Might be able to retire the elevation extraction (in favor of just using water surface elevation)
+
+        if verbose == True:
+            print(' ')
+            print("Reading terrain file(s)...")
+
         terrain_folder_path = os.path.join(input_folder_path, dir, "03_terrain")
 
         # Get a list of terrain filenames
@@ -259,23 +443,20 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
             if file.endswith('.tif'):
                 terrain_files.append(file)
 
+        # If there's only one terrain file, use rasterio to open it
         if (len(terrain_files) == 1):
             terrain_file_path = os.path.join(terrain_folder_path, terrain_files[0])
+            
             terrain = rasterio.open(terrain_file_path)
-
-            # Get the projection and units of the raster
-            d = gdal.Open(terrain_file_path)
-            proj = osr.SpatialReference(wkt=d.GetProjection())
-            str_epsg_raster = proj.GetAttrValue('AUTHORITY', 1)
-            str_unit_raster = proj.GetAttrValue('UNIT', 0)
-
+            
         else:
             if verbose == True:
                 print("Multiple terrain rasters found. Creating mosaic...")
 
             # Iterate through terrain rasters and merge into a mosaic
             raster_to_mosiac = []
-            for p in terrain_files:
+
+            for p in tqdm(terrain_files, desc='Mosaicking raster file', unit = 'files'):
                 terrain_file_path = os.path.join(terrain_folder_path, p)
                 raster = rasterio.open(terrain_file_path)
                 raster_to_mosiac.append(raster)
@@ -302,10 +483,6 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
             # Read mosaic terrain raster
             terrain = rasterio.open(dir_mosaic_filepath)
 
-            # Get CRS from terrain raster mosaic
-            str_epsg_raster = str(terrain.crs).replace("EPSG:", "")
-            str_unit_raster = terrain.crs.linear_units
-
             if verbose == True:
                 print("Terrain mosaic produced.")
 
@@ -316,21 +493,25 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         # ------------------------------------------------------------------------------------------------
         # Get elevation value from the converted terrain value using the midpoint lat and lon 
 
+        if verbose == True:
+            print(' ')
+            print("Getting elevation values for stream midpoints from terrain data...")
+
         # Convert midpoints to a geodataframe
         midpoints_df['geometry'] = midpoints_df.apply(lambda x: Point((float(x.midpoint_lon), float(x.midpoint_lat))), axis=1)
         midpoints_gdf = gpd.GeoDataFrame(midpoints_df, geometry='geometry')
 
         # Make sure the rasters and points are in the same projection so that the extract can work properly
         midpoints_gdf = midpoints_gdf.set_crs('EPSG:4326') # set the correct projection 
-        midpoints_gdf = midpoints_gdf.to_crs(epsg=str_epsg_raster) # reproject to same as terrain
+        midpoints_gdf = midpoints_gdf.to_crs(epsg=proj_crs) # reproject to same as terrain
         
         # Extract elevation value from terrain raster
         raw_elev_list = []
 
-        for index, row in midpoints_gdf.iterrows():
+        if verbose == True:
+            print(f"Number of midpoints: {str(len(midpoints_gdf))}")
 
-            # if verbose == True: # Option to print each feature_id as it processes
-            #     print(str(row['feature_id']))
+        for index, row in tqdm(midpoints_gdf.iterrows(), desc='Midpoints processed', unit = ' points'):
 
             point = row['geometry']
 
@@ -348,8 +529,10 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
 
         # Print statements and add to output log
         if verbose == True: 
-            print("Midpoints projection " + str(midpoints_gdf.crs))
-            print("Terrain projection: " + str(terrain.crs))
+            print('Projections:')
+            print("    Midpoints projection " + str(midpoints_gdf.crs))
+            print("    Terrain projection: " + str(terrain.crs))
+            print(" ")
 
         output_log.append("Midpoints projection " + str(midpoints_gdf.crs))
         output_log.append("Terrain projection: " + str(terrain.crs))
@@ -357,80 +540,104 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
         # ------------------------------------------------------------------------------------------------
         # Compile elevation and datum information
 
-        # Join raw elevation to rating curve using feature_id and drop the redundant feature_id column
-        rc_elev_df = pd.merge(rc_df, midpoints_gdf[['feature_id', 'huc8', 'Raw_elevation', 'midpoint_lat', 'midpoint_lon']], 
-                              left_on='feature-id', right_on='feature_id', how='left')
-        rc_elev_df = rc_elev_df.drop('feature_id', axis=1)
+        # Check if "feature-id" exists in the column names and, if so, rename the column from "feature-id" to "feature_id" # TODO: I can probably remove this
+        if "feature-id" in rc_df.columns:
+            rc_df.rename(columns={"feature-id": "feature_id"}, inplace=True)
 
-        # If there is no datum conversion, the datum and the navd88_datum columns are both equal to Raw_elevation
-        rc_elev_df['navd88_datum'] = rc_elev_df['Raw_elevation']
-        rc_elev_df['datum'] = rc_elev_df['Raw_elevation']
+        if "feature-id" in midpoints_gdf.columns:
+            midpoints_gdf.rename(columns={"feature-id": "feature_id"}, inplace=True) 
+
+        # Join raw elevation to rating curve using feature_id 
+        rc_elev_df = pd.merge(rc_df, midpoints_gdf[['feature_id', 'huc8', 'Raw_elevation', 'midpoint_lat', 'midpoint_lon']], 
+                              left_on='feature_id', right_on='feature_id', how='left')
+
+        # ------------------------------------------------------------------------------------------------
+        # Evaluate and convert elevation and stage units if needed
+
+        if verbose == True:
+            print(' ')
+            print("Standardizing units...")
+
+        if verbose == True: # TODO: maybe remove overly verbose comments eventually
+            print(f'    Stage units: {stage_units}')
+            print(f'    Terrain data units: {raster_vertical_unit}')
+            print(f'    Output units: {out_unit}')
+
+        # Standardize out unit
+        out_unit = get_unit_from_string(out_unit)
+
+        # Evaluate elevation units
+        if raster_vertical_unit != out_unit:
+            if verbose == True:
+                print(f"Raster elevation units ({raster_vertical_unit}) must be converted to match output unit ({out_unit}).")
+
+            # Convert units
+            if raster_vertical_unit == 'm' and out_unit == 'ft':
+                rc_elev_df['navd88_datum'] = meters_to_feet(rc_elev_df['Raw_elevation'])
+                rc_elev_df['datum'] = meters_to_feet(rc_elev_df['Raw_elevation'])
+
+            elif raster_vertical_unit == 'ft' and out_unit == 'm':
+                rc_elev_df['navd88_datum'] = feet_to_meters(rc_elev_df['Raw_elevation'])
+                rc_elev_df['datum'] = feet_to_meters(rc_elev_df['Raw_elevation'])                
+
+            else:
+                log = f'Warning: No conversion available between {stage_units} and {out_unit}. Elevation set to nodata value ({nodataval}).'
+                output_log.append(log)
+                rc_elev_df['stage_final'] = nodataval
+
+                if verbose == True:
+                    print(log)
+
+        else:
+            if verbose == True:
+                print("Elevation units match output units, no conversion needed.")
+
+            rc_elev_df['navd88_datum'] = rc_elev_df['Raw_elevation']
+            rc_elev_df['datum'] = rc_elev_df['Raw_elevation']
 
         # Make column just called 'stage' with the stage values
         stage_columns = rc_elev_df.filter(like='stage')
         rc_elev_df['stage'] = stage_columns.iloc[:, 0]
 
-        # Standardize unit names and provide error if needed: stage
-        if re.search(r'\b(foot|ft|feet)\b', stage_units):
-            stage_units = 'ft'
-        elif re.search(r'\b(meter|meters|m|M|metre)\b', stage_units):
-            stage_units = 'm'
+        # Check stage units and convert if needed
+        if stage_units != out_unit:
+            print(f"Stage units ({stage_units}) must be converted to match output unit ({out_unit}).")
+
+            if out_unit == 'ft' and stage_units == 'm':
+                rc_elev_df['stage_final'] = meters_to_feet(rc_elev_df['stage'])
+
+            elif out_unit == 'm' and stage_units == 'ft':
+                rc_elev_df['stage_final'] = feet_to_meters(rc_elev_df['stage'])
+
+            else:
+                log = f'Warning: No conversion available between {stage_units} and {out_unit}. Stage set to nodata value ({nodataval}).'
+                output_log.append(log)
+                rc_elev_df['stage_final'] = nodataval
+
+                if verbose == True:
+                    print(log)
+
         else:
-            log = "Warning: Stage units not recognized as feet or meters."
-            output_log.append(log)
-            print(log)
-        
-        # Standardize unit names and provide error if needed: terrain raster
-        if re.search(r'\b(foot|ft|feet)\b', str_unit_raster):
-            str_unit_raster = 'ft'
-        elif re.search(r'\b(meter|meters|m|M|metre)\b', str_unit_raster):
-            str_unit_raster = 'm'
-        else:
-            log = "Warning: Raster units not recognized as feet or meters."
-            output_log.append(log)
-            print(log)
-
-        # If the rating curve units aren't equal to the elevation units, convert them 
-        if str_unit_raster == stage_units:
-            rc_elev_df['stage_final'] = rc_elev_df['stage'] 
-            log = 'Stage units and raster units are the same, no unit conversion needed.'
-
-        elif stage_units == 'ft' and str_unit_raster == 'm':
-            rc_elev_df['stage_final'] = rc_elev_df['stage'] / 3.281  ## meter = feet / 3.281
-            log = 'Converting stage units to meter to match elevation data.'
-
-        elif stage_units == 'm' and str_unit_raster == 'ft':
-            rc_elev_df['stage_final'] = rc_elev_df['stage'] / 0.3048  ## feet = meters / 0.3048
-            log = 'Converting stage units to feet to match elevation data.'
-        else:
-            log = f'Warning: No conversion available between {stage_units} and {str_unit_raster}. Stage set to nodata value ({nodataval}).'
-            output_log.append(log)
-            rc_elev_df['stage_final'] = nodataval
-
-        if verbose == True:
-            print(log)
+            print("Stage units match output units, no conversion needed.")
+            rc_elev_df['stage_final'] = rc_elev_df['stage']
 
         # [Placeholder] If an elevation adjustment is needed to supplement the cross walking, adjust rating curve here
 
         # If 'stage' does not equal a nodata value, calculate elevation_navd88 by adding 'navd88_datum' and 'stage'
         rc_elev_df.loc[rc_elev_df['stage_final'] != nodataval, 'elevation_navd88'] = rc_elev_df['stage_final'] + rc_elev_df['navd88_datum']
 
-        # If stage DOES equal the nodata value, set the 'elevation_navd88' to the nodata value as well
+        # If 'stage' DOES equal the nodata value, set the 'elevation_navd88' to the nodata value as well
         rc_elev_df.loc[rc_elev_df['stage_final'] == nodataval, 'elevation_navd88'] = nodataval
 
         # ------------------------------------------------------------------------------------------------
         # Make output tables
-
-        # Make column just called 'flow' with the discharge values (removes unit labels in discharge column header)
-        flow_columns = rc_elev_df.filter(like='Discharge')
-        rc_elev_df['flow'] =  flow_columns.iloc[:, 0]
         
         # Get a current timestamp
         wrds_timestamp = datetime.datetime.now() 
 
         dir_output_table = pd.DataFrame({'flow' : rc_elev_df['flow'],
                                          'stage' : rc_elev_df['stage_final'], # the stage value that was corrected for units
-                                         'feature_id' : rc_elev_df['feature-id'], 
+                                         'feature_id' : rc_elev_df['feature_id'], 
                                          'huc8' : rc_elev_df['huc8'],  #str
                                          'location_type': location_type, #str 
                                          'source': source, #str
@@ -443,8 +650,9 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
                                          'navd88_datum': rc_elev_df['navd88_datum'], #num
                                          'elevation_navd88': rc_elev_df['elevation_navd88'], #num
                                          'lat': rc_elev_df['midpoint_lat'], #num
-                                         'lon': rc_elev_df['midpoint_lon']}) #num
-        
+                                         'lon': rc_elev_df['midpoint_lon'], 
+                                         'WaterSurfaceElevation': rc_elev_df['wse']}) #num
+                
         dir_geospatial = dir_output_table.drop(columns=['stage', 'flow', 'elevation_navd88']) # If you want to keep `elevation_navd88` in the geopackage, 
                                                                                               # remove it from this command.
         dir_geospatial = dir_geospatial.drop_duplicates(subset='feature_id', keep='first')
@@ -470,13 +678,14 @@ def dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename,
                 f.write(f"{line}\n")
 
         if verbose == True:
+            print()
             print(f"Saved multiprocessor outputs for {dir}.")
 
 # -----------------------------------------------------------------
 # Compiles the rating curve and points from each directory 
 # -----------------------------------------------------------------
 def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbose, num_workers, 
-                              overwrite, source, location_type, active):
+                              overwrite, source, location_type, active,  out_unit):
 
     """
     Overview:
@@ -514,6 +723,9 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     
     - active: str
         optional input value for the "active" column (i.e. "", "True", "False")
+
+    - out_unit: str
+        option to specify output units. Defaults to "feet".
     
     """
 
@@ -521,6 +733,10 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     nodataval = sv.DEFAULT_NODATA_VAL # get nodata val from default variables
     
     # Establish file naming conventions
+    # intermediate_filename = sv.R2F_OUTPUT_DIR_RATING_CURVE
+    # int_output_table_label = sv.SRC_INT_GEOSPATIAL_LABEL
+    # int_geospatial_label = sv.SRC_INT_GEOSPATIAL_LABEL
+    # int_log_label = sv.SRC_INT_LOG_LABEL
     int_output_table_label = "_output_table.csv"
     int_geospatial_label = "_geospatial.csv"
     int_log_label = "_log.txt"
@@ -534,17 +750,21 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     input_vdatum = "NAVD88"
     output_vdatum = sv.OUTPUT_VERTICAL_DATUM
 
+    # Set CRS for midpoints data
+    midpoints_crs = 'EPSG:4326'
+
     # Settings block
     print("-----------------------------------------------------------------------------------------------")
     print("Begin rating curve compilation process.")
     print()
     print(f"Start time: {start_time_string}.")
     print()
-    print("Settings: ")
+    print("Run settings: ")
     print(f"    Verbose: {str(verbose)}")
     print(f"    Save output log to folder: {str(log)}")
     print(f"    Number of workers: {num_workers}")
     print(f"    No data value: {nodataval}")
+    print(f"    Output unit: {out_unit}")
     if input_vdatum == output_vdatum:
         print(f"    No datum conversion will take place.")
     print()
@@ -615,16 +835,19 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
             print("Begin iterating through directories with multiprocessor...")
             print()
 
+
         for dir in dirlist:
-            executor.submit(dir_reformat_ras_rc, dir, input_folder_path, verbose, intermediate_filename, 
-                            output_save_folder, int_output_table_label, int_geospatial_label, int_log_label, 
-                            source, location_type, active, input_vdatum, nodataval)
+            executor.submit(dir_reformat_ras_rc, dir, input_folder_path, intermediate_filename, 
+                        int_output_table_label, int_geospatial_label, int_log_label, 
+                        source, location_type, active, verbose, nodataval, 
+                        input_vdatum, midpoints_crs, out_unit)
 
     # # Run without multiprocessor
     # for dir in dirlist:
-    #     dir_reformat_ras_rc(dir, input_folder_path, verbose, intermediate_filename, output_save_folder, 
-    #                         int_output_table_label, int_geospatial_label, int_log_label, source, 
-    #                         location_type, active, input_vdatum, nodataval)
+    #     dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename, 
+    #                     int_output_table_label, int_geospatial_label, int_log_label, 
+    #                     source, location_type, active, verbose, nodataval, 
+    #                     input_vdatum, midpoints_crs, out_unit)
 
 
     # ------------------------------------------------------------------------------------------------
@@ -711,6 +934,7 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     output_geopackage_temp = full_geospatial
     output_geopackage_temp['geometry'] = output_geopackage_temp.apply(lambda x: Point((float(x.lon), float(x.lat))), axis=1)
     output_geopackage = gpd.GeoDataFrame(output_geopackage_temp, geometry='geometry')
+    output_geopackage = output_geopackage.set_crs(midpoints_crs)
 
     if verbose == True:
         print()
@@ -730,7 +954,7 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     # ------------------------------------------------------------------------------------------------
     # Export metadata, print filepaths and save logs (if the verbose and log arguments are selected)
 
-    write_metadata_file(output_save_folder, start_time_string)
+    write_metadata_file(output_save_folder, start_time_string, midpoints_crs)
 
     output_log.append(f"Geopackage save location: {geopackage_path}")
     output_log.append(f"Compiled rating curve csv save location: {csv_path}") 
@@ -799,6 +1023,7 @@ if __name__ == '__main__':
                              use the -so flag to input a value for the "source" output column (i.e. "ras2fim", "ras2fim v2.1") 
                              use the -lt flag to input a value for the "location_type" output column (i.e. "USGS", "IFC")
                              use the -ac flag to input a value for the "active" column ("True" or "False")
+                             use the -u flag to specify outut units (default is "feet")
 
     """
         
@@ -812,9 +1037,10 @@ if __name__ == '__main__':
     parser.add_argument('-j', '--num-workers',help='Number of concurrent processes', required=False, default=1, type=int)
     parser.add_argument('-ov', '--overwrite', help='Option to overwrite existing intermediate files in the output save folder.', 
                         required=False, default=False, action='store_true')
-    parser.add_argument('-so', '--source', help='Input a value for the "source" output column (i.e. "ras2fim", "ras2fim v2.1").', required=False, default="")
+    parser.add_argument('-so', '--source', help='Input a value for the "source" output column (i.e. "ras2fim", "ras2fim v2.1").', required=False, default="RAS2FIM")
     parser.add_argument('-lt', '--location-type', help='Input a value for the "location_type" output column (i.e. "USGS", "IFC").', required=False, default="")
     parser.add_argument('-ac', '--active', help='Input a value for the "active" column ("True" or "False")', required=False, default="")
+    parser.add_argument('-u', '--out-unit',  help='Option to specify output units. Defaults to "feet".', required=False, default="feet")
 
     # Assign variables from arguments
     args = vars(parser.parse_args())
@@ -827,8 +1053,8 @@ if __name__ == '__main__':
     source = str(args['source'])
     location_type = str(args['location_type'])
     active = str(args['active'])
-
+    out_unit = str(args['out_unit'])
 
     # Run main function
     compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbose, num_workers, 
-                               overwrite, source, location_type, active)
+                               overwrite, source, location_type, active, out_unit)

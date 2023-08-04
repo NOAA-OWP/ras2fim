@@ -1,6 +1,70 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.18.0 - 2023-08-03 - [PR#128](https://github.com/NOAA-OWP/ras2fim/pull/128)
+
+Rating curves were erroring out as a mismatch of number of items in a column with the wse (Water Surface Elevation) data list having one extra element in some scenarios.
+
+Removed some unnecessary debug print lines. 
+
+Plus renamed a few columns in the rating_curves.csv
+
+### Changes  
+- `src`
+    - `reformat_ras_rating_curve.py`: reflect column names in rating_curve.csv
+    - `simplify_fim_rasters.py`:  comment out some unneeded debugging lines.
+    - `worker_fim_rasters.py`:  Redo out the formula for calculating the wse data list
+
+<br/><br/>
+
+## v1.17.0 - 2023-08-02 - [PR#126](https://github.com/NOAA-OWP/ras2fim/pull/126)
+
+Adjusts  `worker_fim_rasters.py` to export water surface elevation alongside the stage and discharge in the rating curve. It also changes `reformat_rating_curve.py` so it can accept the water surface elevation and makes the script function properly without ras2rem being run (i.e. it compiles the rating curve, a functionality that used to be run with ras2rem). 
+
+It also fixes some rating curve column values to matching depth grid file names. Most of the challenges were based in rounding at critical points of values.
+
+This PR includes the code updates that were previously described in [PR#85](https://github.com/NOAA-OWP/ras2fim/pull/85), so that PR no longer needs to be approved and merged into dev.
+
+Resolves [Issue #81 ](https://github.com/NOAA-OWP/ras2fim/issues/81), [Issue #95 ](https://github.com/NOAA-OWP/ras2fim/issues/95) and [Issue #119 ](https://github.com/NOAA-OWP/ras2fim/issues/119).
+
+
+### Changes  
+- `src/worker_fim_rasters.py`:
+  - Reads in water surface elevation from HEC-RAS cross sections
+  - Creates a list of water surface elevation values at the desired increments
+  - Added WaterSurfaceElevation to output rating curve dataframe
+  - Made some adjustments for rounding issues for the meters and millimeters columns.
+
+- `src/reformat_ras_rating_curve.py`: 
+  - Added progress bar to the raster mosaicking and elevation extraction processes.
+  - Added explicit CRS to geopackage output 
+  - Added function for normalizing unit names  (`get_unit_from_string`) and removes duplicate functionality in other parts of the code
+  - Added function from ras2rem for compiling the rating curves within a directory, which had previously been done in ras2rem (`fn_make_rating_curve`)
+  - Added update to pull unit, crs, and huc8 name from `run_arguments.txt` file
+  - Added WaterSurfaceElevation column to output csv and geopackage
+  - Fixed order of inputs given to the executor to run `dir_reformat_ras_rc`
+  - Removed hardcoded CRS's, instead using CRS from `run_arguments.txt`  - 
+
+- `src/simplify_fim_rasters.py`:
+    - Adjusted code for rounding and how the depth grid file name is created. It now matches the exact logic pattern as the rating_curve.csv cals.
+
+<br/><br/>
+
+## v1.16.1 - 2023-07-19 - [PR#101](https://github.com/NOAA-OWP/ras2fim/pull/101)
+
+This bug fix will check the result of conflation step (step 2) and stop the code if no conflated model exists.
+
+Ras2fim needs at least one conflated model (one HEC-RAS model that its cross sections intersect with NWM reaches). If none of the user provided HEC-RAS models conflates to NWM reaches in the given HUC8, then the code should inform the user and terminate. The file "***_stream_qc.csv" in folder '02_shapes_from_conflation' is the best place to check for this situation.
+
+### Changes
+- `src/conflate_hecras_to_nwm.py` 
+	called the "errors.check_conflated_models_count()" function to check the number of records in the "***_stream_qc.csv" file.
+
+- `src/errors.py` 
+	Added the definition of "errors.check_conflated_models_count()" function
+
+<br/><br/>
+
 ## v1.16.0 - 2023-07-31 - [PR#115](https://github.com/NOAA-OWP/ras2fim/pull/115)
 
 This PR covers two items, both are pretty small, and a couple bug fixes.
