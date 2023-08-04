@@ -236,15 +236,16 @@ def fn_create_rating_curve(list_int_step_flows_fn,
 
     # Create CSV for the rating curve
     # list_step_profiles_fn is already decimal (1.5)
-    if model_unit == 'meter':
-        d = {'discharge_cms': list_int_step_flows_fn,
-             'stage_m': list_step_profiles_fn,
-             'WaterSurfaceElevation_m': list_step_profiles_wse} #list_int_step_flows_wse_fn}
-    else:
+    if model_unit == 'feet':
         d = {'discharge_cfs': list_int_step_flows_fn,
              'stage_ft': list_step_profiles_fn, 
-             'WaterSurfaceElevation_ft': list_step_profiles_wse} #list_int_step_flows_wse_fn}
-        
+             'wse_ft': list_step_profiles_wse} #list_int_step_flows_wse_fn}
+    else:
+        d = {'discharge_cms': list_int_step_flows_fn,
+             'stage_m': list_step_profiles_fn,
+             'wse_m': list_step_profiles_wse} #list_int_step_flows_wse_fn}
+
+
     df_rating_curve = pd.DataFrame(d)
 
     if model_unit == 'feet': 
@@ -256,17 +257,17 @@ def fn_create_rating_curve(list_int_step_flows_fn,
         df_rating_curve["stage_mm"] = df_rating_curve["stage_m"] * 1000 # change to millimeters
         df_rating_curve["stage_mm"] = df_rating_curve["stage_mm"].astype('int')
 
-        df_rating_curve["WaterSurfaceElevation_m"] = np.round(df_rating_curve["WaterSurfaceElevation_ft"].values * 0.3048, 3)
-    else:
+        df_rating_curve["wse_m"] = np.round(df_rating_curve["wse_ft"].values * 0.3048, 3)
+    else: ## meters
         # need rounding (precison control even for unit of meters)
-        df_rating_curve["discharge_cms"] = np.round(df_rating_curve["discharge_cfs"].values, 3)
-        df_rating_curve["stage_m"] = np.round(df_rating_curve["stage_ft"].values, 3)
+        df_rating_curve["discharge_cms"] = np.round(df_rating_curve["discharge_cms"].values, 3)
+        df_rating_curve["stage_m"] = np.round(df_rating_curve["stage_m"].values, 3)
 
         #next two lines duplicated so the columns are beside the stage_m columns
         df_rating_curve["stage_mm"] = df_rating_curve["stage_m"] * 1000 # change to millimeters
         df_rating_curve["stage_mm"] = df_rating_curve["stage_mm"].astype('int')
 
-        df_rating_curve["WaterSurfaceElevation_m"] = np.round(df_rating_curve["WaterSurfaceElevation_ft"].values, 3)
+        df_rating_curve["wse_m"] = np.round(df_rating_curve["wse_m"].values, 3)
 
     str_csv_path = str_rating_path_to_create + '\\' + str_feature_id_fn + '_rating_curve.csv'
 
@@ -691,28 +692,52 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
 
     list_step_profiles_wse = []
 
-    # Create a list of the profiles at desired increments
-    for i in range(int_max_wse - int_min_wse + 1):
 
+    #print("***********************")
+
+    #print("list_int_step_flows is ")
+    #print(f"...len is {len(list_int_step_flows)}")    
+    #print(list_int_step_flows)
+    #print()
+    #print("list_step_profiles is ")
+    #print(f"...len is {len(list_step_profiles)}")    
+    #print(list_step_profiles)
+    #print()
+    #print(f"list_avg_water_surface_elev is {list_avg_water_surface_elev}")
+    #print(f"average is {np.mean(list_avg_water_surface_elev)}")
+    #print(f"len is {len(list_avg_water_surface_elev)}")  
+    #print(f"Min is {np(list_avg_water_surface_elev)}")      
+
+    #print("***********************")
+
+    #print(f"flt_interval is {flt_interval}")
+    #print(f"int_min_wse is {int_min_wse}")
+    #print(f"int_max_wse is {int_max_wse}")    
+    #print(f"int_max_wse - int_min_wse is {int_max_wse - int_min_wse}")  
+
+    #print(f"depth min is {int_min_depth}")
+    #print(f"depth max is {int_max_depth}")    
+    #print(f"depth max - depth min is {int_max_depth - int_min_depth}")  
+
+
+    # Create a list of the profiles at desired increments
+    #for i in range(int_max_wse - int_min_wse + 1):
+    #for i in range(int_max_wse - int_min_wse):
+    for i in range(int_max_depth - int_min_depth + 1):
+        #print("----------------------------")
+        #print(i)
         int_wse_interval = (i + int_min_wse) * flt_interval
+        #print(f"int_wse_interval (a) is {int_wse_interval}")
 
         # round this to nearest 1/10th
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         int_wse_interval = round(int_wse_interval, 1)
+        #print(f"int_wse_interval (b) is {int_wse_interval}")        
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         list_step_profiles_wse.append(int_wse_interval)
 
-    # # linear interpolation
-    # h = interp1d(list_avg_water_surface_elev, list_flow_steps)
+    #print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
 
-    # # get interpolated flow values of interval depths
-    # arr_step_flows_wse = h(list_step_profiles_wse) ## it seems like the interpolator is where things are going wrong
-    
-    # # convert the linear interpolation array to a list
-    # list_step_flows_wse = arr_step_flows_wse.tolist()
-
-    # # convert list of interpolated float values to integer list
-    # list_int_step_flows_wse = [int(i) for i in list_step_flows_wse]
 
     # ............
     # Get the feature_id and the path to create
@@ -726,6 +751,12 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
         str_path_to_create += list_path[i] + "\\"
     # ............
     
+    #print("list_step_profiles_wse is ")
+    #print(f"...len is {len(list_step_profiles_wse)}")    
+    #print(list_step_profiles_wse)
+    #print()
+
+
     # ------------------------------------------
     # generate the rating curve data
     fn_create_rating_curve(list_int_step_flows, 

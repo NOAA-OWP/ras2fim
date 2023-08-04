@@ -136,10 +136,10 @@ def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir, out_unit, dir)
 
     # Reorder columns
     if out_unit == 'ft':
-        rating_curve_df = rating_curve_df[['feature_id', 'stage_ft', 'discharge_cfs', 'WaterSurfaceElevation_ft',
+        rating_curve_df = rating_curve_df[['feature_id', 'stage_ft', 'discharge_cfs', 'wse_ft',
                                      'HydroID', 'HUC', 'LakeID', 'last_updated', 'submitter', 'obs_source']]
     elif out_unit == 'm':
-        rating_curve_df = rating_curve_df[['feature_id', 'stage_m', 'discharge_cms', 'WaterSurfaceElevation_m',
+        rating_curve_df = rating_curve_df[['feature_id', 'stage_m', 'discharge_cms', 'wse_m',
                                 'HydroID', 'HUC', 'LakeID', 'last_updated', 'submitter', 'obs_source']]
     else:
         print(f'ERROR: Output model unit ({out_unit}) not recognized. No rating curve saved.')
@@ -355,12 +355,12 @@ def dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
             # Handle the case where no discharge columns are found
             discharge_units = None
 
-        # Find the first column that contains the string 'WaterSurfaceElevation'
-        wse_column = next((col for col in rc_df.columns if 'WaterSurfaceElevation' in col), None) 
+        # Find the first column that contains the string 'wse'
+        wse_column = next((col for col in rc_df.columns if 'wse' in col), None) 
         
         if wse_column:
-            # Create a new column called 'WaterSurfaceElevation' with the values from the found column
-            rc_df['WaterSurfaceElevation'] = rc_df[wse_column]
+            # Create a new column called 'wse' with the values from the found column
+            rc_df['wse'] = rc_df[wse_column]
 
             # Extract the string after the '_' character in the column name ## TODO: see if this unit handling is no longer needed
             wse_units = wse_column.split('_')[1]
@@ -373,7 +373,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
                 print("    wse_units:", wse_units)
 
         else:
-            print("No column containing 'WaterSurfaceElevation' found in the dataframe.")
+            print("No column containing 'wse' found in the dataframe.")
 
         # ------------------------------------------------------------------------------------------------
         # Read in the shapefile for the directory, project geodatabase, and get lat and lon of centroids
@@ -651,7 +651,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
                                          'elevation_navd88': rc_elev_df['elevation_navd88'], #num
                                          'lat': rc_elev_df['midpoint_lat'], #num
                                          'lon': rc_elev_df['midpoint_lon'], 
-                                         'WaterSurfaceElevation': rc_elev_df['WaterSurfaceElevation']}) #num
+                                         'WaterSurfaceElevation': rc_elev_df['wse']}) #num
                 
         dir_geospatial = dir_output_table.drop(columns=['stage', 'flow', 'elevation_navd88']) # If you want to keep `elevation_navd88` in the geopackage, 
                                                                                               # remove it from this command.
