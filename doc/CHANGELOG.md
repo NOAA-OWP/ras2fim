@@ -1,6 +1,16 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1._____ - 2023-08-07 - [PR#132](https://github.com/NOAA-OWP/ras2fim/pull/132)
+
+A quick fix to remove mentions of EPSG from `reformat_ras_rating_curve.py`.  Using EPSG-specific geopandas commands was causing HUC 12040101 to error out (since this HUC uses an ESRI projection code). Generalizing the CRS handling from `EPSG=` to `crs=` seems to fix the issue. 
+
+### Changes  
+
+- `src/reformat_ras_rating_curve.py`: Generalized CRS handling from `EPSG=` to `crs=` 
+
+<br/><br/>
+
 ## v1.18.0 - 2023-08-03 - [PR#128](https://github.com/NOAA-OWP/ras2fim/pull/128)
 
 Rating curves were erroring out as a mismatch of number of items in a column with the wse (Water Surface Elevation) data list having one extra element in some scenarios.
