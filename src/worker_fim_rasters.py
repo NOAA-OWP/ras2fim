@@ -534,260 +534,13 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
     int_number_of_steps = tpl_settings[11]
     int_starting_flow = tpl_settings[12]
     
+    hec = None
 
-    hec = win32com.client.Dispatch("RAS60.HECRASController")
-    #hec.ShowRas()
+    try:
 
-    hec.Project_Open(str_ras_projectpath)   # opening HEC-RAS
-
-    # to be populated: number and list of messages, blocking mode
-    NMsg, TabMsg, block = None, None, True
-
-    # computations of the current plan
-    v1, NMsg, TabMsg, v2 = hec.Compute_CurrentPlan(NMsg, TabMsg, block)
-
-    # ID numbers of the river and the reach
-    RivID, RchID = 1, 1
-
-    # to be populated: number of nodes, list of RS and node types
-    NNod, TabRS, TabNTyp = None, None, None
-
-    # reading project nodes: cross-sections, bridges, culverts, etc.
-    v1, v2, NNod, TabRS, TabNTyp = hec.Geometry_GetNodes(RivID,
-                                                         RchID,
-                                                         NNod,
-                                                         TabRS,
-                                                         TabNTyp)
-
-    # HEC-RAS ID of output variables: Max channel depth, channel reach length, and water surface elevation
-    int_max_depth_id, int_node_chan_length, int_water_surface_elev = 4, 42, 2
-
-    # ----------------------------------
-    # Create a list of the simulated flows
-    # TODO: Maybe rename these variables 
-    list_flow_steps = []
-
-    int_delta_flow_step = int(int_peak_flow // (int_number_of_steps - 2))
-
-    for i in range(int_number_of_steps):
-        list_flow_steps.append((i*int_delta_flow_step) + int_starting_flow )
-    
-    # ----------------------------------
-
-    # **********************************
-    # intialize list of the computed average depths
-    list_avg_depth = []
-
-    # initialize list of water surface elevations
-    list_avg_water_surface_elev = []
-    
-    for int_prof in range(int_number_of_steps):
-        
-        # get a count of the cross sections in the HEC-RAS model
-        int_xs_node_count = 0
-        for i in range(0, NNod):
-            if TabNTyp[i] == "":
-                int_xs_node_count += 1
-    
-        # initalize six numpy arrays
-        arr_max_depth = np.empty([int_xs_node_count], dtype=float)
-        arr_channel_length = np.empty([int_xs_node_count], dtype=float)
-        arr_avg_depth = np.empty([int_xs_node_count], dtype=float)
-        arr_multiply = np.empty([int_xs_node_count], dtype=float)
-        arr_water_surface_elev = np.empty([int_xs_node_count], dtype=float)
-        arr_avg_water_surface_elev = np.empty([int_xs_node_count], dtype=float)
-
-        int_count_nodes = 0
-    
-        for i in range(0, NNod):
-            if TabNTyp[i] == "": # this is a XS (not a bridge, culvert, inline, etc...)
-                
-                # reading max depth in cross section
-                arr_max_depth[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(RivID, RchID, i+1, 0, int_prof+1, int_max_depth_id)
-
-                # reading water surface elevation in cross section
-                arr_water_surface_elev[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(RivID, RchID, i+1, 0, int_prof+1, int_water_surface_elev)
-
-                # reading the distance between cross sections (center of channel)
-                arr_channel_length[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(RivID, RchID, i+1, 0, int_prof+1, int_node_chan_length)
-    
-                int_count_nodes += 1
-
-        # Revise the last channel length to zero
-        arr_channel_length[len(arr_channel_length) - 1] = 0
-    
-        # compute an average depth between cross sections
-        k = 0
-        for x in arr_max_depth:
-            if k != (len(arr_max_depth)) - 1:
-                # get the average depth between two sections
-                arr_avg_depth[k] = (arr_max_depth[k] + arr_max_depth[k+1]) / 2
-
-            k += 1
-
-        # average depth between two cross sections times channel length
-        arr_multiply = arr_avg_depth * arr_channel_length
-    
-        # compute the average depth on the reach
-        flt_avg_depth = (np.sum(arr_multiply)) / (np.sum(arr_channel_length))
-        list_avg_depth.append(flt_avg_depth)
-
-        # compute an average WSE between cross sections
-        k = 0
-        for x in arr_water_surface_elev: 
-            if k != (len(arr_water_surface_elev)) - 1:
-
-                # get the average water surface elevation between two sections
-                arr_avg_water_surface_elev[k] = (arr_water_surface_elev[k] + arr_water_surface_elev[k+1]) / 2
-
-            k += 1
-        
-        # average WSE between two cross sections times channel length
-        arr_multiply_wse = arr_avg_water_surface_elev * arr_channel_length
-    
-        # compute the average WSE on the reach
-        flt_avg_wse = (np.sum(arr_multiply_wse)) / (np.sum(arr_channel_length))
-        list_avg_water_surface_elev.append(flt_avg_wse)
-
-    # **********************************
-
-    # ------------------------------------------
-    # create two numpy arrays for the linear interpolator
-    # arr_avg_depth = np.array(list_avg_depth)
-
-    # f is the linear interpolator
-    f = interp1d(list_avg_depth, list_flow_steps)
-
-    # Get the max value of the Averge Depth List
-    int_max_depth = int(max(list_avg_depth) // flt_interval)
-    # Get the min value of Average Depth List
-    int_min_depth = int((min(list_avg_depth) // flt_interval) + 1)
-
-    list_step_profiles = []
-
-    # Create a list of the profiles at desired increments
-    for i in range(int_max_depth - int_min_depth + 1):
-        int_depth_interval = (i + int_min_depth) * flt_interval
-
-        # round this to nearest 1/10th
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        int_depth_interval = round(int_depth_interval, 1)
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        list_step_profiles.append(int_depth_interval)
-
-    # get interpolated flow values of interval depths
-    arr_step_flows = f(list_step_profiles)
-
-    # convert the linear interpolation array to a list
-    list_step_flows = arr_step_flows.tolist()
-
-    # convert list of interpolated float values to integer list
-    list_int_step_flows = [int(i) for i in list_step_flows]
-
-    int_max_wse = int(max(list_avg_water_surface_elev) // flt_interval)
-    int_min_wse = int((min(list_avg_water_surface_elev) // flt_interval) + 1)
-
-    print()
-
-
-    list_step_profiles_wse = []
-
-
-    #print("***********************")
-
-    #print("list_int_step_flows is ")
-    #print(f"...len is {len(list_int_step_flows)}")    
-    #print(list_int_step_flows)
-    #print()
-    #print("list_step_profiles is ")
-    #print(f"...len is {len(list_step_profiles)}")    
-    #print(list_step_profiles)
-    #print()
-    #print(f"list_avg_water_surface_elev is {list_avg_water_surface_elev}")
-    #print(f"average is {np.mean(list_avg_water_surface_elev)}")
-    #print(f"len is {len(list_avg_water_surface_elev)}")  
-    #print(f"Min is {np(list_avg_water_surface_elev)}")      
-
-    #print("***********************")
-
-    #print(f"flt_interval is {flt_interval}")
-    #print(f"int_min_wse is {int_min_wse}")
-    #print(f"int_max_wse is {int_max_wse}")    
-    #print(f"int_max_wse - int_min_wse is {int_max_wse - int_min_wse}")  
-
-    #print(f"depth min is {int_min_depth}")
-    #print(f"depth max is {int_max_depth}")    
-    #print(f"depth max - depth min is {int_max_depth - int_min_depth}")  
-
-
-    # Create a list of the profiles at desired increments
-    #for i in range(int_max_wse - int_min_wse + 1):
-    #for i in range(int_max_wse - int_min_wse):
-    for i in range(int_max_depth - int_min_depth + 1):
-        #print("----------------------------")
-        #print(i)
-        int_wse_interval = (i + int_min_wse) * flt_interval
-        #print(f"int_wse_interval (a) is {int_wse_interval}")
-
-        # round this to nearest 1/10th
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        int_wse_interval = round(int_wse_interval, 1)
-        #print(f"int_wse_interval (b) is {int_wse_interval}")        
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        list_step_profiles_wse.append(int_wse_interval)
-
-    #print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-
-
-    # ............
-    # Get the feature_id and the path to create
-    list_path = str_ras_projectpath.split(os.sep)
-    str_feature_id = str(list_path[-3])
-    
-    # Drive path
-    str_path_to_create = list_path[0] + "\\"
-    # path excluding file name and last folder
-    for i in range(1, len(list_path) - 2):
-        str_path_to_create += list_path[i] + "\\"
-    # ............
-    
-    #print("list_step_profiles_wse is ")
-    #print(f"...len is {len(list_step_profiles_wse)}")    
-    #print(list_step_profiles_wse)
-    #print()
-
-
-    # ------------------------------------------
-    # generate the rating curve data
-    fn_create_rating_curve(list_int_step_flows, 
-                           list_step_profiles, 
-                           str_feature_id, 
-                           str_path_to_create, 
-                           model_unit, 
-                           list_step_profiles_wse)
-    # ------------------------------------------
-
-    hec.QuitRas()  # close HEC-RAS
-    
-
-    # append the flow file with one for the second pass at even depth intervals
-    fn_create_flow_file_second_pass(str_ras_projectpath,
-                                    list_int_step_flows,
-                                    list_step_profiles,
-                                    model_unit)
-
-
-    if len(list_int_step_flows) > 0:
-        # *************************************************
-        fn_create_ras_mapper_xml(str_feature_id,
-                                 str_ras_projectpath,
-                                 list_step_profiles,
-                                 model_unit,
-                                 tpl_settings)
-        # *************************************************
-
-        # Run HEC-RAS with the new flow data
+        hec = win32com.client.Dispatch("RAS60.HECRASController")
         #hec.ShowRas()
+
         hec.Project_Open(str_ras_projectpath)   # opening HEC-RAS
 
         # to be populated: number and list of messages, blocking mode
@@ -796,24 +549,298 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
         # computations of the current plan
         v1, NMsg, TabMsg, v2 = hec.Compute_CurrentPlan(NMsg, TabMsg, block)
 
+        # ID numbers of the river and the reach
+        RivID, RchID = 1, 1
+
+        # to be populated: number of nodes, list of RS and node types
+        NNod, TabRS, TabNTyp = None, None, None
+
+        # reading project nodes: cross-sections, bridges, culverts, etc.
+        v1, v2, NNod, TabRS, TabNTyp = hec.Geometry_GetNodes(RivID,
+                                                            RchID,
+                                                            NNod,
+                                                            TabRS,
+                                                            TabNTyp)
+
+        # HEC-RAS ID of output variables: Max channel depth, channel reach length, and water surface elevation
+        int_max_depth_id, int_node_chan_length, int_water_surface_elev = 4, 42, 2
+
+        # ----------------------------------
+        # Create a list of the simulated flows
+        # TODO: Maybe rename these variables 
+        list_flow_steps = []
+
+        int_delta_flow_step = int(int_peak_flow // (int_number_of_steps - 2))
+
+        for i in range(int_number_of_steps):
+            list_flow_steps.append((i*int_delta_flow_step) + int_starting_flow )
+        
+        # ----------------------------------
+
+        # **********************************
+        # intialize list of the computed average depths
+        list_avg_depth = []
+
+        # initialize list of water surface elevations
+        list_avg_water_surface_elev = []
+        
+        for int_prof in range(int_number_of_steps):
+            
+            # get a count of the cross sections in the HEC-RAS model
+            int_xs_node_count = 0
+            for i in range(0, NNod):
+                if TabNTyp[i] == "":
+                    int_xs_node_count += 1
+        
+            # initalize six numpy arrays
+            arr_max_depth = np.empty([int_xs_node_count], dtype=float)
+            arr_channel_length = np.empty([int_xs_node_count], dtype=float)
+            arr_avg_depth = np.empty([int_xs_node_count], dtype=float)
+            arr_multiply = np.empty([int_xs_node_count], dtype=float)
+            arr_water_surface_elev = np.empty([int_xs_node_count], dtype=float)
+            arr_avg_water_surface_elev = np.empty([int_xs_node_count], dtype=float)
+
+            int_count_nodes = 0
+        
+            for i in range(0, NNod):
+                if TabNTyp[i] == "": # this is a XS (not a bridge, culvert, inline, etc...)
+                    
+                    # reading max depth in cross section
+                    arr_max_depth[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(RivID, RchID, i+1, 0, int_prof+1, int_max_depth_id)
+
+                    # reading water surface elevation in cross section
+                    arr_water_surface_elev[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(RivID, RchID, i+1, 0, int_prof+1, int_water_surface_elev)
+
+                    # reading the distance between cross sections (center of channel)
+                    arr_channel_length[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(RivID, RchID, i+1, 0, int_prof+1, int_node_chan_length)
+        
+                    int_count_nodes += 1
+
+            # Revise the last channel length to zero
+            arr_channel_length[len(arr_channel_length) - 1] = 0
+        
+            # compute an average depth between cross sections
+            k = 0
+            for x in arr_max_depth:
+                if k != (len(arr_max_depth)) - 1:
+                    # get the average depth between two sections
+                    arr_avg_depth[k] = (arr_max_depth[k] + arr_max_depth[k+1]) / 2
+
+                k += 1
+
+            # average depth between two cross sections times channel length
+            arr_multiply = arr_avg_depth * arr_channel_length
+        
+            # compute the average depth on the reach
+            flt_avg_depth = (np.sum(arr_multiply)) / (np.sum(arr_channel_length))
+            list_avg_depth.append(flt_avg_depth)
+
+            # compute an average WSE between cross sections
+            k = 0
+            for x in arr_water_surface_elev: 
+                if k != (len(arr_water_surface_elev)) - 1:
+
+                    # get the average water surface elevation between two sections
+                    arr_avg_water_surface_elev[k] = (arr_water_surface_elev[k] + arr_water_surface_elev[k+1]) / 2
+
+                k += 1
+            
+            # average WSE between two cross sections times channel length
+            arr_multiply_wse = arr_avg_water_surface_elev * arr_channel_length
+        
+            # compute the average WSE on the reach
+            flt_avg_wse = (np.sum(arr_multiply_wse)) / (np.sum(arr_channel_length))
+            list_avg_water_surface_elev.append(flt_avg_wse)
+
+        # **********************************
+
+        # ------------------------------------------
+        # create two numpy arrays for the linear interpolator
+        # arr_avg_depth = np.array(list_avg_depth)
+
+        # f is the linear interpolator
+        f = interp1d(list_avg_depth, list_flow_steps)
+
+        # Get the max value of the Averge Depth List
+        int_max_depth = int(max(list_avg_depth) // flt_interval)
+        # Get the min value of Average Depth List
+        int_min_depth = int((min(list_avg_depth) // flt_interval) + 1)
+
+        list_step_profiles = []
+
+        # Create a list of the profiles at desired increments
+        for i in range(int_max_depth - int_min_depth + 1):
+            int_depth_interval = (i + int_min_depth) * flt_interval
+
+            # round this to nearest 1/10th
+            # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            int_depth_interval = round(int_depth_interval, 1)
+            # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            list_step_profiles.append(int_depth_interval)
+
+        # get interpolated flow values of interval depths
+        arr_step_flows = f(list_step_profiles)
+
+        # convert the linear interpolation array to a list
+        list_step_flows = arr_step_flows.tolist()
+
+        # convert list of interpolated float values to integer list
+        list_int_step_flows = [int(i) for i in list_step_flows]
+
+        int_max_wse = int(max(list_avg_water_surface_elev) // flt_interval)
+        int_min_wse = int((min(list_avg_water_surface_elev) // flt_interval) + 1)
+
+        list_step_profiles_wse = []
+
+
+        #print("***********************")
+
+        #print("list_int_step_flows is ")
+        #print(f"...len is {len(list_int_step_flows)}")    
+        #print(list_int_step_flows)
+        #print()
+        #print("list_step_profiles is ")
+        #print(f"...len is {len(list_step_profiles)}")    
+        #print(list_step_profiles)
+        #print()
+        #print(f"list_avg_water_surface_elev is {list_avg_water_surface_elev}")
+        #print(f"average is {np.mean(list_avg_water_surface_elev)}")
+        #print(f"len is {len(list_avg_water_surface_elev)}")  
+        #print(f"Min is {np(list_avg_water_surface_elev)}")      
+
+        #print("***********************")
+
+        #print(f"flt_interval is {flt_interval}")
+        #print(f"int_min_wse is {int_min_wse}")
+        #print(f"int_max_wse is {int_max_wse}")    
+        #print(f"int_max_wse - int_min_wse is {int_max_wse - int_min_wse}")  
+
+        #print(f"depth min is {int_min_depth}")
+        #print(f"depth max is {int_max_depth}")    
+        #print(f"depth max - depth min is {int_max_depth - int_min_depth}")  
+
+
+        # Create a list of the profiles at desired increments
+        #for i in range(int_max_wse - int_min_wse + 1):
+        #for i in range(int_max_wse - int_min_wse):
+        for i in range(int_max_depth - int_min_depth + 1):
+            #print("----------------------------")
+            #print(i)
+            int_wse_interval = (i + int_min_wse) * flt_interval
+            #print(f"int_wse_interval (a) is {int_wse_interval}")
+
+            # round this to nearest 1/10th
+            # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            int_wse_interval = round(int_wse_interval, 1)
+            #print(f"int_wse_interval (b) is {int_wse_interval}")        
+            # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            list_step_profiles_wse.append(int_wse_interval)
+
+        #print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+
+
+        # ............
+        # Get the feature_id and the path to create
+        list_path = str_ras_projectpath.split(os.sep)
+        str_feature_id = str(list_path[-3])
+        
+        # Drive path
+        str_path_to_create = list_path[0] + "\\"
+        # path excluding file name and last folder
+        for i in range(1, len(list_path) - 2):
+            str_path_to_create += list_path[i] + "\\"
+        # ............
+        
+        #print("list_step_profiles_wse is ")
+        #print(f"...len is {len(list_step_profiles_wse)}")    
+        #print(list_step_profiles_wse)
+        #print()
+
+
+        # ------------------------------------------
+        # generate the rating curve data
+        fn_create_rating_curve(list_int_step_flows, 
+                            list_step_profiles, 
+                            str_feature_id, 
+                            str_path_to_create, 
+                            model_unit, 
+                            list_step_profiles_wse)
+        # ------------------------------------------
+
         hec.QuitRas()  # close HEC-RAS
         
-        # *************************************
 
-    '''
-        # *************************************************
-        # creates the model limits boundary polylines
-        fn_create_inundation_limits(str_feature_id,
-                                    str_ras_projectpath)
-        # *************************************************
+        # append the flow file with one for the second pass at even depth intervals
+        fn_create_flow_file_second_pass(str_ras_projectpath,
+                                        list_int_step_flows,
+                                        list_step_profiles,
+                                        model_unit)
 
-        #*************************************************
-        #create the FDST metadata (json) file
-        fn_createFDST_metadata(strCOMID,list_StepProfiles)
-        #*************************************************
 
-    '''
-    del hec             # delete HEC-RAS controller
+        if len(list_int_step_flows) > 0:
+            # *************************************************
+            fn_create_ras_mapper_xml(str_feature_id,
+                                    str_ras_projectpath,
+                                    list_step_profiles,
+                                    model_unit,
+                                    tpl_settings)
+            # *************************************************
+
+            # Run HEC-RAS with the new flow data
+            #hec.ShowRas()
+            hec.Project_Open(str_ras_projectpath)   # opening HEC-RAS
+
+            # to be populated: number and list of messages, blocking mode
+            NMsg, TabMsg, block = None, None, True
+
+            # computations of the current plan
+            v1, NMsg, TabMsg, v2 = hec.Compute_CurrentPlan(NMsg, TabMsg, block)
+
+            hec.QuitRas()  # close HEC-RAS
+            
+            # *************************************
+
+        '''
+            # *************************************************
+            # creates the model limits boundary polylines
+            fn_create_inundation_limits(str_feature_id,
+                                        str_ras_projectpath)
+            # *************************************************
+
+            #*************************************************
+            #create the FDST metadata (json) file
+            fn_createFDST_metadata(strCOMID,list_StepProfiles)
+            #*************************************************
+
+        '''
+        #del hec             # delete HEC-RAS controller
+
+    except Exception as ex:
+        # re-raise it as error handling is farther up the chain
+        # but I do need the finally to ensure the hec.QuitRas() is run
+        print("++++++++++++++++++++++++")
+        print("An exception occurred with the HEC-RAS engine or its parameters.")
+        print(f"details: {ex}")
+        print()
+        # re-raise it for logging (coming)
+        raise ex
+    
+    finally:
+        # Especially with multi proc, if an error occurs with HEC-RAS (engine 
+        # or values submitted), HEC-RAS will not close itself just becuase of an python
+        # exception. This leaves orphaned process threads (visible in task manager)
+        # and sometimes visually as well.
+
+        if (hec is not None):
+            try:
+                hec.QuitRas()   # close HEC-RAS no matter watch
+            except Exception as ex2:
+                print("--- An error occured trying to close the HEC-RAS window process")
+                print(f"--- Details: {ex2}")
+                print()
+                # do nothng
+
+
 # ...........................
 
 # ||||||||||||||||||||||||
