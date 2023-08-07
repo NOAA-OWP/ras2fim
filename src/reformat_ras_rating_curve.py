@@ -256,7 +256,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
             proj_crs = line.split('==')[1].strip()                
 
     # Remove 'EPSG:' label if it is present ( ## proj_crs replaced str_epsg_raster)
-    proj_crs = proj_crs.lower().replace("epsg:", "")
+    # proj_crs = proj_crs.lower().replace("epsg:", "")
 
     # Standardize the model unit and output unit
     model_unit = get_unit_from_string(model_unit)
@@ -502,8 +502,8 @@ def dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
         midpoints_gdf = gpd.GeoDataFrame(midpoints_df, geometry='geometry')
 
         # Make sure the rasters and points are in the same projection so that the extract can work properly
-        midpoints_gdf = midpoints_gdf.set_crs('EPSG:4326') # set the correct projection 
-        midpoints_gdf = midpoints_gdf.to_crs(epsg=proj_crs) # reproject to same as terrain
+        midpoints_gdf = midpoints_gdf.set_crs('EPSG:4326') # set the correct projection ## TODO: Confirm that this is OK in the longterm
+        midpoints_gdf = midpoints_gdf.to_crs(crs=proj_crs) # reproject to same as terrain
         
         # Extract elevation value from terrain raster
         raw_elev_list = []
