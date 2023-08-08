@@ -1,6 +1,22 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.__.0 - 2023-08-08 - [PR#134](https://github.com/NOAA-OWP/ras2fim/pull/134)
+
+There are a couple of places in the code (Steps 2?? and Step 5) where it calls the hec ras engine. ie) hec = win32com.client.Dispatch("RAS60.HECRASController").  The problem is that if an exception is thrown, hec-ras does not automatically close its windows and windows process threads. This results in a growing collection of orphaned hec-ras processes tasks, that can be seen in task manager. It has also been seen where it can lock up a machine depending on the number of exceptions and number of proc's available on the machine.
+
+Note: Now that some processes are no longer being orphaned, the entire process should run quicker.
+
+Note:  A pre-existing bug, still in place, is when all models fail in Step 5 and no remaining "good" models exist by the time it gets to Step 7. The error is seen as "ValueError: Length mismatch: Expected axis has 0 elements, new values have 11 elements" and will be fixed as part of a separate issue.
+
+### Changes  
+
+- `src`
+    - `create_shapes_from_hecras.py`:  Added try, except, finally and ensured the hec-ras ap win calls always called hec.QuitRas(). This triggered a chunk of code indentation.
+    - `worker_fim_rasters.py`:  Added try, except, finally and ensured the hec-ras ap win calls always called hec.QuitRas(). This triggered a very chunk of code indentation.
+
+<br/><br/>
+
 ## v1.18.0 - 2023-08-03 - [PR#128](https://github.com/NOAA-OWP/ras2fim/pull/128)
 
 Rating curves were erroring out as a mismatch of number of items in a column with the wse (Water Surface Elevation) data list having one extra element in some scenarios.
