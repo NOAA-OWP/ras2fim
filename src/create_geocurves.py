@@ -38,7 +38,6 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, o
     for depth_grid in depth_grid_list:
         # Interpolate flow from given stage.
         stage_mm = float(os.path.split(depth_grid)[1].split('-')[1].strip('.tif'))
-#        stage_m = stage_mm/1000.0
         
         with rasterio.open(depth_grid) as src:
             # Open inundation_raster using rasterio.
@@ -57,7 +56,8 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, o
                 extent_poly_diss = extent_poly.dissolve(by='extent')
                 extent_poly_diss["geometry"] = [MultiPolygon([feature]) if type(feature) == Polygon else feature for 
                                 feature in extent_poly_diss["geometry"]]
-            except AttributeError:
+            except AttributeError as e:
+                print(e)
                 print(huc)
                 print(feature_id)
                 continue
@@ -82,7 +82,7 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, o
                 feature_id_rating_curve_geo = pd.concat([feature_id_rating_curve_geo, rating_curve_geo_df])
             iteration += 1 
       
-    print("Writing to CSV...")
+#    print("Writing to CSV...")
     feature_id_rating_curve_geo.to_csv(os.path.join(output_folder, feature_id + '_' + huc + '_rating_curve_geo.csv'))
 
 
@@ -130,6 +130,7 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
     # Check version arg input.
     if os.path.isfile(version):
         version = get_changelog_version(version)
+        print("Version found: " + version)
         
     # Set up multiprocessing
     dictionary = {}
