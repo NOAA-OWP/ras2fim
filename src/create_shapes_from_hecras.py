@@ -53,9 +53,6 @@ def fn_open_hecras(str_ras_project_path):
     try:
         # opening HEC-RAS
 
-        # manuall raise error pre hec
-        print(10 / 0)
-
         hec = win32com.client.Dispatch("RAS60.HECRASController")
 
         #hec.ShowRas()
