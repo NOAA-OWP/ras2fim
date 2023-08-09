@@ -7,8 +7,8 @@ By this PR:
 1. water surface elevation (wse) and flow results are compiled for all cross sections 
 
 2. standardization is implemented for rating curves and cross section results. This involves: 
-    - A copy of rating curve files (only the metric fields) for individual feature ids is saved in folder `06_metric/Rating_Curve`. 
-    - A copy of cross sections files (only the metric fields) for individual feature ids is saved in folder `06_metric/Cross_Section`. 
+    - A copy of rating curve files (both metric and U.S. units) for individual feature ids is saved in folder `06_metric/Rating_Curve`. 
+    - A copy of cross sections files (both metric and U.S. units) for individual feature ids is saved in folder `06_metric/Cross_Section`. 
     - Also, the two files "all_cross_sections.csv" and "all_rating_curves.csv" stacking all individual files are created in `06_metric`
 
 ### Changes  
@@ -17,8 +17,8 @@ By this PR:
 2- report the above results in both metric and U.S. unit in a csv file for each feature id. 
 
 - `src/simplify_fim_rasters.py`
-1- make metric rating curve files
-2- make metric cross sections files (wse and flow results)
+1- make rating curve files in folder 06_metric
+2- make cross sections files (wse and flow results) in folder 06_metric
 
 - `src/shared_variables.py` 
 Added variables to hold the name of new folders "Rating_Curve" and "Cross_Sections" within `06_metric` folder
