@@ -172,12 +172,10 @@ def fn_create_rating_curve(list_int_step_flows_fn,
                            model_unit, 
                            list_step_profiles_wse,
                            all_XsectionsInfo):
-                        #    list_int_step_flows_wse_fn):
 
     str_file_name = str_feature_id_fn + '_rating_curve.png'
 
     # Create a Rating Curve folder
-    #str_rating_path_to_create = str_path_to_create_fn + '\\Rating_Curve'
     str_rating_path_to_create = str_path_to_create_fn + 'Rating_Curve'
     os.makedirs(str_rating_path_to_create, exist_ok=True)
 
@@ -613,17 +611,17 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
     all_XsectionsInfo=pd.DataFrame()
 
     #make a list of unique ids using feature id and cross section name
-    xsections_ids = [str_feature_id+"_"+value.strip() for value in TabRS]
-    xsections_ids_featureid = [str_feature_id for value in TabRS]
-    xsections_ids_rs = [value.strip() for value in TabRS]
+    xsections_fids_xs = [str_feature_id+"_"+value.strip() for value in TabRS]
+    xsections_fids = [str_feature_id for value in TabRS]
+    xsections_xs = [value.strip() for value in TabRS]
 
     
     for int_prof in range(int_number_of_steps):
 
         this_profile_Xsection_Info=pd.DataFrame()
-        this_profile_Xsection_Info["fid_xs"]=np.array(xsections_ids)
-        this_profile_Xsection_Info["featureid"]=np.array(xsections_ids_featureid)
-        this_profile_Xsection_Info["Xsection_name"]=np.array(xsections_ids_rs)
+        this_profile_Xsection_Info["fid_xs"]=np.array(xsections_fids_xs)
+        this_profile_Xsection_Info["featureid"]=np.array(xsections_fids)
+        this_profile_Xsection_Info["Xsection_name"]=np.array(xsections_xs)
 
         
         # get a count of the cross sections in the HEC-RAS model
