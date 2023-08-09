@@ -738,42 +738,9 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
     int_max_wse = int(max(list_avg_water_surface_elev) // flt_interval)
     int_min_wse = int((min(list_avg_water_surface_elev) // flt_interval) + 1)
 
-    print()
-
-
     list_step_profiles_wse = []
-
-
-    #print("***********************")
-
-    #print("list_int_step_flows is ")
-    #print(f"...len is {len(list_int_step_flows)}")    
-    #print(list_int_step_flows)
-    #print()
-    #print("list_step_profiles is ")
-    #print(f"...len is {len(list_step_profiles)}")    
-    #print(list_step_profiles)
-    #print()
-    #print(f"list_avg_water_surface_elev is {list_avg_water_surface_elev}")
-    #print(f"average is {np.mean(list_avg_water_surface_elev)}")
-    #print(f"len is {len(list_avg_water_surface_elev)}")  
-    #print(f"Min is {np(list_avg_water_surface_elev)}")      
-
-    #print("***********************")
-
-    #print(f"flt_interval is {flt_interval}")
-    #print(f"int_min_wse is {int_min_wse}")
-    #print(f"int_max_wse is {int_max_wse}")    
-    #print(f"int_max_wse - int_min_wse is {int_max_wse - int_min_wse}")  
-
-    #print(f"depth min is {int_min_depth}")
-    #print(f"depth max is {int_max_depth}")    
-    #print(f"depth max - depth min is {int_max_depth - int_min_depth}")  
-
-
+    
     # Create a list of the profiles at desired increments
-    #for i in range(int_max_wse - int_min_wse + 1):
-    #for i in range(int_max_wse - int_min_wse):
     for i in range(int_max_depth - int_min_depth + 1):
         #print("----------------------------")
         #print(i)
