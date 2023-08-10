@@ -48,20 +48,50 @@ import shared_variables as sv
 def fn_open_hecras(str_ras_project_path):
     # Function - runs HEC-RAS (active plan) and closes the file
 
-    hec = win32com.client.Dispatch("RAS60.HECRASController")
-    #hec.ShowRas()
+    hec = None
 
-    # opening HEC-RAS
-    hec.Project_Open(str_ras_project_path)
+    try:
+        # opening HEC-RAS
 
-    # to be populated: number and list of messages, blocking mode
-    NMsg, TabMsg, block = None, None, True
+        hec = win32com.client.Dispatch("RAS60.HECRASController")
 
-    # computations of the current plan
-    # We need to compute.  Opening RAS Mapper creates the Geom HDF
-    v1, NMsg, TabMsg, v2 = hec.Compute_CurrentPlan(NMsg, TabMsg, block)
+        #hec.ShowRas()
 
-    hec.QuitRas()   # close HEC-RAS
+        # opening HEC-RAS
+        rtn = hec.Project_Open(str_ras_project_path)        
+
+        # to be populated: number and list of messages, blocking mode
+        NMsg, TabMsg, block = None, None, True
+
+        # computations of the current plan
+        # We need to compute.  Opening RAS Mapper creates the Geom HDF
+        v1, NMsg, TabMsg, v2 = hec.Compute_CurrentPlan(NMsg, TabMsg, block)
+
+    except Exception as ex:
+        # re-raise it as error handling is farther up the chain
+        # but I do need the finally to ensure the hec.QuitRas() is run
+        print("++++++++++++++++++++++++")
+        print("An exception occurred with the HEC-RAS engine or its parameters.")
+        print(f"details: {ex}")
+        print()
+        # re-raise it for logging (coming)
+        raise ex
+    
+    finally:
+        # Especially with multi proc, if an error occurs with HEC-RAS (engine 
+        # or values submitted), HEC-RAS will not close itself just becuase of an python
+        # exception. This leaves orphaned process threads (visible in task manager)
+        # and sometimes visually as well.
+
+        if (hec is not None):
+            try:
+                hec.QuitRas()   # close HEC-RAS no matter watch
+            except Exception as ex2:
+                print("--- An error occured trying to close the HEC-RAS window process")
+                print(f"--- Details: {ex2}")
+                print()
+                # do nothng
+    
     
 # ************************
 
