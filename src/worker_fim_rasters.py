@@ -63,7 +63,6 @@ from shapely.geometry import LineString
 # flt_buffer = tpl_settings[14]
 # str_plan_footer_path = tpl_settings[15]
 
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~
 def fn_get_features(gdf, int_poly_index):
     """Function to parse features from GeoDataFrame
