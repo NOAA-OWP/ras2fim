@@ -170,15 +170,38 @@ def fn_create_rating_curve(list_int_step_flows_fn,
                            str_feature_id_fn,
                            str_path_to_create_fn,
                            model_unit, 
-                           list_step_profiles_wse):
-                        #    list_int_step_flows_wse_fn):
+                           list_step_profiles_wse,
+                           all_XsectionsInfo):
 
     str_file_name = str_feature_id_fn + '_rating_curve.png'
 
     # Create a Rating Curve folder
-    #str_rating_path_to_create = str_path_to_create_fn + '\\Rating_Curve'
     str_rating_path_to_create = str_path_to_create_fn + 'Rating_Curve'
     os.makedirs(str_rating_path_to_create, exist_ok=True)
+
+    #save cross sections info
+    #first add both units of feet and meter
+    if model_unit == 'feet':
+        all_XsectionsInfo["wse_ft"]=all_XsectionsInfo["wse"]
+        all_XsectionsInfo["wse_m"]=np.round(all_XsectionsInfo["wse_ft"] * 0.3048,4)
+
+        all_XsectionsInfo["discharge_cfs"]=all_XsectionsInfo["discharge"]
+        all_XsectionsInfo["discharge_cms"]=np.round(all_XsectionsInfo["discharge_cfs"] *  (0.3048 ** 3),3)
+
+    else:
+        all_XsectionsInfo["wse_m"]=all_XsectionsInfo["wse"]
+        all_XsectionsInfo["wse_ft"]=np.round(all_XsectionsInfo["wse_m"] / 0.3048,4)
+
+        all_XsectionsInfo["discharge_cms"]=all_XsectionsInfo["discharge"]
+        all_XsectionsInfo["discharge_cfs"]=np.round(all_XsectionsInfo["discharge_cms"] /  (0.3048 ** 3),3)
+
+    #reorder the columns and remove extra ones
+    all_XsectionsInfo=all_XsectionsInfo[["fid_xs","featureid","Xsection_name","wse_ft","discharge_cfs","wse_m","discharge_cms"]]
+
+    str_xsection_path = str_rating_path_to_create + '\\' + str_feature_id_fn + '_cross_sections.csv'
+
+    all_XsectionsInfo.to_csv(str_xsection_path, index=False)
+
 
     fig = plt.figure()
     fig.patch.set_facecolor('gainsboro')
@@ -533,6 +556,10 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
     flt_interval = tpl_settings[7]
     int_number_of_steps = tpl_settings[11]
     int_starting_flow = tpl_settings[12]
+
+    # Get the feature_id
+    list_path = str_ras_projectpath.split(os.sep)
+    str_feature_id = str(list_path[-3])
     
 
     hec = win32com.client.Dispatch("RAS60.HECRASController")
@@ -560,7 +587,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
                                                          TabNTyp)
 
     # HEC-RAS ID of output variables: Max channel depth, channel reach length, and water surface elevation
-    int_max_depth_id, int_node_chan_length, int_water_surface_elev = 4, 42, 2
+    int_max_depth_id, int_node_chan_length, int_water_surface_elev, int_q_total = 4, 42, 2, 9
 
     # ----------------------------------
     # Create a list of the simulated flows
@@ -580,8 +607,22 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
 
     # initialize list of water surface elevations
     list_avg_water_surface_elev = []
+
+    all_XsectionsInfo=pd.DataFrame()
+
+    #make a list of unique ids using feature id and cross section name
+    xsections_fids_xs = [str_feature_id+"_"+value.strip() for value in TabRS]
+    xsections_fids = [str_feature_id for value in TabRS]
+    xsections_xs = [value.strip() for value in TabRS]
+
     
     for int_prof in range(int_number_of_steps):
+
+        this_profile_Xsection_Info=pd.DataFrame()
+        this_profile_Xsection_Info["fid_xs"]=np.array(xsections_fids_xs)
+        this_profile_Xsection_Info["featureid"]=np.array(xsections_fids)
+        this_profile_Xsection_Info["Xsection_name"]=np.array(xsections_xs)
+
         
         # get a count of the cross sections in the HEC-RAS model
         int_xs_node_count = 0
@@ -596,6 +637,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
         arr_multiply = np.empty([int_xs_node_count], dtype=float)
         arr_water_surface_elev = np.empty([int_xs_node_count], dtype=float)
         arr_avg_water_surface_elev = np.empty([int_xs_node_count], dtype=float)
+        arr_q_total = np.empty([int_xs_node_count], dtype=float)
 
         int_count_nodes = 0
     
@@ -610,8 +652,17 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
 
                 # reading the distance between cross sections (center of channel)
                 arr_channel_length[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(RivID, RchID, i+1, 0, int_prof+1, int_node_chan_length)
+
+                # reading the Q total of the cross section
+                arr_q_total[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(RivID, RchID, i+1, 0, int_prof+1, int_q_total)
     
                 int_count_nodes += 1
+
+        #add wse and q_total for xsections
+        this_profile_Xsection_Info["wse"]=arr_water_surface_elev
+        this_profile_Xsection_Info["discharge"]=arr_q_total
+
+        all_XsectionsInfo=all_XsectionsInfo.append(this_profile_Xsection_Info)
 
         # Revise the last channel length to zero
         arr_channel_length[len(arr_channel_length) - 1] = 0
@@ -687,42 +738,9 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
     int_max_wse = int(max(list_avg_water_surface_elev) // flt_interval)
     int_min_wse = int((min(list_avg_water_surface_elev) // flt_interval) + 1)
 
-    print()
-
-
     list_step_profiles_wse = []
-
-
-    #print("***********************")
-
-    #print("list_int_step_flows is ")
-    #print(f"...len is {len(list_int_step_flows)}")    
-    #print(list_int_step_flows)
-    #print()
-    #print("list_step_profiles is ")
-    #print(f"...len is {len(list_step_profiles)}")    
-    #print(list_step_profiles)
-    #print()
-    #print(f"list_avg_water_surface_elev is {list_avg_water_surface_elev}")
-    #print(f"average is {np.mean(list_avg_water_surface_elev)}")
-    #print(f"len is {len(list_avg_water_surface_elev)}")  
-    #print(f"Min is {np(list_avg_water_surface_elev)}")      
-
-    #print("***********************")
-
-    #print(f"flt_interval is {flt_interval}")
-    #print(f"int_min_wse is {int_min_wse}")
-    #print(f"int_max_wse is {int_max_wse}")    
-    #print(f"int_max_wse - int_min_wse is {int_max_wse - int_min_wse}")  
-
-    #print(f"depth min is {int_min_depth}")
-    #print(f"depth max is {int_max_depth}")    
-    #print(f"depth max - depth min is {int_max_depth - int_min_depth}")  
-
-
+    
     # Create a list of the profiles at desired increments
-    #for i in range(int_max_wse - int_min_wse + 1):
-    #for i in range(int_max_wse - int_min_wse):
     for i in range(int_max_depth - int_min_depth + 1):
         #print("----------------------------")
         #print(i)
@@ -764,7 +782,8 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
                            str_feature_id, 
                            str_path_to_create, 
                            model_unit, 
-                           list_step_profiles_wse)
+                           list_step_profiles_wse,
+                           all_XsectionsInfo)
     # ------------------------------------------
 
     hec.QuitRas()  # close HEC-RAS
