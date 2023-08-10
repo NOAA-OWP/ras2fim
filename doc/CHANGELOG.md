@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.__.0 - 2023-08-08 - [PR#134](https://github.com/NOAA-OWP/ras2fim/pull/134)
+## v1.20.0 - 2023-08-08 - [PR#134](https://github.com/NOAA-OWP/ras2fim/pull/134)
 
 There are a couple of places in the code (Steps 2?? and Step 5) where it calls the hec ras engine. ie) hec = win32com.client.Dispatch("RAS60.HECRASController").  The problem is that if an exception is thrown, hec-ras does not automatically close its windows and windows process threads. This results in a growing collection of orphaned hec-ras processes tasks, that can be seen in task manager. It has also been seen where it can lock up a machine depending on the number of exceptions and number of proc's available on the machine.
 
@@ -14,6 +14,31 @@ Note:  A pre-existing bug, still in place, is when all models fail in Step 5 and
 - `src`
     - `create_shapes_from_hecras.py`:  Added try, except, finally and ensured the hec-ras ap win calls always called hec.QuitRas(). This triggered a chunk of code indentation.
     - `worker_fim_rasters.py`:  Added try, except, finally and ensured the hec-ras ap win calls always called hec.QuitRas(). This triggered a very chunk of code indentation.
+
+<br/><br/>
+
+## v1.19.0 - 2023-08-09 - [PR#135](https://github.com/NOAA-OWP/ras2fim/pull/135)
+
+By this PR: 
+1. water surface elevation (wse) and flow results are compiled for all cross sections 
+
+2. standardization is implemented for rating curves and cross section results. This involves: 
+    - A copy of rating curve files (both metric and U.S. units) for individual feature ids is saved in folder `06_metric/Rating_Curve`. 
+    - A copy of cross sections files (both metric and U.S. units) for individual feature ids is saved in folder `06_metric/Cross_Section`. 
+    - Also, the two files "all_cross_sections.csv" and "all_rating_curves.csv" stacking all individual files are created in `06_metric`
+
+### Changes  
+- `src/worker_fim_rasters.py`
+1- for each modeled discharge, read wse and flow for all cross sections
+2- report the above results in both metric and U.S. unit in a csv file for each feature id. 
+
+- `src/simplify_fim_rasters.py`
+1- make rating curve files in folder 06_metric
+2- make cross sections files (wse and flow results) in folder 06_metric
+
+- `src/shared_variables.py` 
+Added variables to hold the name of new folders "Rating_Curve" and "Cross_Sections" within `06_metric` folder
+
 
 <br/><br/>
 
