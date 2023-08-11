@@ -649,9 +649,9 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--log', help='Option to save output log to output save folder.', required=False, default=False, action='store_true')
     parser.add_argument('-v', '--verbose', help='Option to print more updates and descriptions.', required=False, default=False, action='store_true')
     parser.add_argument('-j', '--num-workers',help='Number of concurrent processes', required=False, default=1, type=int)
-    parser.add_argument('-so', '--source', help='Input a value for the "source" output column (i.e. "ras2fim", "ras2fim v2.1").', required=False, default="RAS2FIM")
     parser.add_argument('-lt', '--location-type', help='Input a value for the "location_type" output column (i.e. "USGS", "IFC").', required=False, default="")
     parser.add_argument('-ac', '--active', help='Input a value for the "active" column ("True" or "False")', required=False, default="")
+    # parser.add_argument('-so', '--source', help='Input a value for the "source" output column (i.e. "ras2fim", "ras2fim v2.1").', required=False, default="RAS2FIM")
 
     # Assign variables from arguments
     args = vars(parser.parse_args())
@@ -660,9 +660,10 @@ if __name__ == '__main__':
     log = bool(args['log'])
     verbose = bool(args['verbose'])
     num_workers = args['num_workers']
-    source = str(args['source'])
     location_type = str(args['location_type'])
     active = str(args['active'])
+    source = 'ras2fim'
+    # source = str(args['source'])
 
     # Run main function
     compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbose, num_workers, 
