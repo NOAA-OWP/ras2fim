@@ -9,9 +9,6 @@ from concurrent.futures import ProcessPoolExecutor
 
 import shared_variables as sv
 
-
-
-
 # -----------------------------------------------------------------
 # Writes a metadata file into the save directory
 # -----------------------------------------------------------------
@@ -263,10 +260,10 @@ def dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
                 print("Duplicate fid_xs values: " + str(set(list(duplicated_fids))))
 
                 output_log.append("Duplicate fid_xs values: " + str(set(list(duplicated_fids))))
-                output_log.append("Duplicate fid_xs values were removed from geospatial data table.")
+                output_log.append("Duplicate fid_xs values were removed from geopackage.")
                 output_log.append(" ")
 
-            intersection_gdf.drop_duplicates(subset='fid_xs', inplace=True) # TODO: Test this feature
+            intersection_gdf.drop_duplicates(subset='fid_xs', inplace=True) # TODO: Run on full 12090301
             print()
             print("Duplicate fid_xs values were removed from intersection points geopackage.")
 
@@ -299,19 +296,12 @@ def dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
                                          'active': active, #str
                                          'huc8' : rc_geospatial_df['huc8']})  #str
         
-        print('Finished making table.') ## debug
-
         intersection_gdf['location_type'] = location_type
         intersection_gdf['source'] = source
         intersection_gdf['wrds_timestamp'] = wrds_timestamp
         intersection_gdf['active'] = active
         intersection_gdf['flow_units'] = 'cms'
         intersection_gdf['wse_units'] = 'm'
-
-
-
-        print('intersection_gdf')
-        print(intersection_gdf.columns)
 
         # ------------------------------------------------------------------------------------------------
         # Export dir_output_table, dir_geospatial, and log to the intermediate save folder
@@ -495,9 +485,9 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     # # Run without multiprocessor
     # for dir in dirlist:
     #     dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename, 
-    #                     int_output_table_label, int_geospatial_label, int_log_label, 
-    #                     source, location_type, active, verbose, 
-    #                     input_vdatum, midpoints_crs)
+                        # int_output_table_label, int_log_label, 
+                        # source, location_type, active, verbose, 
+                        # nwm_shapes_file, hecras_shapes_file, metric_file)
 
 
     # ------------------------------------------------------------------------------------------------
