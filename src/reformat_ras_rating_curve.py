@@ -277,34 +277,7 @@ def dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
 
         # Join some of the geospatial data to the rc_df data 
         rc_geospatial_df = pd.merge(rc_df, intersection_gdf[['fid_xs', 'huc8']], left_on='fid_xs', right_on='fid_xs', how='inner')
-
-        ## DEBUG PRINTS: =============================================================================================
-
-        # print('rc_geospatial_df: ')
-        # print(rc_geospatial_df)
-
-        # print()
-        # print('length of unique fid_xs rc_df: ') ## 
-        # print(rc_df['fid_xs'].nunique())
-        # print(len(rc_df['fid_xs']))
-
-        # print('length of intersection_gdf: ') ## 
-        # print(intersection_gdf['fid_xs'].nunique())
-        # print(len(intersection_gdf['fid_xs']))
-        # print()
-
-        # print('length of intersection_merged_gdf: ') ## 
-        # print(intersection_merged_gdf['fid_xs'].nunique())
-        # print(len(intersection_merged_gdf['fid_xs']))
-        # print()
-
-        # print('length of rc_geospatial_df: ') ## 
-        # print(rc_geospatial_df['fid_xs'].nunique())
-        # print(len(rc_geospatial_df['fid_xs']))
-        # print()
-
-        # =============================================================================================
-
+        rc_geospatial_df = rc_geospatial_df.astype({'huc8':'object'})
 
         # ------------------------------------------------------------------------------------------------
         # Build output table
@@ -325,6 +298,20 @@ def dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
                                          'wrds_timestamp': wrds_timestamp, #str
                                          'active': active, #str
                                          'huc8' : rc_geospatial_df['huc8']})  #str
+        
+        print('Finished making table.') ## debug
+
+        intersection_gdf['location_type'] = location_type
+        intersection_gdf['source'] = source
+        intersection_gdf['wrds_timestamp'] = wrds_timestamp
+        intersection_gdf['active'] = active
+        intersection_gdf['flow_units'] = 'cms'
+        intersection_gdf['wse_units'] = 'm'
+
+
+
+        print('intersection_gdf')
+        print(intersection_gdf.columns)
 
         # ------------------------------------------------------------------------------------------------
         # Export dir_output_table, dir_geospatial, and log to the intermediate save folder
