@@ -38,7 +38,7 @@ import pyproj
 from datetime import datetime, timezone
 
 import shared_variables as sv
-import shared_validators as svld
+import r2f_validators as val
 import shared_functions as sf
 
 # Global Variables
@@ -70,7 +70,7 @@ def init_and_run_ras2fim(str_huc8_arg,
     # Read RAS models units from both prj file and given EPSG code through -p
     # Functions below check for a series of exceptions 
 
-    crs_number, is_valid, err_msg = svld.is_valid_crs(str_crs_arg) # I don't need the crs_number for now
+    crs_number, is_valid, err_msg = val.is_valid_crs(str_crs_arg) # I don't need the crs_number for now
     if (is_valid == False):
         raise ValueError(err_msg)
 

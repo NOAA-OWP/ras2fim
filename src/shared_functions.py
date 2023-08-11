@@ -13,7 +13,7 @@ import rasterio
 import re
 import sys
 
-import shared_validators as svd
+import r2f_validators as val
 
 from datetime import datetime as dt
 from errors import ModelUnitError
@@ -271,7 +271,7 @@ def get_stnd_r2f_output_folder_name(huc_number, crs):
 
     # -------------------
     # validate and split out the crs number.
-    is_valid_crs, err_msg, crs_number = svd.is_valid_crs(crs)
+    is_valid_crs, err_msg, crs_number = val.is_valid_crs(crs)
 
     if (is_valid_crs == False):
         raise ValueError(err_msg)
@@ -281,3 +281,4 @@ def get_stnd_r2f_output_folder_name(huc_number, crs):
     folder_name = f"{huc_number}_{crs_number}_{std_date}"
 
     return folder_name
+

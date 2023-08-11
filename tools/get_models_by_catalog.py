@@ -15,6 +15,7 @@ from datetime import datetime
 
 sys.path.append('..')
 import ras2fim.src.shared_variables as sv
+import ras2fim.src.r2f_validators as val
 
 '''
 This tool uses a HUC8 number to call over to an AWS S3 models_catalog.csv and will scan
@@ -273,27 +274,19 @@ class Get_Ras_Models_By_Catalog():
         self.huc_number = huc_number
 
         #---------------
-        if (projection is None) or (projection == ""):  # Possible if not coming via the __main__ (also possible)
-            raise ValueError("projection (-p) value not set")
-
-        projection = projection.upper()
-
-        # CRS pattern must be in '4 alpha chars' + ':' + 4 or 5 digits.  ie) EPSG:2277 or ESRI:102739
-        # reg of re.match(r'^[a-zA-Z]{4}:[1-9]{4,6}$', projection) == False): split against the color
-        projection_seg = projection.split(":")
-        if (len(projection_seg) != 2):
-            raise ValueError("crs value appears to be incorrect (four letters, then a colon, then 4 or 5 numbers). e.g. ESRI:102739")
-       
-        if (projection_seg[0] != 'ESRI' and projection_seg[0] != 'EPSG'):
-            raise ValueError("crs value appears to be incorrect. Expected to start with EPSG or ESRI")
-
+        crs_number, is_valid, err_msg = val.is_valid_crs(projection) # I don't need the crs_number for now
+        if (is_valid == False):
+            raise ValueError(err_msg)
+        
         self.projection = projection
 
         #---------------
+        # why is this here? might not come in via __main__
         if (target_owp_ras_models_csv_file == ""):
             raise ValueError("target_owp_ras_models_csv_file can not be empty")
         
         #---------------
+        target_owp_ras_models_path = target_owp_ras_models_path.replace('/', '\\')
         self.target_owp_ras_models_path = target_owp_ras_models_path
 
         if (list_only == False):

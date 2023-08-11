@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import boto3
+import botocore.exceptions
+
 ####################################################################
 '''
 This file is for validation that can be used in more than one py file.
@@ -71,4 +74,45 @@ def is_valid_crs(crs):
         return False, err_msg, ""
     
     return True, "", crs_number
+
+
+####################################################################
+def is_valid_s3_folder(s3_bucket_and_folder):
+    
+    if (not s3_bucket_and_folder.startswith('s3://')):
+        raise ValueError(f"S3 target is not valid. It does not start with s3://")
+
+    if not s3_bucket_and_folder.endswith('/'):
+        s3_bucket_and_folder = s3_bucket_and_folder + '/'
+
+    # we need the "s3 part stripped off for now"
+    adj_s3_path = s3_bucket_and_folder.replace("s3://", "")
+    path_segs = adj_s3_path.split("/")
+    bucket_name = path_segs[0]
+    s3_folder_path = adj_s3_path.replace(path_segs[0], '')
+    s3_folder_path = s3_folder_path.lstrip('/')
+
+    s3 = boto3.client('s3')
+    
+    try:    
+        # If the bucket is incorrect, it will throw an exception that already makes sense
+        s3_objs = s3.list_objects_v2(Bucket = bucket_name,
+                                    Prefix = s3_folder_path,
+                                    MaxKeys = 10,
+                                    Delimiter = '/')
+        #print(s3_objs)
+        if (s3_objs["KeyCount"] == 0):
+            raise ValueError("S3 bucket exists but the folder path does not exist and is required. "\
+                            "Path is case-sensitive")
+
+    except ValueError:
+        # don't trap these types, just re-raise
+        raise 
+
+    except botocore.exceptions.NoCredentialsError:
+        print("** Credentials not available. Try aws configure.")
+    except Exception as ex:
+        print(f"An error has occurred with talking with S3; Details {ex}")
+
+    return bucket_name, s3_folder_path
 
