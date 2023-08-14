@@ -3,7 +3,6 @@ We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 ## v1.21.0 - 2023-08-14 - [PR#137](https://github.com/NOAA-OWP/ras2fim/pull/137)
 
-
 Recently, [PR 135](https://github.com/NOAA-OWP/ras2fim/pull/135) adjusted the ras2fim processing to export HECRAS cross-sections with water surface elevation for the calibration workflow. This PR updates  `compile_ras_rating_curves.py` accommodate the necessary updates in geospatial processing and new column names. It also removes unnecessary raster processing, NWM midpoints calculations, and unused flags to simplify the code. 
 
 ### Changes  
