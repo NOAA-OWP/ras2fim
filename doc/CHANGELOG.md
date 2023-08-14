@@ -1,6 +1,23 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.___ - 2023-08-14 - [PR#137](https://github.com/NOAA-OWP/ras2fim/pull/137)
+
+
+Recently, [PR 135](https://github.com/NOAA-OWP/ras2fim/pull/135) adjusted the ras2fim processing to export HECRAS cross-sections with water surface elevation for the calibration workflow. This PR updates  `compile_ras_rating_curves.py` accommodate the necessary updates in geospatial processing and new column names. It also removes unnecessary raster processing, NWM midpoints calculations, and unused flags to simplify the code. 
+
+### Changes  
+
+- `src/compile_ras_rating_curves.py`:
+  - adds code to calculate the intersection points between the NWM lines and the HECRAS cross-sections
+  - updated metadata function to import folder names and to have updated csv column descriptions
+  - removed unused Python package imports
+  - removed redundant or no longer used functionality (function for compiling rating curves (`fn_make_rating_curve`), functionality to extract units from column headers and to deal with mismatched units, NWM feature midpoints calculation, functions for the extraction of elevation from raster at midpoints, raster mosaicking, and the overwrite (`-ov`) and model unit (`-u`) flags)
+
+
+<br/><br/>
+
+
 ## v1.18.0 - 2023-08-03 - [PR#128](https://github.com/NOAA-OWP/ras2fim/pull/128)
 
 Rating curves were erroring out as a mismatch of number of items in a column with the wse (Water Surface Elevation) data list having one extra element in some scenarios.
