@@ -14,6 +14,7 @@
 # ************************************************************
 import os
 import re
+import shutil
 
 import pandas as pd
 import geopandas as gpd
@@ -27,6 +28,7 @@ import shared_variables as sv
 import tqdm
 import time
 from time import sleep
+import pathlib
 
 import datetime
 import argparse
@@ -155,7 +157,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
     
     # output interval of the flood depth raster - in CRS units
     FLT_DESIRED_RES = flt_resolution
-    print("  ---[r]   Optional: RESOLUTION: " + str(FLT_DESIRED_RES) + " m")
+    print("  ---[r]   Optional: RESOLUTION: " + str(FLT_DESIRED_RES) + "m")
     
     # requested tile size in lambert units (meters)
     STR_OUTPUT_CRS = str_output_crs
@@ -293,7 +295,63 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
         p.close()
         p.join()
 
-    print(" ") 
+    print("+-----------------------------------------------------------------+")
+    print('Making metric rating curve files')
+    all_rating_files = list(pathlib.Path(r2f_hecras_outputs_dir).rglob('*rating_curve.csv'))
+    All_rating_curve_df = pd.DataFrame()
+    for file in all_rating_files:
+        featureid = file.name.split("_rating_curve.csv")[0]
+
+        #read current file (for both metric and U.S. unit fields) and add feature id into it
+        this_file_df = pd.read_csv(file)
+        this_file_df["feature_id"] = featureid
+
+        #build the new path to folder 06_metric
+        list_path_parts = str(file).split(os.sep)
+        file_name = list_path_parts[-1]
+        first_part = '\\'.join(list_path_parts[:-5])
+        last_part = '\\'.join(list_path_parts[-4:-2])
+        str_folder_to_create = first_part + '\\' + sv.R2F_OUTPUT_DIR_METRIC + '\\' + sv.R2F_OUTPUT_DIR_Metric_Rating_Curves + '\\' +last_part
+
+        #first make a folder and then save the csv file inside that
+        os.makedirs(str_folder_to_create, exist_ok=True)
+        this_file_df.to_csv(os.path.join(str_folder_to_create,file_name), index=False)
+
+        #also combine all files into a single file
+        All_rating_curve_df = All_rating_curve_df.append(this_file_df)
+
+    r2f_metric_dir=r2f_hecras_outputs_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,sv.R2F_OUTPUT_DIR_METRIC)
+    All_rating_curve_df.to_csv(os.path.join(r2f_metric_dir,"all_rating_curves.csv"), index = False)
+
+
+    print('Making metric wse for cross sections')
+    all_Xs_files = list(pathlib.Path(r2f_hecras_outputs_dir).rglob('*cross_sections.csv'))
+    All_Xs_df = pd.DataFrame()
+    for file in all_Xs_files:
+
+        #read entire current file (for both metric and U.S. unit fields) note that the files already have feature id
+        this_file_df = pd.read_csv(file)
+
+        #build the new path to folder 06_metric
+        list_path_parts = str(file).split(os.sep)
+        file_name = list_path_parts[-1]
+        first_part = '\\'.join(list_path_parts[:-5])
+        last_part = '\\'.join(list_path_parts[-4:-2])
+        str_folder_to_create = first_part + '\\' + sv.R2F_OUTPUT_DIR_METRIC + '\\' + sv.R2F_OUTPUT_DIR_Metric_Cross_Sections + '\\' +last_part
+
+        #first make a folder and then save the csv file inside that
+        os.makedirs(str_folder_to_create, exist_ok=True)
+        this_file_df.to_csv(os.path.join(str_folder_to_create,file_name), index=False)
+
+        #also combine all files into a single file
+        All_Xs_df = All_Xs_df.append(this_file_df)
+
+
+    r2f_metric_dir=r2f_hecras_outputs_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,sv.R2F_OUTPUT_DIR_METRIC)
+    All_Xs_df.to_csv(os.path.join(r2f_metric_dir,"all_cross_sections.csv"), index = False)
+
+
+
     print('COMPLETE')
     
     flt_end_simplify_fim = time.time()
