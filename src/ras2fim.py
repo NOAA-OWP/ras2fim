@@ -28,6 +28,7 @@ from simplify_fim_rasters import fn_simplify_fim_rasters
 from calculate_all_terrain_stats import fn_calculate_all_terrain_stats
 from run_ras2rem import fn_run_ras2rem
 from ras2catchments import make_catchments
+from reformat_ras_rating_curve import dir_reformat_ras_rc
 
 import argparse
 import os
@@ -412,6 +413,43 @@ def fn_run_ras2fim(str_huc8_arg,
     if int_step <= 9:
         make_catchments(str_huc8_arg, r2f_huc_output_dir, str_nation_arg, model_huc_catalog_path)
     # -------------------------------------------------
+
+    # ------ Step 10: ras2calibration (compiles RAS rating curves for FIM calibration) -----
+        print()
+        print ("+++++++ Processing for code  STEP 10 +++++++" )
+    
+        ## inputs as of aug 14:
+        ## TODO: change directory-level function input to be ras2fim folder + HUC directory 
+
+        # dir = get_stnd_r2f_output_folder_name  #r2f_huc_output_dir = os.path.join(r2f_output_dir, get_stnd_r2f_output_folder_name), get_stnd_r2f_output_folder_name = sf.get_stnd_r2f_output_folder_name(str_huc8_arg, str_crs_arg)
+        # input_folder_path = r2f_output_dir 
+
+        r2f_huc_output_dir ## ras2fim folder + HUC directory 
+
+        intermediate_filename = sv.PLACEHOLDER ## TODO: add the ras2fim intermediate filename to shared variables and also add it here
+        int_output_table_label = "_output_table.csv"
+        int_log_label = '_log.txt'
+        source = 'ras2fim'
+        location_type = ''
+        active = ''
+        verbose = True ## TODO: change to False once I've gotten it working
+        nwm_shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF
+        hecras_shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS
+        metric_file = sv.PLACEHOLDER ## TODO: add this in after merge
+
+        ## TODO: Get rid of this middle step and just insert the variables right in (once I get everything working)
+
+        if int_step <= 10:
+            dir_reformat_ras_rc(r2f_huc_output_dir, intermediate_filename, 
+                            int_output_table_label, int_log_label, 
+                            source, location_type, active, verbose, 
+                            nwm_shapes_file, hecras_shapes_file, metric_file)
+
+        # if int_step <= 10:
+        #     dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename, 
+        #                     int_output_table_label, int_log_label, 
+        #                     source, location_type, active, verbose, 
+        #                     nwm_shapes_file, hecras_shapes_file, metric_file)
 
 
     # ------ Final Step: cleanup files and move final files to release_files folder -----
