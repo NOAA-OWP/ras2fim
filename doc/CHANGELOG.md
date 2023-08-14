@@ -1,6 +1,20 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.21.0 - 2023-08-14 - [PR#137](https://github.com/NOAA-OWP/ras2fim/pull/137)
+
+Recently, [PR 135](https://github.com/NOAA-OWP/ras2fim/pull/135) adjusted the ras2fim processing to export HECRAS cross-sections with water surface elevation for the calibration workflow. This PR updates  `compile_ras_rating_curves.py` accommodate the necessary updates in geospatial processing and new column names. It also removes unnecessary raster processing, NWM midpoints calculations, and unused flags to simplify the code. 
+
+### Changes  
+
+- `src/compile_ras_rating_curves.py`:
+  - adds code to calculate the intersection points between the NWM lines and the HECRAS cross-sections
+  - updated metadata function to import folder names and to have updated csv column descriptions
+  - removed unused Python package imports
+  - removed redundant or no longer used functionality (function for compiling rating curves (`fn_make_rating_curve`), functionality to extract units from column headers and to deal with mismatched units, NWM feature midpoints calculation, functions for the extraction of elevation from raster at midpoints, raster mosaicking, and the overwrite (`-ov`) and model unit (`-u`) flags)
+
+<br/><br/>
+
 ## v1.20.0 - 2023-08-08 - [PR#134](https://github.com/NOAA-OWP/ras2fim/pull/134)
 
 There are a couple of places in the code (Steps 2?? and Step 5) where it calls the hec ras engine. ie) hec = win32com.client.Dispatch("RAS60.HECRASController").  The problem is that if an exception is thrown, hec-ras does not automatically close its windows and windows process threads. This results in a growing collection of orphaned hec-ras processes tasks, that can be seen in task manager. It has also been seen where it can lock up a machine depending on the number of exceptions and number of proc's available on the machine.
