@@ -53,6 +53,7 @@ By this PR:
 - `src/shared_variables.py` 
 Added variables to hold the name of new folders "Rating_Curve" and "Cross_Sections" within `06_metric` folder
 
+
 <br/><br/>
 
 ## v1.18.0 - 2023-08-03 - [PR#128](https://github.com/NOAA-OWP/ras2fim/pull/128)
