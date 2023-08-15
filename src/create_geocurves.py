@@ -65,7 +65,7 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
             extent_poly_diss['version'] = version
             extent_poly_diss['feature_id'] = feature_id
             extent_poly_diss['stage_mm_join'] = stage_mm
-            extent_poly_diss['stage_m'] = stage_mm/1000.0
+#            extent_poly_diss['stage_m'] = stage_mm/1000.0  # TODO
             
             # Produce polygon version of flood extent if directed by user
             if polys_dir != None:
@@ -81,7 +81,7 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
                 feature_id_rating_curve_geo = pd.concat([feature_id_rating_curve_geo, rating_curve_geo_df])
             iteration += 1 
             
-    feature_id_rating_curve_geo = feature_id_rating_curve_geo.drop(columns=['stage_mm_join'])
+#    feature_id_rating_curve_geo = feature_id_rating_curve_geo.drop(columns=['stage_mm_join'])
     feature_id_rating_curve_geo.to_csv(os.path.join(geocurves_dir, feature_id + '_' + huc + '_rating_curve_geo.csv'))
 
 
