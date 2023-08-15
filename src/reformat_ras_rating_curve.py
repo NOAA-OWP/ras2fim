@@ -15,6 +15,8 @@ import shared_variables as sv
 
 def write_metadata_file(output_save_folder, start_time_string, nwm_shapes_file, hecras_shapes_file, metric_file, geopackage_name, csv_name, log_name, verbose):
 
+#def write_metadata_file(output_save_folder, start_time_string, nwm_shapes_file, hecras_shapes_file, metric_file, geopackage_name, csv_name, log_name, verbose):
+
     """
     Overview:
 
@@ -174,6 +176,7 @@ def dir_reformat_ras_rc(dir_input_folder_path, intermediate_filename,
             lines = file.readlines()
     except:
         print(f'Unable to open run_arguments.txt, skipping directory {dir}.')
+        # print(f'Unable to open run_arguments.txt, skipping directory {dir}.')
 
     # Search for and extract the model unit and projection from run_arguments.txt 
     for line in lines:
@@ -620,6 +623,9 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     # Write README metadata file
     write_metadata_file(output_save_folder, start_time_string, nwm_shapes_file, hecras_shapes_file, metric_file, geopackage_name, csv_name, log_name, verbose) 
 
+    # Write README metadata file
+    write_metadata_file(output_save_folder, start_time_string, nwm_shapes_file, hecras_shapes_file, metric_file, geopackage_name, csv_name, log_name, verbose) 
+
     # Record end time, calculate runtime, and print runtime
     end_time = datetime.datetime.now()
     runtime = end_time - start_time
@@ -677,6 +683,7 @@ if __name__ == '__main__':
     parser.add_argument('-j', '--num-workers',help='Number of concurrent processes', required=False, default=1, type=int)
     parser.add_argument('-lt', '--location-type', help='Input a value for the "location_type" output column (i.e. "USGS", "IFC").', required=False, default="")
     parser.add_argument('-ac', '--active', help='Input a value for the "active" column ("True" or "False")', required=False, default="")
+    parser.add_argument('-u', '--out-unit',  help='Option to specify output units. Defaults to "feet".', required=False, default="feet")
 
     # Assign variables from arguments
     args = vars(parser.parse_args())
