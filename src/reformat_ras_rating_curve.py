@@ -197,7 +197,10 @@ def dir_reformat_ras_rc(dir_input_folder_path, intermediate_filename,
     metric_path = os.path.join(model_path, metric_file)
 
     rc_path_list = list(Path(metric_path).rglob('*all_cross_sections.csv'))
-    rc_path = rc_path_list[0]
+    if len(rc_path_list) == 0:
+        print('ERROR: No paths in rating curve path list. ')
+    elif len(rc_path_list) >= 1:
+        rc_path = rc_path_list[0]
 
     if os.path.isfile(rc_path) == False:
         print(f"No rating curve file available for {dir}, skipping this directory.")

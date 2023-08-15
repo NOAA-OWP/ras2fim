@@ -360,6 +360,38 @@ def fn_run_ras2fim(str_huc8_arg,
         fn_calculate_all_terrain_stats(str_hecras_out_dir)
     # -------------------------------------------------
 
+    ## TODO: Emily here
+
+    # ------ Step 10: ras2calibration (compiles RAS rating curves for FIM calibration) ----- ## TODO: Decide on step name
+    print()
+    print ("+++++++ Post-processing for code STEP 10 +++++++" )
+
+    r2f_huc_output_dir ## ras2fim folder + HUC directory 
+
+    intermediate_filename = sv.R2F_OUTPUT_DIR_RAS2CALIBRATION
+    int_output_table_label = "_output_table.csv"
+    int_log_label = '_log.txt'
+    source = 'ras2fim'
+    location_type = ''
+    active = ''
+    verbose = True ## TODO: change to False once I've gotten it working
+    nwm_shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF
+    hecras_shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS
+    metric_file = sv.R2F_OUTPUT_DIR_METRIC
+
+    ## TODO: Get rid of this middle step and just insert the variables right in (once I get everything working)
+
+    dir_reformat_ras_rc(r2f_huc_output_dir, intermediate_filename, 
+                    int_output_table_label, int_log_label, 
+                    source, location_type, active, verbose, 
+                    nwm_shapes_file, hecras_shapes_file, metric_file)
+
+    # if int_step <= 10:
+    #     dir_reformat_ras_rc(r2f_huc_output_dir, intermediate_filename, 
+    #                     int_output_table_label, int_log_label, 
+    #                     source, location_type, active, verbose, 
+    #                     nwm_shapes_file, hecras_shapes_file, metric_file)
+
     # ------ 
     
     # Abort if ras2rem disabled (which is now the default)
@@ -376,6 +408,7 @@ def fn_run_ras2fim(str_huc8_arg,
             time.sleep(2) # 2 seconds
 
         os.mkdir(r2f_final_dir)
+
 
         # TODO: Brad will have some files and folders to move over to the "final" folder
 
@@ -409,55 +442,23 @@ def fn_run_ras2fim(str_huc8_arg,
 
     # ------ Step 9: run ras2catchments -----
     print()
-    print ("+++++++ Processing for code  STEP 9 +++++++" )
+    print ("+++++++ Processing for code STEP 9 +++++++" )
     if int_step <= 9:
         make_catchments(str_huc8_arg, r2f_huc_output_dir, str_nation_arg, model_huc_catalog_path)
     # -------------------------------------------------
 
-    # ------ Step 10: ras2calibration (compiles RAS rating curves for FIM calibration) -----
-        print()
-        print ("+++++++ Processing for code  STEP 10 +++++++" )
-    
-        ## inputs as of aug 14:
-        ## TODO: change directory-level function input to be ras2fim folder + HUC directory 
 
-        # dir = get_stnd_r2f_output_folder_name  #r2f_huc_output_dir = os.path.join(r2f_output_dir, get_stnd_r2f_output_folder_name), get_stnd_r2f_output_folder_name = sf.get_stnd_r2f_output_folder_name(str_huc8_arg, str_crs_arg)
-        # input_folder_path = r2f_output_dir 
-
-        r2f_huc_output_dir ## ras2fim folder + HUC directory 
-
-        intermediate_filename = sv.PLACEHOLDER ## TODO: add the ras2fim intermediate filename to shared variables and also add it here
-        int_output_table_label = "_output_table.csv"
-        int_log_label = '_log.txt'
-        source = 'ras2fim'
-        location_type = ''
-        active = ''
-        verbose = True ## TODO: change to False once I've gotten it working
-        nwm_shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF
-        hecras_shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS
-        metric_file = sv.PLACEHOLDER ## TODO: add this in after merge
-
-        ## TODO: Get rid of this middle step and just insert the variables right in (once I get everything working)
-
-        if int_step <= 10:
-            dir_reformat_ras_rc(r2f_huc_output_dir, intermediate_filename, 
-                            int_output_table_label, int_log_label, 
-                            source, location_type, active, verbose, 
-                            nwm_shapes_file, hecras_shapes_file, metric_file)
-
-        # if int_step <= 10:
-        #     dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename, 
-        #                     int_output_table_label, int_log_label, 
-        #                     source, location_type, active, verbose, 
-        #                     nwm_shapes_file, hecras_shapes_file, metric_file)
-
-
-    # ------ Final Step: cleanup files and move final files to release_files folder -----
+    # ------ Finalizing processing: cleanup files and move final files to release_files folder -----
     print()
     print ("+++++++ Finalizing processing +++++++" )
     r2f_ras2rem_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_METRIC, sv.R2F_OUTPUT_DIR_RAS2REM) 
     r2f_catchments_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_CATCHMENTS)   
     r2f_final_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_FINAL)   
+
+
+
+
+
 
     # Copy some key files from the 06_metric and the 07_ras2catchemnts directories
     if (os.path.exists(r2f_final_dir) == True):
