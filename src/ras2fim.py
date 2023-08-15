@@ -360,37 +360,35 @@ def fn_run_ras2fim(str_huc8_arg,
         fn_calculate_all_terrain_stats(str_hecras_out_dir)
     # -------------------------------------------------
 
-    ## TODO: Emily here
 
-    # ------ Step 10: ras2calibration (compiles RAS rating curves for FIM calibration) ----- ## TODO: Decide on step name
+    # ------ Step 8: ras2calibration (compiles RAS rating curves for FIM calibration) ----- 
     print()
-    print ("+++++++ Post-processing for code STEP 10 +++++++" )
+    print ("+++++++ Post-processing for code STEP 8 +++++++" )
 
-    r2f_huc_output_dir ## ras2fim folder + HUC directory 
+    ras2calibration_output_csv_name = 'ras2calibration_output_table.csv'
+    ras2calibration_output_geopackage_name = 'ras2calibration_output_geopackage.gpkg'
 
-    intermediate_filename = sv.R2F_OUTPUT_DIR_RAS2CALIBRATION
-    int_output_table_label = "_output_table.csv"
-    int_log_label = '_log.txt'
-    source = 'ras2fim'
-    location_type = ''
-    active = ''
-    verbose = True ## TODO: change to False once I've gotten it working
-    nwm_shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF
-    hecras_shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS
-    metric_file = sv.R2F_OUTPUT_DIR_METRIC
+    # if int_step <= 8:
+    dir_reformat_ras_rc(r2f_huc_output_dir, 
+                        sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
+                        ras2calibration_output_csv_name,
+                        ras2calibration_output_geopackage_name, 
+                        'ras2calibration_log.txt', 
+                        'ras2fim', '', '', 
+                        True, 
+                        sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, 
+                        sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS, 
+                        sv.R2F_OUTPUT_DIR_METRIC)
 
-    ## TODO: Get rid of this middle step and just insert the variables right in (once I get everything working)
+    ras2calibration_output_csv_filepath = os.path.join(r2f_huc_output_dir, 
+                                                       sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
+                                                       ras2calibration_output_csv_name)
 
-    dir_reformat_ras_rc(r2f_huc_output_dir, intermediate_filename, 
-                    int_output_table_label, int_log_label, 
-                    source, location_type, active, verbose, 
-                    nwm_shapes_file, hecras_shapes_file, metric_file)
 
-    # if int_step <= 10:
-    #     dir_reformat_ras_rc(r2f_huc_output_dir, intermediate_filename, 
-    #                     int_output_table_label, int_log_label, 
-    #                     source, location_type, active, verbose, 
-    #                     nwm_shapes_file, hecras_shapes_file, metric_file)
+    ras2calibration_output_gpkg_filepath = os.path.join(r2f_huc_output_dir, 
+                                                       sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
+                                                       ras2calibration_output_geopackage_name)
+
 
     # ------ 
     
@@ -409,6 +407,9 @@ def fn_run_ras2fim(str_huc8_arg,
 
         os.mkdir(r2f_final_dir)
 
+        # Copy the ras2calibration files to the final directory here  
+        shutil.copy2(ras2calibration_output_csv_filepath, r2f_final_dir) ## csv
+        shutil.copy2(ras2calibration_output_gpkg_filepath, r2f_final_dir) ## geopackage
 
         # TODO: Brad will have some files and folders to move over to the "final" folder
 
