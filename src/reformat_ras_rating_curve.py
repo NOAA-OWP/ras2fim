@@ -5,6 +5,7 @@ import argparse, datetime
 import pandas as pd
 import geopandas as gpd
 from pathlib import Path
+from shapely.geometry import Point
 from concurrent.futures import ProcessPoolExecutor
 
 import shared_variables as sv
@@ -289,9 +290,23 @@ def dir_reformat_ras_rc(dir_input_folder_path, intermediate_filename,
         intersection_gdf['wse_units'] = 'm'
 
         # ------------------------------------------------------------------------------------------------
-        # Convert multipoint features to point features
+        # Convert multipoint features to point features ## TODO: Test on Ryan's problem basin(s)
 
-        ## TODO: This part
+        # Function to convert MultiPoint to Point
+        def convert_multipoint_to_point(geom):
+            if geom.geom_type == 'MultiPoint':
+                if verbose == True:
+                    print('Multipoint features found. Converting them to Point.')
+                output_log.append('Multipoint features found. Converting them to Point.')
+                return Point(geom.centroid)
+            else:
+                return geom
+
+        # If intersection_gdf is a multipoint feature, convert it to a point feature
+        try:
+            intersection_gdf['geometry'] = intersection_gdf['geometry'].apply(convert_multipoint_to_point)
+        except:
+            print('Unable to apply function convert_multipoint_to_point to intersection geodataframe.')
 
         # ------------------------------------------------------------------------------------------------
         # Export dir_output_table, dir_geospatial, and log to the intermediate save folder

@@ -361,33 +361,29 @@ def fn_run_ras2fim(str_huc8_arg,
     # -------------------------------------------------
 
 
-    # ------ Step 8: ras2calibration (compiles RAS rating curves for FIM calibration) ----- 
+    # ------ Step 8: Post-processing ----- 
     print()
     print ("+++++++ Post-processing for code STEP 8 +++++++" )
 
-    ras2calibration_output_csv_name = 'ras2calibration_output_table.csv'
-    ras2calibration_output_geopackage_name = 'ras2calibration_output_geopackage.gpkg'
+    if int_step <= 8:
+        dir_reformat_ras_rc(r2f_huc_output_dir, 
+                            sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
+                            sv.R2F_OUTPUT_FILE_RAS2CAL_CSV,
+                            sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG, 
+                            sv.R2F_OUTPUT_FILE_RAS2CAL_LOG, 
+                            'ras2fim', '', '', True, 
+                            sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, 
+                            sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS, 
+                            sv.R2F_OUTPUT_DIR_METRIC)
 
-    # if int_step <= 8:
-    dir_reformat_ras_rc(r2f_huc_output_dir, 
-                        sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
-                        ras2calibration_output_csv_name,
-                        ras2calibration_output_geopackage_name, 
-                        'ras2calibration_log.txt', 
-                        'ras2fim', '', '', 
-                        True, 
-                        sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, 
-                        sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS, 
-                        sv.R2F_OUTPUT_DIR_METRIC)
+    # # Assemble filepaths for transferring to `final` later
+    # ras2calibration_output_csv_filepath = os.path.join(r2f_huc_output_dir, 
+    #                                                    sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
+    #                                                    sv.R2F_OUTPUT_FILE_RAS2CAL_CSV)
 
-    ras2calibration_output_csv_filepath = os.path.join(r2f_huc_output_dir, 
-                                                       sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
-                                                       ras2calibration_output_csv_name)
-
-
-    ras2calibration_output_gpkg_filepath = os.path.join(r2f_huc_output_dir, 
-                                                       sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
-                                                       ras2calibration_output_geopackage_name)
+    # ras2calibration_output_gpkg_filepath = os.path.join(r2f_huc_output_dir, 
+    #                                                    sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
+    #                                                    sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG)
 
 
     # ------ 
@@ -407,9 +403,13 @@ def fn_run_ras2fim(str_huc8_arg,
 
         os.mkdir(r2f_final_dir)
 
-        # Copy the ras2calibration files to the final directory here  
-        shutil.copy2(ras2calibration_output_csv_filepath, r2f_final_dir) ## csv
-        shutil.copy2(ras2calibration_output_gpkg_filepath, r2f_final_dir) ## geopackage
+        # Copy the 07_ras2calibration files to the final directory  
+        shutil.copy2( os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
+                                   sv.R2F_OUTPUT_FILE_RAS2CAL_CSV), 
+                                   r2f_final_dir)
+        shutil.copy2(os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
+                                  sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG), 
+                                  r2f_final_dir)
 
         # TODO: Brad will have some files and folders to move over to the "final" folder
 
@@ -474,6 +474,10 @@ def fn_run_ras2fim(str_huc8_arg,
     shutil.copy2(os.path.join(r2f_catchments_dir, "nwm_catchments_subset.gpkg"), r2f_final_dir)
     shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features.tif"), r2f_final_dir)
     shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features_meta.gpkg"), r2f_final_dir)
+
+    # Copy the 07_ras2calibration files to the final directory  
+    shutil.copy2(ras2calibration_output_csv_filepath, r2f_final_dir) ## csv
+    shutil.copy2(ras2calibration_output_gpkg_filepath, r2f_final_dir) ## geopackage
 
     # TODO: use this models catalog to add columns for success/fail processing for each model and why it failed
     # if applicable.
