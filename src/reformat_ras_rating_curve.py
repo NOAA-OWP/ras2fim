@@ -5,7 +5,7 @@ import argparse, datetime
 import pandas as pd
 import geopandas as gpd
 from pathlib import Path
-from shapely.geometry import Point
+# from shapely.geometry import Point ## For multipoint workaround
 from concurrent.futures import ProcessPoolExecutor
 
 import shared_variables as sv
@@ -14,9 +14,10 @@ import shared_variables as sv
 # Writes a metadata file into the save directory
 # -----------------------------------------------------------------
 
-def write_metadata_file(output_save_folder, start_time_string, nwm_shapes_file, hecras_shapes_file, metric_file, geopackage_name, csv_name, log_name, verbose):
-
-#def write_metadata_file(output_save_folder, start_time_string, nwm_shapes_file, hecras_shapes_file, metric_file, geopackage_name, csv_name, log_name, verbose):
+def write_metadata_file(output_save_folder, start_time_string, 
+                        nwm_shapes_file, hecras_shapes_file, 
+                        metric_file, geopackage_name, csv_name, 
+                        log_name, verbose):
 
     """
     Overview:
@@ -103,7 +104,7 @@ def dir_reformat_ras_rc(dir_input_folder_path, intermediate_filename,
           output folder.
 
     
-    Parameters (will error if do not exist):
+    Parameters (required):
     
     - dir_input_folder_path: (str) filepath for folder containing input ras2fim models for the HUC (optional arguments set in __main__ or defaults to value from __)
     - intermediate_filename: (str) name of file to store intermediates (set in compile_ras_rating_curves, defaults to "intermediate_outputs")
@@ -249,13 +250,17 @@ def dir_reformat_ras_rc(dir_input_folder_path, intermediate_filename,
         #         output_log.append("Duplicate fid_xs values were removed from geopackage.")
         #         output_log.append(" ")
 
-        #     intersection_gdf.drop_duplicates(subset='fid_xs', inplace=True) # TODO: Run on full 12090301
+        #     intersection_gdf.drop_duplicates(subset='fid_xs', inplace=True) 
         #     print()
         #     print("Duplicate fid_xs values were removed from intersection points geopackage.")
 
         # ------------------------------------------------------------------------------------------------
         # Read compiled rating curve and append huc8 from intersections
-        rc_df = pd.read_csv(rc_path)
+        try:
+            rc_df = pd.read_csv(rc_path)
+        except:
+            print(f'Unable to read rating curve at path {rc_path}')
+            output_log.append(f'Unable to read rating curve at path {rc_path}')
 
         # Join some of the geospatial data to the rc_df data 
         rc_geospatial_df = pd.merge(rc_df, intersection_gdf[['fid_xs', 'huc8']], left_on='fid_xs', right_on='fid_xs', how='inner')
@@ -273,7 +278,7 @@ def dir_reformat_ras_rc(dir_input_folder_path, intermediate_filename,
                                          'xsection_name': rc_geospatial_df['Xsection_name'], 
                                          'flow' : rc_geospatial_df['discharge_cms'],
                                          'wse' : rc_geospatial_df['wse_m'],
-                                         'flow_units': 'cms', #str
+                                         'flow_units': 'cms', #str 
                                          'wse_units': 'm', #str
                                          'location_type': location_type, #str 
                                          'source': source, #str
@@ -290,35 +295,35 @@ def dir_reformat_ras_rc(dir_input_folder_path, intermediate_filename,
         intersection_gdf['wse_units'] = 'm'
 
         # ------------------------------------------------------------------------------------------------
-        # Convert multipoint features to point features ## TODO: Test on Ryan's problem basin(s)
+        # Convert multipoint features to point features # TODO: Use in ras2release compilation script
 
-        # Function to convert MultiPoint to Point
-        def convert_multipoint_to_point(geom):
-            if geom.geom_type == 'MultiPoint':
-                if verbose == True:
-                    print('Multipoint features found. Converting them to Point.')
-                output_log.append('Multipoint features found. Converting them to Point.')
-                return Point(geom.centroid)
-            else:
-                return geom
+        # # Function to convert MultiPoint to Point
+        # def convert_multipoint_to_point(geom):
+        #     if geom.geom_type == 'MultiPoint':
+        #         if verbose == True:
+        #             print('Multipoint features found. Converting them to Point.')
+        #         output_log.append('Multipoint features found. Converting them to Point.')
+        #         return Point(geom.centroid)
+        #     else:
+        #         return geom
 
-        # If intersection_gdf is a multipoint feature, convert it to a point feature
-        try:
-            intersection_gdf['geometry'] = intersection_gdf['geometry'].apply(convert_multipoint_to_point)
-        except:
-            print('Unable to apply function convert_multipoint_to_point to intersection geodataframe.')
+        # # If intersection_gdf is a multipoint feature, convert it to a point feature
+        # try:
+        #     intersection_gdf['geometry'] = intersection_gdf['geometry'].apply(convert_multipoint_to_point)
+        # except:
+        #     print('Unable to apply function convert_multipoint_to_point to intersection geodataframe.')
 
         # ------------------------------------------------------------------------------------------------
         # Export dir_output_table, dir_geospatial, and log to the intermediate save folder
 
-        # Save intersection points as a geopackage for directory
+        # Write filepath for geopackage
         dir_output_geopackage_filepath = os.path.join(intermediate_filepath, int_output_geopackage_label)
 
         # Reproject intersection_gdf to output SRC
         shared_variables_crs = sv.DEFAULT_RASTER_OUTPUT_CRS
         intersection_prj_gdf = intersection_gdf.to_crs(shared_variables_crs)  
 
-        # Save geodatabase for directory 
+        # Save directory geopackage 
         try:
             intersection_prj_gdf.to_file(dir_output_geopackage_filepath, driver="GPKG")
             if verbose == True:
@@ -343,11 +348,23 @@ def dir_reformat_ras_rc(dir_input_folder_path, intermediate_filename,
             print()
             print(f'Saved directory outputs for {dir_input_folder_path}.')
 
+        # Get timestamp for metadata
+        start_time_string = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+
+        # Write README metadata file for the intermediate file
+        write_metadata_file(intermediate_filepath, start_time_string, nwm_shapes_file, 
+                            hecras_shapes_file, metric_file, int_output_geopackage_label, 
+                            int_output_table_label, int_log_label, verbose) 
+        
+        if verbose == True:
+            print(f'Saved metadata to {intermediate_filepath}.')
+
 # -----------------------------------------------------------------
 # Compiles the rating curve and points from each directory 
 # -----------------------------------------------------------------
-def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbose, num_workers, 
-                               source, location_type, active):
+def compile_ras_rating_curves(input_folder_path, output_save_folder, 
+                              log, verbose, num_workers, source, 
+                              location_type, active):
 
     """
     Overview:
@@ -357,31 +374,16 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     rating curve CSV and geospatial outputs geopackage. Runs from __main__.
 
 
-    Parameters (will error if do not exist):
+    Parameters (required):
 
-    - input_folder_path: str
-        filepath for folder containing input ras2fim models (optional arguments set in __main__ or defaults to value from ## )
-    
-    - output_save_folder: str
-        filepath for folder to put output files (optional arguments set in __main__ or defaults to value from ## )        
-    
-    - verbose: bool
-        option to run verbose code with a lot of print statements (argument set in __main__)
-
-    - log: bool
-        option to save output logs as a textfile (optional argument set in __main__)
-
-    - num_workers: int
-        number of workers to use during parallel processing (optional argument set in __main__)
-    
-    - source: str
-        optional input value for the "source" output column (i.e. "", "ras2fim", "ras2fim v2.1") 
-    
-    - location_type: str
-        optional input value for the "location_type" output column (i.e. "", "USGS", "IFC")
-    
-    - active: str
-        optional input value for the "active" column (i.e. "", "True", "False")
+    - input_folder_path: (str) filepath for folder containing input ras2fim models 
+    - output_save_folder: (str) filepath for folder to put output files        
+    - verbose: (bool) option to run verbose code with a lot of print statements
+    - log: (bool) option to save output logs as a textfile
+    - num_workers: (int) number of workers to use during parallel processing  
+    - source: (str) optional input value for the "source" output column (i.e. "", "ras2fim", "ras2fim v2.1") 
+    - location_type: (str) optional input value for the "location_type" output column (i.e. "", "USGS", "IFC")
+    - active: (str) optional input value for the "active" column (i.e. "", "True", "False")
     
     """
 
@@ -470,7 +472,7 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     metric_file = sv.R2F_OUTPUT_DIR_METRIC # "06_metric"
 
     # ------------------------------------------------------------------------------------------------
-    # Create a process pool and run dir_reformat_ras_rc() for each directory in the directory list
+    # Create a process pool and run dir_reformat_ras_rc() for each directory
 
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         if verbose == True:
@@ -513,20 +515,23 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     for dir in dirlist:
         intermediate_filepath = os.path.join(input_folder_path, dir, intermediate_filename)
 
-        # Get output table
+        # Get output table and append to list if path exists
         filename = int_output_table_label
         path = os.path.join(intermediate_filepath, filename)
-        int_output_table_files.append(path)
+        if os.path.exists(path):
+            int_output_table_files.append(path)
 
-        # Get geopackage filename
+        # Get geopackage filename and append to list if path exists
         filename = int_geopackage_label
         path = os.path.join(intermediate_filepath, filename)
-        int_geopackage_files.append(path)  
+        if os.path.exists(path):
+            int_geopackage_files.append(path)  
 
-        # Get log filename
+        # Get log filename and append to list if path exists
         filename = int_log_label
         path = os.path.join(intermediate_filepath, filename)
-        int_logs.append(path)
+        if os.path.exists(path):
+            int_logs.append(path)
 
     # Read and compile the intermediate rating curve tables
     full_output_table = pd.DataFrame()
@@ -548,7 +553,7 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
         compiled_geopackage = compiled_geopackage.append(data, ignore_index=True)
 
     # Set the unified projection for the compiled GeoDataFrame
-    compiled_geopackage.crs = compiled_geopackage_CRS ## TODO: make sure CRS is handled properly throughout
+    compiled_geopackage.crs = compiled_geopackage_CRS
 
     # Read and compile all logs
     for file_path in int_logs:
@@ -574,7 +579,7 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
     full_output_table.to_csv(csv_path, index=False)
 
     # ------------------------------------------------------------------------------------------------
-    # Export metadata, print filepaths and save logs (if the verbose and log arguments are selected)
+    # Export metadata, print filepaths and save logs
 
     # Report output pathing
     output_log.append(f"Geopackage initial save location: {geopackage_path}")
@@ -597,10 +602,9 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
         print("No output log saved.")
 
     # Write README metadata file
-    write_metadata_file(output_save_folder, start_time_string, nwm_shapes_file, hecras_shapes_file, metric_file, geopackage_name, csv_name, log_name, verbose) 
-
-    # Write README metadata file
-    write_metadata_file(output_save_folder, start_time_string, nwm_shapes_file, hecras_shapes_file, metric_file, geopackage_name, csv_name, log_name, verbose) 
+    write_metadata_file(output_save_folder, start_time_string, nwm_shapes_file, 
+                        hecras_shapes_file, metric_file, geopackage_name, csv_name, 
+                        log_name, verbose) 
 
     # Record end time, calculate runtime, and print runtime
     end_time = datetime.datetime.now()
@@ -613,7 +617,7 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
 if __name__ == '__main__':
 
     """
-    Sample usage (no linebreak so they can be copied and pasted):
+    Sample usage:
 
     # Recommended parameters:
     python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves' -v -l
@@ -623,12 +627,6 @@ if __name__ == '__main__':
 
     # Maximalist run (all possible arguments):
     python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves' -v -l -j 6 -k -so "ras2fim" -lt "USGS" -ac "True"
-
-    # Only input folders:
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim/subset' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves'
-
-    # Overwrite existing intermediate files:
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves' -v
 
     # Run with 6 workers:
     python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py -i 'C:/ras2fim_data/output_ras2fim' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves' -v -l -j 6
