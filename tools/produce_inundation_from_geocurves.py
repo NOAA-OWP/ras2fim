@@ -3,6 +3,7 @@ import argparse
 import errno
 import pandas as pd
 import geopandas as gpd
+from timeit import default_timer as timer
 
 
 def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundation_poly, overwrite):
@@ -66,8 +67,6 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         iteration += 1 
         
     # Concatenate entire list of desired polygons into one geodataframe
-
-    
     iteration = 0
     for feature_id in feature_id_polygon_path_dict:
         if iteration == 0:
@@ -96,4 +95,8 @@ if __name__ == '__main__':
         
     args = vars(parser.parse_args())
     
+    start = timer()
+    
     produce_inundation_from_geocurves(**args)
+    
+    print(f'Completed in {round((timer() - start)/60, 2)} minutes.')
