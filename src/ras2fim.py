@@ -377,15 +377,15 @@ def fn_run_ras2fim(str_huc8_arg,
 
         os.mkdir(r2f_final_dir)
 
-        # Produce geocurves
-        manage_geo_rating_curves_production(
-                ras2fim_output_dir = str_hecras_out_dir, 
-                version = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'doc', 'CHANGELOG.md'),
-                job_number = os.cpu_count() - 1,
-                output_folder = r2f_final_dir,
-                overwrite = False,
-                produce_polys = True
-                )
+        # Produce geocurves  #TODO put into different place after steps 8 and 9 are removed?
+#        manage_geo_rating_curves_production(
+#                ras2fim_output_dir = str_hecras_out_dir, 
+#                version = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'doc', 'CHANGELOG.md'),
+#                job_number = os.cpu_count() - 1,
+#                output_folder = r2f_final_dir,
+#                overwrite = False,
+#                produce_polys = True
+#                )
         
         # TODO: use this models catalog to add columns for success/fail processing for each model and why it failed
         # if applicable.
