@@ -311,7 +311,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
         file_name = list_path_parts[-1]
         first_part = '\\'.join(list_path_parts[:-5])
         last_part = '\\'.join(list_path_parts[-4:-2])
-        str_folder_to_create = first_part + '\\' + sv.R2F_OUTPUT_DIR_METRIC + '\\' + sv.R2F_OUTPUT_DIR_Metric_Rating_Curves + '\\' +last_part
+        str_folder_to_create = first_part + '\\' + sv.R2F_OUTPUT_DIR_METRIC + '\\' + sv.R2F_OUTPUT_DIR_METRIC_RATING_CURVES + '\\' +last_part
 
         #first make a folder and then save the csv file inside that
         os.makedirs(str_folder_to_create, exist_ok=True)
@@ -337,7 +337,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
         file_name = list_path_parts[-1]
         first_part = '\\'.join(list_path_parts[:-5])
         last_part = '\\'.join(list_path_parts[-4:-2])
-        str_folder_to_create = first_part + '\\' + sv.R2F_OUTPUT_DIR_METRIC + '\\' + sv.R2F_OUTPUT_DIR_Metric_Cross_Sections + '\\' +last_part
+        str_folder_to_create = first_part + '\\' + sv.R2F_OUTPUT_DIR_METRIC + '\\' + sv.R2F_OUTPUT_DIR_METRIC_CROSS_SECTIONS + '\\' +last_part
 
         #first make a folder and then save the csv file inside that
         os.makedirs(str_folder_to_create, exist_ok=True)
