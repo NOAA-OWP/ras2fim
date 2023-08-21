@@ -72,7 +72,7 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
             extent_poly_diss['feature_id'] = feature_id
             extent_poly_diss['stage_mm_join'] = stage_mm
             if polys_dir != None:
-                inundation_polygon_path = os.path.join(polys_dir, feature_id + '_' + huc + '_' + str(int(stage_mm)) + '_mm '+ '.gpkg')
+                inundation_polygon_path = os.path.join(polys_dir, feature_id + '_' + huc + '_' + str(int(stage_mm)) + '_mm'+ '.gpkg')
                 extent_poly_diss['filename'] = os.path.split(inundation_polygon_path)[1]
                 
             if iteration < 1:  # Initialize the rolling huc_rating_curve_geo
