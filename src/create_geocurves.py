@@ -12,7 +12,13 @@ from concurrent.futures import ProcessPoolExecutor, as_completed, wait
 from shapely.geometry.polygon import Polygon
 from shapely.geometry.multipolygon import MultiPolygon
 from shapely.geometry import MultiPolygon, Polygon, LineString, Point
+import warnings
+
 from shared_functions import get_changelog_version
+from shared_variables import (R2F_OUTPUT_DIR_METRIC, R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS, 
+                              R2F_OUTPUT_DIR_FINAL, R2F_OUTPUT_DIR_Metric_Rating_Curves)
+
+warnings.simplefilter(action='ignore',category=FutureWarning)
 
 
 def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, geocurves_dir, polys_dir):
@@ -81,12 +87,9 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
                 extent_poly_diss = extent_poly_diss.drop(columns=['stage_mm_join'])
                 extent_poly_diss['version'] = version
                 extent_poly_diss.to_file(inundation_polygon_path, driver='GPKG')
-                # Add path to polygon if produce_polys == True
-            
             
             iteration += 1 
             
-#    feature_id_rating_curve_geo = feature_id_rating_curve_geo.drop(columns=['stage_mm_join'])
     feature_id_rating_curve_geo.to_csv(os.path.join(geocurves_dir, feature_id + '_' + huc + '_rating_curve_geo.csv'))
 
 
@@ -104,7 +107,7 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
     overall_start_time = datetime.now()
     dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
     print (f"Started: {dt_string}")
-        
+            
     # Check job numbers and raise error if necessary
     total_cpus_available = os.cpu_count() - 1
     if job_number > total_cpus_available:
@@ -139,53 +142,48 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
     else:
         polys_dir = None
             
-    # Define path to step 5 outputs
-    hec_ras_output_path = os.path.join(ras2fim_output_dir, '05_hecras_output')  
-    if not os.path.exists(hec_ras_output_path):
-        print("No hec_ras output found for step 5. Expected folder path: " + hec_ras_output_path)
-        quit()
-    
     # Check version arg input.
     if os.path.isfile(version):
         version = get_changelog_version(version)
         print("Version found: " + version)
         
-    # Set up multiprocessing
-    dictionary = {}
-    local_dir_list = os.listdir(hec_ras_output_path)
+    # Define paths outputs
+    simplified_depth_grid_parent_dir = os.path.join(ras2fim_output_dir, R2F_OUTPUT_DIR_METRIC, R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS)  
+    rating_curve_parent_dir = os.path.join(ras2fim_output_dir, R2F_OUTPUT_DIR_METRIC, R2F_OUTPUT_DIR_Metric_Rating_Curves)  
     
     # Create dictionary of files to process
+    proc_dictionary = {}
+    local_dir_list = os.listdir(simplified_depth_grid_parent_dir)
     for huc in local_dir_list:
-        full_huc_path = os.path.join(hec_ras_output_path, huc)
+        full_huc_path = os.path.join(simplified_depth_grid_parent_dir, huc)
         if not os.path.isdir(full_huc_path):
             continue
         feature_id_list = os.listdir(full_huc_path)
         for feature_id in feature_id_list:
-            full_feature_id_path = os.path.join(full_huc_path, feature_id)
-            depth_grid_dir = os.path.join(ras2fim_output_dir, '06_metric', 'Depth_Grid', huc, feature_id)
-            rating_curve_path = os.path.join(full_feature_id_path, 'Rating_Curve', feature_id + '_rating_curve.csv')
+            feature_id_depth_grid_dir = os.path.join(simplified_depth_grid_parent_dir, huc, feature_id)
+            feature_id_rating_curve_path = os.path.join(rating_curve_parent_dir, huc, feature_id, feature_id + '_rating_curve.csv')
             try:
-                depth_grid_list = os.listdir(depth_grid_dir)
+                depth_grid_list = os.listdir(feature_id_depth_grid_dir)
             except FileNotFoundError:
                 continue
             full_path_depth_grid_list = []
             for depth_grid in depth_grid_list:
-                full_path_depth_grid_list.append(os.path.join(depth_grid_dir, depth_grid))
-            dictionary.update({feature_id: {'huc': huc, 'rating_curve': rating_curve_path, 'depth_grids': full_path_depth_grid_list}})
+                full_path_depth_grid_list.append(os.path.join(feature_id_depth_grid_dir, depth_grid))
+            proc_dictionary.update({feature_id: {'huc': huc, 'rating_curve': feature_id_rating_curve_path, 'depth_grids': full_path_depth_grid_list}})
         
     # Process either serially or in parallel depending on job number provided
     if job_number == 1:
-        print("Serially processing " + str(len(dictionary)) + " feature_ids...")
-        for feature_id in dictionary:
-            produce_geocurves(feature_id, dictionary[feature_id]['huc'], dictionary[feature_id]['rating_curve'], 
-                                      dictionary[feature_id]['depth_grids'], version, geocurves_dir, polys_dir)
+        print("Serially processing " + str(len(proc_dictionary)) + " feature_ids...")
+        for feature_id in proc_dictionary:
+            produce_geocurves(feature_id, proc_dictionary[feature_id]['huc'], proc_dictionary[feature_id]['rating_curve'], 
+                                      proc_dictionary[feature_id]['depth_grids'], version, geocurves_dir, polys_dir)
     
     else:
-        print("Multiprocessing " + str(len(dictionary)) + " feature_ids using " + str(job_number) + " jobs...")
+        print("Multiprocessing " + str(len(proc_dictionary)) + " feature_ids using " + str(job_number) + " jobs...")
         with ProcessPoolExecutor(max_workers=job_number) as executor:
-            for feature_id in dictionary:
-                executor.submit(produce_geocurves, feature_id, dictionary[feature_id]['huc'], 
-                                dictionary[feature_id]['rating_curve'], dictionary[feature_id]['depth_grids'], 
+            for feature_id in proc_dictionary:
+                executor.submit(produce_geocurves, feature_id, proc_dictionary[feature_id]['huc'], 
+                                proc_dictionary[feature_id]['rating_curve'], proc_dictionary[feature_id]['depth_grids'], 
                                 version, geocurves_dir, polys_dir)
             
     # Calculate duration
@@ -206,7 +204,7 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--version', help='RAS2FIM Version number, or supply path to repo Changelog',
                         required=False, default='Unspecified')
     parser.add_argument('-j','--job_number',help='Number of processes to use', required=False, default=1, type=int)
-    parser.add_argument('-t', '--output_folder', help = 'Target: Where the output folder will be', required = False)
+    parser.add_argument('-t', '--output_folder', help = 'Target: Where the output folder will be', required = True)
     parser.add_argument('-o','--overwrite', help='Overwrite files', required=False, action="store_true")
     parser.add_argument('-p','--produce_polys', help='Produce polygons in addition to geocurves.', required=False, default=False, action="store_true")
         
