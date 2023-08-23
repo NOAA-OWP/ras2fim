@@ -49,7 +49,7 @@ def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir,model_unit):
         this_file_df['last_updated'] = ''
         this_file_df['submitter'] = ''
         this_file_df['obs_source'] = ''
-        rating_curve_df = rating_curve_df.append(this_file_df)
+        rating_curve_df = pd.concat([rating_curve_df, this_file_df])
 
     #reorder columns
     rating_curve_df = rating_curve_df[['feature_id', 'stage_m', 'discharge_cms',

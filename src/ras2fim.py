@@ -175,6 +175,13 @@ def init_and_run_ras2fim(str_huc8_arg,
     # copy the config env file to the final directory
     shutil.copy2(config_file, r2f_final_dir)
 
+    # -------------------
+    # validate dependencies of optional env flags
+    # TODO: Create list for module dependencies for any given section (instead of the "if" tests)
+    # NOTE: Order is critical here.
+    if (os.getenv('RUN_RAS2CATCHMENTS') == 'True') and (os.getenv('RUN_RAS2REM') != 'True'):
+        raise ValueError("For the catchments module to run, the env.RUN_RAS2REM must be True.")
+
     fn_run_ras2fim(str_huc8_arg,
                    str_ras_path_arg,
                    r2f_huc_output_dir,
@@ -368,23 +375,20 @@ def fn_run_ras2fim(str_huc8_arg,
         
     # -------------------------------------------
     flt_resolution_depth_grid = int(output_resolution)
-    if (os.getenv('RUN_SIMPLIFY_RASTER') == 'True'):            
 
-        print()
-        print ("+++++++ Processing: simplifying fim rasters +++++++" )
+    print()
+    print ("+++++++ Processing:  STEP 5/6 (simplifying fim rasters and create metrics)  +++++++" )
 
-        fn_simplify_fim_rasters(str_hecras_out_dir,
-                                flt_resolution_depth_grid,
-                                sv.DEFAULT_RASTER_OUTPUT_CRS,
-                                model_unit)
+    fn_simplify_fim_rasters(str_hecras_out_dir,
+                            flt_resolution_depth_grid,
+                            sv.DEFAULT_RASTER_OUTPUT_CRS,
+                            model_unit)
         
     # ----------------------------------------
-    if (os.getenv('RUN_CALC_TERRAIN_STATS') == 'True'):            
+    print()
+    print ("+++++++ Processing: STEP 5.c (calculate terrain statistics +++++++" )
 
-        print()
-        print ("+++++++ Processing: calculate terrain statistics +++++++" )
-
-        fn_calculate_all_terrain_stats(str_hecras_out_dir)
+    fn_calculate_all_terrain_stats(str_hecras_out_dir)
 
     # -------------------------------------------------
     if (os.getenv('RUN_RAS2REM') == 'True'):

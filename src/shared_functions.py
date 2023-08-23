@@ -130,26 +130,26 @@ def model_unit_from_ras_prj(str_ras_path_arg):
     elif os.path.isfile(str_ras_path_arg):
         ras_prj_files.append(str_ras_path_arg)
 
-    Units_Found = []
+    units_found = []
     for ras_prj_file in ras_prj_files:
         with open(ras_prj_file) as f:
             file_contents = f.read()
 
         if re.search("SI Unit", file_contents, re.I):
-            Units_Found.append("meter")
+            units_found.append("meter")
         elif re.search("English Unit", file_contents,re.I):
-            Units_Found.append("feet")
+            units_found.append("feet")
 
 
     try:
-        if len(set(Units_Found))==0: #if no unit specified in any of the RAS models
+        if len(set(units_found))==0: #if no unit specified in any of the RAS models
             raise ModelUnitError("At least one of the HEC-RAS models must have a unit specified in prj file."
                                  " Check your RAS models prj files and try again. ")
 
-        elif len(set(Units_Found))==1:
-            unit=Units_Found[0]
+        elif len(set(units_found))==1:
+            unit=units_found[0]
 
-        elif len(set(Units_Found))==2 :
+        elif len(set(units_found))==2 :
             raise ModelUnitError("Ras2fim only accepts HEC-RAS models with similar units (either U.S. Customary or "
                                  "International/Metric). The provided dataset uses a mix of these units. "
                                  "Verify your HEC-RAS models units and try again.")

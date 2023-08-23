@@ -4,19 +4,19 @@
 # supplied HEC-RAS files
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.10.24
+# Last revised - 2023.08.22
 #
 # ras2fim - Second pre-processing script
 # Uses the 'ras2fim' conda environment
+
+import os
+import argparse
 
 import geopandas as gpd
 import pandas as pd
 from geopandas.tools import sjoin
 
 from functools import partial
-
-import argparse
-
 from shapely import wkt
 from shapely.geometry import Point, mapping, MultiLineString
 
@@ -75,12 +75,8 @@ def fn_create_gdf_of_points(tpl_request):
     list_of_points = tpl_request[2]
     
     # Create an empty dataframe
-    df_points_nwm = pd.DataFrame(columns=['geometry'])
-    
-    # create new geodataframe
-    for point in list_of_points:
-        df_points_nwm = df_points_nwm.append({'geometry': point},ignore_index=True)
-    
+    df_points_nwm = pd.DataFrame(list_of_points, columns=['geometry'])
+
     # convert dataframe to geodataframe
     gdf_points_nwm = gpd.GeoDataFrame(df_points_nwm, geometry='geometry')
     
@@ -164,20 +160,25 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     
     # Load the geopackage into geodataframe - 1 minute +/-
     print("+-----------------------------------------------------------------+")
-    print('Loading Watershed Boundary Dataset ~ 60 sec')
-    gdf_ndgplusv21_wbd = gpd.read_file(str_wbd_geopkg_path)
+    print('Loading Watershed Boundary Dataset ~ 20 sec')
+
+    # Use the HUC8 small vector to mask the large full WBD_Nation.gpkg. 
+    # This is much faster
+    wdb_huc8_file = os.path.join(str_nation_arg, sv.INPUT_WBD_HUC8_DIR, f'HUC8_{str_huc8}.gpkg')
+    huc8_wbd_db = gpd.read_file(wdb_huc8_file)
+    gdf_ndgplusv21_wbd = gpd.read_file(str_wbd_geopkg_path, mask = huc8_wbd_db)
     
     list_huc8 = []
     list_huc8.append(str_huc8)
     
     # get only the polygons in the given HUC_8
     gdf_huc8_only = gdf_ndgplusv21_wbd.query("HUC_8==@list_huc8")
+
     gdf_huc8_only_nwm_prj = gdf_huc8_only.to_crs(nwm_prj)
     gdf_huc8_only_ble_prj = gdf_huc8_only.to_crs(ble_prj)
     
     # path of the shapefile to write
-    str_huc8_filepath = STR_OUT_PATH + '\\' + str(list_huc8[0]) + "_huc_12_ar.shp"
-    
+    str_huc8_filepath = os.path.join(STR_OUT_PATH, f'{str_huc8}_huc_12_ar.shp')
     
     # Overlay the BLE streams (from the HEC-RAS models) to the HUC_12 shapefile
     
@@ -189,7 +190,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
         gdf_ble_streams, gdf_huc8_only_ble_prj, how='intersection')
     
     # path of the shapefile to write
-    str_filepath_ble_stream = STR_OUT_PATH + '\\' + str(list_huc8[0]) + "_ble_streams_ln.shp"
+    str_filepath_ble_stream = os.path.join(STR_OUT_PATH, f'{str_huc8}_ble_streams_ln.shp')
     
     # write the shapefile
     gdf_ble_streams_intersect.to_file(str_filepath_ble_stream)
@@ -233,7 +234,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     
     # get netCDF (recurrance interval) list of streams in the given huc
     df_streams_huc_only = df_all_nwm_streams.query("huc8==@list_huc8")
-    
+        
     # left join the recurrance stream table (dataFrame) with streams in watershed
     # this will remove the streams not within the HUC-8 boundary
     df_streams_huc_only = df_streams_huc_only.merge(gdf_stream,
@@ -249,10 +250,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     
     # project the nwm streams to the ble projecion
     gdf_streams_nwm_bleprj = gdf_streams_huc_only.to_crs(ble_prj)
-    
-    # Create an empty dataframe
-    df_points_nwm = pd.DataFrame(columns=['geometry', 'feature_id', 'huc_12'])
-    
+        
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Create points at desired interval along each
     # national water model stream
@@ -260,24 +258,25 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     int_count = 0
     
     # Multi-Linestrings to Linestrings
-    gdf_streams_nwm_explode = gdf_streams_nwm_bleprj.explode()
+    gdf_streams_nwm_explode = gdf_streams_nwm_bleprj.explode(index_parts=True)
     
     # TODO - 2021.08.03 - Quicker to buffer the ble_streams first
     # and get the nwm streams that are inside or touch the buffer?
     
-    # Get the total number of points requesting
-    total_points = 0
     list_points_aggregate = []
     print("+-----------------------------------------------------------------+")
+
     for index, row in gdf_streams_nwm_explode.iterrows():
         str_current_linestring = row['geometry']
         distances = np.arange(0, str_current_linestring.length, int_distance_delta)
-        points = [str_current_linestring.interpolate(distance) for distance in distances] + [str_current_linestring.boundary[1]]
-        total_points += len(points)
-    
-        tpl_request = (row['feature_id'], row['huc12'], points)
+        inter_distances = [str_current_linestring.interpolate(distance) for distance in distances]
+        boundary_point = Point(str_current_linestring.boundary.bounds[0],
+                               str_current_linestring.boundary.bounds[1])
+        inter_distances.append(boundary_point)
+                    
+        tpl_request = (row['feature_id'], row['huc12'], inter_distances)
         list_points_aggregate.append(tpl_request)
-    
+
     # create a pool of processors
     num_processors = (mp.cpu_count() - 1)
     pool = Pool(processes = num_processors)
@@ -297,7 +296,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     gdf_points_nwm = gdf_points_nwm.set_crs(ble_prj)
     
     # path of the shapefile to write
-    str_filepath_nwm_points = STR_OUT_PATH + '\\' + str(list_huc8[0]) + "_nwm_points_PT.shp"
+    str_filepath_nwm_points = os.path.join(STR_OUT_PATH, f'{str_huc8}_nwm_points_PT.shp')
     
     # write the shapefile
     gdf_points_nwm.to_file(str_filepath_nwm_points)
@@ -385,7 +384,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     gdf_points_snap_to_ble = gdf_points_snap_to_ble.set_crs(gdf_segments.crs)
     
     # write the shapefile
-    str_filepath_ble_points = STR_OUT_PATH + "\\" + str(list_huc8[0]) + "_ble_snap_points_PT.shp"
+    str_filepath_ble_points = os.path.join(STR_OUT_PATH, f'{str_huc8}_ble_snap_points_PT.shp')
     
     gdf_points_snap_to_ble.to_file(str_filepath_ble_points)
     
@@ -417,7 +416,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     
     df_test = df_ble_guess.sort_values('count')
     
-    str_csv_file = STR_OUT_PATH + '\\' + str(list_huc8[0]) + "_interim_list_of_streams.csv"
+    str_csv_file = os.path.join(STR_OUT_PATH, f'{str_huc8}_interim_list_of_streams.csv')
     
     # Write out the table - read back in
     # this is to white wash the data type
@@ -429,21 +428,27 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     
     # Left join the nwm shapefile and the
     # feature_id/ras_path dataframe on the feature_id
-    gdf_nwm_stream_raspath = gdf_streams_nwm_bleprj.merge(df_test,
-                                                          on='feature_id',
-                                                          how='left')
+
+    # When we merge df_test into gdf_streams_nwm_bleprj (which does not have a ras_path colum)
+    # the new gdf_nwm_stream_raspath does have the column of ras_path but it is all NaN
+    # So, we flipped it for gdf_streams_nwm_bleprj into df_test and it fixed it
+    df_nwm_stream_raspath = df_test.merge(gdf_streams_nwm_bleprj,
+                                            on='feature_id',
+                                            how='left')
     
+    # We need to convert it back to a geodataframe for next steps (and exporting)
+    gdf_nwm_stream_raspath = gpd.GeoDataFrame(df_nwm_stream_raspath)
+
     # path of the shapefile to write
-    str_filepath_nwm_stream = STR_OUT_PATH + '\\' + str(list_huc8[0]) + "_nwm_streams_ln.shp"
+    str_filepath_nwm_stream = os.path.join(STR_OUT_PATH, f'{str_huc8}_nwm_streams_ln.shp')
     
     # write the shapefile
     gdf_nwm_stream_raspath.to_file(str_filepath_nwm_stream)
     
     # Read in the ble cross section shapefile
     gdf_ble_cross_sections = gpd.read_file(STR_BLE_CROSS_SECTION_LN)
-    
-    
-    str_xs_on_feature_id_pt = STR_OUT_PATH + '\\' + str(list_huc8[0]) + "_nwm_points_on_xs_PT.shp"
+        
+    str_xs_on_feature_id_pt = os.path.join(STR_OUT_PATH, f'{str_huc8}_nwm_points_on_xs_PT.shp')
     
     # Create new dataframe
     column_names = ["feature_id",
@@ -455,9 +460,6 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
                     "ras_path"]
     
     df_summary_data = pd.DataFrame(columns=column_names)
-    
-    # Clear the dataframe and retain column names
-    df_summary_data = pd.DataFrame(columns=df_summary_data.columns)
     
     # Loop through all feature_ids in the provided
     # National Water Model stream shapefile
@@ -523,15 +525,16 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
             str_river = df_point_feature_id['river'].values[0]
             str_reach = df_point_feature_id['reach'].values[0]
     
-            # append the current row to pandas dataframe
-            df_summary_data = df_summary_data.append({'feature_id': str_feature_id,
-                                                      'river': str_river,
-                                                      'reach': str_reach,
-                                                      'us_xs': flt_us_xs,
-                                                      'ds_xs': flt_ds_xs,
-                                                      'peak_flow': flt_max_q,
-                                                      'ras_path': str_ras_path},
-                                                     ignore_index=True)
+            new_rec = { 'feature_id': str_feature_id,
+                        'river': str_river,
+                        'reach': str_reach,
+                        'us_xs': flt_us_xs,
+                        'ds_xs': flt_ds_xs,
+                        'peak_flow': flt_max_q,
+                        'ras_path': str_ras_path}
+            
+            df_new_row = pd.DataFrame.from_records([new_rec])
+            df_summary_data = pd.concat([df_summary_data, df_new_row], ignore_index=True)
     
     # Creates a summary documents
     # Check to see if matching model is found
@@ -539,7 +542,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     print("+-----------------------------------------------------------------+")
     print("Creating Quality Control Output")
     
-    str_str_qc_csv_File = STR_OUT_PATH + "\\" + str_huc8 + "_stream_qc.csv"
+    str_str_qc_csv_File = os.path.join(STR_OUT_PATH, f'{str_huc8}_stream_qc.csv')
     df_summary_data.to_csv(str_str_qc_csv_File)
     
     print("Number of feature_id's matched: "+str(df_summary_data['feature_id'].nunique()))
@@ -562,7 +565,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     gdf_non_match = gdf_non_match[(gdf_non_match._merge != 'both')]
     
     # path of the shapefile to write
-    str_filepath_nwm_stream = STR_OUT_PATH + '\\' + str_huc8 + "_no_match_nwm_lines.shp"
+    str_filepath_nwm_stream = os.path.join(STR_OUT_PATH, f'{str_huc8}_no_match_nwm_lines.shp')
     
     # delete the wkt_geom field
     del gdf_non_match['_merge']
@@ -583,6 +586,11 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == '__main__':
 
+    # Sample:
+    # python conflate_hecras_to_nwm -w 12030105
+    # -i 'c:\\ras2fim_data\\output_ras2fim\\12030105_2276_230821\\01_shapes_from_hecras'
+    # -o 'c:\\ras2fim_data\\output_ras2fim\\12030105_2276_230821\\02_shapes_from_conflation'
+    # -n 'c:\\ras2fim_data\\inputs\\X-National_Datasets'
     
     parser = argparse.ArgumentParser(description='===== CONFLATE HEC-RAS TO NATIONAL WATER MODEL STREAMS =====')
     
