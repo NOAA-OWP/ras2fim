@@ -21,15 +21,15 @@ One major change is how dataframes add records. In the past, it used append but 
 **Note**: A previously detected warning saying `PROJ: proj_create_from_database: Cannot find proj.db` was showing up in just a few places. Now it is showing up alot. It does not hurt logic or code. A new issue card has been created for it. [# 145](https://github.com/NOAA-OWP/ras2fim/issues/145).
 
 ### Conda Environment Upgrade
-**Note** There is a critical upgrade to the ras2fim conda and it is likely not backwards compatible (not tested).  To upgrade this particular version, please following the next steps careful.
+**Note** There is a critical upgrade to the ras2fim conda and it is not backwards compatible. To upgrade this particular version, `please following the next steps careful (including step 1)`. 
 
-1) While having ras2fim activated, run _conda list_ . In the right column will tell you where your local packages were loaded from. If you see any that say "pypi", with the exception of "rasterio", you MUST uninstall that package before continuing.  e.g. You find an entry already in that list for shapely  that came from pypi.  You need to run _pip uninstall shapely_. Do this for all you see.  Failure to do this will mess up your environment.
+1) While having ras2fim activated, run _conda list_ . In the right column will tell you where your local packages were loaded from. If you see any that say `pypi` with the exception of "rasterio" and "keepachangelog", `you MUST uninstall that package before continuing`.  e.g. You find an entry already in that list for shapely  that came from pypi.  You need to run _pip uninstall shapely_. Do this for all you see.  Failure to do this will mess up your environment.
 
 2) We need to full uninstall the ras2fim environment, not upgraded it:
-   - run: _conda deactivate ras2fim_  (if you are already activated in ras2fim)
+   - run: _conda deactivate_  (if you are already activated in ras2fim)
    - run:  _conda remove --name ras2fim --all_
    - Make sure you have downloaded (or merged) this PR (or dev branch).  Ensure you are in that folder in the `ras2fim` folder where the environment.yml is at.
-   - run: _conda env create -f environment.yml_.  It might be slow, but 5 to 10 mins is reasonable.
+   - run: _conda env create -f environment.yml_  . It might be slow, but 5 to 10 mins is reasonable.
 
 ### Additions  
 
@@ -64,8 +64,8 @@ One major change is how dataframes add records. In the past, it used append but 
        - Changes to match the new panda 2.x series and geopandas.
 - 'tools'
     - `convert_ras2fim_to_recurr_validation_datasets.py`: Changes to match the new panda 2.x series and geopandas.
-    - nws_ras2fim_post_frequency_grids.py`: Changes to match the new panda 2.x series and geopandas.
-
+    - `nws_ras2fim_post_frequency_grids.py`: Changes to match the new panda 2.x series and geopandas.
+      
 <br/><br/>
 
 ## v1.21.0 - 2023-08-14 - [PR#137](https://github.com/NOAA-OWP/ras2fim/pull/137)
