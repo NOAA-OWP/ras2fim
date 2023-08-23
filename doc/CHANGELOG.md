@@ -9,10 +9,11 @@ All Hydrovis needs are the geocurves, but for FIM Team users, we will need to ru
 
 ### Additions  
 - `/src/create_geocurves.py`: Script to produce geocurves from hecras output folder. 
-- `/tools/produce_inundation_from_geocurves.py`: Script to produce inundation from the outputs of `create_geocurves.py`.
+
 
 ### Changes 
 - `/src/ras2fim.py`: Added code (currently commented out with `TODO` block) that can be uncommented after steps 8 and 9 (REM code) have been removed from `ras2fim.py`. The geocurves code replaces those steps.
+- `/src/ras2inundation.py`: Rewrite. New version produces inundation from the outputs of `create_geocurves.py`.
 
 <br/><br/>
 
