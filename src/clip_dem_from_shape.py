@@ -112,9 +112,9 @@ def fn_cut_dems_from_shapes(str_input_shp_path,
     # read in the shapefile to geoDataframe
     gdf_boundary_prj = gpd.read_file(str_input_shp_path)
     
-    # string of the shapefiles coordinate ref system
+    # string of the shapefiles coordinate ref system.
     str_shape_crs = gdf_boundary_prj.crs
-    
+        
     # buffer all the polygons in shp CRS units
     gdf_boundary_prj['geometry'] = gdf_boundary_prj.geometry.buffer(int_buffer)
     
@@ -143,10 +143,8 @@ def fn_cut_dems_from_shapes(str_input_shp_path,
                 print('No unique values found.  Naming will be random')
     # ------------------------------------
     
-    
     # reproject the shapefile to the CRS of virtual raster (VRT)
     gdf_boundary_raster_prj = gdf_boundary_prj.to_crs(str_raster_prj)
-    
 
     for index, row in tqdm.tqdm(gdf_boundary_raster_prj.iterrows(), 
                            total = gdf_boundary_raster_prj.shape[0],
@@ -157,7 +155,8 @@ def fn_cut_dems_from_shapes(str_input_shp_path,
         # convert the geoPandas geometry to json
         json_boundary = fn_get_features(gdf_boundary_raster_prj, index)
     
-        with rioxarray.open_rasterio(str_input_terrain_path,masked=True).rio.clip(json_boundary, from_disk=True) as xds_clipped:
+        with rioxarray.open_rasterio(str_input_terrain_path,masked=True).rio.clip(json_boundary,
+                                                                                  from_disk=True) as xds_clipped:
     
             # reproject the DEM to the shp CRS
             xds_clipped_reproject = xds_clipped.rio.reproject(str_shape_crs)

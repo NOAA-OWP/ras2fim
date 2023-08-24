@@ -8,6 +8,7 @@ from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
 
 import shared_variables as sv
+import shared_functions as sf
 
 # -----------------------------------------------------------------
 # Writes a metadata file into the save directory
@@ -531,16 +532,24 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder, log, verbos
             full_output_table = pd.concat([full_output_table, df])
     full_output_table.reset_index(drop=True, inplace=True)
 
+    if (len(int_geopackage_files) == 0):
+        raise ValueError("no geopackage file paths have been found")
+
     # Define output projection from shared variables
     compiled_geopackage_CRS = sv.DEFAULT_RASTER_OUTPUT_CRS
 
-    # Create an empty GeoDataFrame to store the compiled data
-    compiled_geopackage = gpd.GeoDataFrame()
+    compiled_geopackage = None
 
     # Iterate through input geopackages and compile them
-    for filepath in int_geopackage_files:
-        data = gpd.read_file(filepath)
-        compiled_geopackage = compiled_geopackage.append(data, ignore_index=True)
+    for i in range(len(int_geopackage_files)):
+
+        if (i == 0):
+            # we have to load the first gkpg directly then concat more after.
+            # Create an empty GeoDataFrame to store the compiled data
+            compiled_geopackage = gpd.read_file(int_geopackage_files[i])
+        else:
+            data = gpd.read_file(int_geopackage_files[i])
+            compiled_geopackage = pd.concat([compiled_geopackage, data], ignore_index=True)
 
     # Set the unified projection for the compiled GeoDataFrame
     compiled_geopackage.crs = compiled_geopackage_CRS ## TODO: make sure CRS is handled properly throughout
@@ -640,7 +649,12 @@ if __name__ == '__main__':
                              use the -ac flag to input a value for the "active" column ("True" or "False")
 
     """
-        
+
+    # There is a known problem with  proj_db error.
+    # ERROR 1: PROJ: proj_create_from_database: Cannot find proj.db.
+    # This will not stop all of the errors but some (in multi-proc).
+    sf.fix_proj_path_error()
+
     # Parse arguments
     parser = argparse.ArgumentParser(description='Iterate through a directory containing ras2fim outputs and '\
                                      'compile a rating curve table and rating curve location point file.')

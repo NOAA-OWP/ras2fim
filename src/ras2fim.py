@@ -423,6 +423,8 @@ def fn_run_ras2fim(str_huc8_arg,
     # if applicable.  (maybe?)
     # Copy it here in case it gets updated along the way
     shutil.copy2(model_huc_catalog_path, r2f_final_dir)
+    run_arguments_filepath = os.path.join(r2f_huc_output_dir, 'run_arguments.txt')
+    shutil.copy2(run_arguments_filepath, r2f_final_dir)
 
     print("+=================================================================+")
     print("  RUN RAS2FIM - Completed                                         |")
@@ -438,8 +440,8 @@ def create_input_args_log (**kwargs):
     Inputs:
         **kwargs is any dictionary of key / value pairs
     '''
-    r2f_final_dir = kwargs.get('r2f_final_dir')
-    arg_log_file = os.path.join(r2f_final_dir, "run_arguments.txt")
+    r2f_huc_output_dir = kwargs.get("r2f_huc_output_dir")
+    arg_log_file = os.path.join(r2f_huc_output_dir, "run_arguments.txt")
     
     # Remove it if is aleady exists (relavent if we add an override system)
     if (os.path.exists(arg_log_file)):
@@ -505,6 +507,11 @@ if __name__ == '__main__':
 
     #  Note: Careful on copy / pasting commands directly from here as some have line breaks for display purposes.
     #        Python command line commands don't like line breaks and you will need to remove them.
+
+    # There is a known problem with  proj_db error.
+    # ERROR 1: PROJ: proj_create_from_database: Cannot find proj.db.
+    # This will not stop all of the errors but some (in multi-proc).
+    sf.fix_proj_path_error()
 
     parser = argparse.ArgumentParser(description='========== RUN RAS2FIM FOR A HEC-RAS 1-D DATASET (HUC8) ==========')
 

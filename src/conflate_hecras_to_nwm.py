@@ -25,7 +25,7 @@ import xarray as xr
 import numpy as np
 
 from fiona import collection
-from fiona.crs import from_epsg
+#from fiona.crs import from_epsg
 
 import multiprocessing as mp
 from multiprocessing import Pool

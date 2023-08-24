@@ -210,11 +210,20 @@ def fix_proj_path_error():
         #if (os.environ["PROJ_LIB"]):
             #del os.environ["PROJ_LIB"]
 
-        if (is_windows()) :
-            # first get the user and we have to build up a path
-            user_home_path = os.path.expanduser("~")
-            anaconda3_proj_path = os.path.join(user_home_path, r'anaconda3\envs\ras2fim\Library\share\proj')
-            os.environ["PROJ_LIB"] = anaconda3_proj_path
+        """
+        if (os.environ["PROJ_LIB"]):
+            if (is_windows()) :
+                # first get the user and we have to build up a path
+                user_home_path = os.path.expanduser("~")
+
+                # TODO: There could be other paths.
+                anaconda3_proj_path = os.path.join(user_home_path, r'anaconda3\envs\ras2fim\Library\share\proj')
+                if (os.path.exists(anaconda3_proj_path)):
+                    os.environ["PROJ_LIB"] = anaconda3_proj_path
+        elif (os.environ["PROJ_LIB"]):
+            del os.environ["PROJ_LIB"]
+        """
+
     except Exception as e:
         #print(e)
         pass

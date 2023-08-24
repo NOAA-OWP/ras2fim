@@ -318,8 +318,6 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
         last_part = '\\'.join(list_path_parts[-4:-2])
         str_folder_to_create = first_part + '\\' + sv.R2F_OUTPUT_DIR_METRIC + '\\' + sv.R2F_OUTPUT_DIR_METRIC_RATING_CURVES + '\\' +last_part
 
-        print(str_folder_to_create)
-
         #first make a folder and then save the csv file inside that
         os.makedirs(str_folder_to_create, exist_ok=True)
         this_file_df.to_csv(os.path.join(str_folder_to_create,file_name), index=False)
