@@ -30,6 +30,7 @@ One major change is how dataframes add records. In the past, it used append but 
    - run:  _conda remove --name ras2fim --all_
    - Make sure you have downloaded (or merged) this PR (or dev branch).  Ensure you are in that folder in the `ras2fim` folder where the environment.yml is at.
    - run: _conda env create -f environment.yml_  . It might be slow, but 5 to 10 mins is reasonable.
+3) Reboot your computer
 
 ### Additions  
 
