@@ -213,8 +213,11 @@ def extract_ras(args, huc):
                                         
                     # Append interpolated point to validation rating curve
                     reccur_flow_rc = pd.DataFrame()
-                    interp_df = {'feature_id': feature_id, 'discharge': val_discharge['discharge'].item(),'avg_depth_m': np.round(interp_depth,1)}
-                    reccur_flow_rc = reccur_flow_rc.append(interp_df, ignore_index = True)
+                    new_rec = {'feature_id': feature_id,
+                                 'discharge': val_discharge['discharge'].item(),
+                                 'avg_depth_m': np.round(interp_depth,1)}
+                    interp_df = pd.DataFrame.from_records([new_rec])                    
+                    reccur_flow_rc = pd.concat([reccur_flow_rc, interp_df], ignore_index = True)
                     
                     # Write to validation dataset
                     ras_rc_rec_dir = output_dir / huc / interval
@@ -224,30 +227,32 @@ def extract_ras(args, huc):
                 else:
                     print(f"No {interval} depth grid exists within search window for feature id {feature_id} in HUC {huc}. Interpolated depth: {interp_depth}.")
                     
-                    missing_flows = missing_flows.append({'huc': huc,
-                                                'feature_id': feature_id,
-                                                'recurr_interval': interval,
-                                                'ras_rc_max_depth': rc_max_depth,
-                                                'interp_depth': interp_depth,
-                                                'ras_rc_min_flow': ras_rc['discharge_cms'].min(),
-                                                'ras_rc_max_flow': ras_rc['discharge_cms'].max(),
-                                                'NWM_recurr_flow': val_discharge['discharge'].item(),
-                                                'category': 'missing in search window'}
-                                            , ignore_index = True)
+                    new_rec = {'huc': huc,
+                                'feature_id': feature_id,
+                                'recurr_interval': interval,
+                                'ras_rc_max_depth': rc_max_depth,
+                                'interp_depth': interp_depth,
+                                'ras_rc_min_flow': ras_rc['discharge_cms'].min(),
+                                'ras_rc_max_flow': ras_rc['discharge_cms'].max(),
+                                'NWM_recurr_flow': val_discharge['discharge'].item(),
+                                'category': 'missing in search window'}
+                    df_new_row = pd.DataFrame.from_records([new_rec])
+                    missing_flows = pd.concat([missing_flows, df_new_row], ignore_index = True)
                                 
             else:
                 print(f"{interval} recurrence flow for feature id {feature_id} in HUC {huc} outside of ras2fim rating curve bounds")
                 
-                missing_flows = missing_flows.append({'huc': huc,
-                                                'feature_id': feature_id,
-                                                'recurr_interval': interval,
-                                                'ras_rc_max_depth': rc_max_depth,
-                                                'interp_depth': None,
-                                                'ras_rc_min_flow': ras_rc['discharge_cms'].min(),
-                                                'ras_rc_max_flow': ras_rc['discharge_cms'].max(),
-                                                'NWM_recurr_flow': val_discharge['discharge'].item(),
-                                                'category': 'out of range'}
-                                            , ignore_index = True)
+                new_rec = {'huc': huc,
+                            'feature_id': feature_id,
+                            'recurr_interval': interval,
+                            'ras_rc_max_depth': rc_max_depth,
+                            'interp_depth': None,
+                            'ras_rc_min_flow': ras_rc['discharge_cms'].min(),
+                            'ras_rc_max_flow': ras_rc['discharge_cms'].max(),
+                            'NWM_recurr_flow': val_discharge['discharge'].item(),
+                            'category': 'out of range'}
+                df_new_row = pd.DataFrame.from_records([new_rec])                
+                missing_flows = pd.concat( [missing_flows, df_new_row ], ignore_index = True)
                 continue
             
             del ras_rc

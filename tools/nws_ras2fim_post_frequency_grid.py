@@ -125,11 +125,12 @@ for i in list_files:
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    df_output = df_output.append({'feature_id': str_feature_id,
-                                  '1_5_year_NWM_cfs': flt_freq_flow,
-                                  '1_5_year_FIM_cfs': df["Flow(cfs)"][int_profile_idx],
-                                  '1_5_year_FIM_Depth': int_profile_depth},
-                                 ignore_index=True)
+    new_rec = {'feature_id': str_feature_id,
+               '1_5_year_NWM_cfs': flt_freq_flow,
+               '1_5_year_FIM_cfs': df["Flow(cfs)"][int_profile_idx],
+               '1_5_year_FIM_Depth': int_profile_depth}
+    df_new_row = pd.DataFrame.from_records([new_rec])
+    df_output = df_output.concat([df_output, df_new_row], ignore_index=True)
 
     # Open the grid, covert and save
     if flt_freq_flow > 0:

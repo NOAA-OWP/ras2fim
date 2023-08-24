@@ -165,6 +165,11 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
 
     print("===================================================================")
 
+    # create the base 06_metric path
+    # change the 05 path to the 06 path and make it
+    metric_folder = STR_MAP_OUTPUT.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, sv.R2F_OUTPUT_DIR_METRIC)
+    os.makedirs(metric_folder, exist_ok=True)
+
     # get a list of all tifs in the provided input directory
     list_raster_dem = fn_filelist(STR_MAP_OUTPUT, ('.TIF', '.tif'))
     
@@ -264,11 +269,11 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
                     str_create_filename = str_folder_to_create + "\\" + str_current_comid + '-' + str_dem_digits_only + '.tif'
                     
                     # create the converted grids
-                    dict_new_row = {'current_dem_path':k,
+                    new_rec = {'current_dem_path':k,
                                     'file_to_create_path':str_create_filename,
                                     'shapefile_path':str_shp_file_path}
-                    
-                    df_grids_to_convert = df_grids_to_convert.append(dict_new_row, ignore_index=True)    
+                    df_new_row = pd.DataFrame.from_records([new_rec])                    
+                    df_grids_to_convert = pd.concat([df_grids_to_convert, df_new_row], ignore_index=True)
             else:
                 #no shapefile in the dem path found
                 b_nothing = True
@@ -298,7 +303,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
     print("+-----------------------------------------------------------------+")
     print('Making metric rating curve files')
     all_rating_files = list(pathlib.Path(r2f_hecras_outputs_dir).rglob('*rating_curve.csv'))
-    All_rating_curve_df = pd.DataFrame()
+    all_rating_curve_df = pd.DataFrame()
     for file in all_rating_files:
         featureid = file.name.split("_rating_curve.csv")[0]
 
@@ -311,23 +316,23 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
         file_name = list_path_parts[-1]
         first_part = '\\'.join(list_path_parts[:-5])
         last_part = '\\'.join(list_path_parts[-4:-2])
-        str_folder_to_create = first_part + '\\' + sv.R2F_OUTPUT_DIR_METRIC + '\\' + sv.R2F_OUTPUT_DIR_Metric_Rating_Curves + '\\' +last_part
+        str_folder_to_create = first_part + '\\' + sv.R2F_OUTPUT_DIR_METRIC + '\\' + sv.R2F_OUTPUT_DIR_METRIC_RATING_CURVES + '\\' +last_part
 
         #first make a folder and then save the csv file inside that
         os.makedirs(str_folder_to_create, exist_ok=True)
         this_file_df.to_csv(os.path.join(str_folder_to_create,file_name), index=False)
 
         #also combine all files into a single file
-        All_rating_curve_df = All_rating_curve_df.append(this_file_df)
+        all_rating_curve_df = pd.concat([all_rating_curve_df, this_file_df])
 
-    r2f_metric_dir=r2f_hecras_outputs_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,sv.R2F_OUTPUT_DIR_METRIC)
-    All_rating_curve_df.to_csv(os.path.join(r2f_metric_dir,"all_rating_curves.csv"), index = False)
+    r2f_metric_dir=r2f_hecras_outputs_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, sv.R2F_OUTPUT_DIR_METRIC)
+    all_rating_curve_df.to_csv(os.path.join(r2f_metric_dir,"all_rating_curves.csv"), index = False)
 
 
     print('Making metric wse for cross sections')
-    all_Xs_files = list(pathlib.Path(r2f_hecras_outputs_dir).rglob('*cross_sections.csv'))
-    All_Xs_df = pd.DataFrame()
-    for file in all_Xs_files:
+    all_xs_files = list(pathlib.Path(r2f_hecras_outputs_dir).rglob('*cross_sections.csv'))
+    all_xs_df = pd.DataFrame()
+    for file in all_xs_files:
 
         #read entire current file (for both metric and U.S. unit fields) note that the files already have feature id
         this_file_df = pd.read_csv(file)
@@ -337,18 +342,19 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir,
         file_name = list_path_parts[-1]
         first_part = '\\'.join(list_path_parts[:-5])
         last_part = '\\'.join(list_path_parts[-4:-2])
-        str_folder_to_create = first_part + '\\' + sv.R2F_OUTPUT_DIR_METRIC + '\\' + sv.R2F_OUTPUT_DIR_Metric_Cross_Sections + '\\' +last_part
+        str_folder_to_create = first_part + '\\' + sv.R2F_OUTPUT_DIR_METRIC + '\\' \
+            + sv.R2F_OUTPUT_DIR_METRIC_CROSS_SECTIONS + '\\' + last_part
 
         #first make a folder and then save the csv file inside that
         os.makedirs(str_folder_to_create, exist_ok=True)
         this_file_df.to_csv(os.path.join(str_folder_to_create,file_name), index=False)
 
         #also combine all files into a single file
-        All_Xs_df = All_Xs_df.append(this_file_df)
+        all_xs_df = pd.concat([all_xs_df, this_file_df])
 
 
     r2f_metric_dir=r2f_hecras_outputs_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,sv.R2F_OUTPUT_DIR_METRIC)
-    All_Xs_df.to_csv(os.path.join(r2f_metric_dir,"all_cross_sections.csv"), index = False)
+    all_xs_df.to_csv(os.path.join(r2f_metric_dir,"all_cross_sections.csv"), index = False)
 
 
 

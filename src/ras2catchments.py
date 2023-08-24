@@ -567,10 +567,10 @@ if __name__=="__main__":
     # which will not be solved at this time.
 
 
-    # there is a known problem with rasterio and proj_db error
-    # this will not stop all of the errors but some (in multi-proc)
+    # There is a known problem with  proj_db error.
+    # ERROR 1: PROJ: proj_create_from_database: Cannot find proj.db.
+    # This will not stop all of the errors but some (in multi-proc).
     sf.fix_proj_path_error()
-
 
     # Sample usage:
     # Using all defaults:
