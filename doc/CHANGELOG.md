@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.x.x - 2023-08-17 - [PR#140](https://github.com/NOAA-OWP/ras2fim/pull/140)
+## v1.23.0 - 2023-08-17 - [PR#140](https://github.com/NOAA-OWP/ras2fim/pull/140)
 
 Adds the capabilities to produce geocurves and produce inundation from canned geocurves & precomputed polygons. Geocurves are simply default RAS2FIM rating curves, but with the geometry of inundation extents appended as a WKT geometry column.
 
