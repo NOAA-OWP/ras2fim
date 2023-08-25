@@ -7,6 +7,9 @@ import shutil
 import geopandas as gpd
 import rasterio
 import errno
+import time
+
+from dotenv import load_dotenv   
 from rasterio.features import shapes
 from concurrent.futures import ProcessPoolExecutor, as_completed, wait
 from shapely.geometry.polygon import Polygon
@@ -14,11 +17,10 @@ from shapely.geometry.multipolygon import MultiPolygon
 from shapely.geometry import MultiPolygon, Polygon, LineString, Point
 import warnings
 
+import shared_variables as sv
 from shared_functions import get_changelog_version
-from shared_variables import (R2F_OUTPUT_DIR_METRIC, R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS, 
-                              R2F_OUTPUT_DIR_FINAL, R2F_OUTPUT_DIR_Metric_Rating_Curves)
 
-warnings.simplefilter(action='ignore',category=FutureWarning)
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, geocurves_dir, polys_dir):
@@ -65,6 +67,7 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
                                 feature in extent_poly_diss["geometry"]]
                 
             except AttributeError:  # TODO why does this happen? I suspect bad geometry. Small extent?
+                # TODO: We should log this when the logging system comes online.
                 continue
 
             # -- Add more attributes -- #
@@ -76,9 +79,11 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
                 extent_poly_diss['filename'] = os.path.split(inundation_polygon_path)[1]
                 
             if iteration < 1:  # Initialize the rolling huc_rating_curve_geo
-                feature_id_rating_curve_geo = pd.merge(rating_curve_df, extent_poly_diss, left_on='stage_mm', right_on='stage_mm_join', how='right')
+                feature_id_rating_curve_geo = pd.merge(rating_curve_df, extent_poly_diss, left_on='stage_mm', 
+                                                       right_on='stage_mm_join', how='right')
             else:
-                rating_curve_geo_df = pd.merge(rating_curve_df, extent_poly_diss, left_on='stage_mm', right_on='stage_mm_join', how='right')
+                rating_curve_geo_df = pd.merge(rating_curve_df, extent_poly_diss, left_on='stage_mm', 
+                                               right_on='stage_mm_join', how='right')
                 feature_id_rating_curve_geo = pd.concat([feature_id_rating_curve_geo, rating_curve_geo_df])
             
             # Produce polygon version of flood extent if directed by user
@@ -103,7 +108,7 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
         job_number (int): The number of jobs to use when parallel processing feature_ids.
         output_folder (str): The path to the output folder where geo rating curves will be written.
     """
-    
+    print()    
     overall_start_time = datetime.now()
     dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
     print (f"Started: {dt_string}")
@@ -115,30 +120,37 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
                           'exceeds your machine\'s available CPU count minus one ({}). '\
                           'Please lower the job_number.'.format(job_number, total_cpus_available))
     
-    # Set up output folders.
+    # Set up output folders. (final outputs folder now created early in the ras2fim.py lifecycle)
     if not os.path.exists(ras2fim_output_dir):
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), ras2fim_output_dir)
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
-    
-    else:
-        if not overwrite:
-            print("The output directory, " + output_folder + ", already exists. Use the overwrite flag (-o) to overwrite.")
-            quit()
-        else:
-            shutil.rmtree(output_folder)
-            os.mkdir(output_folder)
             
-    # Make geocurves_dir
+    # Make geocurves_dir and polys dir
+    geocurve_dirs = []
     geocurves_dir = os.path.join(output_folder, 'geocurves')
-    if not os.path.exists(geocurves_dir):
-        os.mkdir(geocurves_dir)
+    geocurve_dirs.append(geocurves_dir)
 
-    # Create polys_dir if directed by user
+    polys_dir = os.path.join(output_folder, 'polys')
+    geocurve_dirs.append(polys_dir)
+
+    for gc_dir in geocurve_dirs:
+        if os.path.exists(gc_dir) and not overwrite:        
+            print("The output directory, " + gc_dir + ", already exists. Use the overwrite flag (-o) to overwrite.")
+            quit()
+
+        if os.path.exists(gc_dir):
+            shutil.rmtree(gc_dir)
+            # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
+            # so sometimes mkdir can fail if rmtree isn't done
+            time.sleep(2) # 2 seconds            
+
+    # Either way.. we are makign a new geocurve folder. e.g. If it is overwrite, we deleted before replacing it
+    # so we don't have left over garbage
+    os.makedirs(geocurves_dir)
+
     if produce_polys:
-        polys_dir = os.path.join(output_folder, 'polys')
-        if not os.path.exists(polys_dir):
-            os.makedirs(polys_dir)
+        os.makedirs(polys_dir)
     else:
         polys_dir = None
             
@@ -148,8 +160,10 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
         print("Version found: " + version)
         
     # Define paths outputs
-    simplified_depth_grid_parent_dir = os.path.join(ras2fim_output_dir, R2F_OUTPUT_DIR_METRIC, R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS)  
-    rating_curve_parent_dir = os.path.join(ras2fim_output_dir, R2F_OUTPUT_DIR_METRIC, R2F_OUTPUT_DIR_Metric_Rating_Curves)  
+    simplified_depth_grid_parent_dir = os.path.join(ras2fim_output_dir, sv.R2F_OUTPUT_DIR_METRIC, 
+                                                    sv.R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS)  
+    rating_curve_parent_dir = os.path.join(ras2fim_output_dir, sv.R2F_OUTPUT_DIR_METRIC, 
+                                           sv.R2F_OUTPUT_DIR_METRIC_RATING_CURVES)  
     
     # Create dictionary of files to process
     proc_dictionary = {}
@@ -169,7 +183,8 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
             full_path_depth_grid_list = []
             for depth_grid in depth_grid_list:
                 full_path_depth_grid_list.append(os.path.join(feature_id_depth_grid_dir, depth_grid))
-            proc_dictionary.update({feature_id: {'huc': huc, 'rating_curve': feature_id_rating_curve_path, 'depth_grids': full_path_depth_grid_list}})
+            proc_dictionary.update({feature_id: {'huc': huc, 'rating_curve': feature_id_rating_curve_path,
+                                                 'depth_grids': full_path_depth_grid_list}})
         
     # Process either serially or in parallel depending on job number provided
     if job_number == 1:
@@ -187,6 +202,7 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
                                 version, geocurves_dir, polys_dir)
             
     # Calculate duration
+    print()
     end_time = datetime.now()
     dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
     print (f"Ended: {dt_string}")
@@ -196,7 +212,9 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
 
 
 if __name__ == '__main__':
-    
+   
+
+
     # Parse arguments
     parser = argparse.ArgumentParser(description = 'Produce Geo Rating Curves for RAS2FIM')
     parser.add_argument('-f', '--ras2fim_output_dir', help='Path to directory containing RAS2FIM outputs',
@@ -206,7 +224,8 @@ if __name__ == '__main__':
     parser.add_argument('-j','--job_number',help='Number of processes to use', required=False, default=1, type=int)
     parser.add_argument('-t', '--output_folder', help = 'Target: Where the output folder will be', required = True)
     parser.add_argument('-o','--overwrite', help='Overwrite files', required=False, action="store_true")
-    parser.add_argument('-p','--produce_polys', help='Produce polygons in addition to geocurves.', required=False, default=False, action="store_true")
+    parser.add_argument('-p','--produce_polys', help='Produce polygons in addition to geocurves.', required=False,
+                             default=False, action="store_true")
         
     args = vars(parser.parse_args())
     manage_geo_rating_curves_production(**args)

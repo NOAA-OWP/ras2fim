@@ -5,6 +5,7 @@ import pandas as pd
 import geopandas as gpd
 from timeit import default_timer as timer
 
+from shared_functions import get_changelog_version
 
 def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundation_poly, overwrite):
     """
