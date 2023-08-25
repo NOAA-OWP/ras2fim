@@ -18,6 +18,74 @@ All Hydrovis needs are the geocurves, but for FIM Team users, we will need to ru
 <br/><br/>
 
 
+## v1.22.0 - 2023-08-22 - [PR#142](https://github.com/NOAA-OWP/ras2fim/pull/142)
+
+This PR covers three tasks:
+1) [Issue 141](https://github.com/NOAA-OWP/ras2fim/issues/141) - Add config system. Portions of logic in the system, such as ras2rem and ras2catchments are managed by "run" flags in a new config file.  This now gives us an env file that can be upgraded for many purposes. At this time, it it used to skip processing of ras2rem and ras2catchments.
+
+2) We wanted to upgrade a number of key packages such as pandas, shapely, and geopandas. This triggered a number of other package updates. However, attempts to upgrade all packages were unsuccessful.  Major updates are:
+     - geopandas  from 0.9.0  to 0.12.2
+     - pandas  from 1.3.1  to  2.0.3
+     - h5py   from 3.2.1  to 3.7.0
+     - numpy  from 1.20.3  to  1.24.3
+     - shapely  from  1.7.1  to  2.0.1
+     - pyproj    from  2.6.1  to  3.4.1  (this one had to be done via pip embedded in the environment.yml file)
+
+One major change is how dataframes add records. In the past, it used append but that is no longer available and  must you concat now. After research, it was uncovered that it is best to make a temp dataframe for new data coming in then, concat that the original df. 
+
+3) [Issue 144](https://github.com/NOAA-OWP/ras2fim/issues/144): geopandas read_file not being masked and can be much faster.  This one was included as there were extensive line-by-line testing required for this PR and adding this fix speed up the overall performance. 
+
+**Note**: A previously detected warning saying `PROJ: proj_create_from_database: Cannot find proj.db` was showing up in just a few places. Now it is showing up alot. It does not hurt logic or code. A new issue card has been created for it. [# 145](https://github.com/NOAA-OWP/ras2fim/issues/145).
+
+### Conda Environment Upgrade
+**Note** There is a critical upgrade to the ras2fim conda and it is not backwards compatible. To upgrade this particular version, `please following the next steps careful (including step 1)`. 
+
+1) While having ras2fim activated, run _conda list_ . In the right column will tell you where your local packages were loaded from. If you see any that say `pypi` with the exception of "rasterio" and "keepachangelog", `you MUST uninstall that package before continuing`.  e.g. You find an entry already in that list for shapely  that came from pypi.  You need to run _pip uninstall shapely_. Do this for all you see.  Failure to do this will mess up your environment.
+
+2) We need to full uninstall the ras2fim environment, not upgraded it:
+   - run: _conda deactivate_  (if you are already activated in ras2fim)
+   - run:  _conda remove --name ras2fim --all_
+   - Make sure you have downloaded (or merged) this PR (or dev branch).  Ensure you are in that folder in the `ras2fim` folder where the environment.yml is at.
+   - run: _conda env create -f environment.yml_  . It might be slow, but 5 to 10 mins is reasonable.
+3) Reboot your computer
+
+### Additions  
+
+- `.gitignore`:  Allows us to control which files get uploaded into the repo, but we wanted to make an exception for our new config file.
+- `config`
+   - `r2f_config.env`:  As mentioned above for Task # 1 (config).
+
+### Changes  
+
+- `src`
+    - `calculate_all_terrain_stats.py`:  Changes to match the new panda 2.x series.
+    - `conflate_hecras_to_nwm.py`:  Changes including:
+        - Changes to match the new panda 2.x series and geopandas
+        - The additional of loading the smaller huc8 wbd file which is used as a mask against the large, slow to load WBD_National (watershed boundary dataset). 
+        - Fix some variables used for pathing to use os.path.join for ease of readability.
+        - replaced dataframe.appends to concat
+   - `create_shapes_from_hecras.py`:  Replaced dataframe.appends to concat, plus misc changes due to package upgrades.
+   - `ras2fim.py` : Changes including:
+       - Added the config system.
+       - moved the creation of the "final" directory earlier and copy the config file used into the it for tracking purposes.
+       - Reorganized how the "final" folder is populated so that each section can add its own files to "final" as/when needed.
+       - Removed the "m" flag to optional run ras2rem as it is now covered by the config file.
+       - Add an optional "c" arg to point to an overridden config file.
+   - `run_ras2rem.py`:  Changes to match the new panda 2.x series and geopandas.
+   - `shared_functions.py`: Fixed some mixed case variable names to lower to match PEP-8 standards.
+   - `shared_variables.py`: Fixed some mixed case variable names to lower to match PEP-8 standards.
+   - `simplify_fim_rasters.py`: Changes include:
+       - Fixed some mixed case variable names to lower to match PEP-8 standards.
+       - Changes to match the new panda 2.x series and geopandas.
+   - `worker_fim_rasters.py`: Changes include:
+       - Fixed some mixed case variable names to lower to match PEP-8 standards.
+       - Changes to match the new panda 2.x series and geopandas.
+- 'tools'
+    - `convert_ras2fim_to_recurr_validation_datasets.py`: Changes to match the new panda 2.x series and geopandas.
+    - `nws_ras2fim_post_frequency_grids.py`: Changes to match the new panda 2.x series and geopandas.
+      
+<br/><br/>
+
 ## v1.21.0 - 2023-08-14 - [PR#137](https://github.com/NOAA-OWP/ras2fim/pull/137)
 
 Recently, [PR 135](https://github.com/NOAA-OWP/ras2fim/pull/135) adjusted the ras2fim processing to export HECRAS cross-sections with water surface elevation for the calibration workflow. This PR updates  `compile_ras_rating_curves.py` accommodate the necessary updates in geospatial processing and new column names. It also removes unnecessary raster processing, NWM midpoints calculations, and unused flags to simplify the code. 

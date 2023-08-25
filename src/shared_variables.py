@@ -36,10 +36,10 @@ R2F_OUTPUT_DIR_HECRAS_TERRAIN  = "04_hecras_terrain"
 R2F_OUTPUT_DIR_HECRAS_OUTPUT  = "05_hecras_output"
 R2F_OUTPUT_DIR_METRIC = "06_metric"
 R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS = "Depth_Grid"
-R2F_OUTPUT_DIR_Metric_Rating_Curves = "Rating_Curve"  # TODO Change this to all caps
-R2F_OUTPUT_DIR_Metric_Cross_Sections = "Cross_Sections"  # TODO Change this to all caps
+R2F_OUTPUT_DIR_METRIC_RATING_CURVES = "Rating_Curve"
+R2F_OUTPUT_DIR_METRIC_CROSS_SECTIONS = "Cross_Sections"
 R2F_OUTPUT_DIR_RAS2REM  = "ras2rem"
-R2F_OUTPUT_DIR_CATCHMENTS  = "07_catchments"
+R2F_OUTPUT_DIR_CATCHMENTS  = "ras2catchments"
 R2F_OUTPUT_DIR_FINAL  = "final"
 
 R2F_OUTPUT_DIR_RELEASES = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
@@ -52,3 +52,4 @@ OUTPUT_VERTICAL_DATUM = "NAVD88"
 
 #DEFAULT VALUES
 DEFAULT_RASTER_OUTPUT_CRS = "EPSG:5070"
+DEFAULT_CONFIG_FILE_PATH = "config\\r2f_config.env"
