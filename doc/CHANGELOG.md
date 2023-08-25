@@ -7,6 +7,8 @@ Adds the capabilities to produce geocurves and produce inundation from canned ge
 
 All Hydrovis needs are the geocurves, but for FIM Team users, we will need to run `create_geocurves.py` with the `-p` option that generates polygons in addition to geocurves.
 
+A new input files is required now named nwm21_17C_recurr_100_0_cms.csv.  It can be found in our S3 bucket at /inputs/X-National_Datasets/nwm21_17C_recurr_100_0_cms.csv. You will need to download that file to continue.
+
 ### Additions  
 - `/src/create_geocurves.py`: Script to produce geocurves from hecras output folder. 
 
