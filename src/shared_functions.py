@@ -3,6 +3,7 @@
 import os
 
 import argparse
+import datetime
 import fnmatch
 import keepachangelog
 import numpy as np
@@ -13,10 +14,12 @@ import rasterio
 import re
 import sys
 
-import r2f_validators as val
+# import r2f_validators as val
+sys.path.append('..')
+import ras2fim.src.r2f_validators as val
 
 from datetime import datetime as dt
-from errors import ModelUnitError
+from ras2fim.src.errors import ModelUnitError
 from pathlib import Path
 
 
@@ -255,7 +258,7 @@ def get_stnd_r2f_output_folder_name(huc_number, crs):
 
     '''
     Inputs:
-        - huc (str)
+        - huc_number (str)
         - crs (str):  ie) ESPG:2277 or ESRI:107239. Note, must start with ESRI or EPSG (non case-sensitive)
 
     '''

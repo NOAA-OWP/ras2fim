@@ -43,7 +43,7 @@ import shared_functions as sf
 
 # Global Variables
 b_terrain_check_only = False
-
+arg_log_file_name = "run_arguments.txt"
 
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # If you are calling this function from an another python file, please just call this function
@@ -386,6 +386,9 @@ def fn_run_ras2fim(str_huc8_arg,
 
         shutil.copy2(model_huc_catalog_path, r2f_final_dir)
 
+        # copy the argument file to "final"
+        shutil.copy2(os.path.join(r2f_huc_output_dir, arg_log_file_name), r2f_final_dir)
+
         print("+=================================================================+")
         print("  RUN RAS2FIM - Completed                                         |")
         sf.print_date_time_duration(start_dt, datetime.now())
@@ -435,6 +438,9 @@ def fn_run_ras2fim(str_huc8_arg,
     shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features.tif"), r2f_final_dir)
     shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features_meta.gpkg"), r2f_final_dir)
 
+    # copy the argument file to "final"
+    shutil.copy2(os.path.join(r2f_huc_output_dir, arg_log_file_name), r2f_final_dir)
+
     # TODO: use this models catalog to add columns for success/fail processing for each model and why it failed
     # if applicable.
     shutil.copy2(model_huc_catalog_path, r2f_final_dir)
@@ -457,7 +463,7 @@ def create_input_args_log (**kwargs):
 
     r2f_huc_output_dir = kwargs.get("r2f_huc_output_dir")
 
-    arg_log_file = os.path.join(r2f_huc_output_dir, "run_arguments.txt")
+    arg_log_file = os.path.join(r2f_huc_output_dir, arg_log_file_name)
     
     # Remove it if is aleady exists (relavent if we add an override system)
     if (os.path.exists(arg_log_file)):

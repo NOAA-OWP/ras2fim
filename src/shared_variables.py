@@ -44,6 +44,10 @@ R2F_OUTPUT_DIR_FINAL  = "final"
 
 R2F_OUTPUT_DIR_RELEASES = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
 
+# S3 PATHS (FOLDERS)
+S3_OUTPUT_RAS2FIM_FOLDER = "output_ras2fim"
+S3_RAS2FIM_ARCHIVE_FOLDER = "output_ras2fim_archive"
+
 # NODATA VALUE
 DEFAULT_NODATA_VAL = (0 - 9999)
 
