@@ -87,6 +87,12 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
 
 if __name__ == '__main__':
     
+    # Sample Usage
+
+    #  python ras2inundation.py -g C:\ras2fim_data\output_ras2fim\12090301_2277_230825\final\geocurves
+    #  -f C:\ras2fim_data\inputs\X-National_Datasets\nwm21_17C_recurr_100_0_cms.csv 
+    # -t C:\ras2fim_data\output_ras2fim\12090301_2277_230825\final\inundation.gpkg
+
     # Parse arguments
     parser = argparse.ArgumentParser(description = 'Produce Inundation from RAS2FIM geocurves.')
     parser.add_argument('-g', '--geocurves_dir', help='Path to directory containing RAS2FIM geocurve CSVs.',required=True)
