@@ -301,7 +301,7 @@ def fn_get_stats_dataseries(list_files_for_stats):
                                 'model_name': list_files_for_stats[3]})
 
     # add the input data to the statistics data series
-    pd_series_stats = pd_series_stats.append(pd_series_info)
+    pd_series_stats = pd.concat([pd_series_stats, pd_series_info])
 
     # convert data series to list
     list_stats_dataseries = pd_series_stats.tolist()
@@ -339,14 +339,15 @@ def fn_calculate_all_terrain_stats(str_input_dir):
     p.close()
     p.join()
     
-    df_combined_stats = pd.DataFrame(list_return_values)
+    df_stats_values = pd.DataFrame(list_return_values)
     
     # rename columns
-    df_combined_stats.set_axis(['count','mean','std',
-                                'min', '25%', '50%',
-                                '75%', 'max', 'geom_hdf_path',
-                                'terrain_path', 'model_name'],
-                               axis='columns', inplace=True)
+    column_names = ['count','mean','std',
+                    'min', '25%', '50%',
+                    '75%', 'max', 'geom_hdf_path',
+                    'terrain_path', 'model_name']
+
+    df_combined_stats = df_stats_values.set_axis(column_names, axis=1)
     
     # save to the same folder that was walked (str_input_dir)
     str_file_output = str_input_dir + "\\" + "terrain_stats.csv"

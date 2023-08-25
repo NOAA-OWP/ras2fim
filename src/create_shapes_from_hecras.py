@@ -496,10 +496,11 @@ def fn_get_flow_dataframe(str_path_hecras_flow_fn):
             flt_max_flow = max(list_flow_values)
 
             # write to dataFrame
-            df = df.append({'river': str_river,
-                            'reach': str_reach,
-                            'start_xs': flt_start_xs,
-                            'max_flow': flt_max_flow}, ignore_index=True)
+            df_new_row = pd.DataFrame.from_records([ {'river': str_river,
+                                                     'reach': str_reach,
+                                                     'start_xs': flt_start_xs,
+                                                     'max_flow': flt_max_flow} ])
+            df = pd.concat([df, df_new_row], ignore_index=True)
 
         i += 1
 
@@ -559,19 +560,19 @@ def fn_cut_stream_downstream(gdf_return_stream_fn, df_xs_fn):
     
     # the last cross section may be at the last stream point - 2021.10.27
     # get a list of items in the returned GeoCollection
-    list_wkt_lines = [item for item in result]
+    list_wkt_lines = [item for item in result.geoms]
     list_lines = []
     
     if len(list_wkt_lines) > 1:
 
         # merge all the lines except the last line
-        for i in range(len(result) -1):
-            list_lines.append(result[i])
+        for i in range(len(list_wkt_lines) -1):
+            list_lines.append(list_wkt_lines[i])
         
         # Now merge the line with the first segment of the downstream line
 
         # get first segment of the downstream (last) line
-        new_line = LineString([result[i + 1].coords[0], result[i + 1].coords[1]])    
+        new_line = LineString([list_wkt_lines[i + 1].coords[0], list_wkt_lines[i + 1].coords[1]])    
         list_lines.append(new_line)
 
         # merge the lines
