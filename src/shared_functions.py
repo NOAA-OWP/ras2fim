@@ -9,7 +9,8 @@ import keepachangelog
 import numpy as np
 import pandas as pd
 import platform
-import pyproj
+# import pyproj
+import pytz
 import rasterio
 import re
 import sys
@@ -23,39 +24,6 @@ from ras2fim.src.errors import ModelUnitError
 from pathlib import Path
 
 
-####################################################################
-def print_date_time_duration(start_dt, end_dt):
-    '''
-    Process:
-    -------
-    Calcuates the diffenence in time between the start and end time
-    and prints is as:
-    
-        Duration: 4 hours 23 mins 15 secs
-    
-    -------
-    Usage:
-        from utils.shared_functions import FIM_Helpers as fh
-        fh.print_current_date_time()
-    
-    -------
-    Returns:
-        Duration as a formatted string
-        
-    '''
-    time_delta = (end_dt - start_dt)
-    total_seconds = int(time_delta.total_seconds())
-
-    total_days, rem_seconds = divmod(total_seconds, 60 * 60 * 24)        
-    total_hours, rem_seconds = divmod(rem_seconds, 60 * 60)
-    total_mins, seconds = divmod(rem_seconds, 60)
-
-    time_fmt = f"{total_hours:02d} hours {total_mins:02d} mins {seconds:02d} secs"
-    
-    duration_msg = "Duration: " + time_fmt
-    print(duration_msg)
-    
-    return duration_msg
 
 
 ####################################################################
@@ -256,10 +224,49 @@ def find_model_unit_from_rating_curves(r2f_hecras_outputs_dir):
 
 
 ####################################################################
-def get_stnd_date():
+def get_stnd_date(use_utc = False):
     
     # return YYMMDD as in 230725
-    return dt.now().strftime("%y%m%d")
+
+    if (use_utc == True):
+        # UTC Time
+        str_date = dt.utcnow.strftime("%y%m%d")
+    else:
+        str_date = dt.now.strftime("%y%m%d")
+
+    return str_date
+
+
+####################################################################
+def print_date_time_duration(start_dt, end_dt):
+    '''
+    Process:
+    -------
+    Calcuates the diffenence in time between the start and end time
+    and prints is as:
+    
+        Duration: 4 hours 23 mins 15 secs
+    
+        (note: local time not UTC)
+    
+    -------
+    Returns:
+        Duration as a formatted string
+        
+    '''
+    time_delta = (end_dt - start_dt)
+    total_seconds = int(time_delta.total_seconds())
+
+    total_days, rem_seconds = divmod(total_seconds, 60 * 60 * 24)        
+    total_hours, rem_seconds = divmod(rem_seconds, 60 * 60)
+    total_mins, seconds = divmod(rem_seconds, 60)
+
+    time_fmt = f"{total_hours:02d} hours {total_mins:02d} mins {seconds:02d} secs"
+    
+    duration_msg = "Duration: " + time_fmt
+    print(duration_msg)
+    
+    return duration_msg
 
 
 ####################################################################
@@ -288,7 +295,7 @@ def get_stnd_r2f_output_folder_name(huc_number, crs):
     if (is_valid_crs == False):
         raise ValueError(err_msg)
     
-    std_date = get_stnd_date()
+    std_date = get_stnd_date(True) # in UTC
 
     folder_name = f"{huc_number}_{crs_number}_{std_date}"
 

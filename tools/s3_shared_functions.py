@@ -22,7 +22,7 @@ def upload_output_folder_to_s3(src_path,
     Input
         - src_path: e.g c:\ras2fim_data\output_ras2fim\12030202_102739_230810
         - bucket_name: e.g mys3bucket_name
-        - s3_folder_path: e.g.  temp/rob  (or output_ras2fim)
+        - s3_folder_path: e.g.  output_ras2fim or output_ras2fim_archive
         - target_huc_crs_folder_name:  12030105_2276_230810 (slash stripped off the end)
     """
 
@@ -32,7 +32,7 @@ def upload_output_folder_to_s3(src_path,
     try:
         s3 = boto3.client('s3')
 
-        # we are going to walk it twice, once to et a file count, the other for TQDM processing
+        # we are going to walk it twice, once to get a file count, the other for TQDM processing
         file_count = 0
         for subdir, dirs, files in os.walk(src_path):
             file_count += len(files)
@@ -228,7 +228,11 @@ def parse_huc_crs_folder_name(huc_crs_folder_name):
               or 12090301_2277_230811
 
     Output:
-        A four part tuple: (huc, crs, date string eg: 230811, and a date obj for 230811)
+        A five tuple: (huc, 
+                       crs,
+                       date string eg: 230811,
+                       a date obj for 230811,
+                       huc_crs_folder_name)
         OR
         If in error, the first part of the tuple will be the word "error", and the second part is the
            reason for the error.
@@ -284,4 +288,4 @@ def parse_huc_crs_folder_name(huc_crs_folder_name):
         return ("error", "Last part of the three segments (date) does not appear" \
                 " to be in the pattern of yymmdd eg 230812")
     
-    return (key_huc, key_crs, key_date, dt_key_date)
+    return (key_huc, key_crs, key_date, dt_key_date, huc_crs_folder_name)

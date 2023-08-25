@@ -114,6 +114,7 @@ def init_and_run_ras2fim(str_huc8_arg,
 
     # -------------------
     get_stnd_r2f_output_folder_name = sf.get_stnd_r2f_output_folder_name(str_huc8_arg, str_crs_arg)
+    # date in the folder name is UTC
     r2f_huc_output_dir = os.path.join(r2f_output_dir, get_stnd_r2f_output_folder_name)
 
     if (os.path.exists(r2f_huc_output_dir) == True): 
@@ -213,7 +214,7 @@ def fn_run_ras2fim(str_huc8_arg,
                    output_resolution,
                    model_unit):
     
-    start_dt = datetime.now()
+    start_dt = datetime.now() # Not UTC
     
     print(" ")
     print("+=================================================================+")
@@ -231,6 +232,9 @@ def fn_run_ras2fim(str_huc8_arg,
     print("  ---[-mc] Optional: path to models catalog - " + str(model_huc_catalog_path))    
     print("  ---[s] Optional: step to start at - " + str(int_step))
     print("  --- The Ras Models unit (extracted from RAS model prj file and given EPSG code): " + model_unit)
+    print()
+    print("  Note: the output folder name will have a date added to it which will be in UTC")
+    print()
     print("===================================================================")
     print(" ")
 
@@ -428,7 +432,7 @@ def fn_run_ras2fim(str_huc8_arg,
 
     print("+=================================================================+")
     print("  RUN RAS2FIM - Completed                                         |")
-    sf.print_date_time_duration(start_dt, datetime.now())
+    sf.print_date_time_duration(start_dt, datetime.now())  # Not UTC
     print("+-----------------------------------------------------------------+")
     
 
@@ -449,15 +453,14 @@ def create_input_args_log (**kwargs):
         os.remove(arg_log_file)
 
     # start with the processing date
-    utc_now = datetime.now(timezone.utc)
-    str_date = utc_now.strftime("%Y-%m-%d")
+    str_date = datetime.utcnow().strftime("%Y-%m-%d")
 
     # The file can be parsed later by using the two colons and the line break if ever required
     # We are already talking about using data in this file for metadata files
     # especially as the DEM's becomed versions in the input files which meta data
     # will need to know what fim version of the DEM was used.
     with open(arg_log_file, "w") as arg_file:
-        arg_file.write(f"process_date == {str_date}\n")
+        arg_file.write(f"process_date (UTC) == {str_date}\n")
         arg_file.write(f"command_line_submitted == {(' '.join(sys.argv))}\n")
 
         for key, value in kwargs.items():
@@ -491,8 +494,11 @@ if __name__ == '__main__':
     #         - The -i arg is optional and defaults to c:/ras2fim_data/OWP_ras_models/models. Each file or subfolder in this directory will be used as input into the ras2fim.py code.
     #              Again, you an override this to any location you like.
     #
-    # When ras2fim.py is run, it will automatically create an output folder name with the output files and some subfolders. 
-    #     The folder name will be based on the pattern of {HUC number}_{CRS}_{DATE (YYMMDD)}. e.g.  12090301_2277_230725
+
+    # ++++ Misc Notes ++++++    
+    # -  When ras2fim.py is run, it will automatically create an output folder name with the output files and some subfolders. 
+    #    The folder name will be based on the pattern of {HUC number}_{CRS}_{DATE (YYMMDD)}. e.g.  12090301_2277_230725.
+    #    This will be in UTC
 
 
     # ++++ Config file notes ++++++
