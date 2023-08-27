@@ -41,6 +41,7 @@ R2F_OUTPUT_DIR_METRIC_CROSS_SECTIONS = "Cross_Sections"
 R2F_OUTPUT_DIR_RAS2REM  = "ras2rem"
 R2F_OUTPUT_DIR_CATCHMENTS  = "ras2catchments"
 R2F_OUTPUT_DIR_FINAL  = "final"
+R2F_OUTPUT_DIR_DOMAIN_POLYGONS  = "models_domain"
 
 R2F_OUTPUT_DIR_RELEASES = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
 
