@@ -24,8 +24,10 @@ def save_output_to_s3(src_path_to_huc_crs_output_dir,
 
     print("")
     print( "=================================================================")
-    print( "|          RUN ras2fim_to_s3                                    |")
-    print(f"|   Saving HUC/CRS output folder to S3 start: {dt_string}       |")
+    print( "          RUN ras2fim_to_s3 ")
+    print(f" (-s): Source huc/crs folder {src_path_to_huc_crs_output_dir} ")
+    print(f" (-b): s3 bucket name {s3_bucket_name}")
+    print(f" Saving HUC/CRS output folder to S3 start: {dt_string} (local time) ")
     print( "=================================================================")
 
     # --------------------
@@ -37,7 +39,7 @@ def save_output_to_s3(src_path_to_huc_crs_output_dir,
     # why have this come in from variables_dict? the src_path_to_huc_crs_output_dir can come in not 
     # fully pathed, just the huc/crs folder in the default folder path
     src_path =  varibles_dict["src_huc_crs_full_path"] # eg. c:\ras2fim_data\output_ras2fim\12030202_102739_230810
-    huc_crs_folder_name = varibles_dict["huc_crs_dir"] # eg. 12030202_102739_230810    
+    huc_crs_folder_name = varibles_dict["src_huc_crs_dir"] # eg. 12030202_102739_230810    
     s3_full_output_path = varibles_dict["s3_full_output_path"] # e.g. s3://xyz/output_ras2fim
     s3_full_archive_path = varibles_dict["s3_full_archive_path"] # e.g. s3://xyz/output_ras2fim_archive
     s3_full_huc_crs_path = f"{s3_full_output_path}/{huc_crs_folder_name}"
@@ -114,8 +116,8 @@ def __upload_to_ras2fim_s3(bucket_name,
           " and crs value")
     print("")
     print("** NOTE: The intention is that only one HUC/CRS output folder, usually the most current," \
-          " is kept in the offical output_ras2fim folder. All HUC/CRS folders in that s3 folder will be" \
-          " included for ras2releases, and duplicate HUC/CRS foldes are likely undesirable.")
+          " is kept in the offical output_ras2fim folder. All HUC/CRS folders in the s3 output_ras2fim" \
+          "  folder will be included for ras2releases, and duplicate HUC/CRS foldes are likely undesirable.")
     print("")
 
     #---------------
@@ -124,7 +126,7 @@ def __upload_to_ras2fim_s3(bucket_name,
     #                              date (as string),
     #                              a date object of the key date,
     #                              the original full folder name)
-    target_name_segs = sf.parse_huc_crs_folder_name(huc_crs_folder_name)
+    target_name_segs = s3_sf.parse_huc_crs_folder_name(huc_crs_folder_name)
     if (target_name_segs[0] == "error"):
         raise Exception(target_name_segs[1])
     
@@ -136,7 +138,6 @@ def __upload_to_ras2fim_s3(bucket_name,
     s3_huc_crs_folder_names = __get_s3_huc_crs_folder_list(bucket_name,
                                                            target_name_segs,
                                                            is_verbose)
-
     if (len(s3_huc_crs_folder_names) > 1):
         print("*********************")
         print("*** NOTE  ")
@@ -147,76 +148,84 @@ def __upload_to_ras2fim_s3(bucket_name,
               "of the pre-existing folder names, each one at a time.")
         print("*********************")        
 
-    #---------------
-    # Using the date object in the tuple, see if any are the same date or newer
-    # All of the s3_huc_crs_folder_names items already share the huc and crs value
-    # but not necessarily the date
-    for s3_existing_folder in s3_huc_crs_folder_names:
+        #---------------
+        # Using the date object in the tuple, see if any are the same date or newer
+        # All of the s3_huc_crs_folder_names items already share the huc and crs value
+        # but not necessarily the date
+        for s3_existing_folder in s3_huc_crs_folder_names:
 
-        # If the existing s3_folder has the same name, ask if abort, move to archive or overwrite.
-        # The fifth element of the tuple is the raw full folder name, e.g. 12030105_2276_230303
-        existing_folder_name = s3_existing_folder[4]
+            # If the existing s3_folder has the same name, ask if abort, move to archive or overwrite.
+            # The fifth element of the tuple is the raw full folder name, e.g. 12030105_2276_230303
+            existing_folder_name = s3_existing_folder[4]
 
-        # Now we want the S3 path for the existing folder (without the bucket)
-        existing_folder_path = f"{sv.S3_OUTPUT_RAS2FIM_FOLDER}/{existing_folder_name}"
-        # eg. outputs_ras2fim/12030105_2276_230303        
+            # Now we want the S3 path for the existing folder (without the bucket)
+            existing_folder_path = f"{sv.S3_OUTPUT_RAS2FIM_FOLDER}/{existing_folder_name}"
+            # eg. outputs_ras2fim/12030105_2276_230303        
 
-        action = ""
-        if (existing_folder_name == huc_crs_folder_name): # exact same folder name
-            action = __ask_user_about_dup_folder_name(huc_crs_folder_name, bucket_name)
-            
-        # An existing s3_folder has a newer or older date
-        else:
-            if (s3_existing_folder[3] >= target_name_segs[3]):
-                is_existing_older = False
-            elif (s3_existing_folder[3] < target_name_segs[3]):
-                is_existing_older = True
-
-            # s3_existing_folder[2] is the date segment of the folder name
-            action = __ask_user_about_different_date_folder_name(huc_crs_folder_name,
-                                                                 bucket_name,
-                                                                 existing_folder_name,
-                                                                 s3_existing_folder[2],
-                                                                 is_existing_older)
-
-        if (action == "overwrite"): # overwrite the pre-existing same named folder with the incoming version
-            # we need to delete the original folder so we don't leave junk it int.
-
-            s3_sf.delete_s3_folder(bucket_name, existing_folder_path, is_verbose)
-
-            # Yes.. if it deletes but fails to upload the new one, we have a problem.
-            # TODO: maybe ?? - make a temp copy somewhere (not in archives root folder), then delete it from
-            # the original existing path, then load the new one, then delete the temp copy.
-            # if upload fails, copy back from temp ??
-
-            s3_sf.upload_output_folder_to_s3(src_path, 
-                                             bucket_name, 
-                                             sv.S3_OUTPUT_RAS2FIM_FOLDER, 
-                                             huc_crs_folder_name, 
-                                             is_verbose)
-
-        elif (action == "archive") or (action == "incoming") or (action == "existing"):
-
-            # We will change the name to add on "_BK_yymmdd_hhmm".
-            #  eg) s3://xyz/output_ras2fim_archive/12030105_2276_230810_BK_230825_1406
-            # On the super rare that it was updated in the exact date hr and min, just overwrite it
-
-            # Note: Why use two word of archive and existing which are have the exact same actions?
-            #   Each word made sense in it's context.
-
-            if (action == "archive") or (action == "existing"): # Move pre-existing to archive.
-                new_s3_folder_name = __adjust_folder_name_for_archive(existing_folder_name)
+            action = ""
+            if (existing_folder_name == huc_crs_folder_name): # exact same folder name
+                action = __ask_user_about_dup_folder_name(huc_crs_folder_name, bucket_name)
                 
-            else:  #  (action == "incoming"):  # move incoming straight to the archive
-                new_s3_folder_name = __adjust_folder_name_for_archive(huc_crs_folder_name)
-           
-            s3_sf.upload_output_folder_to_s3(src_path, 
-                                             bucket_name,
-                                             sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER, 
-                                             new_s3_folder_name, 
-                                             is_verbose)
-        else:
-            raise Exception("Internal Error: Invalid action type of {action}")
+            # An existing s3_folder has a newer or older date
+            else:
+                if (s3_existing_folder[3] >= target_name_segs[3]):
+                    is_existing_older = False
+                elif (s3_existing_folder[3] < target_name_segs[3]):
+                    is_existing_older = True
+
+                # s3_existing_folder[2] is the date segment of the folder name
+                action = __ask_user_about_different_date_folder_name(huc_crs_folder_name,
+                                                                    bucket_name,
+                                                                    existing_folder_name,
+                                                                    s3_existing_folder[2],
+                                                                    is_existing_older)
+
+            if (action == "overwrite"): # overwrite the pre-existing same named folder with the incoming version
+                # we need to delete the original folder so we don't leave junk it int.
+
+                s3_sf.delete_s3_folder(bucket_name, existing_folder_path, is_verbose)
+
+                # Yes.. if it deletes but fails to upload the new one, we have a problem.
+                # TODO: maybe ?? - make a temp copy somewhere (not in archives root folder), then delete it from
+                # the original existing path, then load the new one, then delete the temp copy.
+                # if upload fails, copy back from temp ??
+
+                s3_sf.upload_output_folder_to_s3(src_path, 
+                                                bucket_name, 
+                                                sv.S3_OUTPUT_RAS2FIM_FOLDER, 
+                                                huc_crs_folder_name, 
+                                                is_verbose)
+
+            elif (action == "archive") or (action == "incoming") or (action == "existing"):
+
+                # We will change the name to add on "_BK_yymmdd_hhmm".
+                #  eg) s3://xyz/output_ras2fim_archive/12030105_2276_230810_BK_230825_1406
+                # On the super rare that it was updated in the exact date hr and min, just overwrite it
+
+                # Note: Why use two word of archive and existing which are have the exact same actions?
+                #   Each word made sense in it's context.
+
+                if (action == "archive") or (action == "existing"): # Move pre-existing to archive.
+                    new_s3_folder_name = __adjust_folder_name_for_archive(existing_folder_name)
+                    
+                else:  #  (action == "incoming"):  # move incoming straight to the archive
+                    new_s3_folder_name = __adjust_folder_name_for_archive(huc_crs_folder_name)
+            
+                s3_sf.upload_output_folder_to_s3(src_path, 
+                                                bucket_name,
+                                                sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER, 
+                                                new_s3_folder_name, 
+                                                is_verbose)
+            else:
+                raise Exception("Internal Error: Invalid action type of {action}")
+    else:
+        # folder with the same huc_crs doesn't exist and we can load to the output folder
+        s3_sf.upload_output_folder_to_s3(src_path, 
+                                    bucket_name, 
+                                    sv.S3_OUTPUT_RAS2FIM_FOLDER, 
+                                    huc_crs_folder_name, 
+                                    is_verbose)
+
         
 
 ####################################################################
@@ -377,7 +386,7 @@ def __get_s3_huc_crs_folder_list(bucket_name, target_name_segs, is_verbose):
             # if it is valid key, add it to a list. Returns a tuple.
             # If it does not match a pattern we want, the first element of the tuple will be
             # the word error, but we don't care. We only want valid huc_crs_date pattern folders.
-            key_segs = sf.parse_huc_crs_folder_name(key_child_folder)
+            key_segs = s3_sf.parse_huc_crs_folder_name(key_child_folder)
             if (key_segs[0] != "error"):
                 # see if the huc and crs it matches the incoming huc number and crs
                 if (key_segs[0] == target_name_segs[0]) and (
@@ -414,6 +423,13 @@ def __validate_input(src_path_to_huc_crs_output_dir,
 
     if (s3_bucket_name == ""):
         raise ValueError("Bucket name parameter value can not be empty")
+
+    if ('/' in s3_bucket_name) or ('\\' in s3_bucket_name) or ('s3:' in s3_bucket_name):
+        raise ValueError("Bucket name parameter value invalid. It needs to be a single word" \
+                         " or phrase such as my_xyz or r2f-dev. It can not contain values such as" \
+                         " s3: or forward or back slashes")
+
+
 
     #---------------
     # we need to split this to seperate variables.

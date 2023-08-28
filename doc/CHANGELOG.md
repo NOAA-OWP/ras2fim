@@ -234,7 +234,7 @@ During the merge from dev-standardize-outputs, some additional bugs fixes were d
 
 ### Additions  
 - `src`
-    -`shared_validators`: A new script which initially includes code to validate crs input.
+    -`r2f_validators`: A new script which initially includes code to validate crs input.
 
 ### Changes  
 - `doc`

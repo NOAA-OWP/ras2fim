@@ -15,7 +15,7 @@ from datetime import datetime
 
 sys.path.append('..')
 import ras2fim.src.shared_variables as sv
-import ras2fim.src.r2f_validators as val
+import ras2fim.src.shared_validators as val
 
 '''
 This tool uses a HUC8 number to call over to an AWS S3 models_catalog.csv and will scan

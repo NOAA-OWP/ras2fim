@@ -15,9 +15,9 @@ import rasterio
 import re
 import sys
 
-# import r2f_validators as val
+# import shared_validators as val
 sys.path.append('..')
-import ras2fim.src.r2f_validators as val
+import ras2fim.src.shared_validators as val
 
 from datetime import datetime as dt
 from ras2fim.src.errors import ModelUnitError

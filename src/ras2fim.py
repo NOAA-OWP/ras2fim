@@ -41,7 +41,7 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 import shared_variables as sv
-import r2f_validators as val
+import shared_validators as val
 import shared_functions as sf
 
 # There is a known problem with  proj_db error.

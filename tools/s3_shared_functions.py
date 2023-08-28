@@ -30,7 +30,7 @@ def upload_output_folder_to_s3(src_path,
     print("")
 
     try:
-        s3 = boto3.client('s3')
+        client = boto3.client('s3')
 
         # we are going to walk it twice, once to get a file count, the other for TQDM processing
         file_count = 0
@@ -69,7 +69,7 @@ def upload_output_folder_to_s3(src_path,
                     try:
                         with open(src_file_path, 'rb') as data:
                             #s3.Bucket(bucket_name).put_object(Key=s3_key_path, Body=data)
-                            s3.upload_file(src_file_path, bucket_name, s3_key_path)
+                            client.upload_file(src_file_path, bucket_name, s3_key_path)
                             if (is_verbose):
                                 print(".... File uploaded")
 
@@ -85,7 +85,8 @@ def upload_output_folder_to_s3(src_path,
 
     except botocore.exceptions.NoCredentialsError:
         print("-----------------")
-        print("** Credentials not available. Try aws configure or review AWS permissions options.")
+        print("** Credentials not available for the submitted bucket. Try aws configure or review AWS " \
+              "permissions options.")
         sys.exit(1)
 
     except Exception as ex:
@@ -118,16 +119,16 @@ def delete_s3_folder(bucket_name,
 
     try:
 
-        s3 = boto3.client('s3')
+        client = boto3.client('s3')
 
         # Files inside the folder (yes.. technically there are no folders)
         # but it is possible to a folder that is empty (prefix with no keys)
-        s3_files = s3.list_objects(Bucket=bucket_name, Prefix=s3_folder_path + '/')
+        s3_files = client.list_objects(Bucket=bucket_name, Prefix=s3_folder_path + '/')
 
         file_count = len(s3_files)
 
         if (file_count == 0): # no files to delete but it is possible to have an empty folder
-            s3.delete_object(Bucket=bucket_name, Key=s3_folder_path + '/')  # slash added
+            client.delete_object(Bucket=bucket_name, Key=s3_folder_path + '/')  # slash added
 
         with tqdm(total = file_count,
                   desc = f"Deleting {file_count} files from S3",
@@ -137,12 +138,12 @@ def delete_s3_folder(bucket_name,
 
             # Delete all objects in the folder
             for s3_file in s3_files['Contents']:
-                s3.delete_object(Bucket=bucket_name, Key=s3_file['Key'])
+                client.delete_object(Bucket=bucket_name, Key=s3_file['Key'])
 
             pbar.update(1)
 
         # remove the folder that is left over
-        s3.delete_object(Bucket=bucket_name, Key=s3_folder_path + '/')  # slash added
+        client.delete_object(Bucket=bucket_name, Key=s3_folder_path + '/')  # slash added
 
     except botocore.exceptions.NoCredentialsError:
         print("-----------------")
@@ -158,6 +159,8 @@ def delete_s3_folder(bucket_name,
 ####################################################################
 def is_valid_s3_folder(s3_bucket_and_folder):
 
+    # This will throw exceptions for all errors
+
     if s3_bucket_and_folder.endswith('/'):
         s3_bucket_and_folder = s3_bucket_and_folder[:-1]
 
@@ -168,11 +171,11 @@ def is_valid_s3_folder(s3_bucket_and_folder):
     s3_folder_path = adj_s3_path.replace(bucket_name, '', 1)
     s3_folder_path = s3_folder_path.lstrip('/')
 
-    s3 = boto3.client('s3')
+    client = boto3.client('s3')
     
     try:    
         # If the bucket is incorrect, it will throw an exception that already makes sense
-        s3_objs = s3.list_objects_v2(Bucket = bucket_name,
+        s3_objs = client.list_objects_v2(Bucket = bucket_name,
                                      Prefix = s3_folder_path,
                                      MaxKeys = 2,
                                      Delimiter = '/')
@@ -197,15 +200,20 @@ def is_valid_s3_folder(s3_bucket_and_folder):
 ####################################################################
 def does_s3_bucket_exist(bucket_name):
 
-    s3 = boto3.client('s3')
+    client = boto3.client('s3')
 
     try:
-        s3.meta.client.head_bucket(Bucket=bucket_name)
+        resp = client.head_bucket(Bucket=bucket_name)
+        #print(resp)
+
         return True  # no exception?  means it exist
 
     except botocore.exceptions.NoCredentialsError:
-        print("** Credentials not available. Try aws configure.")
+        print("** Credentials not available for submitted bucket. Try aws configure.")
         sys.exit(1)
+
+    except client.exceptions.NoSuchBucket:
+        return False
 
     except ClientError:
         return False
@@ -259,7 +267,7 @@ def parse_huc_crs_folder_name(huc_crs_folder_name):
     if ("_" not in huc_crs_folder_name) or (len(huc_crs_folder_name) < 9):
         return ("error", "Does not contain any underscore or folder name to short.")
 
-    segs = huc_crs_folder_segs.split('_')
+    segs = huc_crs_folder_name.split('_')
     if (len(segs) != 3):
         return ("error", "Expected three segments split by two underscores. e.g . 12090301_2277_230811")
     key_huc = segs[0]
