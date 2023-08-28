@@ -1,6 +1,25 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.23.0 - 2023-08-17 - [PR#140](https://github.com/NOAA-OWP/ras2fim/pull/140)
+
+Adds the capabilities to produce geocurves and produce inundation from canned geocurves & precomputed polygons. Geocurves are simply default RAS2FIM rating curves, but with the geometry of inundation extents appended as a WKT geometry column.
+
+All Hydrovis needs are the geocurves, but for FIM Team users, we will need to run `create_geocurves.py` with the `-p` option that generates polygons in addition to geocurves.
+
+
+### Additions  
+- `/src/create_geocurves.py`: Script to produce geocurves from hecras output folder. 
+
+
+### Changes 
+- `/src/ras2fim.py`: Added code (currently commented out with `TODO` block) that can be uncommented after steps 8 and 9 (REM code) have been removed from `ras2fim.py`. The geocurves code replaces those steps.
+- `/src/ras2inundation.py`: Rewrite. New version produces inundation from the outputs of `create_geocurves.py`.
+- `/config/r2f_config.env`: Added two entries for turning on/off of the geocurves system.
+
+<br/><br/>
+
+
 ## v1.22.0 - 2023-08-22 - [PR#142](https://github.com/NOAA-OWP/ras2fim/pull/142)
 
 This PR covers three tasks:
