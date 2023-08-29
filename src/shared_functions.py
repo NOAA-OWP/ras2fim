@@ -130,26 +130,26 @@ def model_unit_from_ras_prj(str_ras_path_arg):
     elif os.path.isfile(str_ras_path_arg):
         ras_prj_files.append(str_ras_path_arg)
 
-    Units_Found = []
+    units_found = []
     for ras_prj_file in ras_prj_files:
         with open(ras_prj_file) as f:
             file_contents = f.read()
 
         if re.search("SI Unit", file_contents, re.I):
-            Units_Found.append("meter")
+            units_found.append("meter")
         elif re.search("English Unit", file_contents,re.I):
-            Units_Found.append("feet")
+            units_found.append("feet")
 
 
     try:
-        if len(set(Units_Found))==0: #if no unit specified in any of the RAS models
+        if len(set(units_found))==0: #if no unit specified in any of the RAS models
             raise ModelUnitError("At least one of the HEC-RAS models must have a unit specified in prj file."
                                  " Check your RAS models prj files and try again. ")
 
-        elif len(set(Units_Found))==1:
-            unit=Units_Found[0]
+        elif len(set(units_found))==1:
+            unit=units_found[0]
 
-        elif len(set(Units_Found))==2 :
+        elif len(set(units_found))==2 :
             raise ModelUnitError("Ras2fim only accepts HEC-RAS models with similar units (either U.S. Customary or "
                                  "International/Metric). The provided dataset uses a mix of these units. "
                                  "Verify your HEC-RAS models units and try again.")
@@ -210,12 +210,38 @@ def fix_proj_path_error():
         #if (os.environ["PROJ_LIB"]):
             #del os.environ["PROJ_LIB"]
 
+        """
         if (is_windows()) :
+
             # first get the user and we have to build up a path
             user_home_path = os.path.expanduser("~")
-            anaconda3_proj_path = os.path.join(user_home_path, r'anaconda3\envs\ras2fim\Library\share\proj')
-            os.environ["PROJ_LIB"] = anaconda3_proj_path
+
+            # TODO: There could be other paths. ?? (depends how it was installed? future versions?)
+            anaconda3_env_path = os.path.join(user_home_path, r'anaconda3\envs\ras2fim\Library\share')
+
+            anaconda3_env_path_proj = os.path.join(anaconda3_env_path, "proj")
+            print(f"anaconda3_env_path_proj is {anaconda3_env_path_proj}")
+            if (os.path.exists(anaconda3_env_path_proj)):
+                os.environ["PROJ_LIB"] = anaconda3_env_path_proj
+
+            if (not os.environ["PROJ_LIB"]) or (os.environ["PROJ_LIB"] == "") or (os.environ["PROJ_LIB"] == "PROJ_LIB"):
+                anaconda3_env_path_proj = os.path.join(anaconda3_env_path, "proj")
+                print(f"anaconda3_env_path_proj is {anaconda3_env_path_proj}")
+                if (os.path.exists(anaconda3_env_path_proj)):
+                    os.environ["PROJ_LIB"] = anaconda3_env_path_proj
+            else:
+                print("PROJ_LIB - it is here but empty")
+
+            #if (not os.environ["GDAL_DATA"]):
+            #    print(f"anaconda3_env_path is {anaconda3_env_path}")                
+            #    if (os.path.exists(anaconda3_env_path)):
+            #        os.environ["GDAL_DATA"] = anaconda3_env_path                    
+            #else:
+            #    print("GDAL_DATA - it is here but empty")
+
+        """
     except Exception as e:
+        #print("oops")
         #print(e)
         pass
 

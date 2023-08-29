@@ -12,8 +12,7 @@
 # be installed prior to execution.
 #
 # Created by: Andy Carter, PE
-# Last revised - 2021.10.21
-#
+
 # Main code for ras2fim
 # Uses the 'ras2fim' conda environment
 
@@ -28,19 +27,28 @@ from simplify_fim_rasters import fn_simplify_fim_rasters
 from calculate_all_terrain_stats import fn_calculate_all_terrain_stats
 from run_ras2rem import fn_run_ras2rem
 from ras2catchments import make_catchments
+from create_geocurves import manage_geo_rating_curves_production
 from reformat_ras_rating_curve import dir_reformat_ras_rc
 
 import argparse
+import gdal
 import os
+import pyproj
 import shutil
 import sys
 import time
-import pyproj
+
 from datetime import datetime, timezone
+from dotenv import load_dotenv
 
 import shared_variables as sv
 import shared_validators as svld
 import shared_functions as sf
+
+# There is a known problem with  proj_db error.
+# ERROR 1: PROJ: proj_create_from_database: Cannot find proj.db.
+# This will not stop all of the errors but some (in multi-proc).
+sf.fix_proj_path_error()
 
 # Global Variables
 b_terrain_check_only = False
@@ -58,11 +66,29 @@ def init_and_run_ras2fim(str_huc8_arg,
                          str_ras_path_arg = sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
                          str_nation_arg  = sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
                          str_terrain_override = 'None Specified - using USGS WCS',
-                         run_ras2rem = False,
                          model_huc_catalog_path = sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
                          str_step_override = 'None Specified - starting at the beginning',
-                         output_resolution = 10):
+                         output_resolution = 10,
+                         config_file = sv.DEFAULT_CONFIG_FILE_PATH):
 
+
+    ####################################################################
+    # Load the enviroment file
+
+    # The sv.DEFAULT_CONFIG_FILE_PATH comes in relative to the root and not to src/ras2fim
+    # so we need to adjust it's path.
+
+    if (config_file == ""): # possible if not coming through __main__
+        raise ValueError("The config file argument can not be empty")
+
+    if (config_file == sv.DEFAULT_CONFIG_FILE_PATH): # change to make relative to ras2fim.py
+        referential_path = os.path.join(os.path.dirname(__file__),'..', sv.DEFAULT_CONFIG_FILE_PATH)
+        config_file = os.path.abspath(referential_path)
+
+    if (not os.path.exists(config_file)):
+        raise ValueError(f"The config file of {config_file} can not found")
+
+    load_dotenv(config_file)
 
     ####################################################################
     ####  Some validation of input, but mostly setting up pathing ######
@@ -140,11 +166,29 @@ def init_and_run_ras2fim(str_huc8_arg,
     # make the folder only if all other valudation tests pass.
     os.mkdir(r2f_huc_output_dir) # pathing has already been validated and ensure the child folder does not pre-exist
 
+    # -------------------------------------------
+    # ---- Make the "final" folder now as some modules will write to it through the steps
+    #      why test if it exists with makedir for output above? We are going to be retarting
+    #      the step system so it won't auto make the huc output dir
+    r2f_final_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_FINAL)       
+    if (not os.path.exists(r2f_final_dir)):
+        os.mkdir(r2f_final_dir)
+
     # -------------------
     # Save incoming args and a few new derived variables created to this point into a log file
     # Careful... when **locals() is called, it will include ALL variables in this function to this point.
     create_input_args_log(**locals())
 
+    # -------------------
+    # copy the config env file to the final directory
+    shutil.copy2(config_file, r2f_final_dir)
+
+    # -------------------
+    # validate dependencies of optional env flags
+    # TODO: Create list for module dependencies for any given section (instead of the "if" tests)
+    # NOTE: Order is critical here.
+    if (os.getenv('RUN_RAS2CATCHMENTS') == 'True') and (os.getenv('RUN_RAS2REM') != 'True'):
+        raise ValueError("For the catchments module to run, the env.RUN_RAS2REM must be True.")
 
     fn_run_ras2fim(str_huc8_arg,
                    str_ras_path_arg,
@@ -153,7 +197,6 @@ def init_and_run_ras2fim(str_huc8_arg,
                    str_nation_arg,
                    str_hec_path,
                    str_terrain_override,
-                   run_ras2rem,
                    model_huc_catalog_path,
                    int_step,
                    output_resolution,
@@ -168,17 +211,15 @@ def init_and_run_ras2fim(str_huc8_arg,
 
 def fn_run_ras2fim(str_huc8_arg,
                    str_ras_path_arg,
-                   r2f_huc_output_dir,
+                   huc_crs_output_dir,
                    str_crs_arg,
                    str_nation_arg,
                    str_hec_path,
                    str_terrain_override,
-                   run_ras2rem,
                    model_huc_catalog_path,
                    int_step,
                    output_resolution,
-                   model_unit
-                   ):
+                   model_unit):
     
     start_dt = datetime.now()
     
@@ -190,25 +231,29 @@ def fn_run_ras2fim(str_huc8_arg,
     
     print("  ---(r) HUC 8 WATERSHED: " + str(str_huc8_arg))
     print("  ---(i) PATH TO HEC-RAS: " + str(str_ras_path_arg))
-    print("  ---(o) OUTPUT DIRECTORY: " + r2f_huc_output_dir)
+    print("  ---(o) OUTPUT DIRECTORY: " + huc_crs_output_dir)
     print("  ---(p) PROJECTION OF HEC-RAS MODELS: " + str(str_crs_arg))
     print("  ---(n) PATH TO NATIONAL DATASETS: " + str(str_nation_arg))     
     print("  ---(r) PATH TO HEC-RAS v6.0: " + str(str_hec_path))
     print("  ---[t] Optional: Terrain to Utilize" + str(str_terrain_override))
-    print("  ---[m] Optional: Run RAS2REM: " + str(run_ras2rem))
     print("  ---[-mc] Optional: path to models catalog - " + str(model_huc_catalog_path))    
     print("  ---[s] Optional: step to start at - " + str(int_step))
     print("  --- The Ras Models unit (extracted from RAS model prj file and given EPSG code): " + model_unit)
     print("===================================================================")
     print(" ")
 
-    
+    # -------------------------------------------
+    # ---- Make the "final" folder now as some modules will write to it through the steps
+    #      why test if it exists with makedir for output above? We are going to be retarting
+    #      the step system so it won't auto make the huc output dir
+    r2f_final_dir = os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_FINAL)       
+
     # ---- Step 1: create_shapes_from_hecras ----
     # create a folder for the shapefiles from hec-ras
     print()
-    print ("+++++++ Processing for code STEP 1 +++++++" )
+    print ("+++++++ Processing: STEP 1 (create_shapes_from_hecras) +++++++" )
 
-    str_shapes_from_hecras_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS) 
+    str_shapes_from_hecras_dir = os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS) 
     if not os.path.exists(str_shapes_from_hecras_dir):
         os.mkdir(str_shapes_from_hecras_dir)
     
@@ -222,9 +267,9 @@ def fn_run_ras2fim(str_huc8_arg,
     # ------ Step 2: conflate_hecras_to_nwm -----    
     # do whatever is needed to create folders and determine variables
     print()
-    print ("+++++++ Processing for code  STEP 2 +++++++" )
+    print ("+++++++ Processing: STEP 2 (conflate_hecras_to_nwm) +++++++" )
 
-    str_shapes_from_conflation_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
+    str_shapes_from_conflation_dir = os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
     if not os.path.exists(str_shapes_from_conflation_dir):
         os.mkdir(str_shapes_from_conflation_dir)
     
@@ -240,10 +285,10 @@ def fn_run_ras2fim(str_huc8_arg,
     str_area_shp_name = str_huc8_arg + "_huc_12_ar.shp"
     str_input_path = os.path.join(str_shapes_from_conflation_dir, str_area_shp_name)
     print()
-    print ("+++++++ Processing for code  STEP 3 +++++++" )
+    print ("+++++++ Processing: STEP 3 get / cut DEM +++++++" )
 
     # create output folder
-    str_terrain_from_usgs_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_TERRAIN)
+    str_terrain_from_usgs_dir = os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_TERRAIN)
     if not os.path.exists(str_terrain_from_usgs_dir):
         os.mkdir(str_terrain_from_usgs_dir)
         
@@ -284,11 +329,11 @@ def fn_run_ras2fim(str_huc8_arg,
     # str_terrain_from_usgs_dir
     
     # create a converted terrain folder
-    str_hecras_terrain_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_HECRAS_TERRAIN)
+    str_hecras_terrain_dir = os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_HECRAS_TERRAIN)
     if not os.path.exists(str_hecras_terrain_dir):
         os.mkdir(str_hecras_terrain_dir)
     print()
-    print ("+++++++  Processing for code STEP 4 +++++++" )
+    print ("+++++++  Processing: STEP 4 (convert tif to ras hdf5) +++++++" )
         
     str_area_prj_name = str_huc8_arg + "_huc_12_ar.prj"
     str_projection_path = os.path.join(str_shapes_from_conflation_dir, str_area_prj_name)
@@ -299,6 +344,7 @@ def fn_run_ras2fim(str_huc8_arg,
                                    str_hecras_terrain_dir,
                                    str_projection_path,
                                    model_unit)
+        
     # -------------------------------------------
     
     # ------ Step 5: create_fim_rasters ----- 
@@ -307,11 +353,12 @@ def fn_run_ras2fim(str_huc8_arg,
     # str_terrain_from_usgs_dir
     
     # create a converted terrain folder
-    str_hecras_out_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    str_hecras_out_dir = os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
     if not os.path.exists(str_hecras_out_dir):
         os.mkdir(str_hecras_out_dir)
+
     print()
-    print ("+++++++ Processing for code  STEP 5 +++++++" )
+    print ("+++++++ Processing: STEP 5 (create fim rasters) +++++++" )
     
     # path to standard input (PlanStandardText01.txt, PlanStandardText02.txt, ProjectStandardText01.txt )
     str_std_input_path = os.getcwd() # assumed as in directory executing script
@@ -333,31 +380,24 @@ def fn_run_ras2fim(str_huc8_arg,
                               str_std_input_path,
                               flt_interval,
                               b_terrain_check_only)
+        
     # -------------------------------------------
-    
-    # ------ Step 6: simplify fim rasters -----
-    # ==============================================
     flt_resolution_depth_grid = int(output_resolution)
 
-    #str_output_crs = "EPSG:3857"
-    # ==============================================
-    
     print()
-    print ("+++++++  Processing for code STEP 6 +++++++" )
-    if int_step <= 6:
-        fn_simplify_fim_rasters(str_hecras_out_dir,
-                                flt_resolution_depth_grid,
-                                sv.DEFAULT_RASTER_OUTPUT_CRS,
-                                model_unit)
+    print ("+++++++ Processing:  STEP 5/6 (simplifying fim rasters and create metrics)  +++++++" )
+
+    fn_simplify_fim_rasters(str_hecras_out_dir,
+                            flt_resolution_depth_grid,
+                            sv.DEFAULT_RASTER_OUTPUT_CRS,
+                            model_unit)
+        
     # ----------------------------------------
-    
-
-    # ------ Step 7: calculate terrain statistics -----
     print()
-    print ("+++++++ Processing for code  STEP 7 +++++++" )
+    print ("+++++++ Processing: STEP 5.c (calculate terrain statistics +++++++" )
 
-    if int_step <= 7:
-        fn_calculate_all_terrain_stats(str_hecras_out_dir)
+    fn_calculate_all_terrain_stats(str_hecras_out_dir)
+
     # -------------------------------------------------
 
 
@@ -385,24 +425,28 @@ def fn_run_ras2fim(str_huc8_arg,
     #                                                    sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
     #                                                    sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG)
 
-
-    # ------ 
-    
-    # Abort if ras2rem disabled (which is now the default)
-    if (run_ras2rem == False):
+    if (os.getenv('PRODUCE_GEOCURVES') == 'True'):
 
         print()
-        print ("+++++++ Finalizing processing +++++++" )
-        r2f_final_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_FINAL)   
+        print ("+++++++ Processing: Producing Geocurves +++++++" )
 
-        if (os.path.exists(r2f_final_dir) == True):
-            shutil.rmtree(r2f_final_dir)
-            # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
-            # so sometimes mkdir can fail if rmtree isn't done
-            time.sleep(2) # 2 seconds
+        create_polys = (os.getenv('PRODUCE_GEOCURVE_POLYGONS') == 'True')
+        if (create_polys == True):
+            print ("+++ (Including creating geocurve polygons) +++++++" )
+        else:
+            print ("++++ (Skipping creating geocurve polygon) +++++++" )
 
-        os.mkdir(r2f_final_dir)
-
+        # Produce geocurves
+        #job_number = os.cpu_count() - 1
+        job_number = 1
+        manage_geo_rating_curves_production(
+                ras2fim_output_dir = huc_crs_output_dir, 
+                version = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'doc', 'CHANGELOG.md'),
+                job_number = job_number,
+                output_folder = r2f_final_dir,
+                overwrite = False,
+                produce_polys = create_polys)
+        
         # Copy the 07_ras2calibration files to the final directory  
         shutil.copy2( os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
                                    sv.R2F_OUTPUT_FILE_RAS2CAL_CSV), 
@@ -411,83 +455,47 @@ def fn_run_ras2fim(str_huc8_arg,
                                   sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG), 
                                   r2f_final_dir)
 
-        # TODO: Brad will have some files and folders to move over to the "final" folder
 
-        # TODO: use this models catalog to add columns for success/fail processing for each model and why it failed
-        # if applicable.
-
-        print("This product is undergoing an update and temporarily will end up with only one file in the 'final' folder.")
-        print("Versions coming in the near future will have a number of gpkg files.")
-
-        shutil.copy2(model_huc_catalog_path, r2f_final_dir)
-
-        print("+=================================================================+")
-        print("  RUN RAS2FIM - Completed                                         |")
-        sf.print_date_time_duration(start_dt, datetime.now())
-        print("+-----------------------------------------------------------------+")
-        return
-
-    # ------ Continuing on to ras2rem and catchments -----
-    print()
-    print("*** The -m, process ras2rem flag, was set to true which stops the processing for ras2rem" \
-            " and calculating catchments.")
-
-    # ------ Step 8: run ras2rem -----
-    print()
-    print ("+++++++ Processing for code  STEP 8 +++++++" )
-
-    if int_step <= 8:
-        fn_run_ras2rem(r2f_huc_output_dir, model_unit)
     # -------------------------------------------------
+    if (os.getenv('RUN_RAS2REM') == 'True'):
 
+        print()
+        print ("+++++++ Processing: ras2rem +++++++" )
 
-    # ------ Step 9: run ras2catchments -----
-    print()
-    print ("+++++++ Processing for code STEP 9 +++++++" )
-    if int_step <= 9:
-        make_catchments(str_huc8_arg, r2f_huc_output_dir, str_nation_arg, model_huc_catalog_path)
+        fn_run_ras2rem(huc_crs_output_dir, model_unit)
+
+        r2f_ras2rem_dir = os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_METRIC, sv.R2F_OUTPUT_DIR_RAS2REM)  
+        shutil.copy2(os.path.join(r2f_ras2rem_dir, "rem.tif"), r2f_final_dir)
+        shutil.copy2(os.path.join(r2f_ras2rem_dir, "rating_curve.csv"), r2f_final_dir)
+
     # -------------------------------------------------
+    if (os.getenv('RUN_RAS2CATCHMENTS') == 'True'):
+        
+        print()
+        print ("+++++++ Processing: ras2catchments +++++++" )
 
+        make_catchments(str_huc8_arg, huc_crs_output_dir, str_nation_arg, model_huc_catalog_path)
 
-    # ------ Finalizing processing: cleanup files and move final files to release_files folder -----
+        r2f_catchments_dir = os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_CATCHMENTS)   
+        shutil.copy2(os.path.join(r2f_catchments_dir, "nwm_catchments_subset.gpkg"), r2f_final_dir)
+        shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features.tif"), r2f_final_dir)
+        shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features_meta.gpkg"), r2f_final_dir)
+
+    # -------------------------------------------------
     print()
     print ("+++++++ Finalizing processing +++++++" )
-    r2f_ras2rem_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_METRIC, sv.R2F_OUTPUT_DIR_RAS2REM) 
-    r2f_catchments_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_CATCHMENTS)   
-    r2f_final_dir = os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_FINAL)   
 
-
-
-
-
-
-    # Copy some key files from the 06_metric and the 07_ras2catchemnts directories
-    if (os.path.exists(r2f_final_dir) == True):
-        shutil.rmtree(r2f_final_dir)
-        # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
-        # so sometimes mkdir can fail if rmtree isn't done
-        time.sleep(2) # 2 seconds
-
-    os.mkdir(r2f_final_dir)
-    shutil.copy2(os.path.join(r2f_ras2rem_dir, "rem.tif"), r2f_final_dir)
-    shutil.copy2(os.path.join(r2f_ras2rem_dir, "rating_curve.csv"), r2f_final_dir)
-    shutil.copy2(os.path.join(r2f_catchments_dir, "nwm_catchments_subset.gpkg"), r2f_final_dir)
-    shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features.tif"), r2f_final_dir)
-    shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features_meta.gpkg"), r2f_final_dir)
-
-    # Copy the 07_ras2calibration files to the final directory  
-    shutil.copy2(ras2calibration_output_csv_filepath, r2f_final_dir) ## csv
-    shutil.copy2(ras2calibration_output_gpkg_filepath, r2f_final_dir) ## geopackage
-
-    # TODO: use this models catalog to add columns for success/fail processing for each model and why it failed
-    # if applicable.
+    # TODO: use the models catalog to add columns for success/fail processing for each model and why it failed
+    # if applicable.  (maybe?)
+    # Copy it here in case it gets updated along the way
     shutil.copy2(model_huc_catalog_path, r2f_final_dir)
+    run_arguments_filepath = os.path.join(huc_crs_output_dir, 'run_arguments.txt')
+    shutil.copy2(run_arguments_filepath, r2f_final_dir)
 
     print("+=================================================================+")
     print("  RUN RAS2FIM - Completed                                         |")
     sf.print_date_time_duration(start_dt, datetime.now())
     print("+-----------------------------------------------------------------+")
-
     
 
 def create_input_args_log (**kwargs):
@@ -498,9 +506,7 @@ def create_input_args_log (**kwargs):
     Inputs:
         **kwargs is any dictionary of key / value pairs
     '''
-
     r2f_huc_output_dir = kwargs.get("r2f_huc_output_dir")
-
     arg_log_file = os.path.join(r2f_huc_output_dir, "run_arguments.txt")
     
     # Remove it if is aleady exists (relavent if we add an override system)
@@ -553,11 +559,21 @@ if __name__ == '__main__':
     # When ras2fim.py is run, it will automatically create an output folder name with the output files and some subfolders. 
     #     The folder name will be based on the pattern of {HUC number}_{CRS}_{DATE (YYMMDD)}. e.g.  12090301_2277_230725
 
-    # By Default: the program will stop just before ras2rem and skip it and catchments, but for now (option might be removed), you can override
-    #     this by adding the -m flag
+
+    # ++++ Config file notes ++++++
+
+    # By default, many of the section processing can be turned on/off by using a config file.
+    # The default file is located at /config/r2f_config.env and it will be loaded. If you look at the file
+    # it will look for some critical env variables to tell the system a number of things.
+    # By using the -c argument, you can override to use your own config file in any location on your computer,
+    # and make sure you fully path it in the argument.
+    # Also ensure the file is a valid python environment file (see the current /config/) and has all of the most
+    # current env variables. This app will fail if it is missing a variable from the config file.
+
 
     #  Note: Careful on copy / pasting commands directly from here as some have line breaks for display purposes.
     #        Python command line commands don't like line breaks and you will need to remove them.
+
 
 
     parser = argparse.ArgumentParser(description='========== RUN RAS2FIM FOR A HEC-RAS 1-D DATASET (HUC8) ==========')
@@ -614,13 +630,6 @@ if __name__ == '__main__':
                         default = 'None Specified - using USGS WCS',
                         type = str)
 
-    parser.add_argument('-m', 
-                        dest = "run_ras2rem",
-                        help = 'OPTIONAL: flag to dictate including RAS2REM execution: Enter True to include, defaults to False.',
-                        required = False, 
-                        default = False,
-                        action='store_true')
-
     parser.add_argument('-s',
                         dest = "str_step_override",
                         help = 'OPTIONAL: step of processing to start on. Note: This feature is temporarily not working.',
@@ -644,6 +653,15 @@ if __name__ == '__main__':
                     default = 10,
                     type = int)
     
+    parser.add_argument('-c',
+                        dest = "config_file",
+                        help = "OPTIONAL: If you want to override the default config/r2f_config.env, enter" \
+                               " a full path and name of your config path. Make sure it is a proper python" \
+                               " formatted env file. Defaults to config/r2f_config.env",
+                        required = False, metavar='',
+                        default = sv.DEFAULT_CONFIG_FILE_PATH,
+                        type = str)
+
     args = vars(parser.parse_args())
     
     init_and_run_ras2fim(**args)

@@ -150,7 +150,7 @@ def fn_append_error(str_f_id_fn,
         # add the record to the file
         ds_series = pd.Series([str_f_id_fn, str_geom_path_fn, str_huc12_fn, exception_msg],
                              index=['feature_id', 'geom_path', 'huc_12', 'err'])
-        df_error = df_error.append(ds_series, ignore_index=True)
+        df_error = pd.concat([df_error, ds_series], ignore_index=True)
     else:
         # create the file and append new row
         df_error = pd.DataFrame([[str_f_id_fn, str_geom_path_fn, str_huc12_fn, exception_msg]],
@@ -170,7 +170,7 @@ def fn_create_rating_curve(list_int_step_flows_fn,
                            str_path_to_create_fn,
                            model_unit, 
                            list_step_profiles_wse,
-                           all_XsectionsInfo):
+                           all_x_sections_info):
 
     str_file_name = str_feature_id_fn + '_rating_curve.png'
 
@@ -181,25 +181,25 @@ def fn_create_rating_curve(list_int_step_flows_fn,
     #save cross sections info
     #first add both units of feet and meter
     if model_unit == 'feet':
-        all_XsectionsInfo["wse_ft"]=all_XsectionsInfo["wse"]
-        all_XsectionsInfo["wse_m"]=np.round(all_XsectionsInfo["wse_ft"] * 0.3048,4)
+        all_x_sections_info["wse_ft"]=all_x_sections_info["wse"]
+        all_x_sections_info["wse_m"]=np.round(all_x_sections_info["wse_ft"] * 0.3048,4)
 
-        all_XsectionsInfo["discharge_cfs"]=all_XsectionsInfo["discharge"]
-        all_XsectionsInfo["discharge_cms"]=np.round(all_XsectionsInfo["discharge_cfs"] *  (0.3048 ** 3),3)
+        all_x_sections_info["discharge_cfs"]=all_x_sections_info["discharge"]
+        all_x_sections_info["discharge_cms"]=np.round(all_x_sections_info["discharge_cfs"] *  (0.3048 ** 3),3)
 
     else:
-        all_XsectionsInfo["wse_m"]=all_XsectionsInfo["wse"]
-        all_XsectionsInfo["wse_ft"]=np.round(all_XsectionsInfo["wse_m"] / 0.3048,4)
+        all_x_sections_info["wse_m"]=all_x_sections_info["wse"]
+        all_x_sections_info["wse_ft"]=np.round(all_x_sections_info["wse_m"] / 0.3048,4)
 
-        all_XsectionsInfo["discharge_cms"]=all_XsectionsInfo["discharge"]
-        all_XsectionsInfo["discharge_cfs"]=np.round(all_XsectionsInfo["discharge_cms"] /  (0.3048 ** 3),3)
+        all_x_sections_info["discharge_cms"]=all_x_sections_info["discharge"]
+        all_x_sections_info["discharge_cfs"]=np.round(all_x_sections_info["discharge_cms"] /  (0.3048 ** 3),3)
 
     #reorder the columns and remove extra ones
-    all_XsectionsInfo=all_XsectionsInfo[["fid_xs","featureid","Xsection_name","wse_ft","discharge_cfs","wse_m","discharge_cms"]]
+    all_x_sections_info=all_x_sections_info[["fid_xs","featureid","Xsection_name","wse_ft","discharge_cfs","wse_m","discharge_cms"]]
 
     str_xsection_path = str_rating_path_to_create + '\\' + str_feature_id_fn + '_cross_sections.csv'
 
-    all_XsectionsInfo.to_csv(str_xsection_path, index=False)
+    all_x_sections_info.to_csv(str_xsection_path, index=False)
 
 
     fig = plt.figure()
@@ -610,7 +610,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
     # initialize list of water surface elevations
         list_avg_water_surface_elev = []
 
-        all_XsectionsInfo=pd.DataFrame()
+        all_x_sections_info=pd.DataFrame()
 
         #make a list of unique ids using feature id and cross section name
         xsections_fids_xs = [str_feature_id+"_"+value.strip() for value in TabRS]
@@ -620,10 +620,10 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
         
         for int_prof in range(int_number_of_steps):
 
-            this_profile_Xsection_Info=pd.DataFrame()
-            this_profile_Xsection_Info["fid_xs"]=np.array(xsections_fids_xs)
-            this_profile_Xsection_Info["featureid"]=np.array(xsections_fids)
-            this_profile_Xsection_Info["Xsection_name"]=np.array(xsections_xs)
+            this_profile_x_section_info=pd.DataFrame()
+            this_profile_x_section_info["fid_xs"]=np.array(xsections_fids_xs)
+            this_profile_x_section_info["featureid"]=np.array(xsections_fids)
+            this_profile_x_section_info["Xsection_name"]=np.array(xsections_xs)
 
             
             # get a count of the cross sections in the HEC-RAS model
@@ -661,10 +661,10 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
                     int_count_nodes += 1
 
             #add wse and q_total for xsections
-            this_profile_Xsection_Info["wse"]=arr_water_surface_elev
-            this_profile_Xsection_Info["discharge"]=arr_q_total
+            this_profile_x_section_info["wse"]=arr_water_surface_elev
+            this_profile_x_section_info["discharge"]=arr_q_total
 
-            all_XsectionsInfo=all_XsectionsInfo.append(this_profile_Xsection_Info)
+            all_x_sections_info = pd.concat([all_x_sections_info, this_profile_x_section_info])
 
             # Revise the last channel length to zero
             arr_channel_length[len(arr_channel_length) - 1] = 0
@@ -782,7 +782,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
                             str_path_to_create, 
                             model_unit, 
                             list_step_profiles_wse,
-                            all_XsectionsInfo)
+                            all_x_sections_info)
         # ------------------------------------------
 
         hec.QuitRas()  # close HEC-RAS
@@ -973,9 +973,10 @@ def fn_create_hecras_files(str_feature_id,
             else:
                 int_end_position = int_start_position + int_max_space
 
-        df_start_stop_item = df_start_stop_item.append({'start': int_start_position,
-                                                        'end': int_end_position},
-                                                       ignore_index=True) 
+        new_rec = {'start': int_start_position, 'end': int_end_position}
+        df_new_row = pd.DataFrame.from_records([new_rec])
+        df_start_stop_item = pd.concat([df_start_stop_item, df_new_row], ignore_index=True) 
+        
     df_item_limits = pd.concat([df_items, df_start_stop_item], axis=1, join="inner")
     
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
