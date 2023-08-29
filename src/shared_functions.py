@@ -211,20 +211,37 @@ def fix_proj_path_error():
             #del os.environ["PROJ_LIB"]
 
         """
-        if (os.environ["PROJ_LIB"]):
-            if (is_windows()) :
-                # first get the user and we have to build up a path
-                user_home_path = os.path.expanduser("~")
+        if (is_windows()) :
 
-                # TODO: There could be other paths.
-                anaconda3_proj_path = os.path.join(user_home_path, r'anaconda3\envs\ras2fim\Library\share\proj')
-                if (os.path.exists(anaconda3_proj_path)):
-                    os.environ["PROJ_LIB"] = anaconda3_proj_path
-        elif (os.environ["PROJ_LIB"]):
-            del os.environ["PROJ_LIB"]
+            # first get the user and we have to build up a path
+            user_home_path = os.path.expanduser("~")
+
+            # TODO: There could be other paths. ?? (depends how it was installed? future versions?)
+            anaconda3_env_path = os.path.join(user_home_path, r'anaconda3\envs\ras2fim\Library\share')
+
+            anaconda3_env_path_proj = os.path.join(anaconda3_env_path, "proj")
+            print(f"anaconda3_env_path_proj is {anaconda3_env_path_proj}")
+            if (os.path.exists(anaconda3_env_path_proj)):
+                os.environ["PROJ_LIB"] = anaconda3_env_path_proj
+
+            if (not os.environ["PROJ_LIB"]) or (os.environ["PROJ_LIB"] == "") or (os.environ["PROJ_LIB"] == "PROJ_LIB"):
+                anaconda3_env_path_proj = os.path.join(anaconda3_env_path, "proj")
+                print(f"anaconda3_env_path_proj is {anaconda3_env_path_proj}")
+                if (os.path.exists(anaconda3_env_path_proj)):
+                    os.environ["PROJ_LIB"] = anaconda3_env_path_proj
+            else:
+                print("PROJ_LIB - it is here but empty")
+
+            #if (not os.environ["GDAL_DATA"]):
+            #    print(f"anaconda3_env_path is {anaconda3_env_path}")                
+            #    if (os.path.exists(anaconda3_env_path)):
+            #        os.environ["GDAL_DATA"] = anaconda3_env_path                    
+            #else:
+            #    print("GDAL_DATA - it is here but empty")
+
         """
-
     except Exception as e:
+        #print("oops")
         #print(e)
         pass
 

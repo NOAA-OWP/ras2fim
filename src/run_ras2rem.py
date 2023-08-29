@@ -17,7 +17,6 @@ from multiprocessing import Pool
 import shared_variables as sv
 import shared_functions as sf
 
-
 def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir,model_unit):
 
     '''
@@ -231,6 +230,10 @@ if __name__=="__main__":
     #            OR
     #            -p 12090301_meters_2277_test_3  (We will use the root default pathing and become c:/ras2fim_data/outputs_ras2fim_models/12090301_meters_2277_test_3)
 
+    # There is a known problem with  proj_db error.
+    # ERROR 1: PROJ: proj_create_from_database: Cannot find proj.db.
+    # This will not stop all of the errors but some (in multi-proc).
+    sf.fix_proj_path_error()
 
     parser = argparse.ArgumentParser(description='==== Run RAS2REM ===')
 
