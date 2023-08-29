@@ -399,32 +399,29 @@ def fn_run_ras2fim(str_huc8_arg,
     fn_calculate_all_terrain_stats(str_hecras_out_dir)
 
     # -------------------------------------------------
+    if (os.getenv('RUN_RAS2CALIBRATION') == 'True'):
+        print()
+        print("+++++++ Processing: Running ras2calibration +++++++")
 
-
-    # ------ Step 8: Post-processing ----- 
-    print()
-    print ("+++++++ Post-processing for code STEP 8 +++++++" )
-
-    if int_step <= 8:
-        dir_reformat_ras_rc(r2f_huc_output_dir, 
+        dir_reformat_ras_rc(huc_crs_output_dir,  
                             sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
                             sv.R2F_OUTPUT_FILE_RAS2CAL_CSV,
                             sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG, 
                             sv.R2F_OUTPUT_FILE_RAS2CAL_LOG, 
-                            'ras2fim', '', '', True, 
+                            'ras2fim', '', '', False, 
                             sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, 
                             sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS, 
                             sv.R2F_OUTPUT_DIR_METRIC)
+        
+        shutil.copy2( os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
+                                   sv.R2F_OUTPUT_FILE_RAS2CAL_CSV), 
+                                   r2f_final_dir)
+        shutil.copy2(os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
+                                  sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG), 
+                                  r2f_final_dir)
+        
 
-    # # Assemble filepaths for transferring to `final` later
-    # ras2calibration_output_csv_filepath = os.path.join(r2f_huc_output_dir, 
-    #                                                    sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
-    #                                                    sv.R2F_OUTPUT_FILE_RAS2CAL_CSV)
-
-    # ras2calibration_output_gpkg_filepath = os.path.join(r2f_huc_output_dir, 
-    #                                                    sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
-    #                                                    sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG)
-
+    # -------------------------------------------------
     if (os.getenv('PRODUCE_GEOCURVES') == 'True'):
 
         print()
@@ -447,14 +444,6 @@ def fn_run_ras2fim(str_huc8_arg,
                 overwrite = False,
                 produce_polys = create_polys)
         
-        # Copy the 07_ras2calibration files to the final directory  
-        shutil.copy2( os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
-                                   sv.R2F_OUTPUT_FILE_RAS2CAL_CSV), 
-                                   r2f_final_dir)
-        shutil.copy2(os.path.join(r2f_huc_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
-                                  sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG), 
-                                  r2f_final_dir)
-
 
     # -------------------------------------------------
     if (os.getenv('RUN_RAS2REM') == 'True'):
