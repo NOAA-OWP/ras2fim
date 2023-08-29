@@ -1,6 +1,28 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.24.0 - 2023-08-29 - [PR#151](https://github.com/NOAA-OWP/ras2fim/pull/151)
+
+Addressing the issue #120, this PR creates polygons for HEC-RAS models domains.
+
+The input is the shapefile of the RAS models cross sections created in output folder "01_shapes_from_hecras". The output is a gpkg file. 
+
+
+### Additions  
+Added the new `src/create_model_domain_polygons.py` file to create polygons for RAS models domains. 
+
+### Changes  
+- `config/r2f_config.env`
+Added "CREATE_RAS_DOMAIN_POLYGONS = True" into the config file
+
+- `src/ras2fim.py`
+Added a section to manage the process to create domain polygons if the above config variable "CREATE_RAS_DOMAIN_POLYGONS" is True.  
+
+- `src/shared_variables.py`
+Defined the output folder name holding polygons gpkg file
+
+<br/><br/>
+
 ## v1.23.0 - 2023-08-17 - [PR#140](https://github.com/NOAA-OWP/ras2fim/pull/140)
 
 Adds the capabilities to produce geocurves and produce inundation from canned geocurves & precomputed polygons. Geocurves are simply default RAS2FIM rating curves, but with the geometry of inundation extents appended as a WKT geometry column.
