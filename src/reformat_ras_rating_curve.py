@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
-import os, sys
-import argparse, datetime
+import os
+import sys
+import time
+import shutil
+import argparse
+import datetime
 import pandas as pd
 import geopandas as gpd
 from pathlib import Path
-# from shapely.geometry import Point ## For multipoint workaround
 from concurrent.futures import ProcessPoolExecutor
 
 import shared_variables as sv
@@ -43,16 +46,18 @@ def write_metadata_file(output_save_folder, start_time_string,
     metadata_content.append('CSV column name    Source                  Type            Description')
     metadata_content.append('fid_xs             Calculated in script    String          Combination of NWM feature ID and HECRAS crosssection name')
     metadata_content.append('feature_id         From geometry files     Number          NWM feature ID associated with the stream segment')
-    metadata_content.append('xsection_name      From geomatry files     Number          HECRAS crosssection name')
+    metadata_content.append('xsection_name      From geometry files     Number          HECRAS crosssection name')
     metadata_content.append('flow               From rating curve       Number          Discharge value from rating curve in each directory')
     metadata_content.append('wse                From rating curve       Number          Water surface elevation value from the rating curve in each directory')
     metadata_content.append('flow_units         Hard-coded              Number          Discharge units (metric since data is being pulled from metric directory)')
     metadata_content.append('wse_unts           Hard-coded              Number          Water surface elevation units (metric since data is being pulled from metric directory)')
     metadata_content.append('location_type      User-provided           String          Type of site the data is coming from (example: IFC or USGS) (optional)')
     metadata_content.append('source             User-provided           String          Source that produced the data (example: RAS2FIM) (optional)')
-    metadata_content.append('wrds_timestamp     Calculated in script    Datetime        Describes when this table was compiled')
+    metadata_content.append('timestamp          Calculated in script    Datetime        Describes when this table was compiled')
     metadata_content.append('active             User-provided           True/False      Whether a gage is active (optional)')
-    metadata_content.append('huc8               From geomatry files     Number          HUC 8 watershed ID that the point falls in')
+    metadata_content.append('huc8               From geometry files     Number          HUC 8 watershed ID that the point falls in')
+    metadata_content.append('ras_model_dir      From geometry files     String          RAS model that the points came from')
+
     metadata_content.append(' ')
     
     metadata_name = 'README_reformat_ras_rating_curve.txt'
@@ -131,11 +136,6 @@ def dir_reformat_ras_rc(dir_input_folder_path, intermediate_filename,
         print('======================')
         print(f"Directory: {dir_input_folder_path}")
         print()
-
-    # Create intermediate output file within directory (08_adjusted_src)
-    intermediate_filepath = os.path.join(dir_input_folder_path, intermediate_filename)
-    if not os.path.exists(intermediate_filepath):
-        os.mkdir(intermediate_filepath)
     
     # ------------------------------------------------------------------------------------------------
     # Retrieve information from `run_arguments.txt` file
@@ -149,6 +149,7 @@ def dir_reformat_ras_rc(dir_input_folder_path, intermediate_filename,
             lines = file.readlines()
     except:
         print(f'Unable to open run_arguments.txt, skipping directory {dir_input_folder_path}.')
+        lines = None
 
     # Search for and extract the model unit and projection from run_arguments.txt 
     for line in lines:
@@ -164,6 +165,12 @@ def dir_reformat_ras_rc(dir_input_folder_path, intermediate_filename,
 
     if verbose == True: 
         print(f'Model settings: model_unit {model_unit} | str_huc8_arg: {str_huc8_arg} | proj_crs: {proj_crs}')
+
+    # Create intermediate output file within directory (only if the run_arguments.txt folder is there)
+    if lines != None:
+        intermediate_filepath = os.path.join(dir_input_folder_path, intermediate_filename)
+        if not os.path.exists(intermediate_filepath):
+            os.mkdir(intermediate_filepath)
 
     # ------------------------------------------------------------------------------------------------
     # Get compiled rating curves from metric folder
@@ -220,6 +227,16 @@ def dir_reformat_ras_rc(dir_input_folder_path, intermediate_filename,
         hecras_crosssections_shp = gpd.read_file(hecras_crosssections_filepath)
         nwm_all_lines_shp = gpd.read_file(nwm_all_lines_filepath)
 
+        # Get ras_model_dir from the hecras_crosssections_shp
+        ras_path_list =  list(hecras_crosssections_shp['ras_path'])
+
+        ras_dir_list = []
+        for path in ras_path_list:
+            ras_dir = os.path.basename(os.path.dirname(path))
+            ras_dir_list.append(ras_dir)
+
+        hecras_crosssections_shp['ras_model_dir'] = ras_dir_list
+
         # Apply shapefile projection
         hecras_crosssections_shp.crs = proj_crs
         nwm_all_lines_shp.crs = proj_crs
@@ -264,14 +281,14 @@ def dir_reformat_ras_rc(dir_input_folder_path, intermediate_filename,
             output_log.append(f'Unable to read rating curve at path {rc_path}')
 
         # Join some of the geospatial data to the rc_df data 
-        rc_geospatial_df = pd.merge(rc_df, intersection_gdf[['fid_xs', 'huc8']], left_on='fid_xs', right_on='fid_xs', how='inner')
+        rc_geospatial_df = pd.merge(rc_df, intersection_gdf[['fid_xs', 'huc8', 'ras_model_dir']], left_on='fid_xs', right_on='fid_xs', how='inner')
         rc_geospatial_df = rc_geospatial_df.astype({'huc8':'object'})
 
         # ------------------------------------------------------------------------------------------------
         # Build output table
         
         # Get a current timestamp
-        wrds_timestamp = datetime.datetime.now() 
+        timestamp = datetime.datetime.now() 
 
         # Assemble output table
         dir_output_table = pd.DataFrame({'fid_xs': rc_geospatial_df['fid_xs'],
@@ -283,14 +300,16 @@ def dir_reformat_ras_rc(dir_input_folder_path, intermediate_filename,
                                          'wse_units': 'm', #str
                                          'location_type': location_type, #str 
                                          'source': source, #str
-                                         'wrds_timestamp': wrds_timestamp, #str
+                                         'timestamp': timestamp, #str
                                          'active': active, #str
-                                         'huc8' : rc_geospatial_df['huc8']})  #str
+                                         'huc8' : rc_geospatial_df['huc8'], #str
+                                         'ras_model_dir' : rc_geospatial_df['ras_model_dir'] #str
+                                         })  
                 
         # Add necessary columns to the intersections geopackage        
         intersection_gdf['location_type'] = location_type
         intersection_gdf['source'] = source
-        intersection_gdf['wrds_timestamp'] = wrds_timestamp
+        intersection_gdf['timestamp'] = timestamp
         intersection_gdf['active'] =  active
         intersection_gdf['flow_units'] = 'cms'
         intersection_gdf['wse_units'] = 'm'
@@ -378,7 +397,7 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder,
     Parameters (required):
 
     - input_folder_path: (str) filepath for folder containing input ras2fim models 
-    - output_save_folder: (str) filepath for folder to put output files        
+    - output_save_folder: (str) filepath of parent folder in which to create the ras2calibration folder containing the output files        
     - verbose: (bool) option to run verbose code with a lot of print statements
     - log: (bool) option to save output logs as a textfile
     - num_workers: (int) number of workers to use during parallel processing  
@@ -422,33 +441,55 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder,
         sys.exit(f"No folder at input folder path: {input_folder_path}")
 
     # Check for output folders
-    if output_save_folder == "":
-        
-        # Error if the parent directory is missing
-        if not os.path.exists(sv.R2F_OUTPUT_DIR_RELEASES):
-            print(f"Error: Attempted to use default output save folder but parent directory {str(sv.R2F_OUTPUT_DIR_RELEASES)} is missing.")
-            print("Create parent directory or specify a different output folder using `-o` followed by the directory filepath.")
-            sys.exit()
 
-        # Check that default output folder exists
-        output_save_folder = os.path.join(sv.R2F_OUTPUT_DIR_RELEASES, "compiled_rating_curves")
-        print(f"Using default output save folder: {output_save_folder}")
+    if output_save_folder == "": # Using the default filepath
 
-        # Attempt to make default output folder if it doesn't exist
+        output_save_folder = sv.R2F_OUTPUT_DIR_RELEASES
+        print(f'Attempting to use default output save folder: {output_save_folder}')
+
+        # Attempt to make default output folder if it doesn't exist, error out if it doesn't work.
         if not os.path.exists(output_save_folder): 
-            print(f"No folder found at {input_folder_path} (output save location)")
+            print(f"No folder found at {output_save_folder}")
             try:
                 print("Creating output folder.")
                 os.mkdir(output_save_folder)
             except OSError:
                 print(OSError)
-                sys.exit(f"Unable to create output save folder at {input_folder_path}")
+                sys.exit(f"Unable to create default output save folder at {output_save_folder}")
 
-    else:
+        # Assemble the output subfolder filepath
+        output_save_subfolder = os.path.join(sv.R2F_OUTPUT_DIR_RELEASES, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
 
-        # Check that user-inputted output folder exists
+        # If the output subfolder already exists, remove it
+        if (os.path.exists(output_save_subfolder) == True):
+            shutil.rmtree(output_save_subfolder)
+            # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
+            # so sometimes mkdir can fail if rmtree isn't done
+            time.sleep(2) # 2 seconds
+
+        # Make the output subfolder
+        os.mkdir(output_save_subfolder)
+
+    else: # Using the specified filepath
+
+        # Check that the destination filepath exists. If it doesn't, give error and quit.
         if not os.path.exists(output_save_folder):
-            sys.exit(f"No folder found at {output_save_folder}")
+            print(f"Error: No folder found at {output_save_folder}.")
+            print("Create this parent directory or specify a different output folder using `-o` followed by the directory filepath.")
+            sys.exit()
+
+        # Assemble the output subfolder filepath
+        output_save_subfolder = os.path.join(output_save_folder, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
+
+        # If the output subfolder already exists, remove it
+        if (os.path.exists(output_save_subfolder) == True):
+            shutil.rmtree(output_save_subfolder)
+            # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
+            # so sometimes mkdir can fail if rmtree isn't done
+            time.sleep(2) # 2 seconds
+
+        # Make the output subfolder
+        os.mkdir(output_save_subfolder)
 
     # Check job numbers
     total_cpus_requested = num_workers
@@ -580,11 +621,11 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder,
     # Export the output points geopackage and the rating curve table to the save folder
 
     geopackage_name = 'reformat_ras_rating_curve_points.gpkg'
-    geopackage_path = os.path.join(output_save_folder, geopackage_name)
+    geopackage_path = os.path.join(output_save_subfolder, geopackage_name)
     compiled_geopackage.to_file(geopackage_path, driver='GPKG')
 
     csv_name = 'reformat_ras_rating_curve_table.csv'
-    csv_path = os.path.join(output_save_folder, csv_name)
+    csv_path = os.path.join(output_save_subfolder, csv_name)
     full_output_table.to_csv(csv_path, index=False)
 
     # ------------------------------------------------------------------------------------------------
@@ -601,7 +642,7 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder,
     # Save output log if the log option was selected
     log_name = 'reformat_ras_rating_curve_log.txt'
     if log == True:
-        log_path = os.path.join(output_save_folder, log_name)
+        log_path = os.path.join(output_save_subfolder, log_name)
 
         with open(log_path, 'w') as f:
             for line in output_log:
@@ -611,7 +652,7 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder,
         print("No output log saved.")
 
     # Write README metadata file
-    write_metadata_file(output_save_folder, start_time_string, nwm_shapes_file, 
+    write_metadata_file(output_save_subfolder, start_time_string, nwm_shapes_file, 
                         hecras_shapes_file, metric_file, geopackage_name, csv_name, 
                         log_name, verbose) 
 

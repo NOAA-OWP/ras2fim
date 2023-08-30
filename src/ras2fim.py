@@ -413,12 +413,19 @@ def fn_run_ras2fim(str_huc8_arg,
                             sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS, 
                             sv.R2F_OUTPUT_DIR_METRIC)
         
-        shutil.copy2( os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
+        # Copy outputs into the ras2calibration subdirectory of the /final folder
+        r2f_final_ras2cal_subdir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
+        os.mkdir(r2f_final_ras2cal_subdir)
+        
+        shutil.copy2(os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
                                    sv.R2F_OUTPUT_FILE_RAS2CAL_CSV), 
-                                   r2f_final_dir)
+                                   r2f_final_ras2cal_subdir)
         shutil.copy2(os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
                                   sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG), 
-                                  r2f_final_dir)
+                                  r2f_final_ras2cal_subdir)
+        shutil.copy2(os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
+                                  'README_reformat_ras_rating_curve.txt'), 
+                                  r2f_final_ras2cal_subdir)        
         
 
     # -------------------------------------------------
