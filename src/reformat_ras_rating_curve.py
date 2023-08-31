@@ -499,7 +499,17 @@ def compile_ras_rating_curves(input_folder_path, output_save_folder,
                           "Please lower the quantity of requested workers accordingly.")
 
     # Get a list of the directories in the input folder path
-    dirlist = os.listdir(input_folder_path)
+    dirlist = []
+
+    for dir in os.listdir(input_folder_path):
+        if (len(dir) < 8):
+            continue
+
+        huc_number = dir[0:8]
+        if not huc_number.isnumeric():
+            continue
+
+        dirlist.append(dir)
 
     # Create empty output log and give it a header
     output_log = []
