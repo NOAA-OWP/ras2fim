@@ -5,7 +5,10 @@ We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 Addressing the issue #120, this PR creates polygons for HEC-RAS models domains.
 
-The input is the shapefile of the RAS models cross sections created in output folder "01_shapes_from_hecras". The output is a gpkg file. 
+The required input is the shapefile of the RAS models cross sections created in output folder "01_shapes_from_hecras", 
+The optional input is the conflation qc file available in output folder "02_shapes_from_conflation" to mark the HEC-RAS models that have been conflated to NWM reaches. 
+
+The output is a gpkg file. 
 
 
 ### Additions  

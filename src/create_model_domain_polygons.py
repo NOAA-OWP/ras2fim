@@ -7,6 +7,7 @@ import time
 import argparse
 import pandas as pd
 import os
+import numpy as np
 
 
 def fn_make_domain_polygons(xsections_shp_file_path, polygons_output_file_path, model_name_field,model_huc_catalog_path,
@@ -100,9 +101,10 @@ def fn_make_domain_polygons(xsections_shp_file_path, polygons_output_file_path, 
 
     if conflation_qc_path.lower() != 'no_qc':
         conflate_qc_df=pd.read_csv(conflation_qc_path)
-        models_polygons_gdf['conflated']=models_polygons_gdf[model_name_field].isin(conflate_qc_df[model_name_field])
+        models_polygons_gdf['conflated']=np.where(models_polygons_gdf[model_name_field].isin(conflate_qc_df[model_name_field]).values==True,"yes","no")
 
-
+        #also add HUC8 number
+        models_polygons_gdf["HUC8"]=os.path.basename(conflation_qc_path).split("_stream_qc.csv")[0]
 
     models_polygons_gdf.crs=Xsections.crs
     models_polygons_gdf.to_file(polygons_output_file_path,driver="GPKG")
