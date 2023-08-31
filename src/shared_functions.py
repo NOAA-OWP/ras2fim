@@ -3,7 +3,7 @@
 import os
 
 import argparse
-import datetime
+import datetime as dt
 import fnmatch
 import keepachangelog
 import numpy as np

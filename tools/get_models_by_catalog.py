@@ -9,12 +9,12 @@ import time
 import traceback
 from datetime import datetime
 
+sys.path.append('..')
 import pandas as pd
 import ras2fim.src.shared_validators as val
 import ras2fim.src.shared_variables as sv
 import s3fs
 
-# sys.path.append('..')
 
 """
 This tool uses a HUC8 number to call over to an AWS S3 models_catalog.csv and will scan
