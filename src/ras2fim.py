@@ -27,8 +27,10 @@ from simplify_fim_rasters import fn_simplify_fim_rasters
 from calculate_all_terrain_stats import fn_calculate_all_terrain_stats
 from run_ras2rem import fn_run_ras2rem
 from ras2catchments import make_catchments
+from create_model_domain_polygons import fn_make_domain_polygons
 from create_geocurves import manage_geo_rating_curves_production
 from reformat_ras_rating_curve import dir_reformat_ras_rc
+
 
 import argparse
 import gdal
@@ -476,6 +478,25 @@ def fn_run_ras2fim(str_huc8_arg,
         shutil.copy2(os.path.join(r2f_catchments_dir, "nwm_catchments_subset.gpkg"), r2f_final_dir)
         shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features.tif"), r2f_final_dir)
         shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features_meta.gpkg"), r2f_final_dir)
+        
+    if (os.getenv('CREATE_RAS_DOMAIN_POLYGONS') == 'True'):
+
+        print()
+        print ("+++++++ Create polygons for HEC-RAS models domains +++++++" )
+
+        #get the path to the shapefile containing cross sections of the parent HEC-RAS models
+        xsections_shp_file_path=os.path.join(str_shapes_from_hecras_dir,'cross_section_LN_from_ras.shp')
+
+        #provide conflation qc file to mark the parent models that conflated to NWM reaches
+        conflation_qc_path=os.path.join(str_shapes_from_conflation_dir,'%s_stream_qc.csv'%str_huc8_arg)
+
+        # make output folder and build path to the output file
+        output_polygon_dir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_DOMAIN_POLYGONS)
+        polygons_output_file_path=os.path.join(output_polygon_dir,'models_domain.gpkg')
+        os.mkdir(output_polygon_dir)
+
+        fn_make_domain_polygons(xsections_shp_file_path,polygons_output_file_path,'ras_path',model_huc_catalog_path,
+                                conflation_qc_path)
 
     # -------------------------------------------------
     print()

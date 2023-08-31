@@ -1,6 +1,32 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+
+## v1.25.0 - 2023-08-29 - [PR#151](https://github.com/NOAA-OWP/ras2fim/pull/151)
+
+Addressing the issue #120, this PR creates polygons for HEC-RAS models domains.
+
+The required input is the shapefile of the RAS models cross sections created in output folder "01_shapes_from_hecras", 
+The optional input is the conflation qc file available in output folder "02_shapes_from_conflation" to mark the HEC-RAS models that have been conflated to NWM reaches. 
+
+The output is a gpkg file. 
+
+
+### Additions  
+Added the new `src/create_model_domain_polygons.py` file to create polygons for RAS models domains. 
+
+### Changes  
+- `config/r2f_config.env`
+Added "CREATE_RAS_DOMAIN_POLYGONS = True" into the config file
+
+- `src/ras2fim.py`
+Added a section to manage the process to create domain polygons if the above config variable "CREATE_RAS_DOMAIN_POLYGONS" is True.  
+
+- `src/shared_variables.py`
+Defined the output folder name holding polygons gpkg file
+
+<br/><br/>
+
 ## v1.24.0 - 2023-08-17 - [PR#139](https://github.com/NOAA-OWP/ras2fim/pull/139)
 
 In previous versions of the code, `reformat_ras_rating_curve.py` would have to be run separately in order to compile the ras2fim results needed for FIM calibration. With this update, the directory-level processing required to prepare the data for the calibration workflow is run as one of the final steps in the `ras2fim.py` script. This will decrease the amount of work required to prepare `ras2fim.py` output runs in the future.
@@ -24,7 +50,6 @@ In previous versions of the code, `reformat_ras_rating_curve.py` would have to b
 - `config/r2f_config.env`: added a new config arg to turn ras2calibration on/off
 
 <br/><br/>
-
 
 ## v1.23.0 - 2023-08-17 - [PR#140](https://github.com/NOAA-OWP/ras2fim/pull/140)
 
