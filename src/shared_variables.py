@@ -40,9 +40,16 @@ R2F_OUTPUT_DIR_METRIC_RATING_CURVES = "Rating_Curve"
 R2F_OUTPUT_DIR_METRIC_CROSS_SECTIONS = "Cross_Sections"
 R2F_OUTPUT_DIR_RAS2REM  = "ras2rem"
 R2F_OUTPUT_DIR_CATCHMENTS  = "ras2catchments"
+R2F_OUTPUT_DIR_RAS2CALIBRATION = "ras2calibration"
 R2F_OUTPUT_DIR_FINAL  = "final"
 
 R2F_OUTPUT_DIR_RELEASES = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
+
+# OUTPUT FILES
+R2F_OUTPUT_FILE_RAS2CAL_CSV = 'ras2calibration_output_table.csv'
+R2F_OUTPUT_FILE_RAS2CAL_GPKG = 'ras2calibration_output_geopackage.gpkg'
+R2F_OUTPUT_FILE_RAS2CAL_LOG = 'ras2calibration_log.txt'
+
 
 # NODATA VALUE
 DEFAULT_NODATA_VAL = (0 - 9999)
