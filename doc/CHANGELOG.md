@@ -1,6 +1,31 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.24.0 - 2023-08-17 - [PR#139](https://github.com/NOAA-OWP/ras2fim/pull/139)
+
+In previous versions of the code, `reformat_ras_rating_curve.py` would have to be run separately in order to compile the ras2fim results needed for FIM calibration. With this update, the directory-level processing required to prepare the data for the calibration workflow is run as one of the final steps in the `ras2fim.py` script. This will decrease the amount of work required to prepare `ras2fim.py` output runs in the future.
+
+### Changes  
+
+- `src/ras2fim.py`
+  - Code now imports `dir_reformat_ras_rc()` function from `reformat_ras_rating_curve`
+  - updated coded to integrate optional usage of the system via the config arg of `RUN_RAS2CALIBRATION`
+  - Added `dir_reformat_ras_rc()`
+  - Code now saves the output csv and geopackage to the `final` folder as well as the `ras2calibration` folder
+
+- `src/shared_variables.py`
+  - Added `R2F_OUTPUT_DIR_RAS2CALIBRATION` folder name.
+  - Added `R2F_OUTPUT_FILE_RAS2CAL_CSV`, `R2F_OUTPUT_FILE_RAS2CAL_GPKG`, and `R2F_OUTPUT_FILE_RAS2CAL_LOG` file names. 
+
+- `src/reformat_ras_rating_curve.py`
+  - pulls filenames from `src/shared_variables.py`
+  - Replaced `dir` and `input_folder_path` inputs to `dir_reformat_ras_rc()` function with a combined path + directory object (`dir_input_folder_path`)
+
+- `config/r2f_config.env`: added a new config arg to turn ras2calibration on/off
+
+<br/><br/>
+
+
 ## v1.23.0 - 2023-08-17 - [PR#140](https://github.com/NOAA-OWP/ras2fim/pull/140)
 
 Adds the capabilities to produce geocurves and produce inundation from canned geocurves & precomputed polygons. Geocurves are simply default RAS2FIM rating curves, but with the geometry of inundation extents appended as a WKT geometry column.
