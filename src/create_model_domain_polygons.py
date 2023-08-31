@@ -6,9 +6,11 @@ import datetime
 import time
 import argparse
 import pandas as pd
+import os
 
 
-def fn_make_domain_polygons(xsections_shp_file_path, polygons_output_file_path, model_name_field,model_huc_catalog_path):
+def fn_make_domain_polygons(xsections_shp_file_path, polygons_output_file_path, model_name_field,model_huc_catalog_path,
+                            conflation_qc_path):
     '''
     The function produces polygons representing the domain of each HEC-RAS model using its cross section
 
@@ -17,6 +19,7 @@ def fn_make_domain_polygons(xsections_shp_file_path, polygons_output_file_path, 
         - polygons_output_file_path: path to the output GPKG file containing models domain polygons
         - model_name_field: column/field name of the input shapefile showing each HEC-RAS model name
         - model_huc_catalog_path : path to the model catalog
+        - conflation_qc_path :pth to conflation qc file with info for the RAS models which were successfully conflated to NWM reaches
 
     Returns:
         a polygon GPKG for domain of each HEC-RAS model considering cross sections
@@ -34,9 +37,10 @@ def fn_make_domain_polygons(xsections_shp_file_path, polygons_output_file_path, 
     '''
 
     print("  --- (-i) Path to the shapefile containing HEC-RAS models cross sections: " + str(xsections_shp_file_path))
-    print("  --- (-o) path to the GPKG output file containing models domain polygons: " + str(polygons_output_file_path))
-    print("  --- (-name) column/field name of the input shapefile showing each HEC-RAS model name: " + str(model_name_field))
-    print("  --- (-c) path to the model catalog: " + str(model_huc_catalog_path))
+    print("  --- (-o) path to the GPKG output file: " + str(polygons_output_file_path))
+    print("  --- (-name) column/field name of the input shapefile having unique names for HEC-RAS models: " + str(model_name_field))
+    print("  --- (-catalog) path to the model catalog: " + str(model_huc_catalog_path))
+    print("  --- (-conflate) path to the conflation qc file: " + str(conflation_qc_path))
     print("+-----------------------------------------------------------------+")
 
 
@@ -80,18 +84,27 @@ def fn_make_domain_polygons(xsections_shp_file_path, polygons_output_file_path, 
 
     models_polygons_gdf=gpd.GeoDataFrame()
     models_polygons_gdf[model_name_field]=ras_paths
-    models_polygons_gdf["geometry"]=models_polygons
-    models_polygons_gdf["PolyStatus"]=polygon_status
 
-    if model_huc_catalog_path != 'No catalog file':
+    #get folder name and geometry file name used to create polygons
+    models_polygons_gdf['ras_model_dir']=models_polygons_gdf.apply(lambda row: os.path.basename(os.path.dirname(row[model_name_field])), axis=1)
+    models_polygons_gdf['ras_geo_file']=models_polygons_gdf.apply(lambda row: os.path.basename(row[model_name_field]), axis=1)
+
+    models_polygons_gdf["geometry"]=models_polygons
+    models_polygons_gdf["poly_status"]=polygon_status
+
+    if model_huc_catalog_path.lower() != 'no_catalog':
         #get RRASSLER processing date...only get the first record date, since RASSLER usually takes<24h to process
         catalog_df=pd.read_csv(model_huc_catalog_path)
         rrassler_process_date=catalog_df.loc[0,'date']
         models_polygons_gdf['rrassler_date']=rrassler_process_date
 
-    models_polygons_gdf.crs=Xsections.crs
-    
+    if conflation_qc_path.lower() != 'no_qc':
+        conflate_qc_df=pd.read_csv(conflation_qc_path)
+        models_polygons_gdf['conflated']=models_polygons_gdf[model_name_field].isin(conflate_qc_df[model_name_field])
 
+
+
+    models_polygons_gdf.crs=Xsections.crs
     models_polygons_gdf.to_file(polygons_output_file_path,driver="GPKG")
 
     flt_end_domain = time.time()
@@ -113,7 +126,7 @@ if __name__=="__main__":
 
     parser.add_argument('-o',
                         dest = "polygons_output_file_path",
-                        help=r'REQUIRED: path to the output GPKG file of models domain polygons',
+                        help=r'REQUIRED: path to the output GPKG file',
                         required=True,
                         metavar='DIR',
                         type=str)
@@ -121,19 +134,27 @@ if __name__=="__main__":
 
     parser.add_argument('-name',
                         dest = "model_name_field",
-                        help=r'Optional: column/field name of the input shapefile showing each HEC-RAS model name. Default:ras_path',
+                        help=r'Optional: column/field name of the input shapefile having unique names for HEC-RAS models. Default:"ras_path"',
                         required=False,
                         default='ras_path',
                         metavar='STRING',
                         type=str)
 
-    parser.add_argument('-c',
+    parser.add_argument('-catalog',
                     dest = "model_catalog_path",
-                    help=r'Optional: path to the model catalog. Default=No catalog file',
+                    help=r'Optional: path to the model catalog. Default=no_catalog',
                     required=False,
-                    default='No catalog file',
+                    default='no_catalog',
                     metavar='STRING',
                     type=str)
+
+    parser.add_argument('-conflate',
+                dest = "conflation_qc_path",
+                help=r'Optional: path to the conflation qc file in "02_shapes_from_conflation" folder. Default=no_qc',
+                required=False,
+                default='no_qc',
+                metavar='STRING',
+                type=str)
 
     args = vars(parser.parse_args())
 
@@ -141,10 +162,11 @@ if __name__=="__main__":
     polygons_output_file_path = args['polygons_output_file_path']
     model_name_field=args['model_name_field']
     model_catalog_path=args['model_catalog_path']
+    conflation_qc_path=args['conflation_qc_path']
 
     print()
     print ("+++++++ Create polygons for HEC-RAS models domains +++++++" )
 
-    fn_make_domain_polygons(xsections_shp_file_path, polygons_output_file_path,model_name_field,model_catalog_path)
+    fn_make_domain_polygons(xsections_shp_file_path, polygons_output_file_path,model_name_field,model_catalog_path,conflation_qc_path)
 
 

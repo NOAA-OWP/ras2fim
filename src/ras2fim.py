@@ -453,18 +453,19 @@ def fn_run_ras2fim(str_huc8_arg,
         print()
         print ("+++++++ Create polygons for HEC-RAS models domains +++++++" )
 
-        #get the path to the shapefile containing HEC-RAS models cross sections located in folder "01_shapes_from_hecras"
-        xsections_dir=str_hecras_out_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS)
-        xsections_shp_file_path=os.path.join(xsections_dir,'cross_section_LN_from_ras.shp')
+        #get the path to the shapefile containing cross sections of the parent HEC-RAS models
+        xsections_shp_file_path=os.path.join(str_shapes_from_hecras_dir,'cross_section_LN_from_ras.shp')
+
+        #provide conflation qc file to mark the parent models that conflated to NWM reaches
+        conflation_qc_path=os.path.join(str_shapes_from_conflation_dir,'%s_stream_qc.csv'%str_huc8_arg)
 
         # make output folder and build path to the output file
-        metric_directory=str_hecras_out_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,sv.R2F_OUTPUT_DIR_METRIC)
-        output_polygon_dir = os.path.join(metric_directory, sv.R2F_OUTPUT_DIR_DOMAIN_POLYGONS)
+        output_polygon_dir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_DOMAIN_POLYGONS)
         polygons_output_file_path=os.path.join(output_polygon_dir,'models_domain.gpkg')
         os.mkdir(output_polygon_dir)
 
-
-        fn_make_domain_polygons(xsections_shp_file_path,polygons_output_file_path,'ras_path',model_huc_catalog_path)
+        fn_make_domain_polygons(xsections_shp_file_path,polygons_output_file_path,'ras_path',model_huc_catalog_path,
+                                conflation_qc_path)
 
     # -------------------------------------------------
     print()
