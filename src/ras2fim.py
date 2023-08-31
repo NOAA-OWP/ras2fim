@@ -29,6 +29,7 @@ from run_ras2rem import fn_run_ras2rem
 from ras2catchments import make_catchments
 from create_model_domain_polygons import fn_make_domain_polygons
 from create_geocurves import manage_geo_rating_curves_production
+from reformat_ras_rating_curve import dir_reformat_ras_rc
 
 
 import argparse
@@ -398,6 +399,36 @@ def fn_run_ras2fim(str_huc8_arg,
     print ("+++++++ Processing: STEP 5.c (calculate terrain statistics +++++++" )
 
     fn_calculate_all_terrain_stats(str_hecras_out_dir)
+
+    # -------------------------------------------------
+    if (os.getenv('RUN_RAS2CALIBRATION') == 'True'):
+        print()
+        print("+++++++ Processing: Running ras2calibration +++++++")
+
+        dir_reformat_ras_rc(huc_crs_output_dir,  
+                            sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
+                            sv.R2F_OUTPUT_FILE_RAS2CAL_CSV,
+                            sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG, 
+                            sv.R2F_OUTPUT_FILE_RAS2CAL_LOG, 
+                            'ras2fim', '', '', False, 
+                            sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, 
+                            sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS, 
+                            sv.R2F_OUTPUT_DIR_METRIC)
+        
+        # Copy outputs into the ras2calibration subdirectory of the /final folder
+        r2f_final_ras2cal_subdir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
+        os.mkdir(r2f_final_ras2cal_subdir)
+        
+        shutil.copy2(os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, 
+                                   sv.R2F_OUTPUT_FILE_RAS2CAL_CSV), 
+                                   r2f_final_ras2cal_subdir)
+        shutil.copy2(os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
+                                  sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG), 
+                                  r2f_final_ras2cal_subdir)
+        shutil.copy2(os.path.join(huc_crs_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
+                                  'README_reformat_ras_rating_curve.txt'), 
+                                  r2f_final_ras2cal_subdir)        
+        
 
     # -------------------------------------------------
     if (os.getenv('PRODUCE_GEOCURVES') == 'True'):
