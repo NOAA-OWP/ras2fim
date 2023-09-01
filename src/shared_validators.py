@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 
 ####################################################################
-'''
+"""
 This file is for validation that can be used in more than one py file.
-'''
+"""
+
 
 ####################################################################
-
 def is_valid_crs(crs):
 
-    '''
+    """
     Processing:
         - not counting case, the first for chars must be either EPSG or ESRI
         - crs number must be between 4 and 6 digits
     Inputs:
-        - crs (str): in pattern such as EPSG:2277 
+        - crs (str): in pattern such as EPSG:2277
 
     Returns three values
         - First is bool (True or False). True meaning it is a valid crs
@@ -23,52 +23,48 @@ def is_valid_crs(crs):
 
         It is up to the calling code to decide if an exception should be raised.
 
-    Usage: 
+    Usage:
         valid_crs, err_msg, crs_number = is_valid_crs(arg_crs)
 
         (if you choose to hand it this way....)
         if (valid_crs == False):
             raise ValueError(err_msg)
-           
 
-    '''
+    """
 
     err_msg = ""
 
-    if (crs == ""):
+    if crs == "":
         err_msg = "huc number is not eight characters in length"
         return False, err_msg, ""
-    
-    if (":" not in crs):
-        is_valid = False
+
+    if ":" not in crs:
         err_msg = "crs appears to be invalid (missing colon)"
         return False, err_msg, ""
-    
+
     crs_seg = crs.split(":")
 
-    if (len(crs_seg) != 2):
+    if len(crs_seg) != 2:
         err_msg = "crs appears to be invalid"
         return False, err_msg, ""
 
     crs_type = str(crs_seg[0]).upper()
-
     if (crs_type != "ESRI") and (crs_type != "EPSG"):
         err_msg = "crs type is not EPSG OR ESRI (not case-senstive)"
         return False, err_msg, ""
 
     crs_number = str(crs_seg[1])
 
-    if (crs_number.isnumeric() == False):
+    if crs_number.isnumeric() is False:
         err_msg = "value after the colon is not a number. ie) 2277"
         return False, err_msg, ""
-    
+
     if (len(crs_number) < 4) or (len(crs_number) > 6):
         err_msg = "crs_number portion is expected to be between 4 and 6 digits"
         return False, err_msg, ""
-    
-    if (crs_number[0] == "0"):
+
+    if crs_number[0] == "0":
         err_msg = "crs_number portion can not start with a zero"
         return False, err_msg, ""
-    
-    return True, "", crs_number
 
+    return True, "", crs_number
