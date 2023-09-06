@@ -25,11 +25,13 @@ import geopandas as gpd
 import pandas as pd
 import pyproj
 import rasterio
+
 # ************************************************************
 import rioxarray
 import tqdm
 
 import shared_functions as sf
+
 
 # ************************************************************
 
@@ -85,12 +87,7 @@ def fn_is_valid_file(parser, arg):
 
 
 def fn_cut_dems_from_shapes(
-    str_input_shp_path,
-    str_input_terrain_path,
-    str_output_dir,
-    int_buffer,
-    model_unit,
-    str_field_name,
+    str_input_shp_path, str_input_terrain_path, str_output_dir, int_buffer, model_unit, str_field_name
 ):
 
     flt_start_run = time.time()
@@ -137,9 +134,7 @@ def fn_cut_dems_from_shapes(
 
         else:
             # create a dataframe of just the requested field
-            gdf_just_req_field = pd.DataFrame(
-                gdf_boundary_prj, columns=[str_field_name]
-            )
+            gdf_just_req_field = pd.DataFrame(gdf_boundary_prj, columns=[str_field_name])
 
             # convert the dataframe to a series
             df_just_req_field_series = gdf_just_req_field.squeeze()
@@ -161,7 +156,6 @@ def fn_cut_dems_from_shapes(
         bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
         ncols=65,
     ):
-
         # convert the geoPandas geometry to json
         json_boundary = fn_get_features(gdf_boundary_raster_prj, index)
 
@@ -178,26 +172,17 @@ def fn_cut_dems_from_shapes(
 
             # set the null data values
             xds_clipped_reproject = xds_clipped_reproject.fillna(INT_NO_DATA_VAL)
-            xds_clipped_reproject = xds_clipped_reproject.rio.set_nodata(
-                INT_NO_DATA_VAL
-            )
+            xds_clipped_reproject = xds_clipped_reproject.rio.set_nodata(INT_NO_DATA_VAL)
 
             # set the name from input field if available
             if b_have_valid_label_field:
-                str_dem_out = (
-                    str_output_dir
-                    + "\\"
-                    + str(gdf_boundary_prj[str_field_name][index])
-                    + ".tif"
-                )
+                str_dem_out = str_output_dir + "\\" + str(gdf_boundary_prj[str_field_name][index]) + ".tif"
             else:
                 str_unique_tag = fn_get_random_string(2, 4)
                 str_dem_out = str_output_dir + "\\" + str_unique_tag + ".tif"
 
             # compress and write out data
-            xds_clipped_reproject.rio.to_raster(
-                str_dem_out, compress="lzw", dtype="float32"
-            )
+            xds_clipped_reproject.rio.to_raster(str_dem_out, compress="lzw", dtype="float32")
 
     print("COMPLETE")
     flt_end_run = time.time()
@@ -278,12 +263,7 @@ if __name__ == "__main__":
     model_unit = sf.model_unit_from_crs(proj_crs)
 
     fn_cut_dems_from_shapes(
-        str_input_shp_path,
-        str_input_terrain_path,
-        str_output_dir,
-        int_buffer,
-        model_unit,
-        str_field_name,
+        str_input_shp_path, str_input_terrain_path, str_output_dir, int_buffer, model_unit, str_field_name
     )
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

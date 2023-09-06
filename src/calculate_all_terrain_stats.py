@@ -44,9 +44,7 @@ def fn_get_abs_path(str_base_file_abs, str_relative_path):
     int_up_folder = (int_occurences + 1) * (-1)
 
     # base path up to relevant folder + folder and file of relative path
-    tup_abs_path = (
-        tup_base_filepath[:int_up_folder] + tup_relative_filepath[int_occurences:]
-    )
+    tup_abs_path = tup_base_filepath[:int_up_folder] + tup_relative_filepath[int_occurences:]
 
     # convert the tuple to a list
     list_abs_path = list(tup_abs_path)
@@ -98,9 +96,7 @@ def fn_paths_from_rasmapper(str_rasmapper_path):
 
     # determine if terrain file is relative or absolute
     if not os.path.isabs(list_terrain_paths[0]):
-        str_terrain_path_abs = fn_get_abs_path(
-            str_rasmapper_path, list_terrain_paths[0]
-        )
+        str_terrain_path_abs = fn_get_abs_path(str_rasmapper_path, list_terrain_paths[0])
     else:
         str_terrain_path_abs = list_terrain_paths[0]
 
@@ -115,10 +111,8 @@ def fn_paths_from_rasmapper(str_rasmapper_path):
 
 
 # '''''''''''''''''''''''''
-def fn_calculate_terrain_stats(
-    str_geom_hdf_path, str_projection_path, str_terrain_path
-):
-
+def fn_calculate_terrain_stats(str_geom_hdf_path, str_projection_path, str_terrain_path):
+    
     hf = h5py.File(str_geom_hdf_path, "r")
 
     # XY points of the plan view of the cross section
@@ -200,9 +194,9 @@ def fn_calculate_terrain_stats(
 
             # add this point to a geopandas dataframe
             gdf_sta_elev_pnts.loc[int_pnt, "geometry"] = geom_interp_pnt
-            gdf_sta_elev_pnts.loc[
-                int_pnt, "ras_elev"
-            ] = flt_elev.item()  # item() to convert from numpy value
+
+            # item() to convert from numpy value
+            gdf_sta_elev_pnts.loc[int_pnt, "ras_elev"] = flt_elev.item()  
 
             int_index += 1
             int_pnt += 1
@@ -222,9 +216,7 @@ def fn_calculate_terrain_stats(
 
     # remove all the points (dataframe rows) where the dem_elev is a nodata value
     # this means there is no surface below this point
-    gdf_sta_elev_pnts = gdf_sta_elev_pnts[
-        gdf_sta_elev_pnts.dem_elev != terrain_src.nodata
-    ]
+    gdf_sta_elev_pnts = gdf_sta_elev_pnts[gdf_sta_elev_pnts.dem_elev != terrain_src.nodata]
 
     # reset the index of the points
     gdf_sta_elev_pnts = gdf_sta_elev_pnts.reset_index(drop=True)
@@ -234,20 +226,12 @@ def fn_calculate_terrain_stats(
     del gdf_sta_elev_pnts["y"]
 
     # create difference in elevation value
-    gdf_sta_elev_pnts["diff_elev"] = (
-        gdf_sta_elev_pnts["ras_elev"] - gdf_sta_elev_pnts["dem_elev"]
-    )
+    gdf_sta_elev_pnts["diff_elev"] = gdf_sta_elev_pnts["ras_elev"] - gdf_sta_elev_pnts["dem_elev"]
 
     # recast variables to 'float32'
-    gdf_sta_elev_pnts["ras_elev"] = pd.to_numeric(
-        gdf_sta_elev_pnts["ras_elev"], downcast="float"
-    )
-    gdf_sta_elev_pnts["dem_elev"] = pd.to_numeric(
-        gdf_sta_elev_pnts["dem_elev"], downcast="float"
-    )
-    gdf_sta_elev_pnts["diff_elev"] = pd.to_numeric(
-        gdf_sta_elev_pnts["diff_elev"], downcast="float"
-    )
+    gdf_sta_elev_pnts["ras_elev"] = pd.to_numeric(gdf_sta_elev_pnts["ras_elev"], downcast="float")
+    gdf_sta_elev_pnts["dem_elev"] = pd.to_numeric(gdf_sta_elev_pnts["dem_elev"], downcast="float")
+    gdf_sta_elev_pnts["diff_elev"] = pd.to_numeric(gdf_sta_elev_pnts["diff_elev"], downcast="float")
 
     # calculate statistics
     pd_series_stats = gdf_sta_elev_pnts["diff_elev"].describe()

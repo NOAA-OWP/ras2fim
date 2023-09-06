@@ -23,6 +23,7 @@ from shapely.geometry import Polygon
 import shared_functions as sf
 import shared_variables as sv
 
+
 # NOTE: This tool might be deprecated. If it is re-used... double check the right sizes for maxments.
 # Also check it for correct pathing, etc.
 
@@ -30,12 +31,7 @@ import shared_variables as sv
 ####################################################################
 # This function creates a geopackage of Feature IDs from the raster that
 # matches the Depth Grid processing extents ("maxments") from ras2fim Step 5.
-def vectorize(
-    mosaic_features_raster_path,
-    changelog_path,
-    model_huc_catalog_path,
-    rating_curve_path,
-):
+def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_path, rating_curve_path):
 
     if os.path.exists(rating_curve_path) is False:
         raise Exception(
@@ -67,9 +63,7 @@ def vectorize(
     # -------------------
     # We pass in (potentially) many different depths for each Feature ID, so dissolve them together
     gdf = gpd.GeoDataFrame(df, crs=r2f_features_src.crs, geometry=geoms)
-    gdf = gdf.dissolve(
-        "feature_id"
-    )  # ensure that we just have one big polygon per feature ID
+    gdf = gdf.dissolve("feature_id")  # ensure that we just have one big polygon per feature ID
 
     # -------------------
     # rating_curve DATA
@@ -81,9 +75,7 @@ def vectorize(
 
     # Get min and max stage and discharge for each Feature ID, then create fields for
     # stage and flow mins and maxs
-    agg_df = rc_df.groupby(["feature_id"]).agg(
-        {"stage_m": ["min", "max"], "discharge_cms": ["min", "max"]}
-    )
+    agg_df = rc_df.groupby(["feature_id"]).agg({"stage_m": ["min", "max"], "discharge_cms": ["min", "max"]})
 
     agg_df["start_stage"] = agg_df["stage_m"]["min"]
     agg_df["end_stage"] = agg_df["stage_m"]["max"]
@@ -102,9 +94,7 @@ def vectorize(
     # -------------------
     # Use the model data catalog to add data the metadata gkpg
     model_df = pd.read_csv(model_huc_catalog_path)
-    gdf = gdf.merge(
-        model_df, how="left", left_on="feature_id", right_on="nhdplus_comid"
-    )
+    gdf = gdf.merge(model_df, how="left", left_on="feature_id", right_on="nhdplus_comid")
 
     # There are likely some HydroIDs that are associated with multiple model entries in
     # the model catalog, but we only want one result in our final outputs for now so that we
@@ -132,8 +122,7 @@ def vectorize(
     gdf["last_modified"] = gdf["last_modified"].fillna(-1)  # model_catalog field
     try:
         gdf["last_modified"] = [
-            dt.datetime.utcfromtimestamp(t).strftime("%Y-%m-%d")
-            for t in gdf["last_modified"]
+            dt.datetime.utcfromtimestamp(t).strftime("%Y-%m-%d") for t in gdf["last_modified"]
         ]
     except Exception as e:
         print("Model catalog date issue. Moving on.")
@@ -164,11 +153,7 @@ def vectorize(
 
     # ... then we should have all the metadata we need on a per-catchment basis
     print("** Writing out updated catchments geopackage **")
-    gdf.to_file(
-        mosaic_features_raster_path.replace(".tif", "_meta.gpkg"),
-        driver="GPKG",
-        layer="catchments",
-    )
+    gdf.to_file(mosaic_features_raster_path.replace(".tif", "_meta.gpkg"), driver="GPKG", layer="catchments")
 
     return
 
@@ -184,9 +169,7 @@ def __get_maxment(mxmt_args):
     r2f_06_metric_dir = mxmt_args[2]
     datatyped_rems_dir = mxmt_args[3]
 
-    feature_catchment_df = reproj_nwm_filtered_df[
-        reproj_nwm_filtered_df.ID == feature_id
-    ]
+    feature_catchment_df = reproj_nwm_filtered_df[reproj_nwm_filtered_df.ID == feature_id]
 
     # Pull all relevant depth grid tiffs for this feature ID
     feature_id_tif_paths = list(Path(r2f_06_metric_dir).glob(f"**/{feature_id}-*.tif"))
@@ -225,15 +208,11 @@ def __get_maxment(mxmt_args):
     # -------------------
     # Force datatypes to be 32-bit integers
     long_raster_vals = np.array(masked_raster, dtype=np.int32)
-    long_raster_vals[long_raster_vals != feature_max_depth_raster.nodata] = np.int32(
-        feature_id
-    )
+    long_raster_vals[long_raster_vals != feature_max_depth_raster.nodata] = np.int32(feature_id)
 
     # -------------------
     # write 32-bit integer versions of our feature ID data, to ensure datatyping
-    feature_id_rem_path = os.path.join(
-        datatyped_rems_dir, "datatyped_{}_{}.tif".format(feature_id, max_rem)
-    )
+    feature_id_rem_path = os.path.join(datatyped_rems_dir, "datatyped_{}_{}.tif".format(feature_id, max_rem))
     proj_crs = pyproj.CRS.from_string(sv.DEFAULT_RASTER_OUTPUT_CRS)
     output_meta = feature_max_depth_raster.meta.copy()
     output_meta.update({"dtype": np.int32, "crs": proj_crs})
@@ -245,9 +224,7 @@ def __get_maxment(mxmt_args):
 
 ####################################################################
 #  Some validation of input, but setting up pathing
-def __validate_make_catchments(
-    huc_num, r2f_huc_parent_dir, model_huc_catalog_path, national_ds_path
-):
+def __validate_make_catchments(huc_num, r2f_huc_parent_dir, model_huc_catalog_path, national_ds_path):
 
     # Some variables need to be adjusted and some new derived variables are created
     # dictionary (key / pair) will be returned
@@ -270,9 +247,7 @@ def __validate_make_catchments(
         if os.path.exists(r2f_huc_parent_dir) is False:  # full path must exist
             is_invalid_path = True
     else:  # they provide just a child folder (base path name)
-        r2f_huc_parent_dir = os.path.join(
-            sv.R2F_DEFAULT_OUTPUT_MODELS, r2f_huc_parent_dir
-        )
+        r2f_huc_parent_dir = os.path.join(sv.R2F_DEFAULT_OUTPUT_MODELS, r2f_huc_parent_dir)
         if os.path.exists(r2f_huc_parent_dir) is False:  # child folder must exist
             is_invalid_path = True
 
@@ -294,20 +269,14 @@ def __validate_make_catchments(
     wbd_huc8_dir = os.path.join(national_ds_path, sv.INPUT_WBD_HUC8_DIR)
     wbd_huc8_file = os.path.join(wbd_huc8_dir, f"HUC8_{huc_num}.gpkg")
     if os.path.exists(wbd_huc8_file) is False:
-        raise FileNotFoundError(
-            f"The {wbd_huc8_file} file does not exist and is required."
-        )
+        raise FileNotFoundError(f"The {wbd_huc8_file} file does not exist and is required.")
     rtn_varibles_dict["wbd_huc8_file"] = wbd_huc8_file
 
     # -------------------
     # The source nwm file
-    src_nwm_catchments_file = os.path.join(
-        national_ds_path, sv.INPUT_NWM_CATCHMENTS_FILE
-    )
+    src_nwm_catchments_file = os.path.join(national_ds_path, sv.INPUT_NWM_CATCHMENTS_FILE)
     if os.path.exists(src_nwm_catchments_file) is False:
-        raise FileNotFoundError(
-            f"The {src_nwm_catchments_file} file does not exist and is required."
-        )
+        raise FileNotFoundError(f"The {src_nwm_catchments_file} file does not exist and is required.")
     rtn_varibles_dict["src_nwm_catchments_file"] = src_nwm_catchments_file
 
     # -------------------
@@ -343,9 +312,7 @@ def __validate_make_catchments(
     rtn_varibles_dict["r2f_catchments_dir"] = r2f_catchments_dir
 
     # -------------------
-    catchments_subset_file = os.path.join(
-        r2f_catchments_dir, "nwm_catchments_subset.gpkg"
-    )
+    catchments_subset_file = os.path.join(r2f_catchments_dir, "nwm_catchments_subset.gpkg")
     rtn_varibles_dict["catchments_subset_file"] = catchments_subset_file
 
     # -------------------
@@ -413,7 +380,7 @@ def make_catchments(
     )
 
     ####################################################################
-    #  Start processing 
+    #  Start processing
     start_dt = dt.datetime.now()
 
     print(" ")
@@ -423,10 +390,7 @@ def make_catchments(
     print("  ---(w) HUC-8: " + huc_num)
     print("  ---(p) PARENT RAS2FIM HUC DIRECTORY: " + r2f_huc_parent_dir)
     print("  ---(n) PATH TO NATIONAL DATASETS: " + national_ds_path)
-    print(
-        "  ---(mc) PATH TO MODELS_CATALOG: "
-        + rtn_varibles_dict.get("model_huc_catalog_path")
-    )
+    print("  ---(mc) PATH TO MODELS_CATALOG: " + rtn_varibles_dict.get("model_huc_catalog_path"))
     print("===================================================================")
     print(" ")
 
@@ -440,9 +404,7 @@ def make_catchments(
     # -------------------
     # Get a list of features (using the file names)
 
-    depth_grid_path = os.path.join(
-        r2f_06_metric_dir, sv.R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS
-    )
+    depth_grid_path = os.path.join(r2f_06_metric_dir, sv.R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS)
     print(f"depth_grid_path is {depth_grid_path}")
 
     all_depth_grid_tif_files = list(Path(r2f_06_metric_dir).glob("**/*-*.tif"))
@@ -452,9 +414,7 @@ def make_catchments(
             " has depth grid tifs in the pattern of {featureID-{depth value}.tif. ie) 5789848-18.tif"
         )
 
-    feature_file_names = list(
-        map(lambda var: str(var).rsplit("\\", 1)[1], all_depth_grid_tif_files)
-    )
+    feature_file_names = list(map(lambda var: str(var).rsplit("\\", 1)[1], all_depth_grid_tif_files))
     if len(feature_file_names) == 0:
         # in case the file name pattern changed
         raise Exception(
@@ -463,9 +423,7 @@ def make_catchments(
             " No files found matching the pattern."
         )
 
-    feature_id_values = list(
-        map(lambda var: str(var).rsplit("-")[0], feature_file_names)
-    )
+    feature_id_values = list(map(lambda var: str(var).rsplit("-")[0], feature_file_names))
     if len(feature_id_values) == 0:
         # in case the file name pattern changed
         raise Exception(
@@ -490,9 +448,7 @@ def make_catchments(
 
     # subset the nwm_catchments CONUS gkpg to the huc8 to speed it up
     huc8_wbd_db = gpd.read_file(rtn_varibles_dict.get("wbd_huc8_file"))
-    huc8_nwm_df = gpd.read_file(
-        rtn_varibles_dict.get("src_nwm_catchments_file"), mask=huc8_wbd_db
-    )
+    huc8_nwm_df = gpd.read_file(rtn_varibles_dict.get("src_nwm_catchments_file"), mask=huc8_wbd_db)
 
     # -------------------
     print("Getting all relevant catchment polys")
@@ -506,16 +462,12 @@ def make_catchments(
 
     # Let's create one overall gpkg that has all of the relavent polys, for quick validation
     reproj_nwm_filtered_df = nwm_filtered_df.to_crs(sv.DEFAULT_RASTER_OUTPUT_CRS)
-    reproj_nwm_filtered_df.to_file(
-        rtn_varibles_dict.get("catchments_subset_file"), driver="GPKG"
-    )
+    reproj_nwm_filtered_df.to_file(rtn_varibles_dict.get("catchments_subset_file"), driver="GPKG")
 
     # -------------------
     # Create folder for datatyped rems
     # We will of them for now and let the cleanup script remove them for debugging purposes
-    datatyped_rems_dir = os.path.join(
-        rtn_varibles_dict.get("r2f_catchments_dir"), "datatyped_feature_rems"
-    )
+    datatyped_rems_dir = os.path.join(rtn_varibles_dict.get("r2f_catchments_dir"), "datatyped_feature_rems")
     if os.path.exists(datatyped_rems_dir):
         shutil.rmtree(datatyped_rems_dir)
         # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
@@ -535,13 +487,9 @@ def make_catchments(
     # add nodata REM file to list of rasters to merge, so that the final merged raster has same extent
     print("Creating rem extent file")
     r2f_rem_extent_path = None
-    r2f_rem_path = os.path.join(
-        rtn_varibles_dict["r2f_06_metric_dir"], sv.R2F_OUTPUT_DIR_RAS2REM, "rem.tif"
-    )
+    r2f_rem_path = os.path.join(rtn_varibles_dict["r2f_06_metric_dir"], sv.R2F_OUTPUT_DIR_RAS2REM, "rem.tif")
     if os.path.exists(r2f_rem_path):
-        r2f_rem_extent_path = os.path.join(
-            rtn_varibles_dict["r2f_06_metric_dir"], "rem_extent_nodata.tif"
-        )
+        r2f_rem_extent_path = os.path.join(rtn_varibles_dict["r2f_06_metric_dir"], "rem_extent_nodata.tif")
         with rasterio.open(r2f_rem_path) as src:
             rem_raster = src.read()
             rem_raster = np.where(np.isnan(rem_raster), 65535, 65535)
@@ -561,9 +509,7 @@ def make_catchments(
     # Create a list of lists with the mxmt args for the multi-proc
     mxmts_args = []
     for feature_id in all_feature_ids:
-        mxmts_args.append(
-            [feature_id, reproj_nwm_filtered_df, r2f_06_metric_dir, datatyped_rems_dir]
-        )
+        mxmts_args.append([feature_id, reproj_nwm_filtered_df, r2f_06_metric_dir, datatyped_rems_dir])
 
     rasters_paths_to_mosaic = []
 
@@ -587,9 +533,7 @@ def make_catchments(
     if is_verbose:
         print(rasters_paths_to_mosaic)
 
-    mosaic, output = merge(
-        list(map(rasterio.open, rasters_paths_to_mosaic)), method="min"
-    )
+    mosaic, output = merge(list(map(rasterio.open, rasters_paths_to_mosaic)), method="min")
 
     # Setup the metadata for our raster
     # use the firt raster's meta data
@@ -611,9 +555,7 @@ def make_catchments(
     mosaic_features_raster_path = os.path.join(
         rtn_varibles_dict.get("r2f_catchments_dir"), "r2f_features.tif"
     )
-    with rasterio.open(
-        mosaic_features_raster_path, "w", **output_meta, compress="LZW"
-    ) as m:
+    with rasterio.open(mosaic_features_raster_path, "w", **output_meta, compress="LZW") as m:
         m.write(mosaic)
         print(f"** Writing final features mosaiced to {mosaic_features_raster_path}")
 
@@ -627,12 +569,7 @@ def make_catchments(
     current_script_path = os.path.realpath(os.path.dirname(__file__))
     catalog_md_path = os.path.join(current_script_path, "..", "doc", "CHANGELOG.md")
     rating_curve_file = os.path.join(rating_curve_path, "rating_curve.csv")
-    vectorize(
-        mosaic_features_raster_path,
-        catalog_md_path,
-        model_huc_catalog_path,
-        rating_curve_file,
-    )
+    vectorize(mosaic_features_raster_path, catalog_md_path, model_huc_catalog_path, rating_curve_file)
 
     # -------------------
     # Cleanup the temp files in datatyped_rems_dir, later this will be part of the cleanup system.

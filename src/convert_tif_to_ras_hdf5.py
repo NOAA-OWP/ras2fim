@@ -62,7 +62,7 @@ def fn_get_filepaths(str_directory, str_file_suffix):
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # Print iterations progress
 def fn_print_progress_bar(
-    iteration, total, prefix='', suffix='', decimals=0, length=100, fill='█', printEnd="\r"
+    iteration, total, prefix="", suffix="", decimals=0, length=100, fill="█", printEnd="\r"
 ):
     """
     from: https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
@@ -79,8 +79,8 @@ def fn_print_progress_bar(
     """
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=printEnd)
+    bar = fill * filledLength + "-" * (length - filledLength)
+    print(f"\r{prefix} |{bar}| {percent}% {suffix}", end=printEnd)
     # Print New Line on Complete
     if iteration == total:
         print()
@@ -107,7 +107,7 @@ def fn_convert_tif_to_ras_hdf5(
     print("  ---(r) HEC-RAS PATH: " + str(STR_HEC_RAS_6_PATH))
 
     # STR_HEC_RAS_6_PATH = r'C:\Program Files (x86)\HEC\HEC-RAS\6.0'
-    STR_HEC_RAS_6_PATH += r'\RasProcess.exe'
+    STR_HEC_RAS_6_PATH += r"\RasProcess.exe"
 
     # path to walk to file geotiffs
     STR_CONVERT_FILEPATH = str_geotiff_dir
@@ -129,7 +129,7 @@ def fn_convert_tif_to_ras_hdf5(
     len_processed_dems = len(list_processed_dem)
 
     str_prefix = "Converting Terrains: "
-    fn_print_progress_bar(0, len_processed_dems, prefix=str_prefix, suffix='Complete', length=29)
+    fn_print_progress_bar(0, len_processed_dems, prefix=str_prefix, suffix="Complete", length=29)
 
     int_count = 0
     int_valid_count = 0
@@ -137,25 +137,25 @@ def fn_convert_tif_to_ras_hdf5(
     for i in list_processed_dem:
         int_count += 1
 
-        fn_print_progress_bar(int_count, len_processed_dems, prefix=str_prefix, suffix='Complete', length=29)
+        fn_print_progress_bar(int_count, len_processed_dems, prefix=str_prefix, suffix="Complete", length=29)
 
         # Build a CLI call for RasProcess.exe CreateTerrain for each
         # terarin tile (HUC-12) in the list
 
-        str_path_ras = "\"" + STR_HEC_RAS_6_PATH + "\"" + " CreateTerrain"
+        str_path_ras = '"' + STR_HEC_RAS_6_PATH + '"' + " CreateTerrain"
         str_path_ras += " units="
 
-        if model_unit == 'feet':
+        if model_unit == "feet":
             str_path_ras += "Feet"
         else:
             str_path_ras += "Meter"
 
         str_path_ras += " stitch=true prj="
-        str_path_ras += "\"" + STR_PRJ_FILE + "\""
+        str_path_ras += '"' + STR_PRJ_FILE + '"'
         str_path_ras += " out="
-        str_path_ras += "\"" + STR_RAS_TERRAIN_OUT + "\\"
+        str_path_ras += '"' + STR_RAS_TERRAIN_OUT + "\\"
 
-        str_path_ras += i[-16:-4] + ".hdf" + "\""
+        str_path_ras += i[-16:-4] + ".hdf" + '"'
         str_path_ras += " " + i
 
         # print(str_path_ras)
@@ -166,7 +166,7 @@ def fn_convert_tif_to_ras_hdf5(
         if int_return_code == 0:
             int_valid_count += 1
         else:
-            print('Error on: ' + str(i))
+            print("Error on: " + str(i))
 
         # A '0' error code will be given if the file already exists in the
         # output directory.  Terrain will not be over-written with this
@@ -174,70 +174,71 @@ def fn_convert_tif_to_ras_hdf5(
 
     print("+-----------------------------------------------------------------+")
     if int_valid_count == len(list_processed_dem):
-        print('All terrains processed successfully')
+        print("All terrains processed successfully")
     else:
-        print('Errors when processing - Check output')
+        print("Errors when processing - Check output")
 
     flt_end_convert_tif = time.time()
     flt_time_convert_tif = (flt_end_convert_tif - flt_start_convert_tif) // 1
     time_pass_convert_tif = datetime.timedelta(seconds=flt_time_convert_tif)
-    print('Compute Time: ' + str(time_pass_convert_tif))
+    print("Compute Time: " + str(time_pass_convert_tif))
 
     print("===================================================================")
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if __name__ == '__main__':
+if __name__ == "__main__":
+
     parser = argparse.ArgumentParser(
-        description='==== CONVERT TERRAIN GeoTIFFS TO HEC-RAS TERRAINS (HDF5) ==='
+        description="==== CONVERT TERRAIN GeoTIFFS TO HEC-RAS TERRAINS (HDF5) ==="
     )
 
     parser.add_argument(
-        '-r',
+        "-r",
         dest="str_hec_path",
-        help='REQUIRED: path to HEC-RAS 6.0 RasProcess.exe: '
+        help="REQUIRED: path to HEC-RAS 6.0 RasProcess.exe: "
         r'Example: "C:\Program Files (x86)\HEC\HEC-RAS\6.0" (wrap in quotes)',
         required=True,
-        metavar='DIR',
+        metavar="DIR",
         type=str,
     )
 
     parser.add_argument(
-        '-i',
+        "-i",
         dest="str_geotiff_dir",
-        help=r'REQUIRED: directory containing the geotiffs to convert:  Example: D:\terrain',
+        help=r"REQUIRED: directory containing the geotiffs to convert:  Example: D:\terrain",
         required=True,
-        metavar='DIR',
+        metavar="DIR",
         type=str,
     )
 
     parser.add_argument(
-        '-o',
+        "-o",
         dest="str_dir_to_write_hdf5",
-        help=r'REQUIRED: path to write output files: Example: D:\hecras_terrain',
+        help=r"REQUIRED: path to write output files: Example: D:\hecras_terrain",
         required=True,
-        metavar='DIR',
+        metavar="DIR",
         type=str,
     )
 
     parser.add_argument(
-        '-p',
+        "-p",
         dest="str_projection",
-        help=r'REQUIRED: projection file of output coordinate zone: D:\conflation\10170204_huc_12_ar.prj',
+        help=r"REQUIRED: projection file of output coordinate zone: D:\conflation\10170204_huc_12_ar.prj",
         required=True,
-        metavar='FILE PATH',
+        metavar="FILE PATH",
         type=str,
     )
 
     args = vars(parser.parse_args())
 
-    str_hec_path = args['str_hec_path']
-    str_geotiff_dir = args['str_geotiff_dir']
-    str_dir_to_write_hdf5 = args['str_dir_to_write_hdf5']
-    str_projection = args['str_projection']
+    str_hec_path = args["str_hec_path"]
+    str_geotiff_dir = args["str_geotiff_dir"]
+    str_dir_to_write_hdf5 = args["str_dir_to_write_hdf5"]
+    str_projection = args["str_projection"]
 
     # find model unit using the given GIS prj file
-    with open(str_projection, 'r') as prj_file:
+    with open(str_projection, "r") as prj_file:
         prj_text = prj_file.read()
     proj_crs = pyproj.CRS(prj_text)
     model_unit = sf.model_unit_from_crs(proj_crs)

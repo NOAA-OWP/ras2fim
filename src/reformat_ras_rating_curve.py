@@ -15,6 +15,7 @@ import pandas as pd
 import shared_functions as sf
 import shared_variables as sv
 
+
 # -----------------------------------------------------------------
 # Writes a metadata file into the save directory
 # -----------------------------------------------------------------
@@ -40,9 +41,7 @@ def write_metadata_file(
     """
 
     metadata_content = []
-    metadata_content.append(
-        f"Data was produced using reformat_ras_rating_curve.py on {start_time_string}."
-    )
+    metadata_content.append(f"Data was produced using reformat_ras_rating_curve.py on {start_time_string}.")
     metadata_content.append(" ")
     metadata_content.append("ras2fim file inputs:")
     metadata_content.append(f"  NWM streamlines from {nwm_shapes_file}")
@@ -52,13 +51,9 @@ def write_metadata_file(
     metadata_content.append("Outputs: ")
     metadata_content.append(f"  {geopackage_name} (point location geopackage)")
     metadata_content.append(f"  {csv_name} (rating curve CSV)")
-    metadata_content.append(
-        f"  {log_name} (output log textfile, only saved if -l argument is used)"
-    )
+    metadata_content.append(f"  {log_name} (output log textfile, only saved if -l argument is used)")
     metadata_content.append(" ")
-    metadata_content.append(
-        "CSV column name    Source                  Type            Description"
-    )
+    metadata_content.append("CSV column name    Source                  Type            Description")
     metadata_content.append(
         "fid_xs             Calculated in script    String          Combination of NWM feature ID and"
         " HECRAS crosssection name"
@@ -125,13 +120,8 @@ def write_metadata_file(
 # Functions for handling units
 # -----------------------------------------------------------------
 def get_unit_from_string(string):
-    if (
-        "meters" in string
-        or "meter" in string
-        or "m" in string
-        or "metre" in string
-        or "metres" in string
-    ):
+
+    if "meters" in string or "meter" in string or "m" in string or "metre" in string or "metres" in string:
         return "m"
     elif "feet" in string or "foot" in string or "ft" in string:
         return "ft"
@@ -237,9 +227,7 @@ def dir_reformat_ras_rc(
         with open(run_arguments_filepath, "r") as file:
             lines = file.readlines()
     except Exception:
-        print(
-            f"Unable to open run_arguments.txt, skipping directory {dir_input_folder_path}."
-        )
+        print(f"Unable to open run_arguments.txt, skipping directory {dir_input_folder_path}.")
         lines = None
 
     # Search for and extract the model unit and projection from run_arguments.txt
@@ -261,9 +249,7 @@ def dir_reformat_ras_rc(
 
     # Create intermediate output file within directory (only if the run_arguments.txt folder is there)
     if lines is not None:
-        intermediate_filepath = os.path.join(
-            dir_input_folder_path, intermediate_filename
-        )
+        intermediate_filepath = os.path.join(dir_input_folder_path, intermediate_filename)
         if not os.path.exists(intermediate_filepath):
             os.mkdir(intermediate_filepath)
 
@@ -280,9 +266,7 @@ def dir_reformat_ras_rc(
         rc_path = rc_path_list[0]
 
     if os.path.isfile(rc_path) is False:
-        print(
-            f"No rating curve file available for {dir_input_folder_path}, skipping this directory."
-        )
+        print(f"No rating curve file available for {dir_input_folder_path}, skipping this directory.")
         output_log.append("Rating curve NOT available.")
         dir_log_filename = int_log_label
         dir_log_filepath = os.path.join(intermediate_filepath, dir_log_filename)
@@ -300,9 +284,7 @@ def dir_reformat_ras_rc(
         root_dir = dir_input_folder_path  # TODO: clean up
 
         nwm_all_lines_filename = str_huc8_arg + "_nwm_streams_ln.shp"
-        nwm_all_lines_filepath = os.path.join(
-            root_dir, nwm_shapes_file, nwm_all_lines_filename
-        )
+        nwm_all_lines_filepath = os.path.join(root_dir, nwm_shapes_file, nwm_all_lines_filename)
 
         hecras_crosssections_filename = "cross_section_LN_from_ras.shp"
         hecras_crosssections_filepath = os.path.join(
@@ -323,9 +305,7 @@ def dir_reformat_ras_rc(
 
         if verbose is True:
             print(" ")
-            print(
-                "Reading shapefiles and generating crosssection/streamline intersection points ..."
-            )
+            print("Reading shapefiles and generating crosssection/streamline intersection points ...")
 
         # Read shapefiles
         hecras_crosssections_shp = gpd.read_file(hecras_crosssections_filepath)
@@ -347,16 +327,11 @@ def dir_reformat_ras_rc(
 
         # Find intersections
         intersections = gpd.overlay(
-            nwm_all_lines_shp,
-            hecras_crosssections_shp,
-            how="intersection",
-            keep_geom_type=False,
+            nwm_all_lines_shp, hecras_crosssections_shp, how="intersection", keep_geom_type=False
         )
 
         # Create a GeoDataFrame for the intersection points
-        intersection_gdf = gpd.GeoDataFrame(
-            geometry=intersections.geometry, crs=nwm_all_lines_shp.crs
-        )
+        intersection_gdf = gpd.GeoDataFrame(geometry=intersections.geometry, crs=nwm_all_lines_shp.crs)
 
         # Append attribute table of hecras_crosssections_shp to intersection_points_gdf
         # and fix data type for stream_stn
@@ -365,9 +340,7 @@ def dir_reformat_ras_rc(
 
         # Combined feature ID and HECRAS cross-section ID to make a new ID
         intersection_gdf["fid_xs"] = (
-            intersection_gdf["feature_id"].astype(str)
-            + "_"
-            + intersection_gdf["stream_stn"].astype(str)
+            intersection_gdf["feature_id"].astype(str) + "_" + intersection_gdf["stream_stn"].astype(str)
         )
 
         # ------------------------------------------------------------------------------------------------
@@ -463,9 +436,7 @@ def dir_reformat_ras_rc(
         # Export dir_output_table, dir_geospatial, and log to the intermediate save folder
 
         # Write filepath for geopackage
-        dir_output_geopackage_filepath = os.path.join(
-            intermediate_filepath, int_output_geopackage_label
-        )
+        dir_output_geopackage_filepath = os.path.join(intermediate_filepath, int_output_geopackage_label)
 
         # Reproject intersection_gdf to output SRC
         shared_variables_crs = sv.DEFAULT_RASTER_OUTPUT_CRS
@@ -482,9 +453,7 @@ def dir_reformat_ras_rc(
 
         # Save output table for directory
         dir_output_table_filename = int_output_table_label
-        dir_output_table_filepath = os.path.join(
-            intermediate_filepath, dir_output_table_filename
-        )
+        dir_output_table_filepath = os.path.join(intermediate_filepath, dir_output_table_filename)
         dir_output_table.to_csv(dir_output_table_filepath, index=False)
 
         # Save log for directory
@@ -522,14 +491,7 @@ def dir_reformat_ras_rc(
 # Compiles the rating curve and points from each directory
 # -----------------------------------------------------------------
 def compile_ras_rating_curves(
-    input_folder_path,
-    output_save_folder,
-    save_logs,
-    verbose,
-    num_workers,
-    source,
-    location_type,
-    active,
+    input_folder_path, output_save_folder, save_logs, verbose, num_workers, source, location_type, active
 ):
 
     """
@@ -574,9 +536,7 @@ def compile_ras_rating_curves(
     start_time_string = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
 
     # Settings block
-    print(
-        "-----------------------------------------------------------------------------------------------"
-    )
+    print("-----------------------------------------------------------------------------------------------")
     print("Begin rating curve compilation process.")
     print()
     print(f"Start time: {start_time_string}.")
@@ -601,7 +561,6 @@ def compile_ras_rating_curves(
     # Check for output folders
 
     if output_save_folder == "":  # Using the default filepath
-
         output_save_folder = sv.R2F_OUTPUT_DIR_RELEASES
         print(f"Attempting to use default output save folder: {output_save_folder}")
 
@@ -613,14 +572,10 @@ def compile_ras_rating_curves(
                 os.mkdir(output_save_folder)
             except OSError:
                 print(OSError)
-                sys.exit(
-                    f"Unable to create default output save folder at {output_save_folder}"
-                )
+                sys.exit(f"Unable to create default output save folder at {output_save_folder}")
 
         # Assemble the output subfolder filepath
-        output_save_subfolder = os.path.join(
-            sv.R2F_OUTPUT_DIR_RELEASES, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION
-        )
+        output_save_subfolder = os.path.join(sv.R2F_OUTPUT_DIR_RELEASES, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
 
         # If the output subfolder already exists, remove it
         if os.path.exists(output_save_subfolder) is True:
@@ -633,7 +588,6 @@ def compile_ras_rating_curves(
         os.mkdir(output_save_subfolder)
 
     else:  # Using the specified filepath
-
         # Check that the destination filepath exists. If it doesn't, give error and quit.
         if not os.path.exists(output_save_folder):
             print(f"Error: No folder found at {output_save_folder}.")
@@ -644,9 +598,7 @@ def compile_ras_rating_curves(
             sys.exit()
 
         # Assemble the output subfolder filepath
-        output_save_subfolder = os.path.join(
-            output_save_folder, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION
-        )
+        output_save_subfolder = os.path.join(output_save_folder, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
 
         # If the output subfolder already exists, remove it
         if os.path.exists(output_save_subfolder) is True:
@@ -682,9 +634,7 @@ def compile_ras_rating_curves(
 
     # Create empty output log and give it a header
     output_log = []
-    output_log.append(
-        f"Processing for reformat_ras_rating_curves.py started at {str(start_time_string)}"
-    )
+    output_log.append(f"Processing for reformat_ras_rating_curves.py started at {str(start_time_string)}")
     output_log.append(f"Input directory: {input_folder_path}")
 
     # ------------------------------------------------------------------------------------------------
@@ -744,9 +694,7 @@ def compile_ras_rating_curves(
     int_logs = []
 
     for dir in dirlist:
-        intermediate_filepath = os.path.join(
-            input_folder_path, dir, intermediate_filename
-        )
+        intermediate_filepath = os.path.join(input_folder_path, dir, intermediate_filename)
 
         # Get output table and append to list if path exists
         filename = int_output_table_label
@@ -784,16 +732,13 @@ def compile_ras_rating_curves(
 
     # Iterate through input geopackages and compile them
     for i in range(len(int_geopackage_files)):
-
         if i == 0:
             # we have to load the first gkpg directly then concat more after.
             # Create an empty GeoDataFrame to store the compiled data
             compiled_geopackage = gpd.read_file(int_geopackage_files[i])
         else:
             data = gpd.read_file(int_geopackage_files[i])
-            compiled_geopackage = pd.concat(
-                [compiled_geopackage, data], ignore_index=True
-            )
+            compiled_geopackage = pd.concat([compiled_geopackage, data], ignore_index=True)
 
     # Set the unified projection for the compiled GeoDataFrame
     compiled_geopackage.crs = compiled_geopackage_CRS
@@ -863,9 +808,7 @@ def compile_ras_rating_curves(
 
     print()
     print(f"Process finished. Total runtime: {runtime}")
-    print(
-        "-----------------------------------------------------------------------------------------------"
-    )
+    print("-----------------------------------------------------------------------------------------------")
 
 
 if __name__ == "__main__":
@@ -930,9 +873,7 @@ if __name__ == "__main__":
         required=False,
         default="",
     )
-    parser.add_argument(
-        "-o", "--output-path", help="Output save folder.", required=False, default=""
-    )
+    parser.add_argument("-o", "--output-path", help="Output save folder.", required=False, default="")
     parser.add_argument(
         "-l",
         "--log",
@@ -950,12 +891,7 @@ if __name__ == "__main__":
         action="store_true",
     )
     parser.add_argument(
-        "-j",
-        "--num-workers",
-        help="Number of concurrent processes",
-        required=False,
-        default=1,
-        type=int,
+        "-j", "--num-workers", help="Number of concurrent processes", required=False, default=1, type=int
     )
     parser.add_argument(
         "-lt",
@@ -992,12 +928,5 @@ if __name__ == "__main__":
 
     # Run main function
     compile_ras_rating_curves(
-        input_folder_path,
-        output_save_folder,
-        log,
-        verbose,
-        num_workers,
-        source,
-        location_type,
-        active,
+        input_folder_path, output_save_folder, log, verbose, num_workers, source, location_type, active
     )

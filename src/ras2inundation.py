@@ -6,9 +6,8 @@ from timeit import default_timer as timer
 import geopandas as gpd
 import pandas as pd
 
-def produce_inundation_from_geocurves(
-    geocurves_dir, flow_file, output_inundation_poly, overwrite
-):
+
+def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundation_poly, overwrite):
     """
     Produce inundation from RAS2FIM geocurves.
 
@@ -43,9 +42,7 @@ def produce_inundation_from_geocurves(
         if ".csv" in geocurve:
             feature_id = geocurve.split("_")[0]
             available_feature_id_list.append(feature_id)
-            geocurve_path_dictionary.update(
-                {feature_id: {"path": os.path.join(geocurves_dir, geocurve)}}
-            )
+            geocurve_path_dictionary.update({feature_id: {"path": os.path.join(geocurves_dir, geocurve)}})
 
     # Open flow_file to detemine feature_ids to process
     flow_file_df = pd.read_csv(flow_file)
@@ -54,12 +51,10 @@ def produce_inundation_from_geocurves(
     iteration = 0
     feature_id_polygon_path_dict = {}
     for feature_id in flow_file_df["feature_id"]:
-        if (str(feature_id) not in available_feature_id_list):
+        if str(feature_id) not in available_feature_id_list:
             # Skip flow values not found in RAS library
             continue
-        discharge_cms = flow_file_df.loc[
-            flow_file_df["feature_id"] == feature_id, "discharge"
-        ].values[0]
+        discharge_cms = flow_file_df.loc[flow_file_df["feature_id"] == feature_id, "discharge"].values[0]
         # Get path to polygon from geocurve
         try:
             geocurve_file_path = geocurve_path_dictionary[str(feature_id)]["path"]
@@ -71,9 +66,7 @@ def produce_inundation_from_geocurves(
         row_idx = geocurve_df["discharge_cms"].sub(discharge_cms).abs().idxmin()
         subset_geocurve = geocurve_df.iloc[row_idx]
         polygon_filename = subset_geocurve["filename"]
-        polygon_path = os.path.join(
-            os.path.split(geocurves_dir)[0], "polys", polygon_filename
-        )
+        polygon_path = os.path.join(os.path.split(geocurves_dir)[0], "polys", polygon_filename)
         if os.path.exists(polygon_path):
             feature_id_polygon_path_dict.update(
                 {feature_id: {"discharge_cms": discharge_cms, "path": polygon_path}}
@@ -86,14 +79,10 @@ def produce_inundation_from_geocurves(
     for feature_id in feature_id_polygon_path_dict:
         if iteration == 0:
             gdf = gpd.read_file(feature_id_polygon_path_dict[feature_id]["path"])
-            gdf["discharge_cms"] = feature_id_polygon_path_dict[feature_id][
-                "discharge_cms"
-            ]
+            gdf["discharge_cms"] = feature_id_polygon_path_dict[feature_id]["discharge_cms"]
         else:
             new_gdf = gpd.read_file(feature_id_polygon_path_dict[feature_id]["path"])
-            new_gdf["discharge_cms"] = feature_id_polygon_path_dict[feature_id][
-                "discharge_cms"
-            ]
+            new_gdf["discharge_cms"] = feature_id_polygon_path_dict[feature_id]["discharge_cms"]
             gdf = gpd.pd.concat([gdf, new_gdf])
 
         iteration += 1
@@ -113,14 +102,9 @@ if __name__ == "__main__":
     #    -t C:\ras2fim_data\output_ras2fim\12090301_2277_230825\final\inundation.gpkg
 
     # Parse arguments
-    parser = argparse.ArgumentParser(
-        description="Produce Inundation from RAS2FIM geocurves."
-    )
+    parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.")
     parser.add_argument(
-        "-g",
-        "--geocurves_dir",
-        help="Path to directory containing RAS2FIM geocurve CSVs.",
-        required=True,
+        "-g", "--geocurves_dir", help="Path to directory containing RAS2FIM geocurve CSVs.", required=True
     )
     parser.add_argument(
         "-f",
@@ -129,14 +113,9 @@ if __name__ == "__main__":
         required=True,
     )
     parser.add_argument(
-        "-t",
-        "--output_inundation_poly",
-        help="Path to output inundation polygon file.",
-        required=False,
+        "-t", "--output_inundation_poly", help="Path to output inundation polygon file.", required=False
     )
-    parser.add_argument(
-        "-o", "--overwrite", help="Overwrite files", required=False, action="store_true"
-    )
+    parser.add_argument("-o", "--overwrite", help="Overwrite files", required=False, action="store_true")
 
     args = vars(parser.parse_args())
 

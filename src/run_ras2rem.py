@@ -72,9 +72,7 @@ def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir, model_unit):
         ]
     ]
 
-    rating_curve_df.to_csv(
-        os.path.join(r2f_ras2rem_dir, "rating_curve.csv"), index=False
-    )
+    rating_curve_df.to_csv(os.path.join(r2f_ras2rem_dir, "rating_curve.csv"), index=False)
 
 
 def fn_generate_tif_for_each_rem(tpl_request):
@@ -86,9 +84,7 @@ def fn_generate_tif_for_each_rem(tpl_request):
     all_tif_files = list(Path(Input_dir).rglob("*.tif"))
     raster_to_mosiac = []
     this_rem_tif_files = [
-        file
-        for file in all_tif_files
-        if os.path.basename(file).endswith("-%s.tif" % rem_value)
+        file for file in all_tif_files if os.path.basename(file).endswith("-%s.tif" % rem_value)
     ]
     for p in this_rem_tif_files:
         raster = rasterio.open(p)
@@ -96,9 +92,7 @@ def fn_generate_tif_for_each_rem(tpl_request):
     mosaic, output = merge(raster_to_mosiac)
 
     # replace values of the raster with rem value, assuming there is no chance of having negative values
-    mosaic = np.where(
-        mosaic != raster.nodata, np.float64(rem_value) / 10, raster.nodata
-    )
+    mosaic = np.where(mosaic != raster.nodata, np.float64(rem_value) / 10, raster.nodata)
 
     # prepare meta data
     output_meta = raster.meta.copy()
@@ -130,14 +124,11 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
 
     all_tif_files = list(Path(r2f_simplified_grids_dir).rglob("*.tif"))
     if len(all_tif_files) == 0:
-        print(
-            "Error: Make sure you have specified a correct input directory with at least one '*.tif' file."
-        )
+        print("Error: Make sure you have specified a correct input directory with at"
+              " least one '*.tif' file.")
         sys.exit(1)
 
-    rem_values = list(
-        map(lambda var: str(var).split(".tif")[0].split("-")[-1], all_tif_files)
-    )
+    rem_values = list(map(lambda var: str(var).split(".tif")[0].split("-")[-1], all_tif_files))
     rem_values = np.unique(rem_values).tolist()
 
     print("+-----------------------------------------------------------------+")
@@ -145,9 +136,7 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
     # make argument for multiprocessing
     rem_info_arguments = []
     for rem_value in rem_values:
-        rem_info_arguments.append(
-            (rem_value, r2f_simplified_grids_dir, r2f_ras2rem_dir)
-        )
+        rem_info_arguments.append((rem_value, r2f_simplified_grids_dir, r2f_ras2rem_dir))
 
     num_processors = mp.cpu_count() - 1
     with Pool(processes=num_processors) as executor:
@@ -185,9 +174,7 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
         }
     )
 
-    with rasterio.open(
-        os.path.join(r2f_ras2rem_dir, "rem.tif"), "w", **output_meta
-    ) as tiffile:
+    with rasterio.open(os.path.join(r2f_ras2rem_dir, "rem.tif"), "w", **output_meta) as tiffile:
         tiffile.write(mosaic)
 
     # finally delete unnecessary files to clean up
@@ -211,9 +198,7 @@ def fn_run_ras2rem(r2f_huc_parent_dir, model_unit):
         if os.path.exists(r2f_huc_parent_dir) is False:  # full path must exist
             is_invalid_path = True
     else:  # they provide just a child folder (base path name)
-        r2f_huc_parent_dir = os.path.join(
-            sv.R2F_DEFAULT_OUTPUT_MODELS, r2f_huc_parent_dir
-        )
+        r2f_huc_parent_dir = os.path.join(sv.R2F_DEFAULT_OUTPUT_MODELS, r2f_huc_parent_dir)
         if os.path.exists(r2f_huc_parent_dir) is False:  # child folder must exist
             is_invalid_path = True
 
@@ -224,9 +209,7 @@ def fn_run_ras2rem(r2f_huc_parent_dir, model_unit):
         )
 
     # AND the 05 directory must already exist
-    r2f_hecras_outputs_dir = os.path.join(
-        r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT
-    )
+    r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
     if os.path.exists(r2f_hecras_outputs_dir) is False:
         raise ValueError(
             f"The {sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT} folder does not exist."
@@ -237,9 +220,7 @@ def fn_run_ras2rem(r2f_huc_parent_dir, model_unit):
     r2f_simplified_grids_dir = os.path.join(
         r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_METRIC, sv.R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS
     )
-    r2f_ras2rem_dir = os.path.join(
-        r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_METRIC, sv.R2F_OUTPUT_DIR_RAS2REM
-    )
+    r2f_ras2rem_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_METRIC, sv.R2F_OUTPUT_DIR_RAS2REM)
 
     if os.path.exists(r2f_ras2rem_dir):
         shutil.rmtree(r2f_ras2rem_dir)
@@ -256,9 +237,7 @@ def fn_run_ras2rem(r2f_huc_parent_dir, model_unit):
     print("  --- (p) RAS2FIM parent output path: " + str(r2f_huc_parent_dir))
     print("  --- HEC-RAS outputs path: " + str(r2f_hecras_outputs_dir))
     print("  --- HEC-RAS outputs unit: " + model_unit)
-    print(
-        "  --- RAS2FIM 'simplified' depth grids path: " + str(r2f_simplified_grids_dir)
-    )
+    print("  --- RAS2FIM 'simplified' depth grids path: " + str(r2f_simplified_grids_dir))
     print("  --- RAS2REM Outputs directory: " + str(r2f_ras2rem_dir))
     print("+-----------------------------------------------------------------+")
 
@@ -316,9 +295,7 @@ if __name__ == "__main__":
     r2f_huc_parent_dir = args["r2f_huc_parent_dir"]
 
     # find model_unit of HEC-RAS outputs (ft vs m) using a sample rating curve file
-    r2f_hecras_outputs_dir = os.path.join(
-        r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT
-    )
+    r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
     model_unit = sf.find_model_unit_from_rating_curves(r2f_hecras_outputs_dir)
 
     fn_run_ras2rem(r2f_huc_parent_dir, model_unit)

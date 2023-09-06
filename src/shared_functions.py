@@ -127,10 +127,7 @@ def model_unit_from_ras_prj(str_ras_path_arg):
                     first_file_line = f.readline()
 
                 # skip projection files
-                if any(
-                    x in first_file_line
-                    for x in ["PROJCS", "GEOGCS", "DATUM", "PROJECTION"]
-                ):
+                if any(x in first_file_line for x in ["PROJCS", "GEOGCS", "DATUM", "PROJECTION"]):
                     continue
                 ras_prj_files.append(os.path.join(root, filename))
     elif os.path.isfile(str_ras_path_arg):
@@ -185,18 +182,14 @@ def convert_rating_curve_to_metric(ras2rem_dir):
     # convert to metric if needed
     if "stage_m" not in df.columns:  # if no meters, then only Imperial units are in the file
         df["stage_m"] = ["{:0.2f}".format(h * 0.3048) for h in df["stage_ft"]]
-        df["discharge_cms"] = [
-            "{:0.2f}".format(q * 0.0283168) for q in df["discharge_cfs"]
-        ]
+        df["discharge_cms"] = ["{:0.2f}".format(q * 0.0283168) for q in df["discharge_cfs"]]
         df.to_csv(os.path.join(src_path), index=False)
 
         # REM will also be in Imperial units if the incoming SRC was
         rem_path = os.path.join(ras2rem_dir, "rem.tif")
         with rasterio.open(rem_path) as src:
             raster = src.read()
-            raster = np.multiply(
-                raster, np.where(raster != 65535, 0.3048, 1)
-            )  # keep no-data value as-is
+            raster = np.multiply(raster, np.where(raster != 65535, 0.3048, 1))  # keep no-data value as-is
             output_meta = src.meta.copy()
         with rasterio.open(rem_path, "w", **output_meta, compress="LZW") as dest:
             dest.write(raster)
@@ -206,7 +199,6 @@ def convert_rating_curve_to_metric(ras2rem_dir):
 
 ####################################################################
 def is_windows():
-
     plt = platform.system()
     return "Windows" in plt
 
@@ -253,7 +245,7 @@ def fix_proj_path_error():
             #if (not os.environ["GDAL_DATA"]):
             #    print(f"anaconda3_env_path is {anaconda3_env_path}")
             #    if (os.path.exists(anaconda3_env_path)):
-            #        os.environ["GDAL_DATA"] = anaconda3_env_path                
+            #        os.environ["GDAL_DATA"] = anaconda3_env_path
             #else:
             #    print("GDAL_DATA - it is here but empty")
 
@@ -277,9 +269,7 @@ def find_model_unit_from_rating_curves(r2f_hecras_outputs_dir):
         elif stage_unit == "m":
             model_unit = "meter"
         else:
-            raise ValueError(
-                "Rating curve values should be either in feet or meter. Check the results"
-            )
+            raise ValueError("Rating curve values should be either in feet or meter. Check the results")
 
         return model_unit
     except ValueError as e:
