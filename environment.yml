@@ -32,7 +32,6 @@ dependencies:
   - cffi=1.15.1=py38h2bbff1b_3
   - cfitsio=3.470=h2bbff1b_7
   - charset-normalizer=2.0.4=pyhd3eb1b0_0
-  - click=7.1.2=pyhd3eb1b0_0
   - click-plugins=1.1.1=pyhd3eb1b0_0
   - cligj=0.7.2=py38haa95532_0
   - cloudpickle=2.2.1=py38haa95532_0
@@ -187,7 +186,26 @@ dependencies:
   - zlib=1.2.13=h8cc25b3_0
   - zstd=1.5.5=hd43e919_0
   - pip:
+      - black==23.7.0
+      - cfgv==3.4.0
+      - click==8.1.7
+      - distlib==0.3.7
+      - filelock==3.12.3
+      - flake8==6.0.0
+      - identify==2.5.27
+      - isort==5.12.0
       - keepachangelog==1.0.0
+      - mccabe==0.7.0
+      - mypy-extensions==1.0.0
+      - nodeenv==1.8.0
+      - pathspec==0.11.2
+      - platformdirs==3.10.0
+      - pre-commit==3.4.0
+      - pycodestyle==2.10.0
+      - pyflakes==3.0.1
       - pyproj==3.4.1
+      - pyproject-flake8==6.0.0.post1
       - rasterio==1.3.7
+      - tomli==2.0.1
+      - virtualenv==20.24.4
 prefix: C:\Users\rdp-user\anaconda3\envs\ras2fim

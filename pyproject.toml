@@ -53,14 +53,14 @@ skip_gitignore = true
 [tool.flake8]
 count = true
 doctests = true
-max-complexity = 56
+#max-complexity = 56
 max-line-length = 110  # It should be the same as `tool.black.line-length` above
-extend-ignore = """
-    E203,
-    E266,
-    E501,
-    W503,
-    W391
-    F403,
-    F401,
-    """
+# extend-ignore = """
+#    E203,
+#    E266,
+#    E501,
+#    W503,
+#    W391
+#    F403,
+#    F401,
+#    """
