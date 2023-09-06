@@ -35,7 +35,7 @@ import errors
 import shared_variables as sv
 
 
-# $$$$$$$$$$$$$$$$$$$$$$
+# -------------------------------------------------
 def fn_wkt_loads(x):
     try:
         return wkt.loads(x)
@@ -43,10 +43,7 @@ def fn_wkt_loads(x):
         return None
 
 
-# $$$$$$$$$$$$$$$$$$$$$$
-
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# -------------------------------------------------
 def fn_snap_point(shply_line, list_of_df_row):
     # int_index, int_feature_id, str_huc12, shp_point = list_of_df_row
     int_index, shp_point, int_feature_id, str_huc12 = list_of_df_row
@@ -61,10 +58,7 @@ def fn_snap_point(shply_line, list_of_df_row):
     return df
 
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-# -----------------------------------
+# -------------------------------------------------
 def fn_create_gdf_of_points(tpl_request):
     # function to create and return a geoDataframe from a list of shapely points
 
@@ -84,7 +78,7 @@ def fn_create_gdf_of_points(tpl_request):
     return gdf_points_nwm
 
 
-# -----------------------------------
+# -------------------------------------------------
 def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str_nation_arg):
     # supress all warnings
     warnings.filterwarnings("ignore", category=UserWarning)

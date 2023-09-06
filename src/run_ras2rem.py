@@ -19,6 +19,7 @@ import shared_functions as sf
 import shared_variables as sv
 
 
+# -------------------------------------------------
 def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir, model_unit):
 
     """
@@ -75,6 +76,7 @@ def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir, model_unit):
     rating_curve_df.to_csv(os.path.join(r2f_ras2rem_dir, "rating_curve.csv"), index=False)
 
 
+# -------------------------------------------------
 def fn_generate_tif_for_each_rem(tpl_request):
     rem_value = tpl_request[0]
     Input_dir = tpl_request[1]
@@ -113,6 +115,7 @@ def fn_generate_tif_for_each_rem(tpl_request):
     return rem_value
 
 
+# -------------------------------------------------
 def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
     """
     Args:
@@ -185,6 +188,7 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
         os.remove(p)
 
 
+# -------------------------------------------------
 def fn_run_ras2rem(r2f_huc_parent_dir, model_unit):
 
     ####################################################################
@@ -252,6 +256,7 @@ def fn_run_ras2rem(r2f_huc_parent_dir, model_unit):
     print("Compute Time: " + str(time_pass_ras2rem))
 
 
+# -------------------------------------------------
 if __name__ == "__main__":
 
     # Sample usage:

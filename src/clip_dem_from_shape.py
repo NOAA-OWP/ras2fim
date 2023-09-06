@@ -26,7 +26,6 @@ import pandas as pd
 import pyproj
 import rasterio
 
-# ************************************************************
 import rioxarray
 import tqdm
 
@@ -38,8 +37,7 @@ import shared_functions as sf
 # null value in the exported DEMs
 INT_NO_DATA_VAL = -9999
 
-
-# >>>>>>>>>>>>>>>>>>>>>>>>
+# -------------------------------------------------
 def fn_get_features(gdf, int_poly_index):
     """Function to parse features from GeoDataFrame in such
     a manner that rasterio wants them
@@ -53,10 +51,7 @@ def fn_get_features(gdf, int_poly_index):
     return [json.loads(gdf.to_json())["features"][int_poly_index]["geometry"]]
 
 
-# >>>>>>>>>>>>>>>>>>>>>>>>
-
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# -------------------------------------------------
 def fn_get_random_string(int_letter_len_fn, int_num_len_fn):
     """Creates a random string of letters and numbers
 
@@ -73,7 +68,7 @@ def fn_get_random_string(int_letter_len_fn, int_num_len_fn):
     return str_total
 
 
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+# -------------------------------------------------
 def fn_is_valid_file(parser, arg):
     if not os.path.exists(arg):
         parser.error("The file %s does not exist" % arg)
@@ -83,9 +78,7 @@ def fn_is_valid_file(parser, arg):
         # return open(arg, 'r')  # return an open file handle
 
 
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-
+# -------------------------------------------------
 def fn_cut_dems_from_shapes(
     str_input_shp_path, str_input_terrain_path, str_output_dir, int_buffer, model_unit, str_field_name
 ):

@@ -17,7 +17,7 @@ import shared_validators as svd
 from errors import ModelUnitError
 
 
-####################################################################
+# -------------------------------------------------
 def print_date_time_duration(start_dt, end_dt):
     """
     Process:
@@ -52,7 +52,7 @@ def print_date_time_duration(start_dt, end_dt):
     return duration_msg
 
 
-####################################################################
+# -------------------------------------------------
 def confirm_models_unit(proj_crs, str_ras_path_arg):
     """
     - calls two other functions to infer units from ras models and -p projection.
@@ -81,7 +81,7 @@ def confirm_models_unit(proj_crs, str_ras_path_arg):
     return unit
 
 
-####################################################################
+# -------------------------------------------------
 def model_unit_from_crs(proj_crs):
     """
     get the unit( meter or feet) from -p EPSG input:
@@ -105,7 +105,7 @@ def model_unit_from_crs(proj_crs):
     return unit
 
 
-####################################################################
+# -------------------------------------------------
 def model_unit_from_ras_prj(str_ras_path_arg):
     """
     -- return either 'meter' or 'feet'; Otherwise raises an error
@@ -166,14 +166,14 @@ def model_unit_from_ras_prj(str_ras_path_arg):
     return unit
 
 
-####################################################################
+# -------------------------------------------------
 # Scrapes the top changelog version (most recent version listed in our repo)
 def get_changelog_version(changelog_path):
     changelog = keepachangelog.to_dict(changelog_path)
     return list(changelog.keys())[0]
 
 
-####################################################################
+# -------------------------------------------------
 def convert_rating_curve_to_metric(ras2rem_dir):
 
     src_path = os.path.join(ras2rem_dir, "rating_curve.csv")
@@ -197,13 +197,13 @@ def convert_rating_curve_to_metric(ras2rem_dir):
     return
 
 
-####################################################################
+# -------------------------------------------------
 def is_windows():
     plt = platform.system()
     return "Windows" in plt
 
 
-####################################################################
+# -------------------------------------------------
 def fix_proj_path_error():
 
     # TODO: This needs to be reworked
@@ -256,7 +256,7 @@ def fix_proj_path_error():
         pass
 
 
-##########################################################################
+# -------------------------------------------------
 def find_model_unit_from_rating_curves(r2f_hecras_outputs_dir):
     all_rating_files = list(Path(r2f_hecras_outputs_dir).rglob("*rating_curve.csv"))
     try:
@@ -283,14 +283,14 @@ def find_model_unit_from_rating_curves(r2f_hecras_outputs_dir):
         sys.exit(1)
 
 
-####################################################################
+# -------------------------------------------------
 def get_stnd_date():
 
     # return YYMMDD as in 230725
     return dt.now().strftime("%y%m%d")
 
 
-####################################################################
+# -------------------------------------------------
 def get_stnd_r2f_output_folder_name(huc_number, crs):
 
     """

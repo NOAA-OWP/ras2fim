@@ -58,10 +58,7 @@ def fn_get_abs_path(str_base_file_abs, str_relative_path):
     return str_revised_filepath
 
 
-# -------------------------
-
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~
+# -------------------------------------------------
 def fn_paths_from_rasmapper(str_rasmapper_path):
 
     xml_tree = et.parse(str_rasmapper_path)
@@ -107,10 +104,7 @@ def fn_paths_from_rasmapper(str_rasmapper_path):
     return list_abs_paths
 
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-# '''''''''''''''''''''''''
+# -------------------------------------------------
 def fn_calculate_terrain_stats(str_geom_hdf_path, str_projection_path, str_terrain_path):
     
     hf = h5py.File(str_geom_hdf_path, "r")
@@ -239,10 +233,7 @@ def fn_calculate_terrain_stats(str_geom_hdf_path, str_projection_path, str_terra
     return pd_series_stats
 
 
-# '''''''''''''''''''''''''
-
-
-# <<<<<<<<<<<<<<<<<<<<<<<
+# -------------------------------------------------
 def fn_get_list_of_lists_to_compute(str_path_ras_files):
     # walk a directory and get rasmapper paths
     list_files = []
@@ -275,10 +266,7 @@ def fn_get_list_of_lists_to_compute(str_path_ras_files):
     return list_of_lists_files_for_stats
 
 
-# <<<<<<<<<<<<<<<<<<<<<<<
-
-
-# ======================
+# -------------------------------------------------
 def fn_get_stats_dataseries(list_files_for_stats):
 
     # get a dataseries of the requested data
@@ -315,10 +303,7 @@ def fn_get_stats_dataseries(list_files_for_stats):
     return list_stats_dataseries
 
 
-# ======================
-
-
-# ^^^^^^^^^^^^^^^^^^^^^^^
+# -------------------------------------------------
 def fn_calculate_all_terrain_stats(str_input_dir):
 
     flt_start_run = time.time()
@@ -385,9 +370,7 @@ def fn_calculate_all_terrain_stats(str_input_dir):
     print("+-----------------------------------------------------------------+")
 
 
-# ^^^^^^^^^^^^^^^^^^^^^^^
-
-
+# -------------------------------------------------
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(

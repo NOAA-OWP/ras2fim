@@ -18,9 +18,7 @@ import shared_variables as sv
 
 # -----------------------------------------------------------------
 # Writes a metadata file into the save directory
-# -----------------------------------------------------------------
-
-
+# --------------------------
 def write_metadata_file(
     output_save_folder,
     start_time_string,
@@ -129,11 +127,13 @@ def get_unit_from_string(string):
         return "UNKNOWN"
 
 
+# -------------------------------------------------
 def feet_to_meters(number):
     converted_value = number / 3.281  # meter = feet / 3.281
     return converted_value
 
 
+# -------------------------------------------------
 def meters_to_feet(number):
     converted_value = number / 0.3048  # feet = meters / 0.3048
     return converted_value
@@ -142,8 +142,6 @@ def meters_to_feet(number):
 # -----------------------------------------------------------------
 # Reads, compiles, and reformats the rating curve info for all directories
 # -----------------------------------------------------------------
-
-
 def dir_reformat_ras_rc(
     dir_input_folder_path,
     intermediate_filename,
@@ -811,6 +809,7 @@ def compile_ras_rating_curves(
     print("-----------------------------------------------------------------------------------------------")
 
 
+# -------------------------------------------------
 if __name__ == "__main__":
 
     """

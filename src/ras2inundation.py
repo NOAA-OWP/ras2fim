@@ -7,6 +7,7 @@ import geopandas as gpd
 import pandas as pd
 
 
+# -------------------------------------------------
 def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundation_poly, overwrite):
     """
     Produce inundation from RAS2FIM geocurves.
@@ -92,8 +93,8 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
     gdf.to_file(output_inundation_poly, driver="GPKG")
 
 
+# -------------------------------------------------
 if __name__ == "__main__":
-
     # Sample Usage
 
     #  python ras2inundation.py

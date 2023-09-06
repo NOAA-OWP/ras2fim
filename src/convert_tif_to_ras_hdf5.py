@@ -24,8 +24,6 @@
 
 import argparse
 import datetime
-
-# ************************************************************
 import os
 import subprocess
 import time
@@ -34,11 +32,7 @@ import pyproj
 
 import shared_functions as sf
 
-
-# ************************************************************
-
-
-# -------------------------------------------------------
+# -------------------------------------------------
 def fn_get_filepaths(str_directory, str_file_suffix):
     # Fuction - walks a directory and determines a the path
     # to all the files with a given suffix
@@ -56,10 +50,7 @@ def fn_get_filepaths(str_directory, str_file_suffix):
     return list_file_paths
 
 
-# -------------------------------------------------------
-
-
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# -------------------------------------------------
 # Print iterations progress
 def fn_print_progress_bar(
     iteration, total, prefix="", suffix="", decimals=0, length=100, fill="█", printEnd="\r"
@@ -86,9 +77,7 @@ def fn_print_progress_bar(
         print()
 
 
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-
+# -------------------------------------------------
 def fn_convert_tif_to_ras_hdf5(
     str_hec_path, str_geotiff_dir, str_dir_to_write_hdf5, str_projection, model_unit
 ):

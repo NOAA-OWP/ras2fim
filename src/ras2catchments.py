@@ -28,7 +28,7 @@ import shared_variables as sv
 # Also check it for correct pathing, etc.
 
 
-####################################################################
+# -------------------------------------------------
 # This function creates a geopackage of Feature IDs from the raster that
 # matches the Depth Grid processing extents ("maxments") from ras2fim Step 5.
 def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_path, rating_curve_path):
@@ -158,7 +158,7 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
     return
 
 
-####################################################################
+# -------------------------------------------------
 # For each feature ID, finds the path for the tif with the max depth value
 def __get_maxment(mxmt_args):
 
@@ -222,7 +222,7 @@ def __get_maxment(mxmt_args):
     return feature_id_rem_path
 
 
-####################################################################
+# -------------------------------------------------
 #  Some validation of input, but setting up pathing
 def __validate_make_catchments(huc_num, r2f_huc_parent_dir, model_huc_catalog_path, national_ds_path):
 
@@ -324,7 +324,7 @@ def __validate_make_catchments(huc_num, r2f_huc_parent_dir, model_huc_catalog_pa
     return rtn_varibles_dict
 
 
-####################################################################
+# -------------------------------------------------
 # This function geopackage of Feature IDs that correspond to the extent
 # of the Depth Grids (and subsequent REMs that also match the Depth Grids)
 def make_catchments(
