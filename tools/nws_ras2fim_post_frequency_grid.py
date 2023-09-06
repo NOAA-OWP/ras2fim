@@ -12,37 +12,42 @@
 #
 # Post Processing
 
+import os.path
+
+import geopandas as gpd
 import numpy as np
 import pandas as pd
-import geopandas as gpd
 import rasterio as rio
 
-import os.path
+#########
+# NOTE: Sept 6, 2023 - Possibly Deprecated
+# If you use this file, please remove this message
+# and it should really be cleaned up (no __main__ and alot of inline logic)
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 # INPUT
 
 # Path to walk for the rating curves
-STR_PATH_CSV_FILES = r'E:\X-NWS\Output_20210322'
+STR_PATH_CSV_FILES = r"E:\X-NWS\Output_20210322"
 
 # Path to the shapefile of the National Water Model Streams - with attributes
-STR_PATH_NWM_STREAMS_SHP = r'E:\X-NWS\HUC_12030106\Output_PreProcess_Conflation\12030106_nwm_streams_ln.shp'
+STR_PATH_NWM_STREAMS_SHP = r"E:\X-NWS\HUC_12030106\Output_PreProcess_Conflation\12030106_nwm_streams_ln.shp"
 
 # Path to write the requested grids
-STR_PATH_BINARY_GRID = r'E:\X-NWS\Output_20210322_1_5_year'
+STR_PATH_BINARY_GRID = r"E:\X-NWS\Output_20210322_1_5_year"
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-# ++++++++++++++++++++++++
+# -------------------------------------------------
 def fn_find_nearest(array, value):
     # given an array, find the nearest point to value
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return idx
-# ++++++++++++++++++++++++
 
 
-# '''''''''''''''''''''''''''''''
+# -------------------------------------------------
 def fn_split_path(split_path):
     # from a file path, split into a list
     list_path_split = []
@@ -51,9 +56,9 @@ def fn_split_path(split_path):
         split_path = os.path.dirname(split_path)
     list_path_split.reverse()
     return list_path_split
-# '''''''''''''''''''''''''''''''
 
 
+# -------------------------------------------------
 # load in the pre-processed Nation Water Model streams
 # Contains the retrospective 26 year discharges
 gdf_nwm_streams = gpd.read_file(STR_PATH_NWM_STREAMS_SHP)
@@ -66,29 +71,24 @@ for root, dirs, files in os.walk(STR_PATH_CSV_FILES):
         if file.endswith(".csv") or file.endswith(".CSV"):
             # Note the case sensitive issue
             str_file_path = os.path.join(root, file)
-            if str_file_path[-16:] == 'rating_curve.csv':
+            if str_file_path[-16:] == "rating_curve.csv":
                 list_files.append(str_file_path)
 
-df_output = pd.DataFrame(columns=['feature_id',
-                                  '1_5_year_NWM_cfs',
-                                  '1_5_year_FIM_cfs',
-                                  '1_5_year_FIM_Depth'])
-
+df_output = pd.DataFrame(columns=["feature_id", "1_5_year_NWM_cfs", "1_5_year_FIM_cfs", "1_5_year_FIM_Depth"])
 
 for i in list_files:
-
     # create list of split file path
     list_path = fn_split_path(i)
 
     # get the feature_id from the file path split
     str_feature_id = str(list_path[-3])
-    
+
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # query the geodataframe to single feature id
     gdf_feature_id = gdf_nwm_streams.query("feature_id==@str_feature_id")
 
     # get the retrospective discharge
-    flt_freq_flow = gdf_feature_id.iloc[0]['1_5_year_r']
+    flt_freq_flow = gdf_feature_id.iloc[0]["1_5_year_r"]
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -120,15 +120,16 @@ for i in list_files:
     # Create path to desired depth grid
     str_depth_grid_path = str_file_path + "Depth_Grids" + "\\\\"
 
-    str_depth_grid_path += str_feature_id + "-"
-    + str(int_profile_depth) + ".tif"
+    str_depth_grid_path += f"{str_feature_id}-{str(int_profile_depth)}.tif"
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    new_rec = {'feature_id': str_feature_id,
-               '1_5_year_NWM_cfs': flt_freq_flow,
-               '1_5_year_FIM_cfs': df["Flow(cfs)"][int_profile_idx],
-               '1_5_year_FIM_Depth': int_profile_depth}
+    new_rec = {
+        "feature_id": str_feature_id,
+        "1_5_year_NWM_cfs": flt_freq_flow,
+        "1_5_year_FIM_cfs": df["Flow(cfs)"][int_profile_idx],
+        "1_5_year_FIM_Depth": int_profile_depth,
+    }
     df_new_row = pd.DataFrame.from_records([new_rec])
     df_output = df_output.concat([df_output, df_new_row], ignore_index=True)
 
@@ -146,12 +147,12 @@ for i in list_files:
             a[depth <= 60000] = 0
             a[depth > 60000] = 1
 
-            profile.update(dtype=rio.uint8, nodata=1, compress='lzw')
+            profile.update(dtype=rio.uint8, nodata=1, compress="lzw")
 
             str_output_dem = STR_PATH_BINARY_GRID + "\\"
 
             str_output_dem += str_feature_id + "-"
-            + str(int_profile_depth) + "_1_5_year.tif"
+            +str(int_profile_depth) + "_1_5_year.tif"
 
-            with rio.open(str_output_dem, 'w', nbits=1, **profile) as dest:
+            with rio.open(str_output_dem, "w", nbits=1, **profile) as dest:
                 dest.write(a.astype(np.uint8))
