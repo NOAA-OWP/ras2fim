@@ -16,8 +16,7 @@
 
 import argparse
 import os
-import random
-import string
+import sys
 
 import geopandas as gpd
 import pandas as pd
@@ -26,40 +25,12 @@ import rasterio
 import rioxarray
 import tqdm
 
+sys.path.append("..")
+import ras2fim.src.shared_functions as sf
+
 
 # null value in the exported DEMs
 INT_NO_DATA_VAL = -9999
-
-
-# -------------------------------------------------
-def fn_get_features(gdf, int_poly_index):
-    """Function to parse features from GeoDataFrame in such
-    a manner that rasterio wants them
-
-    Keyword arguments:
-        gdf -- pandas geoDataFrame
-        int_poly_index -- index of the row in the geoDataFrame
-    """
-    import json
-
-    return [json.loads(gdf.to_json())["features"][int_poly_index]["geometry"]]
-
-
-# -------------------------------------------------
-def fn_get_random_string(int_letter_len_fn, int_num_len_fn):
-    """Creates a random string of letters and numbers
-
-    Keyword arguments:
-    int_letter_len_fn -- length of string letters
-    int_num_len_fn -- length of string numbers
-    """
-    letters = string.ascii_lowercase
-    numbers = string.digits
-
-    str_total = "".join(random.choice(letters) for i in range(int_letter_len_fn))
-    str_total += "".join(random.choice(numbers) for i in range(int_num_len_fn))
-
-    return str_total
 
 
 # -------------------------------------------------
@@ -139,7 +110,7 @@ def fn_cut_dems_from_shapes(
         ncols=65,
     ):
         # convert the geoPandas geometry to json
-        json_boundary = fn_get_features(gdf_boundary_raster_prj, index)
+        json_boundary = sf.get_geometry_from_gdf(gdf_boundary_raster_prj, index)
 
         with rioxarray.open_rasterio(str_input_terrain_path, masked=True).rio.clip(
             json_boundary, from_disk=True
@@ -161,7 +132,7 @@ def fn_cut_dems_from_shapes(
             if b_have_valid_label_field:
                 str_dem_out = str_output_dir + "\\" + str(gdf_boundary_prj[str_field_name][index]) + ".tif"
             else:
-                str_unique_tag = fn_get_random_string(2, 4)
+                str_unique_tag = sf.fn_get_random_string(2, 4)
                 str_dem_out = str_output_dir + "\\" + str_unique_tag + ".tif"
 
             # compress and write out data

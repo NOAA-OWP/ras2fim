@@ -32,6 +32,7 @@ import json
 import os
 import random
 import string
+import sys
 import time
 import urllib.request
 from multiprocessing.pool import ThreadPool
@@ -42,6 +43,9 @@ import rasterio
 import rioxarray as rxr
 from rasterio.merge import merge
 from shapely.geometry import Polygon
+
+sys.path.append("..")
+import ras2fim.src.shared_functions as sf
 
 
 #########
@@ -60,23 +64,6 @@ def is_valid_file(parser, arg):
 
 
 # -------------------------------------------------
-def fn_get_random_string(int_letter_len_fn, int_num_len_fn):
-    """Creates a random string of letters and numbers
-
-    Keyword arguments:
-    int_letter_len_fn -- length of string letters
-    int_num_len_fn -- length of string numbers
-    """
-    letters = string.ascii_lowercase
-    numbers = string.digits
-
-    str_total = "".join(random.choice(letters) for i in range(int_letter_len_fn))
-    str_total += "".join(random.choice(numbers) for i in range(int_num_len_fn))
-
-    return str_total
-
-
-# -------------------------------------------------
 def fn_download_tiles(list_tile_url):
     """Downloads a requeted URL to a requested file directory
 
@@ -86,21 +73,6 @@ def fn_download_tiles(list_tile_url):
         list_tile_url[1] -- local directory to store the DEM
     """
     urllib.request.urlretrieve(list_tile_url[0], list_tile_url[1])
-
-
-# -------------------------------------------------
-def fn_get_features(gdf, int_poly_index):
-    """Function to parse features from GeoDataFrame in such
-    a manner that rasterio wants them
-
-    Keyword arguments:
-    gdf -- pandas geoDataFrame
-    int_poly_index -- index of the row in the geoDataFrame
-    """
-    
-    features = [json.loads(gdf.to_json())["features"][int_poly_index]["geometry"]]
-
-    return features
 
 
 # -------------------------------------------------
@@ -398,7 +370,7 @@ if __name__ == "__main__":
             list_str_url.append(str_url)
 
         # get a unique alpha-numeric string
-        str_unique_tag = fn_get_random_string(4, 2)
+        str_unique_tag = sf.fn_get_random_string(4, 2)
 
         list_tile_download_path = []
 
@@ -478,7 +450,7 @@ if __name__ == "__main__":
             gdf_aoi_prj_with_buffer = gdf_aoi_lambert_current.to_crs(str_crs_model)
 
             # get the geometry json of the polygon
-            str_geom = fn_get_features(gdf_aoi_prj_with_buffer, 0)
+            str_geom = sf.get_geometry_from_gdf(gdf_aoi_prj_with_buffer, 0)
 
             usgs_wcs_local_proj_clipped = usgs_wcs_local_proj.rio.clip(str_geom)
 

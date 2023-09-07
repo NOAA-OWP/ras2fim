@@ -179,10 +179,13 @@ class Get_Ras_Models_By_Catalog:
             )
 
             # look for records that are ready, contains the huc number and does not start with 1_ or 20_
+            # NOTE: for some reason if you change 
+            # df_all["final_name_key"].str.startswith("1_") == False)  to
+            # df_all["final_name_key"].str.startswith("1_") is False).. it fails. and Not doesnt' work either
             df_huc = df_all.loc[
                 (df_all["status"] == "ready")
-                & (df_all["final_name_key"].str.startswith("1_") is False)
-                & (df_all["final_name_key"].str.startswith("2_") is False)
+                & (df_all["final_name_key"].str.startswith("1_") == False)
+                & (df_all["final_name_key"].str.startswith("2_") == False)
                 & (df_all["hucs"].str.contains(str(self.huc_number), na=False))
             ]
 

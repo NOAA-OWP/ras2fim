@@ -37,15 +37,6 @@ FLT_BUFFER = 15
 
 
 # -------------------------------------------------
-def fn_get_features(gdf, int_poly_index):
-    """Function to parse features from GeoDataFrame
-    in such a manner that rasterio wants them"""
-    import json
-
-    return [json.loads(gdf.to_json())["features"][int_poly_index]["geometry"]]
-
-
-# -------------------------------------------------
 def fn_filelist(source, tpl_extenstion):
     # walk a directory and get files with suffix
     # returns a list of file paths
@@ -93,6 +84,8 @@ def fn_create_grid(list_of_df_row):
         model_unit,
     ) = list_of_df_row
 
+    #print(f"flt_desired_res is {flt_desired_res}")
+
     # read in the HEC-RAS generatated polygon of the last elevation step
     gdf_flood_limits = gpd.read_file(str_polygon_path)
 
@@ -104,7 +97,7 @@ def fn_create_grid(list_of_df_row):
 
     # get the coordinates of the envelope
     # note - this is pulling the first polygon found
-    coords = fn_get_features(gdf_flood_depth_envelope, 0)
+    coords = sf.get_geometry_from_gdf(gdf_flood_depth_envelope, 0)
 
     with rxr.open_rasterio(str_dem_path, masked=True).rio.clip(coords, from_disk=True) as xds_clipped:
         # using rioxarray - clip the HEC-RAS dem to the bounding box
@@ -127,14 +120,28 @@ def fn_create_grid(list_of_df_row):
         # set the nodata value to 65535 - InFRM compliant
         xds_clipped_reproject_scaled = xds_clipped_reproject_scaled.rio.set_nodata(65535)
 
+        # TODO: Sept 9, 2023
+        # The plan was to resample the scalled to the desired resolution (ie. 10)
+        # But an upgrade in rioxarray means merge is no longer available (ish). 
+        # It may have been used incorrectly as merge_arrays implies two datasets
+        # but there was only one. 
+
+        # For now.. just skip attempting to upscale or downscale the resolution
+        # Note: If upscaling or downscaling, image sizes need to be adjusted.
+
+        """
         # using the merge on a single raster to allow for user supplied
         # raster resolution of the output
-        xds_clipped_desired_res = rxr.merge.merge_arrays(
-            xds_clipped_reproject_scaled, res=(flt_desired_res), nodata=(65535)
-        )
+        #xds_clipped_desired_res = rxr.merge.merge_arrays(
+        #    xds_clipped_reproject_scaled, res=(flt_desired_res), nodata=(65535)
+        #)
 
         # compress and write out raster as unsigned 16 bit integer - InFRM compliant
-        xds_clipped_desired_res.rio.to_raster(str_file_to_create_path, compress="lzw", dtype="uint16")
+        #xds_clipped_desired_res.rio.to_raster(str_file_to_create_path, compress="lzw", dtype="uint16")
+        """
+
+        xds_clipped_reproject_scaled.rio.to_raster(str_file_to_create_path, compress="lzw", dtype="uint16")
+
 
         sleep(0.01)  # this allows the tqdm progress bar to update
 

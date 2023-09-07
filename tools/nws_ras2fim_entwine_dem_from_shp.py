@@ -14,8 +14,7 @@ import argparse
 import datetime
 import json
 import os
-import random
-import string
+import sys
 import time
 
 import geopandas as gpd
@@ -25,22 +24,8 @@ import rasterio
 import rioxarray as rxr
 from rasterio.fill import fillnodata
 
-
-# -------------------------------------------------
-def fn_get_random_string(int_letter_len_fn, int_num_len_fn):
-    """Creates a random string of letters and numbers
-
-    Keyword arguments:
-    int_letter_len_fn -- length of string letters
-    int_num_len_fn -- length of string numbers
-    """
-    letters = string.ascii_lowercase
-    numbers = string.digits
-
-    str_total = "".join(random.choice(letters) for i in range(int_letter_len_fn))
-    str_total += "".join(random.choice(numbers) for i in range(int_num_len_fn))
-
-    return str_total
+sys.path.append("..")
+import ras2fim.src.shared_functions as sf
 
 
 # -------------------------------------------------
@@ -115,7 +100,7 @@ def fn_get_entwine_dem_from_shp(
         if b_have_valid_label_field:
             str_dem_ground = str_output_path + "\\" + str(gdf_boundary_lambert[str_field_name][i]) + "_1.tif"
         else:
-            str_unique_tag = fn_get_random_string(2, 4)
+            str_unique_tag = sf.fn_get_random_string(2, 4)
             str_dem_ground = str_output_path + "\\" + str_unique_tag + "_1.tif"
 
         # get just the current polygon

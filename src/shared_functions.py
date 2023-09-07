@@ -2,8 +2,11 @@
 
 import fnmatch
 import os
+import json
 import platform
+import random
 import re
+import string
 import sys
 from datetime import datetime as dt
 from pathlib import Path
@@ -12,7 +15,9 @@ import keepachangelog
 import numpy as np
 import pandas as pd
 import rasterio
+from dotenv import load_dotenv
 
+import shared_variables as sv
 import shared_validators as svd
 from errors import ModelUnitError
 
@@ -196,6 +201,29 @@ def convert_rating_curve_to_metric(ras2rem_dir):
 
     return
 
+# -------------------------------------------------
+def load_config_enviro_path(config_file = sv.DEFAULT_CONFIG_FILE_PATH):
+
+    ####################################################################
+    # Load the enviroment file
+
+    # The sv.DEFAULT_CONFIG_FILE_PATH comes in relative to the root and not to src/ras2fim
+    # so we need to adjust it's path.
+
+    if config_file == sv.DEFAULT_CONFIG_FILE_PATH:  # change to make relative to ras2fim.py
+        referential_path = os.path.join(os.path.dirname(__file__), "..", sv.DEFAULT_CONFIG_FILE_PATH)
+        config_file = os.path.abspath(referential_path)
+
+    elif config_file == "":  # possible if not coming through __main__
+        raise ValueError("The config file argument can not be empty")
+
+    if os.path.exists(config_file) is False:
+        raise ValueError(f"The config file of {config_file} can not found")
+
+    load_dotenv(config_file)
+
+    return config_file
+
 
 # -------------------------------------------------
 def is_windows():
@@ -206,53 +234,91 @@ def is_windows():
 # -------------------------------------------------
 def fix_proj_path_error():
 
-    # TODO: This needs to be reworked
+    #Sep 7, 2023
 
-    # delete this environment variable because the updated library we need
-    # is included in the rasterio wheel
+    #But this has to be solved.
+
+    #This code is on hold but not removed. With the latest upgrade rasterio (which we needed)
+    #it creates problems with proj and gdal which not compatiable with the latest version.
+    
+    #https://github.com/rasterio/rasterio/blob/master/docs/faq.rst#why-cant-rasterio-find-projdb-rasterio-from-pypi-versions--120
+
+    #Says for now. You have to point to older versions of proj and gdal but I tried a number of combinations and no luck yet
+
+    # If the PROJ_DB path (from pyrpo is incorrect, you will see bounding box issues such as
+	# rioxarray.exceptions.NoDataInBounds: No data found in bounds.
+	# and
+	# ERROR 1: PROJ: proj_identify: C:\Users\rdp-user\anaconda3\envs\ras2fim\Library\share\proj\proj.db
+	# lacks DATABASE.LAYOUT.VERSION.MAJOR / DATABASE.LAYOUT.VERSION.MINOR metadata. It comes from 
+	# another PROJ installation.
+	#PROJ_LIB='C:\\Users\\rdp-user\\anaconda3\\envs\\ras2fim\\Library\\site-packages\\pyproj\\proj_dir\\share\\proj'
+	#PROJ_LIB="C:\\Users\\rdp-user\\anaconda3\\envs\\ras2fim\\Lib\\site-packages\\rasterio\\proj_data'
+	#GDAL_DATA="C:\\Users\\rdp-user\\anaconda3\\envs\\ras2fim\\Lib\\site-packages\\rasterio\\gdal_data'
+	#PROJ_LIB="C:\\Users\\rdp-user\\anaconda3\\envs\\ras2fim\\Lib\\site-packages\\rasterio\\proj_data'
+	#GDAL_DATA="C:\\Users\\rdp-user\\anaconda3\\envs\\ras2fim\\Lib\\site-packages\\rasterio\\gdal_data'
+	#PROJ_LIB="C:\\Users\\rdp-user\\anaconda3\\envs\\ras2fim\\Library\\share\\proj'
+	#GDAL_DATA="C:\\Users\\rdp-user\\anaconda3\\envs\\ras2fim\\Library\\share\\gdal'
+	#PROJ_LIB="C:\\Users\\rdp-user\\anaconda3\\envs\\ras2fim\\Library\\site-packages\\pyproj\\proj_dir\\share\\proj'
+	#GDAL_DATA="C:\\Users\\rdp-user\\anaconda3\\envs\\ras2fim\\Library\\site-packages\\pyproj\\proj_dir\\share\\gdal'
+	#PROJ_LIB="C:\\Program Files (x86)\\HEC\\HEC-RAS\\6.0\\GDAL\\common\\data'
+	#GDAL_DATA="C:\\Program Files (x86)\\HEC\\HEC-RAS\\6.0\\GDAL\\common\\data'
+
+    #File 'C:\Users\rdp-user\Projects\dev-linter\ras2fim\src\get_usgs_dem_from_shape.py', line 428, in fn_get_usgs_dem_from_shape
+	#    usgs_wcs_local_proj_clipped = usgs_wcs_local_proj.rio.clip(str_geom)
+	#File 'C:\Users\rdp-user\anaconda3\envs\ras2fim\lib\site-packages\rioxarray\raster_array.py', line 943, in clip
+	#    raise NoDataInBounds(
+    #rioxarray.exceptions.NoDataInBounds: No data found in bounds.
+
+
+
+    # There is a known issue with rasterio and enviroment PROJ_LIB
+    # an error of `PROJ: proj_create_from_database: Cannot find proj.db`
+    # It does not stop anything it annoying. This is known hack for windows for it
+
+    # This is not perfect. It will always show the error once at the start until this is loaded.
+    # but it holds it off so we don't get the error over and over again.
+    # Note: For win, the paths can be added to advanced system enviro variables in windows settings
+    # but that can be a bit messy too.
+    # This assumes that anaconda has been setup in the user path.
+
+    # Depending on timing, this might load from the default config path but be updated later.
+
     try:
-        # There is a known issue with rasterio and enviroment PROJ_LIB
-        # an error of `PROJ: proj_create_from_database: Cannot find proj.db`
-        # It does not stop anything it annoying. This is known hack for windows for it
 
-        # print("os.environ['PROJ_LIB''] is " + os.environ["PROJ_LIB"])
-        # if (os.environ["PROJ_LIB"]):
-        # del os.environ["PROJ_LIB"]
+        #if (os.environ["PROJ_DB_FILE_PATH"] is None):
+        #    raise EnvironmentError("PROJ_DB_FILE_PATH is not loaded into the os.enviro yet."\
+        #                           " Check if the config file path exist")
 
-        """
         if (is_windows()) :
 
             # first get the user and we have to build up a path
-            user_home_path = os.path.expanduser("~")
+            #user_home_path = os.path.expanduser("~")
 
             # TODO: There could be other paths. ?? (depends how it was installed? future versions?)
-            anaconda3_env_path = os.path.join(user_home_path, r'anaconda3\envs\ras2fim\Library\share')
+            #anaconda3_env_path = os.path.join(user_home_path, r'anaconda3\envs\ras2fim\Library\share')
 
-            anaconda3_env_path_proj = os.path.join(anaconda3_env_path, "proj")
-            print(f"anaconda3_env_path_proj is {anaconda3_env_path_proj}")
-            if (os.path.exists(anaconda3_env_path_proj)):
-                os.environ["PROJ_LIB"] = anaconda3_env_path_proj
+            #anaconda3_env_path_proj = os.path.join(anaconda3_env_path, "proj")
 
-            if (not os.environ["PROJ_LIB"]) or (os.environ["PROJ_LIB"] == "") or
-               (os.environ["PROJ_LIB"] == "PROJ_LIB"):
-                anaconda3_env_path_proj = os.path.join(anaconda3_env_path, "proj")
-                print(f"anaconda3_env_path_proj is {anaconda3_env_path_proj}")
-                if (os.path.exists(anaconda3_env_path_proj)):
-                    os.environ["PROJ_LIB"] = anaconda3_env_path_proj
-            else:
-                print("PROJ_LIB - it is here but empty")
+            #print(f"anaconda3_env_path_proj is {anaconda3_env_path_proj}")
 
-            #if (not os.environ["GDAL_DATA"]):
-            #    print(f"anaconda3_env_path is {anaconda3_env_path}")
-            #    if (os.path.exists(anaconda3_env_path)):
-            #        os.environ["GDAL_DATA"] = anaconda3_env_path
-            #else:
-            #    print("GDAL_DATA - it is here but empty")
+            if os.getenv("PROJ_LIB") is not None:
+#               os.unsetenv("PROJ_LIB")
+#            else:
+                print("os.getenv PROJ_LIB is")
+                print(os.getenv("PROJ_LIB"))
 
-        """
-    except Exception:
-        # print("oops")
-        # print(e)
+            #if os.getenv("GDAL_DATA") is None and os.path.exists(anaconda3_env_path):
+            #    os.environ["GDAL_DATA"] = anaconda3_env_path
+
+        # remove the PROJ_LIB FILE and rasterio will set it
+
+
+    except Exception as ex:
+        print()
+        print("***An internal error has occurred while attempting to load the proj and gdal"
+              " environment variables. Details")
+        print(ex)
+        print()
         pass
 
 
@@ -281,6 +347,43 @@ def find_model_unit_from_rating_curves(r2f_hecras_outputs_dir):
             "one '*.rating curve.csv' file."
         )
         sys.exit(1)
+
+# -------------------------------------------------
+def get_geometry_from_gdf(gdf, int_poly_index):
+    """Function to parse features from GeoDataFrame in such
+    a manner that rasterio wants them
+
+    Keyword arguments:
+        gdf -- pandas geoDataFrame
+        int_poly_index -- index of the row in the geoDataFrame
+    """
+
+    if gdf is None:
+        raise Exception("Internal error: gdf is none")
+    
+    if gdf.empty:
+        raise Exception("Internal error: gdf can not be empty")
+
+    geometry = [json.loads(gdf.to_json())["features"][int_poly_index]["geometry"]]
+
+    return geometry
+
+
+# -------------------------------------------------
+def fn_get_random_string(int_letter_len_fn, int_num_len_fn):
+    """Creates a random string of letters and numbers
+
+    Keyword arguments:
+    int_letter_len_fn -- length of string letters
+    int_num_len_fn -- length of string numbers
+    """
+    letters = string.ascii_lowercase
+    numbers = string.digits
+
+    str_total = "".join(random.choice(letters) for i in range(int_letter_len_fn))
+    str_total += "".join(random.choice(numbers) for i in range(int_num_len_fn))
+
+    return str_total
 
 
 # -------------------------------------------------

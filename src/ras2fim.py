@@ -24,11 +24,11 @@ import sys
 from datetime import datetime, timezone
 
 import pyproj
-from dotenv import load_dotenv
 
 import shared_functions as sf
 import shared_validators as svld
 import shared_variables as sv
+
 from calculate_all_terrain_stats import fn_calculate_all_terrain_stats
 from clip_dem_from_shape import fn_cut_dems_from_shapes
 from conflate_hecras_to_nwm import fn_conflate_hecras_to_nwm
@@ -43,11 +43,6 @@ from reformat_ras_rating_curve import dir_reformat_ras_rc
 from run_ras2rem import fn_run_ras2rem
 from simplify_fim_rasters import fn_simplify_fim_rasters
 
-
-# There is a known problem with  proj_db error.
-# ERROR 1: PROJ: proj_create_from_database: Cannot find proj.db.
-# This will not stop all of the errors but some (in multi-proc).
-sf.fix_proj_path_error()
 
 # Global Variables
 b_terrain_check_only = False
@@ -72,23 +67,7 @@ def init_and_run_ras2fim(
     config_file=sv.DEFAULT_CONFIG_FILE_PATH,
 ):
 
-    ####################################################################
-    # Load the enviroment file
-
-    # The sv.DEFAULT_CONFIG_FILE_PATH comes in relative to the root and not to src/ras2fim
-    # so we need to adjust it's path.
-
-    if config_file == "":  # possible if not coming through __main__
-        raise ValueError("The config file argument can not be empty")
-
-    if config_file == sv.DEFAULT_CONFIG_FILE_PATH:  # change to make relative to ras2fim.py
-        referential_path = os.path.join(os.path.dirname(__file__), "..", sv.DEFAULT_CONFIG_FILE_PATH)
-        config_file = os.path.abspath(referential_path)
-
-    if not os.path.exists(config_file):
-        raise ValueError(f"The config file of {config_file} can not found")
-
-    load_dotenv(config_file)
+    config_file = sf.load_config_enviro_path(config_file)
 
     ####################################################################
     #  Some validation of input, but mostly setting up pathing ######
@@ -173,9 +152,8 @@ def init_and_run_ras2fim(
     # ********************************
     # -------------------
     # make the folder only if all other valudation tests pass.
-    os.mkdir(
-        r2f_huc_output_dir
-    )  # pathing has already been validated and ensure the child folder does not pre-exist
+    # pathing has already been validated and ensure the child folder does not pre-exist
+    os.mkdir(r2f_huc_output_dir)  
 
     # -------------------------------------------
     # ---- Make the "final" folder now as some modules will write to it through the steps
@@ -247,7 +225,7 @@ def fn_run_ras2fim(
     print("  ---(n) PATH TO NATIONAL DATASETS: " + str(str_nation_arg))
     print("  ---(r) PATH TO HEC-RAS v6.0: " + str(str_hec_path))
     print("  ---[t] Optional: Terrain to Utilize" + str(str_terrain_override))
-    print("  ---[-mc] Optional: path to models catalog - " + str(model_huc_catalog_path))
+    print("  ---[mc] Optional: path to models catalog - " + str(model_huc_catalog_path))
     print("  ---[s] Optional: step to start at - " + str(int_step))
     print("  --- The Ras Models unit (extracted from RAS model prj file and given EPSG code): " + model_unit)
     print("===================================================================")

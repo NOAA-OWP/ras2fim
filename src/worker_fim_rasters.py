@@ -64,16 +64,6 @@ import shared_functions as sf
 
 
 # -------------------------------------------------
-def fn_get_features(gdf, int_poly_index):
-    """Function to parse features from GeoDataFrame
-    in such a manner that rasterio wants them"""
-    
-    features = [json.loads(gdf.to_json())["features"][int_poly_index]["geometry"]]
-    
-    return features
-
-
-# -------------------------------------------------
 def fn_create_firstpass_flowlist(int_fn_starting_flow, int_fn_max_flow, int_fn_number_of_steps):
     # create a list of flows for the first pass HEC-RAS
     list_first_pass_flows = []

@@ -32,8 +32,6 @@
 import argparse
 import datetime
 import os
-import random
-import string
 import time
 import urllib.request
 import warnings
@@ -57,24 +55,6 @@ def is_valid_file(parser, arg):
     else:
         # File exists so return the directory
         return arg
-        return open(arg, "r")  # return an open file handle
-
-
-# -------------------------------------------------
-def fn_get_random_string(int_letter_len_fn, int_num_len_fn):
-    """Creates a random string of letters and numbers
-
-    Keyword arguments:
-    int_letter_len_fn -- length of string letters
-    int_num_len_fn -- length of string numbers
-    """
-    letters = string.ascii_lowercase
-    numbers = string.digits
-
-    str_total = "".join(random.choice(letters) for i in range(int_letter_len_fn))
-    str_total += "".join(random.choice(numbers) for i in range(int_num_len_fn))
-
-    return str_total
 
 
 # -------------------------------------------------
@@ -86,6 +66,7 @@ def fn_download_tiles(list_tile_url):
         list_tile_url[0] -- download URL
         list_tile_url[1] -- local directory to store the DEM
     """
+
     urllib.request.urlretrieve(list_tile_url[0], list_tile_url[1])
 
     if not os.path.exists(list_tile_url[1]):
@@ -98,20 +79,6 @@ def fn_download_tiles(list_tile_url):
             print(list_tile_url[0])
             print("writing to:" + list_tile_url[1])
             raise SystemExit(0)
-
-
-# -------------------------------------------------
-def fn_get_features(gdf, int_poly_index):
-    """Function to parse features from GeoDataFrame in such
-    a manner that rasterio wants them
-
-    Keyword arguments:
-    gdf -- pandas geoDataFrame
-    int_poly_index -- index of the row in the geoDataFrame
-    """
-    import json
-
-    return [json.loads(gdf.to_json())["features"][int_poly_index]["geometry"]]
 
 
 # -------------------------------------------------
@@ -201,8 +168,8 @@ def fn_get_usgs_dem_from_shape(
     gdf_aoi_prj = gpd.read_file(STR_AOI_SHP_PATH)
 
     # get crs of the input shapefile
-    str_crs_model = str(gdf_aoi_prj.crs)
-
+    aoi_prj_crs = pyproj.CRS.from_string(str(gdf_aoi_prj.crs))
+    
     # convert the input shapefile to lambert
     gdf_aoi_lambert = gdf_aoi_prj.to_crs(LAMBERT)
 
@@ -324,8 +291,8 @@ def fn_get_usgs_dem_from_shape(
         str_URL_header = (
             r"https://elevation.nationalmap.gov/arcgis/services/3DEPElevation/ImageServer/WCSServer?"
         )
-        str_URL_query_1 = r"SERVICE=WCS&VERSION=1.0.0&REQUEST=GetCoverage&coverage=DEP3Elevation" \
-                          r"&CRS=EPSG:3857&FORMAT=GeoTiff"
+        str_URL_query_1 = r'SERVICE=WCS&VERSION=1.0.0&REQUEST=GetCoverage&coverage=DEP3Elevation' \
+                          r'&CRS=EPSG:3857&FORMAT=GeoTiff'
 
         for index, row in gdf_tiles_intersect_only.iterrows():
             list_str_tile_name.append(gdf_tiles_intersect_only["tile_name"][index])
@@ -347,7 +314,7 @@ def fn_get_usgs_dem_from_shape(
             list_str_url.append(str_url)
 
         # get a unique alpha-numeric string
-        str_unique_tag = fn_get_random_string(4, 2)
+        str_unique_tag = sf.fn_get_random_string(4, 2)
 
         list_tile_download_path = []
 
@@ -369,7 +336,7 @@ def fn_get_usgs_dem_from_shape(
 
         # Initial call to print 0% progress
         len_url = len(list_str_url)
-        print("")
+        print()
 
         str_prefix = "Polygon " + str(index_gdf_int + 1) + " of " + str(len(gdf_aoi_lambert))
         fn_print_progress_bar(0, len_url, prefix=str_prefix, suffix="Complete", length=36)
@@ -420,17 +387,21 @@ def fn_get_usgs_dem_from_shape(
 
         with rxr.open_rasterio(str_out_tiff_path) as usgs_wcs_dem:
             # reproject the raster to the same projection as the input shapefile
-            usgs_wcs_local_proj = usgs_wcs_dem.rio.reproject(str_crs_model)
+
+            usgs_wcs_local_proj = usgs_wcs_dem.rio.reproject(aoi_prj_crs)
+            # rio no longer likes in place reprojections, so we will save to disk temp, then reload
+
+            #usgs_wcs_local_proj = usgs_wcs_dem.rio.write_crs(aoi_prj_crs, inplace=True)
 
             if model_unit == "feet":
                 # scale the raster from meters to feet
                 usgs_wcs_local_proj = usgs_wcs_local_proj * 3.28084
 
             # convert the buffered lambert shapefile to requested polygon projection
-            gdf_aoi_prj_with_buffer = gdf_aoi_lambert_current.to_crs(str_crs_model)
+            gdf_aoi_prj_with_buffer = gdf_aoi_lambert_current.to_crs(aoi_prj_crs)
 
             # get the geometry json of the polygon
-            str_geom = fn_get_features(gdf_aoi_prj_with_buffer, 0)
+            str_geom = sf.get_geometry_from_gdf(gdf_aoi_prj_with_buffer, 0)
 
             usgs_wcs_local_proj_clipped = usgs_wcs_local_proj.rio.clip(str_geom)
 
@@ -517,6 +488,7 @@ if __name__ == "__main__":
         "-f",
         dest="str_field_name",
         help="OPTIONAL: unique field from input shapefile used for DEM name",
+        default="HUC_12",
         required=False,
         metavar="STRING",
         type=str,

@@ -16,6 +16,7 @@
 import json
 import math
 import os
+import sys
 from multiprocessing.pool import ThreadPool
 
 import geopandas as gpd
@@ -24,6 +25,9 @@ import requests
 import rioxarray as rxr
 from rasterio.merge import merge
 from shapely.geometry import Polygon
+
+sys.path.append("..")
+import ras2fim.src.shared_functions as sf
 
 
 #########
@@ -83,12 +87,6 @@ def fn_deg2num(lat_deg, lon_deg, zoom):
     xtile = int((lon_deg + 180.0) / 360.0 * n)
     ytile = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
     return (xtile, ytile)
-
-
-# -------------------------------------------------
-def fn_get_features(gdf, int_poly_index):
-    """Function to parse features from GeoDataFrame in such a manner that rasterio wants them"""
-    return [json.loads(gdf.to_json())["features"][int_poly_index]["geometry"]]
 
 
 # -------------------------------------------------
@@ -273,7 +271,7 @@ for item_poly in range(int_gdf_item + 1):
         aws_dem_local_proj = aws_dem_local_proj * 3.28084
 
     # clip the raster
-    geom_coords = fn_get_features(gdf_boundary_prj, item_poly)
+    geom_coords = sf.get_geometry_from_gdf(gdf_boundary_prj, item_poly)
     aws_dem_local_proj_clip = aws_dem_local_proj.rio.clip(geom_coords)
 
     # write out the raster

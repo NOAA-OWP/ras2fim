@@ -23,6 +23,7 @@ import io
 import json
 import os
 import shutil
+import sys
 import urllib
 import zipfile
 from multiprocessing.pool import ThreadPool
@@ -34,6 +35,9 @@ import rasterio
 import requests
 from rasterio.mask import mask
 from rasterio.merge import merge
+
+sys.path.append("..")
+import ras2fim.src.shared_functions as sf
 
 
 #########
@@ -229,15 +233,6 @@ def fn_download_tiles(str_tile_url):
         z = zipfile.ZipFile(io.BytesIO(r.content))
         z.extractall(str_dem_download_path)
 
-
-# -------------------------------------------------
-def fn_get_features(gdf, int_poly_index):
-    # Function to parse features from GeoDataFrame in such
-    # a manner that rasterio wants them
-
-    features = [json.loads(gdf.to_json())["features"][int_poly_index]["geometry"]]
-
-    return features
 
 
 # -------------------------------------------------
@@ -445,7 +440,7 @@ for i in range(len(df_in_huc8)):
 
     # Converts the buffer to a GeoJson version for rasterio
     # currently requests the first polygon in the geometry
-    coords = fn_get_features(df_boundary, 0)
+    coords = sf.get_geometry_from_gdf(df_boundary, 0)
 
     # Clip the raster with Polygon
     out_img, out_transform = mask(dataset=src, shapes=coords, crop=True)
