@@ -1,6 +1,69 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.26.0 - 2023-09-07 - [PR#157](https://github.com/NOAA-OWP/ras2fim/pull/157)
+
+We have upgraded all files to add a linting system using packages of `isort`, `black`, and `flake8 (pflake8)`.  All files were run through those three tools in that order, each one at a time with minor cleanup being done along the way.
+
+Some functions existed in multiple files and some of them were moved to shared_functions for commonality / re-usability. 
+
+Other minor changes were  most triggered by packages updates.
+
+**Note**: A previously detected warning saying `PROJ: proj_create_from_database: Cannot find proj.db` continues to show up quite a bit. It does not hurt logic or code. A issue card already exists for it. [# 145](https://github.com/NOAA-OWP/ras2fim/issues/145).
+
+In order to add the three new packages, it forced other package upgrades and some downgrades which triggered even more changes, so a full enviro reload is required. Here are the steps to reload the enviro.
+
+### Conda Environment Upgrade
+**Note** There is a critical upgrade to the ras2fim conda and it is not backwards compatible. To upgrade this particular version, 
+
+1) We need to full uninstall the ras2fim environment, not upgraded it:
+   - run: _conda deactivate_  (if you are already activated in ras2fim)
+   - run:  _conda remove --name ras2fim --all_
+   - Make sure you have downloaded (or merged) this PR (or dev branch).  Ensure you are in that folder in the `ras2fim` folder where the environment.yml is at.
+   - run: _conda env create -f environment.yml_  . It might be slow, but 5 to 10 mins is reasonable.
+
+### Code Merge Compatibility
+There are literally hundreds of changes and it will be extremely hard to merge older code bases into this. It is strongly recommended to restart your changes by loading this new full branch, then manually add your changes back in to it.  Then run the three linting tools again before checking it it. Details lower.
+
+### Linting Tools Usage
+It is now expected that when you change a file, before you check it in, run the three linting tools using the following pattern. 
+1) in cmd, run `isort {your file name}`.  e.g.  isort ras2fim.py.
+2) in cmd, run `black {your file name}`.  e.g. black create_fim_rasters.py
+3) Review the changes from black and make minor changes if you see fit. There are a good handful of anomalies and things that black will do that are not necessarily intuitive. Some of the major ones will be listed lower.
+4) in cmd, run `pflake8 {your file name}`. e.g. pflake8 clip_dem_from_shape.py
+
+We have added a configuration file that helps manage the rules we want in place for the three tools. The file is named pyproject.toml and is automatically used when using the three linting tools.  There are some tidbits, configuration and byproducts listed below.
+
+### Linting Tidbits, Configuration and By-Products
+- we set out line length at 110
+- black does not attempt to line split when comments are in a line. You will need to split these yourselves to get it under 110. Note: If you have a line with some code and a comment after it, it will not split it correctly. Maybe go above and add extra blank line above that comment you like.  e.g.
+    - was:
+    ```
+         some_var = "some string"
+         print("do something but print cmd itself not over 100 …..") # and pretend this puts is over 110
+    ```
+    - now: consider (but optional as long as you don't break 110 in total)
+    ```
+        some_var = "some string"
+		
+	# and pretend this used to put it over 110 chars
+        print("do something but print cmd itself not over 100 …..")
+    ```
+- Most of the time, argument values into a function will leave an extra comma on the end of the list and that is ok. e.g.
+    ```
+	some_var = ["some value",
+                            "another value",]
+    ```
+- You may not be familiar with PEP-8 standards for `import`s and `from`s, but it is correct. See [isort](https://pycqa.github.io/isort/). 
+
+### Additions  
+- `pyproject.toml`: helps manage ras2fim rules for linting and it auto applied when using the linting commands in the same directory as current ras2fim code (your branch).
+
+### Changes  
+Almost all py files were changed for linting as well as some other additions listed above.
+
+<br/><br/>
+
 
 ## v1.25.0 - 2023-08-29 - [PR#151](https://github.com/NOAA-OWP/ras2fim/pull/151)
 
