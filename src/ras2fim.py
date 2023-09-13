@@ -67,6 +67,7 @@ def init_and_run_ras2fim(
     config_file=sv.DEFAULT_CONFIG_FILE_PATH,
 ):
 
+    #sf.fix_proj_path_error()
     config_file = sf.load_config_enviro_path(config_file)
 
     ####################################################################

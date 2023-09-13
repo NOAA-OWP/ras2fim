@@ -85,7 +85,7 @@ def fn_convert_tif_to_ras_hdf5(
     # INPUT
     flt_start_convert_tif = time.time()
 
-    print(" ")
+    print()
     print("+=================================================================+")
     print("|       CONVERT TERRAIN GEOTIFFS TO HEC-RAS TERRAINS (HDF5)       |")
     print("+-----------------------------------------------------------------+")
