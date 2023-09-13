@@ -24,7 +24,7 @@ maintainers = [
 requires-python = ">=3.8"
 keywords = ["ras2fim", "mapping", "noaa"]
 license = {path = "./LICENSE"}
-version = "4.4.0"
+
 
 [project.urls]
 Source = "https://github.com/NOAA-OWP/ras2fim"
@@ -35,7 +35,6 @@ Wiki = "https://github.com/NOAA-OWP/ras2fim/wiki"
 
 [tool.black]
 line_length = 110
-targer-version = ['py38']
 skip-string-normalization = false   
 skip-magic-trailing-comma = true
 exclude = '''
