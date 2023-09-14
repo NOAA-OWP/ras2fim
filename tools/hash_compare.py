@@ -34,13 +34,16 @@ def compare_sources(src1, src2, images_only, is_verbose):
 
         if (errors_found):
             print()
-            print("*** Errors were found, review output above ")
+            print("*** Differences were found, review output above.")
             print()
+        else:
+            print()
+            print("*** No differences were found in any files")
+            print()            
     else:
         compare_files(src1, src2, True)
 
-    print()
-    print("Comparing complete")
+    print("  Comparing complete")
     print()
 
 # -------------------------------------------------
@@ -53,9 +56,12 @@ def compare_dirs(src1, src2, image_only, is_verbose):
 
     errors_found = False
 
+    file_ctr = 0
+
     for (root, dirs, files) in os.walk(src1):
 
         for file_1_name in files:
+
             # see if the file exists in the src2 directory
             #file_1_dir = os.path.dirname(file_1)
             #file_1_dir_less_root = file_1_dir.replace(src1, '')
@@ -70,6 +76,8 @@ def compare_dirs(src1, src2, image_only, is_verbose):
                     # then we can skip the compare
                     continue
 
+            file_ctr += 1
+
             if os.path.exists(file_2) is False:
                 # then we show the file 1, and 2 info either way
                 print()
@@ -83,6 +91,10 @@ def compare_dirs(src1, src2, image_only, is_verbose):
             if (comp_success is False):
                 # don't change it from False unless one is in error
                 errors_found = False
+
+    print()
+    print("=============================")
+    print(f"  {file_ctr} files reviewed")
 
     return errors_found
 
@@ -113,9 +125,9 @@ def compare_files(src1, src2, is_verbose):
         # show details no matter regardless of verbosity
         print()
         print("------")
+        print("***  Files are different!")        
         print(f"  File 1: {src1}")
         print(f"  File 2: {src2}")
-        print("***  Files are different!")
         print(f"    Hash of File 1: {f1_hash}")
         print(f"    Hash of File 2: {f2_hash}")
 
