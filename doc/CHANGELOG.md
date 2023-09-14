@@ -9,6 +9,8 @@ Some functions existed in multiple files and some of them were moved to shared_f
 
 Other minor changes were  most triggered by packages updates.
 
+A new tool was also added called `hash_compare.py` which can take two files or two directories and using hashing to look for differences. This was used to validate changes via the addition of linting.
+
 **Note**: A previously detected warning saying `PROJ: proj_create_from_database: Cannot find proj.db` continues to show up quite a bit. It does not hurt logic or code. A issue card already exists for it. [# 145](https://github.com/NOAA-OWP/ras2fim/issues/145).
 
 In order to add the three new packages, it forced other package upgrades and some downgrades which triggered even more changes, so a full enviro reload is required. Here are the steps to reload the enviro.
@@ -58,6 +60,7 @@ We have added a configuration file that helps manage the rules we want in place 
 
 ### Additions  
 - `pyproject.toml`: helps manage ras2fim rules for linting and it auto applied when using the linting commands in the same directory as current ras2fim code (your branch).
+- `tools\hash_compare.py`: a tool to help compare two files or two directories using hashing to look for differences.
 
 ### Changes  
 Almost all py files were changed for linting as well as some other additions listed above.
