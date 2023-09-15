@@ -1,6 +1,21 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.26.1 - 2023-09-15 - [PR#163](https://github.com/NOAA-OWP/ras2fim/pull/163)
+
+A bug was discovered with errors being thrown when a incoming depth grid tif used to create a geocurve had only zero pixel values. This means there are no cells above the water surface and a geocurve should not be created.
+
+Also.. a simple progress bar was added to match convention of other modules so that the modules does not appear to be frozen. A new function was added to `shared_functions.py` so that other modules can begin to use it.
+
+### Changes  
+
+- `src`
+    - `create_geocurves.py`:  added logic to skip creating a geocurve, as described above. Also added some upgraded error handling. Also added a simple progress bar system.
+    - `shared_functions.py`: added a new function for easily implementing progress bars.
+
+<br/><br/>
+
+
 ## v1.26.0 - 2023-09-07 - [PR#157](https://github.com/NOAA-OWP/ras2fim/pull/157)
 
 We have upgraded all files to add a linting system using packages of `isort`, `black`, and `flake8 (pflake8)`.  All files were run through those three tools in that order, each one at a time with minor cleanup being done along the way.
