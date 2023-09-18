@@ -132,7 +132,6 @@ class Get_Ras_Models_By_Catalog:
             The new OWP_ras_models_catalog_{HUC}.csv is required for ras2fim.py processing.
 
         """
-        print("testing a change")
 
         self.log_append_and_print("")
         start_time = datetime.now()
