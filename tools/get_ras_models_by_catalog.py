@@ -199,7 +199,7 @@ class Get_Ras_Models_By_Catalog:
             if self.df_filtered.empty:
                 self.log_append_and_print(
                     f"No valid records return for {huc_number} and crs {self.projection}. {filter_msg}"
-                )  # and somethign even longer
+                )
                 return
 
             self.df_filtered.reset_index(inplace=True)
