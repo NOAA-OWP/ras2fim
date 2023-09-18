@@ -133,6 +133,8 @@ class Get_Ras_Models_By_Catalog:
 
         """
 
+        print("another test but this time VSCode pre-commit")
+
         self.log_append_and_print("")
         start_time = datetime.now()
         dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
