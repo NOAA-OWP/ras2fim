@@ -12,12 +12,13 @@ from datetime import datetime
 import pandas as pd
 import s3fs
 
+
 sys.path.append("..")
 import ras2fim.src.shared_variables as sv
 
 
 """
-This tool uses a HUC8 number to call over to an AWS S3 models_catalog.csv and will scan 
+This tool uses a HUC8 number to call over to an AWS S3 models_catalog.csv and will scan
 all records in the models catalog, HUC8's column looking for matches.
 
 NOTE: This script is primarily designed for NOAA/OWP use, but if you have access to your own
@@ -67,7 +68,13 @@ class Get_Ras_Models_By_Catalog:
     # -------------------------------------------------
     # default values listed in "__main__"  but also here in case code calls direct..
     # aka. not through "__main__"
-    def get_models( self,        s3_path_to_catalog_file,        huc_number,        projection,        list_only=False,        target_owp_ras_models_path=sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
+    def get_models(
+        self,
+        s3_path_to_catalog_file,
+        huc_number,
+        projection,
+        list_only=False,
+        target_owp_ras_models_path=sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
         target_owp_ras_models_csv_file=sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
         is_verbose=False,
     ):
@@ -125,6 +132,7 @@ class Get_Ras_Models_By_Catalog:
             The new OWP_ras_models_catalog_{HUC}.csv is required for ras2fim.py processing.
 
         """
+        print("testing a change")
 
         self.log_append_and_print("")
         start_time = datetime.now()
