@@ -179,7 +179,7 @@ class Get_Ras_Models_By_Catalog:
             )
 
             # look for records that are ready, contains the huc number and does not start with 1_ or 20_
-            # NOTE: for some reason if you change 
+            # NOTE: for some reason if you change
             # df_all["final_name_key"].str.startswith("1_") == False)  to
             # df_all["final_name_key"].str.startswith("1_") is False).. it fails. and Not doesnt' work either
             df_huc = df_all.loc[
@@ -196,8 +196,10 @@ class Get_Ras_Models_By_Catalog:
             # ----------
             # Now filter based on CRS
             self.df_filtered = df_huc.loc[(df_huc["crs"] == self.projection)]
-            if (self.df_filtered.empty):
-                self.log_append_and_print(f"No valid records return for {huc_number} and crs {self.projection}. {filter_msg}")
+            if self.df_filtered.empty:
+                self.log_append_and_print(
+                    f"No valid records return for {huc_number} and crs {self.projection}. {filter_msg}"
+                )  # and somethign even longer
                 return
 
             self.df_filtered.reset_index(inplace=True)
