@@ -52,7 +52,13 @@ skip_gitignore = true
 count = true
 doctests = true
 max-complexity = 40
-exclude =  '*.yaml'
+exclude = """
+    *.yaml,
+    *.env,
+    *.md,
+    *.toml
+"""
+
 max-line-length = 110  # It should be the same as `tool.black.line-length` above
 extend-ignore = """
     W391,
