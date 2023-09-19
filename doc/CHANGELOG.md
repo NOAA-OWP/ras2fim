@@ -1,6 +1,37 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.27.0 - 2023-09-20 - [PR#165](https://github.com/NOAA-OWP/ras2fim/pull/165)
+
+Added pre-commit hooks.
+
+At this point, we leave it to the honor system for you to install pre-commit and use it. Soon, we will be adding it as a mandatory push to git.  Please start getting use to using pre-commits now.
+
+Notes:
+- Most files were changed minorly for adjusted linting rules.
+- For each repo downloaded, you need to install `pre-commit`. This is not the same as environment pack setup. This is an installation of the tool itself.  From your ras2fim directory, run `pre-commit install`.
+- When you run `git commit ...`, it will automatically run isort, black, and pflake8 with exceptions already in place in the `pyproject.toml`.  `isort` and `black` will auto change your files. `pflake8` will block the commit if it fails a rule test. 
+- You can also pre-test the three linter steps before the commit in a couple of ways.
+    - you can run `pre-commit run` which will scan all files / folders and run all three commands on them.
+    - you can run `pre-commit run ras2fim.py` ... aka a single file.
+    - you can run each of the three command independently on a file or folder.  eg. `isort ras2fim.py` or `pflake8 ras2fim.py`    - 
+
+For more details and image, please see [PR#165](https://github.com/NOAA-OWP/ras2fim/pull/165). Details include things like editing the pyproject.toml file, working with VSCode, and examples of using linting and pre-commit commands.
+
+Note: Most files were changed minorly for adjusted linting rules.
+
+### Additions  
+
+- `.pre-commit-config.yaml` : setups rule for doing pre-commits
+
+### Changes  
+
+- ` pyproject.toml`:  misc updates plus added one file exception with two excluded test rules.
+- `src\tools\get_ras_models_by_catalog.py`: fixed an extra space on a line that was failing linting pre-commit tests.
+
+<br/><br/>
+
+
 ## v1.26.0 - 2023-09-07 - [PR#157](https://github.com/NOAA-OWP/ras2fim/pull/157)
 
 We have upgraded all files to add a linting system using packages of `isort`, `black`, and `flake8 (pflake8)`.  All files were run through those three tools in that order, each one at a time with minor cleanup being done along the way.
