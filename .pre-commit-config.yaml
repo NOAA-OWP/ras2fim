@@ -9,6 +9,7 @@ repos:
             entry: isort
             pass_filenames: true
             language: system
+            types: [python]
             verbose: true
 
         -   id: black
@@ -16,14 +17,16 @@ repos:
             entry: isort
             pass_filenames: true
             language: system
+            types: [python]
             verbose: true
           
         -   id: flake8
             name: pflake8
             entry: pflake8
+            pass_filenames: true            
             language: conda
             additional_dependencies: [pyproject-flake8]
-            pass_filenames: true
+            types: [python]
             verbose: true
 
         

@@ -35,11 +35,7 @@ Wiki = "https://github.com/NOAA-OWP/ras2fim/wiki"
 line_length = 110
 skip-string-normalization = true   
 skip-magic-trailing-comma = true
-exclude = '''
-/(
-    \.git
-)/
-'''
+
 
 [tool.isort]
 profile = 'black'
