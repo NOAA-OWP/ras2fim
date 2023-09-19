@@ -239,9 +239,11 @@ def fix_proj_path_error():
     # This code is on hold but not removed. With the latest upgrade rasterio (which we needed)
     # it creates problems with proj and gdal which not compatiable with the latest version.
 
-    # https://github.com/rasterio/rasterio/blob/master/docs/faq.rst#why-cant-rasterio-find-projdb-rasterio-from-pypi-versions--120
+    # https://github.com/rasterio/rasterio/blob/master/docs/
+    #   faq.rst#why-cant-rasterio-find-projdb-rasterio-from-pypi-versions--120
 
-    # Says for now. You have to point to older versions of proj and gdal but I tried a number of combinations and no luck yet
+    # Says for now. You have to point to older versions of proj and gdal but I tried a number of
+    # combinations and no luck yet
 
     # If the PROJ_DB path (from pyrpo is incorrect, you will see bounding box issues such as
     # rioxarray.exceptions.NoDataInBounds: No data found in bounds.
@@ -261,9 +263,11 @@ def fix_proj_path_error():
     # PROJ_LIB="C:\\Program Files (x86)\\HEC\\HEC-RAS\\6.0\\GDAL\\common\\data'
     # GDAL_DATA="C:\\Program Files (x86)\\HEC\\HEC-RAS\\6.0\\GDAL\\common\\data'
 
-    # File 'C:\Users\rdp-user\Projects\dev-linter\ras2fim\src\get_usgs_dem_from_shape.py', line 428, in fn_get_usgs_dem_from_shape
+    # File 'C:\Users\rdp-user\Projects\dev-linter\ras2fim\src\get_usgs_dem_from_shape.py', line 428,
+    #    in fn_get_usgs_dem_from_shape
     #    usgs_wcs_local_proj_clipped = usgs_wcs_local_proj.rio.clip(str_geom)
-    # File 'C:\Users\rdp-user\anaconda3\envs\ras2fim\lib\site-packages\rioxarray\raster_array.py', line 943, in clip
+    # File 'C:\Users\rdp-user\anaconda3\envs\ras2fim\lib\site-packages\rioxarray\raster_array.py',
+    #   line 943, in clip
     #    raise NoDataInBounds(
     # rioxarray.exceptions.NoDataInBounds: No data found in bounds.
 

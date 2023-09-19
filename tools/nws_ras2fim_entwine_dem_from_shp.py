@@ -19,13 +19,20 @@ import time
 
 import geopandas as gpd
 import pandas as pd
-#import pdal
+import pdal
 import rasterio
 import rioxarray as rxr
 from rasterio.fill import fillnodata
 
+
 sys.path.append("..")
 import ras2fim.src.shared_functions as sf
+
+
+########################
+#  Sep 19, 2023
+#  Note: This file is out of date as pdal is not currently being installed in the
+#   environment.xml.  Not sure if this should be deprecated.
 
 
 # -------------------------------------------------
@@ -94,7 +101,7 @@ def fn_get_entwine_dem_from_shp(
         print("Getting LiDAR: " + str(int_count) + " of " + str(len(gdf_boundary_lambert)))
         int_count += 1
 
-        gdf_boundary_lambert_single = gdf_boundary_lambert.iloc[i: i + 1]
+        gdf_boundary_lambert_single = gdf_boundary_lambert.iloc[i : i + 1]
 
         # set the name from input field if available
         if b_have_valid_label_field:

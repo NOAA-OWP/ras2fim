@@ -37,6 +37,11 @@ import rasterio as rio
 # TODO: Sept 6, 2023
 # This file should really be cleaned up (no __main__ and alot of inline logic)
 
+########################
+#  Sep 19, 2023
+#  Note: This file is out of date as py7zr is not currently being installed in the
+#   environment.xml.  Not sure if this should be deprecated.
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 # INPUT

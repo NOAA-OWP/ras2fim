@@ -32,7 +32,6 @@ import shared_variables as sv
 # This function creates a geopackage of Feature IDs from the raster that
 # matches the Depth Grid processing extents ("maxments") from ras2fim Step 5.
 def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_path, rating_curve_path):
-
     if os.path.exists(rating_curve_path) is False:
         raise Exception(
             "The file rating_curve.csv does not exist. It needs to be in"
@@ -161,7 +160,6 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
 # -------------------------------------------------
 # For each feature ID, finds the path for the tif with the max depth value
 def __get_maxment(mxmt_args):
-
     # Becuase of the way we are doing tdqm and multi-proc it can only take one arg but we can
     # make it a positonal list.
     feature_id = mxmt_args[0]
@@ -225,7 +223,6 @@ def __get_maxment(mxmt_args):
 # -------------------------------------------------
 #  Some validation of input, but setting up pathing
 def __validate_make_catchments(huc_num, r2f_huc_parent_dir, model_huc_catalog_path, national_ds_path):
-
     # Some variables need to be adjusted and some new derived variables are created
     # dictionary (key / pair) will be returned
 
@@ -334,7 +331,6 @@ def make_catchments(
     model_huc_catalog_path=sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
     is_verbose=False,
 ):
-
     """
     Overview
     ----------
@@ -514,7 +510,6 @@ def make_catchments(
     rasters_paths_to_mosaic = []
 
     with Pool(processes=num_processors) as executor:
-
         rasters_paths_to_mosaic = list(
             tqdm.tqdm(
                 executor.imap(__get_maxment, mxmts_args),
@@ -589,7 +584,6 @@ def make_catchments(
 
 ####################################################################
 if __name__ == "__main__":
-
     # NOTE: This tool is about to be deprecated. This version is having projection issues
     # which will not be solved at this time.
 

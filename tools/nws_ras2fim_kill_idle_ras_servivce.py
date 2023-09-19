@@ -122,5 +122,4 @@ def fn_check_process_idle(str_process_name, flt_time_step, int_num_time_steps, b
 
 # -------------------------------------------------
 if __name__ == "__main__":
-
     class_python_ras2fim_srvice.parse_command_line()

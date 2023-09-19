@@ -32,6 +32,7 @@ import pyproj
 
 import shared_functions as sf
 
+
 # -------------------------------------------------
 def fn_get_filepaths(str_directory, str_file_suffix):
     # Fuction - walks a directory and determines a the path
@@ -177,7 +178,6 @@ def fn_convert_tif_to_ras_hdf5(
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(
         description="==== CONVERT TERRAIN GeoTIFFS TO HEC-RAS TERRAINS (HDF5) ==="
     )

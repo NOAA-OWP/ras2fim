@@ -21,7 +21,6 @@ import shared_variables as sv
 
 # -------------------------------------------------
 def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir, model_unit):
-
     """
     Args:
         r2f_hecras_outputs_dir: directory containing HEC-RAS outputs
@@ -127,8 +126,9 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
 
     all_tif_files = list(Path(r2f_simplified_grids_dir).rglob("*.tif"))
     if len(all_tif_files) == 0:
-        print("Error: Make sure you have specified a correct input directory with at"
-              " least one '*.tif' file.")
+        print(
+            "Error: Make sure you have specified a correct input directory with at" " least one '*.tif' file."
+        )
         sys.exit(1)
 
     rem_values = list(map(lambda var: str(var).split(".tif")[0].split("-")[-1], all_tif_files))
@@ -144,8 +144,7 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
     num_processors = mp.cpu_count() - 1
     with Pool(processes=num_processors) as executor:
         # pool = Pool(processes = num_processors)
-        list_of_returned_results = list(
-            tqdm.tqdm(
+        list(tqdm.tqdm(
                 executor.imap(fn_generate_tif_for_each_rem, rem_info_arguments),
                 total=len(rem_values),
                 desc="Creating REMs",
@@ -190,7 +189,6 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
 
 # -------------------------------------------------
 def fn_run_ras2rem(r2f_huc_parent_dir, model_unit):
-
     ####################################################################
     # Input validation and variable setup
 
@@ -258,7 +256,6 @@ def fn_run_ras2rem(r2f_huc_parent_dir, model_unit):
 
 # -------------------------------------------------
 if __name__ == "__main__":
-
     # Sample usage:
     # Using all defaults:
     #     python run_ras2rem.py -p 12090301_meters_2277_test_22

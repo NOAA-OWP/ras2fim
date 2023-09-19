@@ -192,11 +192,9 @@ def fn_create_fim_rasters(
             int_huc12_index += 1
             # print(str_huc12)
             str_prefix = r"Processing HUCs (" + str(int_huc12_index) + " of " + str(len_df_huc12) + "):"
-            fn_print_progress_bar(int_huc12_index,
-                                  len_df_huc12,
-                                  prefix=str_prefix,
-                                  suffix="Complete",
-                                  length=27)
+            fn_print_progress_bar(
+                int_huc12_index, len_df_huc12, prefix=str_prefix, suffix="Complete", length=27
+            )
 
             # Constant - Folder to write the HEC-RAS folders and files
             str_root_folder_to_create = STR_ROOT_OUTPUT_DIRECTORY + "\\HUC_" + str_huc12
@@ -240,7 +238,6 @@ def fn_create_fim_rasters(
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(
         description="================ NWM RASTER LIBRARY FROM HEC-RAS =================="
     )
@@ -258,7 +255,7 @@ if __name__ == "__main__":
         "-i",
         dest="str_input_folder",
         help="REQUIRED: directory containing results of conflation (step 2):"
-             r" Example: C:\ras2fim_12090301\02_shapes_from_conflation",
+        r" Example: C:\ras2fim_12090301\02_shapes_from_conflation",
         required=True,
         metavar="DIR",
         type=str,
@@ -277,7 +274,7 @@ if __name__ == "__main__":
         "-p",
         dest="str_projection_path",
         help="REQUIRED: path the to the projection file: Example: "
-             r"C:\ras2fim_12090301\02_shapes_from_conflation\12090301_huc_12_ar.prj",
+        r"C:\ras2fim_12090301\02_shapes_from_conflation\12090301_huc_12_ar.prj",
         required=True,
         metavar="FILE",
         type=str,
@@ -296,7 +293,7 @@ if __name__ == "__main__":
         "-s",
         dest="str_std_input_path",
         help="  OPTIONAL: path the to the standard inputs:"
-            r" Example: C:\Users\civil\test1\ras2fim\src : Default: working directory",
+        r" Example: C:\Users\civil\test1\ras2fim\src : Default: working directory",
         required=False,
         default=os.getcwd(),
         metavar="FILE",
