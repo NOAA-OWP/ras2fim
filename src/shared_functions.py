@@ -8,6 +8,7 @@ import random
 import re
 import string
 import sys
+from concurrent.futures import as_completed
 from datetime import datetime as dt
 from pathlib import Path
 
@@ -16,6 +17,7 @@ import numpy as np
 import pandas as pd
 import rasterio
 from dotenv import load_dotenv
+from tqdm import tqdm
 
 import shared_validators as svd
 import shared_variables as sv
@@ -422,3 +424,19 @@ def get_stnd_r2f_output_folder_name(huc_number, crs):
     folder_name = f"{huc_number}_{crs_number}_{std_date}"
 
     return folder_name
+
+
+# -------------------------------------------------
+def progress_bar_handler(executor_dict, verbose, desc):
+    for future in tqdm(
+        as_completed(executor_dict),
+        total=len(executor_dict),
+        disable=(not verbose),
+        desc=desc,
+        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+        ncols=100,
+    ):
+        try:
+            future.result()
+        except Exception as exc:
+            print("{}, {}, {}".format(executor_dict[future], exc.__class__.__name__, exc))
