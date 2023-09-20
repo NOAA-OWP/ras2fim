@@ -27,7 +27,6 @@ Note: Most files were changed minorly for adjusted linting rules.
 ### Changes  
 
 - ` pyproject.toml`:  misc updates plus added one file exception with two excluded test rules.
-- `src\tools\get_ras_models_by_catalog.py`: fixed an extra space on a line that was failing linting pre-commit tests.
 
 <br/><br/>
 
