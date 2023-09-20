@@ -12,7 +12,6 @@
 #
 # Uses the 'ras2fim' conda environment
 # ************************************************************
-
 import os
 import re
 import traceback
@@ -23,11 +22,12 @@ import matplotlib.ticker as tick
 import numpy as np
 import pandas as pd
 import win32com.client
-
-# from rasterio.warp import calculate_default_transform, reproject
 from scipy.interpolate import interp1d
 
 import shared_functions as sf
+
+
+# from rasterio.warp import calculate_default_transform, reproject
 
 
 # windows component object model for interaction with HEC-RAS API
@@ -71,7 +71,8 @@ def fn_create_firstpass_flowlist(int_fn_starting_flow, int_fn_max_flow, int_fn_n
 
 # -------------------------------------------------
 def fn_create_profile_names(list_profiles, str_suffix):
-    str_profile_names = "Profile Names="
+    str_profile_names = 'Profile Names='
+
     for i in range(len(list_profiles)):
         str_profile_names += str(list_profiles[i]) + str_suffix
         if i < (len(list_profiles) - 1):
