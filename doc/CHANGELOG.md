@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.26.1 - 2023-09-15 - [PR#163](https://github.com/NOAA-OWP/ras2fim/pull/163)
+## v1.26.1 - 2023-09-20 - [PR#163](https://github.com/NOAA-OWP/ras2fim/pull/163)
 
 A bug was discovered with errors being thrown when a incoming depth grid tif used to create a geocurve had only zero pixel values. This means there are no cells above the water surface and a geocurve should not be created.
 
