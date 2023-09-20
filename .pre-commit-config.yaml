@@ -24,8 +24,7 @@ repos:
             name: pflake8
             entry: pflake8
             pass_filenames: true            
-            language: conda
-            additional_dependencies: [pyproject-flake8]
+            language: system
             types: [python]
             verbose: true
 
