@@ -25,3 +25,7 @@ _You may update this checklist before and/or after creating the PR. If you're un
 - [ ] Placeholder code is flagged / future todos are captured in comments
 - [ ] Project documentation has been updated ([CHANGELOG](/doc/CHANGELOG.md) and/or [README](/README.md))
 - [ ] [Reviewers requested](https://help.github.com/articles/requesting-a-pull-request-review/)
+
+### Merge Checklist (For Technical Lead use only)
+
+- [ ] Update [CHANGELOG](/docs/CHANGELOG.md) with latest version number and merge date
