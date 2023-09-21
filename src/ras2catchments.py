@@ -132,7 +132,7 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
     gdf.rename(columns={"last_modified": "hecras_model_last_modified"}, inplace=True)
 
     # populate the rating_curve field with today's utc date
-    gdf["last_updated"] = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
+    gdf["last_updated"] = dt.datetime.utcnow(dt.timezone.utc).strftime("%Y-%m-%d")
     # renamed a few columns
     gdf.rename(columns={"last_updated": "ras2fim_processed_date"}, inplace=True)
 
@@ -381,7 +381,7 @@ def make_catchments(
 
     ####################################################################
     #  Start processing
-    start_dt = dt.datetime.now()
+    start_dt = dt.datetime.utcnow()
 
     print(" ")
     print("+=================================================================+")
@@ -582,7 +582,7 @@ def make_catchments(
     # -------------------
     print()
     print("ras2catchment processing complete")
-    sf.print_date_time_duration(start_dt, dt.datetime.now())
+    sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
     print("===================================================================")
     print("")
 

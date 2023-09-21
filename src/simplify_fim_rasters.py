@@ -84,7 +84,7 @@ def fn_create_grid(list_of_df_row):
         model_unit,
     ) = list_of_df_row
 
-    #print(f"flt_desired_res is {flt_desired_res}")
+    # print(f"flt_desired_res is {flt_desired_res}")
 
     # read in the HEC-RAS generatated polygon of the last elevation step
     gdf_flood_limits = gpd.read_file(str_polygon_path)
@@ -122,9 +122,9 @@ def fn_create_grid(list_of_df_row):
 
         # TODO: Sept 9, 2023
         # The plan was to resample the scalled to the desired resolution (ie. 10)
-        # But an upgrade in rioxarray means merge is no longer available (ish). 
+        # But an upgrade in rioxarray means merge is no longer available (ish).
         # It may have been used incorrectly as merge_arrays implies two datasets
-        # but there was only one. 
+        # but there was only one.
 
         # For now.. just skip attempting to upscale or downscale the resolution
         # Note: If upscaling or downscaling, image sizes need to be adjusted.
@@ -141,7 +141,6 @@ def fn_create_grid(list_of_df_row):
         """
 
         xds_clipped_reproject_scaled.rio.to_raster(str_file_to_create_path, compress="lzw", dtype="uint16")
-
 
         sleep(0.01)  # this allows the tqdm progress bar to update
 
@@ -307,12 +306,13 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
         print("+-----------------------------------------------------------------+")
         p = mp.Pool(processes=(mp.cpu_count() - 1))
 
-        list(tqdm.tqdm(
+        list(
+            tqdm.tqdm(
                 p.imap(fn_create_grid, list_dataframe_args),
                 total=len_grids_convert,
                 desc="Convert Grids",
                 bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
-                ncols=65
+                ncols=65,
             )
         )
 
@@ -352,8 +352,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
         # also combine all files into a single file
         all_rating_curve_df = pd.concat([all_rating_curve_df, this_file_df])
 
-    r2f_metric_dir = r2f_hecras_outputs_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
-                                                    sv.R2F_OUTPUT_DIR_METRIC)
+    r2f_metric_dir = r2f_hecras_outputs_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, sv.R2F_OUTPUT_DIR_METRIC)
     all_rating_curve_df.to_csv(os.path.join(r2f_metric_dir, "all_rating_curves.csv"), index=False)
 
     print("Making metric wse for cross sections")
@@ -386,8 +385,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
         # also combine all files into a single file
         all_xs_df = pd.concat([all_xs_df, this_file_df])
 
-    r2f_metric_dir = r2f_hecras_outputs_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
-                                                    sv.R2F_OUTPUT_DIR_METRIC)
+    r2f_metric_dir = r2f_hecras_outputs_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, sv.R2F_OUTPUT_DIR_METRIC)
     all_xs_df.to_csv(os.path.join(r2f_metric_dir, "all_cross_sections.csv"), index=False)
 
     print("COMPLETE")

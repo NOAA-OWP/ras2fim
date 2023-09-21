@@ -18,17 +18,16 @@
 
 
 import argparse
+import datetime as dt
 import os
 import shutil
 import sys
-from datetime import datetime, timezone
 
 import pyproj
 
 import shared_functions as sf
-import shared_validators as svld
+import shared_validators as val
 import shared_variables as sv
-
 from calculate_all_terrain_stats import fn_calculate_all_terrain_stats
 from clip_dem_from_shape import fn_cut_dems_from_shapes
 from conflate_hecras_to_nwm import fn_conflate_hecras_to_nwm
@@ -46,12 +45,13 @@ from simplify_fim_rasters import fn_simplify_fim_rasters
 
 # Global Variables
 b_terrain_check_only = False
-
+arg_log_file_name = "run_arguments.txt"
 
 # -------------------------------------------------
 # If you are calling this function from an another python file, please just call this function
 # as it validates inputs and sets up other key variables.
 # Then will make the call to fn_run_ras2fim
+
 
 def init_and_run_ras2fim(
     str_huc8_arg,
@@ -66,8 +66,7 @@ def init_and_run_ras2fim(
     output_resolution=10,
     config_file=sv.DEFAULT_CONFIG_FILE_PATH,
 ):
-
-    #sf.fix_proj_path_error()
+    # sf.fix_proj_path_error()
     config_file = sf.load_config_enviro_path(config_file)
 
     ####################################################################
@@ -77,13 +76,15 @@ def init_and_run_ras2fim(
     # Read RAS models units from both prj file and given EPSG code through -p
     # Functions below check for a series of exceptions
 
-    crs_number, is_valid, err_msg = svld.is_valid_crs(str_crs_arg)  # I don't need the crs_number for now
+    # I don't need the crs_number for now
+    crs_number, is_valid, err_msg = val.is_valid_crs(str_crs_arg)
     if is_valid is False:
         raise ValueError(err_msg)
 
     proj_crs = pyproj.CRS.from_string(str_crs_arg)
     model_unit = sf.confirm_models_unit(proj_crs, str_ras_path_arg)
 
+    # -------------------
     # -w   (ie 12090301)
     if len(str_huc8_arg) != 8:
         raise ValueError("the -w flag (HUC8) is not 8 characters long")
@@ -105,8 +106,8 @@ def init_and_run_ras2fim(
         )
 
     # -------------------
-    get_stnd_r2f_output_folder_name = sf.get_stnd_r2f_output_folder_name(str_huc8_arg, str_crs_arg)
-    r2f_huc_output_dir = os.path.join(r2f_output_dir, get_stnd_r2f_output_folder_name)
+    stnd_r2f_output_folder_name = sf.get_stnd_r2f_output_folder_name(str_huc8_arg, str_crs_arg)
+    r2f_huc_output_dir = os.path.join(r2f_output_dir, stnd_r2f_output_folder_name)
 
     if os.path.exists(r2f_huc_output_dir) is True:
         raise ValueError(f"The path of {r2f_huc_output_dir} already exists. Please delete it and restart.")
@@ -154,7 +155,7 @@ def init_and_run_ras2fim(
     # -------------------
     # make the folder only if all other valudation tests pass.
     # pathing has already been validated and ensure the child folder does not pre-exist
-    os.mkdir(r2f_huc_output_dir)  
+    os.mkdir(r2f_huc_output_dir)
 
     # -------------------------------------------
     # ---- Make the "final" folder now as some modules will write to it through the steps
@@ -211,7 +212,7 @@ def fn_run_ras2fim(
     output_resolution,
     model_unit,
 ):
-    start_dt = datetime.now()
+    start_dt = dt.datetime.utcnow()
 
     print(" ")
     print("+=================================================================+")
@@ -426,8 +427,7 @@ def fn_run_ras2fim(
         )
         shutil.copy2(
             os.path.join(
-                huc_crs_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
-                "README_reformat_ras_rating_curve.txt"
+                huc_crs_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, "README_reformat_ras_rating_curve.txt"
             ),
             r2f_final_ras2cal_subdir,
         )
@@ -517,7 +517,7 @@ def fn_run_ras2fim(
 
     print("+=================================================================+")
     print("  RUN RAS2FIM - Completed                                         |")
-    sf.print_date_time_duration(start_dt, datetime.now())
+    sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
     print("+-----------------------------------------------------------------+")
 
 
@@ -537,8 +537,8 @@ def create_input_args_log(**kwargs):
     if os.path.exists(arg_log_file):
         os.remove(arg_log_file)
 
-    # start with the processing date
-    utc_now = datetime.now(timezone.utc)
+    # start with the processing date in UTC (all date/times in UTC)
+    utc_now = dt.datetime.utcnow()
     str_date = utc_now.strftime("%Y-%m-%d")
 
     # The file can be parsed later by using the two colons and the line break if ever required

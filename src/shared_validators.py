@@ -2,7 +2,7 @@
 
 ####################################################################
 """
-This file is for validation that can be used in more than one py file.
+This script is for validation of inputs and object that can be used in py files.
 """
 
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import datetime as dt
 import fnmatch
 import json
 import os
@@ -8,7 +9,6 @@ import random
 import re
 import string
 import sys
-from datetime import datetime as dt
 from pathlib import Path
 
 import keepachangelog
@@ -17,44 +17,9 @@ import pandas as pd
 import rasterio
 from dotenv import load_dotenv
 
-import shared_validators as svd
+import shared_validators as val
 import shared_variables as sv
 from errors import ModelUnitError
-
-
-# -------------------------------------------------
-def print_date_time_duration(start_dt, end_dt):
-    """
-    Process:
-    -------
-    Calcuates the diffenence in time between the start and end time
-    and prints is as:
-
-        Duration: 4 hours 23 mins 15 secs
-
-    -------
-    Usage:
-        from utils.shared_functions import FIM_Helpers as fh
-        fh.print_current_date_time()
-
-    -------
-    Returns:
-        Duration as a formatted string
-
-    """
-    time_delta = end_dt - start_dt
-    total_seconds = int(time_delta.total_seconds())
-
-    total_days, rem_seconds = divmod(total_seconds, 60 * 60 * 24)
-    total_hours, rem_seconds = divmod(rem_seconds, 60 * 60)
-    total_mins, seconds = divmod(rem_seconds, 60)
-
-    time_fmt = f"{total_hours:02d} hours {total_mins:02d} mins {seconds:02d} secs"
-
-    duration_msg = "Duration: " + time_fmt
-    print(duration_msg)
-
-    return duration_msg
 
 
 # -------------------------------------------------
@@ -241,7 +206,8 @@ def fix_proj_path_error():
 
     # https://github.com/rasterio/rasterio/blob/master/docs/faq.rst#why-cant-rasterio-find-projdb-rasterio-from-pypi-versions--120
 
-    # Says for now. You have to point to older versions of proj and gdal but I tried a number of combinations and no luck yet
+    # Says for now. You have to point to older versions of proj and gdal but I tried a number of
+    # combinations and no luck yet
 
     # If the PROJ_DB path (from pyrpo is incorrect, you will see bounding box issues such as
     # rioxarray.exceptions.NoDataInBounds: No data found in bounds.
@@ -261,9 +227,10 @@ def fix_proj_path_error():
     # PROJ_LIB="C:\\Program Files (x86)\\HEC\\HEC-RAS\\6.0\\GDAL\\common\\data'
     # GDAL_DATA="C:\\Program Files (x86)\\HEC\\HEC-RAS\\6.0\\GDAL\\common\\data'
 
-    # File 'C:\Users\rdp-user\Projects\dev-linter\ras2fim\src\get_usgs_dem_from_shape.py', line 428, in fn_get_usgs_dem_from_shape
-    #    usgs_wcs_local_proj_clipped = usgs_wcs_local_proj.rio.clip(str_geom)
-    # File 'C:\Users\rdp-user\anaconda3\envs\ras2fim\lib\site-packages\rioxarray\raster_array.py', line 943, in clip
+    # File 'C:\Users\rdp-user\Projects\dev-linter\ras2fim\src\get_usgs_dem_from_shape.py', line 428,
+    #    in fn_get_usgs_dem_from_shape usgs_wcs_local_proj_clipped = usgs_wcs_local_proj.rio.clip(str_geom)
+    # File 'C:\Users\rdp-user\anaconda3\envs\ras2fim\lib\site-packages\rioxarray\raster_array.py',
+    #   line 943, in clip
     #    raise NoDataInBounds(
     # rioxarray.exceptions.NoDataInBounds: No data found in bounds.
 
@@ -309,7 +276,7 @@ def fix_proj_path_error():
     except Exception as ex:
         print()
         print(
-            "***An internal error has occurred while attempting to load the proj and gdal"
+            "*** An internal error has occurred while attempting to load the proj and gdal"
             " environment variables. Details"
         )
         print(ex)
@@ -384,8 +351,52 @@ def fn_get_random_string(int_letter_len_fn, int_num_len_fn):
 
 # -------------------------------------------------
 def get_stnd_date():
-    # return YYMMDD as in 230725
-    return dt.now().strftime("%y%m%d")
+    # Standardizes date pattern
+    # Returns YYMMDD as in 230725  (UTC)
+
+    str_date = dt.utcnow.strftime("%y%m%d")
+    return str_date
+
+
+# -------------------------------------------------
+def print_date_time_duration(start_dt, end_dt):
+    # *********************
+    # NOTE:  Ensure the date/tims coming in are UTC in all situations including
+    #     just duration's, even though it really doesn't matter for durations.
+    #     We are attempting to use UTC for ALL dates
+    # *********************
+
+    """
+    Process:
+    -------
+    Calcuates the diffenence in time between the start and end time
+    and prints is as:
+
+        Duration: 4 hours 23 mins 15 secs
+
+    -------
+    Usage:
+        from utils.shared_functions as sf
+        fh.print_current_date_time()
+
+    -------
+    Returns:
+        Duration as a formatted string
+
+    """
+    time_delta = end_dt - start_dt
+    total_seconds = int(time_delta.total_seconds())
+
+    total_days, rem_seconds = divmod(total_seconds, 60 * 60 * 24)
+    total_hours, rem_seconds = divmod(rem_seconds, 60 * 60)
+    total_mins, seconds = divmod(rem_seconds, 60)
+
+    time_fmt = f"{total_hours:02d} hours {total_mins:02d} mins {seconds:02d} secs"
+
+    duration_msg = "Duration: " + time_fmt
+    print(duration_msg)
+
+    return duration_msg
 
 
 # -------------------------------------------------
@@ -408,7 +419,7 @@ def get_stnd_r2f_output_folder_name(huc_number, crs):
 
     # -------------------
     # validate and split out the crs number.
-    is_valid_crs, err_msg, crs_number = svd.is_valid_crs(crs)
+    is_valid_crs, err_msg, crs_number = val.is_valid_crs(crs)
 
     if is_valid_crs is False:
         raise ValueError(err_msg)

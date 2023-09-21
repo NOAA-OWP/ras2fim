@@ -144,7 +144,7 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
     num_processors = mp.cpu_count() - 1
     with Pool(processes=num_processors) as executor:
         # pool = Pool(processes = num_processors)
-        list_of_returned_results = list(
+        list(
             tqdm.tqdm(
                 executor.imap(fn_generate_tif_for_each_rem, rem_info_arguments),
                 total=len(rem_values),

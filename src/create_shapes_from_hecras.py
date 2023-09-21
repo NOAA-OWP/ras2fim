@@ -26,6 +26,7 @@ import win32com.client
 from shapely.geometry import LineString
 from shapely.ops import linemerge, split
 
+
 # windows component object model for interaction with HEC-RAS API
 # This routine uses RAS60.HECRASController (HEC-RAS v6.0.0 must be
 # installed on this machine prior to execution)
@@ -458,7 +459,7 @@ def fn_get_flow_dataframe(str_path_hecras_flow_fn):
                 # for each value in the row
                 for k in range(0, int_val_in_row):
                     # get the flow value (Max of 8 characters)
-                    str_flow = line_flows[k * 8: k * 8 + 8].strip()
+                    str_flow = line_flows[k * 8 : k * 8 + 8].strip()
                     # convert the string to a float
                     flt_flow = float(str_flow)
                     # append data to list of flow values
@@ -515,6 +516,11 @@ def fn_cut_stream_downstream(gdf_return_stream_fn, df_xs_fn):
     df_xs_fn["stream_stn"] = df_xs_fn["stream_stn"].astype(float)
 
     # Get minimum stationed cross section
+
+    # TODO: Linting says with these following lines that flt_ds_xs
+    # does not exist and shoudl be removed. But I am not sure that is true
+    # flt_ds_xs = df_xs_fn["stream_stn"].min()
+    # gdf_ds_xs = df_xs_fn.query("stream_stn==@flt_ds_xs")
     flt_ds_xs = df_xs_fn["stream_stn"].min()
     gdf_ds_xs = df_xs_fn.query("stream_stn==@flt_ds_xs")
 
@@ -683,11 +689,9 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     list_geodataframes_cross_sections = []
     len_valid_prj_files = len(list_files_valid_prj)
 
-    fn_print_progress_bar(0,
-                          len_valid_prj_files,
-                          prefix="Reading HEC-RAS output",
-                          suffix="Complete",
-                          length=24)
+    fn_print_progress_bar(
+        0, len_valid_prj_files, prefix="Reading HEC-RAS output", suffix="Complete", length=24
+    )
     i = 0
 
     for ras_path in list_files_valid_prj:
@@ -717,11 +721,9 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
 
         time.sleep(0.03)
         i += 1
-        fn_print_progress_bar(i,
-                              len_valid_prj_files,
-                              prefix="Reading HEC-RAS output",
-                              suffix="Complete",
-                              length=24)
+        fn_print_progress_bar(
+            i, len_valid_prj_files, prefix="Reading HEC-RAS output", suffix="Complete", length=24
+        )
 
     # Create GeoDataframe of the streams and cross sections
     gdf_aggregate_streams = gpd.GeoDataFrame(pd.concat(list_geodataframes_stream, ignore_index=True))

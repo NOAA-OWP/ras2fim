@@ -133,9 +133,9 @@ def manage_geo_rating_curves_production(
         output_folder (str): The path to the output folder where geo rating curves will be written.
     """
     print()
-    overall_start_time = datetime.now()
-    dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-    print(f"Started: {dt_string}")
+    overall_start_time = datetime.utcnow()
+    dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    print(f"Started (UTC): {dt_string}")
 
     # Check job numbers and raise error if necessary
     total_cpus_available = os.cpu_count() - 1
@@ -261,9 +261,9 @@ def manage_geo_rating_curves_production(
 
     # Calculate duration
     print()
-    end_time = datetime.now()
-    dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-    print(f"Ended: {dt_string}")
+    end_time = datetime.utcnow()
+    dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    print(f"Ended (UTC): {dt_string}")
     time_duration = end_time - overall_start_time
     print(f"Duration: {str(time_duration).split('.')[0]}")
     print()
