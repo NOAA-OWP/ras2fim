@@ -8,7 +8,6 @@ This file is for validation that can be used in more than one py file.
 
 # -------------------------------------------------
 def is_valid_crs(crs):
-
     """
     Processing:
         - not counting case, the first for chars must be either EPSG or ESRI

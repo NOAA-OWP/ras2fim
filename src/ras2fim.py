@@ -28,7 +28,6 @@ import pyproj
 import shared_functions as sf
 import shared_validators as svld
 import shared_variables as sv
-
 from calculate_all_terrain_stats import fn_calculate_all_terrain_stats
 from clip_dem_from_shape import fn_cut_dems_from_shapes
 from conflate_hecras_to_nwm import fn_conflate_hecras_to_nwm
@@ -53,6 +52,7 @@ b_terrain_check_only = False
 # as it validates inputs and sets up other key variables.
 # Then will make the call to fn_run_ras2fim
 
+
 def init_and_run_ras2fim(
     str_huc8_arg,
     str_crs_arg,
@@ -66,8 +66,7 @@ def init_and_run_ras2fim(
     output_resolution=10,
     config_file=sv.DEFAULT_CONFIG_FILE_PATH,
 ):
-
-    #sf.fix_proj_path_error()
+    # sf.fix_proj_path_error()
     config_file = sf.load_config_enviro_path(config_file)
 
     ####################################################################
@@ -154,7 +153,7 @@ def init_and_run_ras2fim(
     # -------------------
     # make the folder only if all other valudation tests pass.
     # pathing has already been validated and ensure the child folder does not pre-exist
-    os.mkdir(r2f_huc_output_dir)  
+    os.mkdir(r2f_huc_output_dir)
 
     # -------------------------------------------
     # ---- Make the "final" folder now as some modules will write to it through the steps
@@ -426,8 +425,7 @@ def fn_run_ras2fim(
         )
         shutil.copy2(
             os.path.join(
-                huc_crs_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
-                "README_reformat_ras_rating_curve.txt"
+                huc_crs_output_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, "README_reformat_ras_rating_curve.txt"
             ),
             r2f_final_ras2cal_subdir,
         )

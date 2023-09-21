@@ -1,0 +1,33 @@
+# For more information: https://pre-commit.com
+# Additional hooks: https://pre-commit.com/hooks.html
+
+repos:
+-   repo: local
+    hooks:
+        -   id: isort
+            name: isort
+            entry: isort
+            pass_filenames: true
+            language: system
+            types: [python]
+            verbose: true
+
+        -   id: black
+            name: black    
+            entry: isort
+            pass_filenames: true
+            language: system
+            types: [python]
+            verbose: true
+          
+        -   id: flake8
+            name: pflake8
+            entry: pflake8
+            pass_filenames: true            
+            language: system
+            types: [python]
+            verbose: true
+
+        
+
+    

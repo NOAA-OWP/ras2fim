@@ -23,7 +23,6 @@ import geopandas as gpd
 import pandas as pd
 import pyproj
 import rasterio
-
 import rioxarray
 import tqdm
 
@@ -50,7 +49,6 @@ def fn_is_valid_file(parser, arg):
 def fn_cut_dems_from_shapes(
     str_input_shp_path, str_input_terrain_path, str_output_dir, int_buffer, model_unit, str_field_name
 ):
-
     flt_start_run = time.time()
 
     print(" ")
@@ -88,7 +86,6 @@ def fn_cut_dems_from_shapes(
 
     # determine if the requested naming field is in the input shapefile
     if str_field_name in gdf_boundary_prj.columns:
-
         if len(gdf_boundary_prj) < 2:
             # no need to convert to series if there is just one polygon
             b_have_valid_label_field = True
@@ -123,7 +120,6 @@ def fn_cut_dems_from_shapes(
         with rioxarray.open_rasterio(str_input_terrain_path, masked=True).rio.clip(
             json_boundary, from_disk=True
         ) as xds_clipped:
-
             # reproject the DEM to the shp CRS
             xds_clipped_reproject = xds_clipped.rio.reproject(str_shape_crs)
 
@@ -156,7 +152,6 @@ def fn_cut_dems_from_shapes(
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(
         description="============== CUT DEMs FROM LARGER DEMS PER POLYGON SHAPEFILE  =============="
     )

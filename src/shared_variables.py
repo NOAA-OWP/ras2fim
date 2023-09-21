@@ -1,5 +1,6 @@
 import os
 
+
 """
 This is a collection of variables that help manage, centralize and standarize some values,
    such as pathing, or common valuse
@@ -18,23 +19,15 @@ INPUT_NWM_WBD_LOOKUP_FILE = "nwm_wbd_lookup.nc"
 INPUT_WBD_NATIONAL_FILE = "WBD_National.gpkg"
 INPUT_NWM_CATCHMENTS_FILE = "nwm_catchments.gpkg"
 INPUT_WBD_HUC8_DIR = "WBD_HUC8"  # Pattern for huc files are 'HUC8_{huc number}.gpkg'
-INPUT_DEFAULT_NWM_FLOWS_FILE_PATH = os.path.join(
-    INPUT_DEFAULT_X_NATIONAL_DS_DIR, INPUT_NWM_FLOWS_FILE
-)
-INPUT_DEFAULT_NWM_WBD_LOOKUP_FILE_PATH = os.path.join(
-    INPUT_DEFAULT_X_NATIONAL_DS_DIR, INPUT_NWM_FLOWS_FILE
-)
+INPUT_DEFAULT_NWM_FLOWS_FILE_PATH = os.path.join(INPUT_DEFAULT_X_NATIONAL_DS_DIR, INPUT_NWM_FLOWS_FILE)
+INPUT_DEFAULT_NWM_WBD_LOOKUP_FILE_PATH = os.path.join(INPUT_DEFAULT_X_NATIONAL_DS_DIR, INPUT_NWM_FLOWS_FILE)
 INPUT_DEFAULT_INPUT_WBD_NATIONAL_FILE_PATH = os.path.join(
     INPUT_DEFAULT_X_NATIONAL_DS_DIR, INPUT_WBD_NATIONAL_FILE
 )
-INPUT_DEFAULT_NWM_FLOWS_FILE_PATH = os.path.join(
-    INPUT_DEFAULT_X_NATIONAL_DS_DIR, INPUT_NWM_CATCHMENTS_FILE
-)
+INPUT_DEFAULT_NWM_FLOWS_FILE_PATH = os.path.join(INPUT_DEFAULT_X_NATIONAL_DS_DIR, INPUT_NWM_CATCHMENTS_FILE)
 
 # OWP RAS MODELS (pre-processed, ready to submit to ras2fim.py)
-DEFAULT_OWP_RAS_MODELS_MODEL_PATH = os.path.join(
-    DEFAULT_BASE_DIR, "OWP_ras_models", "models"
-)
+DEFAULT_OWP_RAS_MODELS_MODEL_PATH = os.path.join(DEFAULT_BASE_DIR, "OWP_ras_models", "models")
 DEFAULT_RSF_MODELS_CATALOG_FILE = os.path.join(
     DEFAULT_BASE_DIR, "OWP_ras_models", "OWP_ras_models_catalog_[].csv"
 )

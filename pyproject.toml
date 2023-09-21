@@ -1,6 +1,5 @@
 [project]
 name = 'ras2fim'
-
     
 maintainers = [
     {name = "Fernando Salas", email = "fernando.salas@noaa.gov"},
@@ -23,7 +22,6 @@ maintainers = [
 
 requires-python = ">=3.8"
 keywords = ["ras2fim", "mapping", "noaa"]
-license = {path = "./LICENSE"}
 
 
 [project.urls]
@@ -35,13 +33,9 @@ Wiki = "https://github.com/NOAA-OWP/ras2fim/wiki"
 
 [tool.black]
 line_length = 110
-skip-string-normalization = false   
+skip-string-normalization = true   
 skip-magic-trailing-comma = true
-exclude = '''
-/(
-    \.git
-)/
-'''
+
 
 [tool.isort]
 profile = 'black'
@@ -53,16 +47,37 @@ skip_gitignore = true
 [tool.flake8]
 count = true
 doctests = true
-max-complexity = 40
+max-complexity = 50
+exclude = """
+    *.yaml,
+    *.env,
+    *.md,
+    *.toml
+"""
+
 max-line-length = 110  # It should be the same as `tool.black.line-length` above
 extend-ignore = """
-    W605
+    W391,
+    W503,
+    W605,
+    E203,
+    E266,
     """
-#    E203,
-#    E266,
-#    E501,
-#    W503,
-#    W391
-#    F403,
-#    F401,
-#    """
+
+# Page Exceptions Notes
+# If you have a page that needs to be left as an linter exception,
+# please add the file name and ras2fim relative path to the section
+# below. 
+# You can also have it ignore just one code (aka.. 901)
+# Code lists can be found at:
+# https://flake8.pycqa.org/en/2.5.5/warnings.html (and 4 more links near the top to other codes)
+
+per-file-ignores = """
+    src/create_shapes_from_hecras.py: F841, E731
+    tools/get_ras_models_by_catalog.py: E712, E402    
+    tools/nws_ras2fim_clip_dem_from_shape.py: E402
+    tools/nws_ras2fim_entwine_dem_from_shp.py: E402
+    tools/nws_ras2fim_terrain_AWS_tiles.py: E402
+    tools/nws_ras2fim_terrain_Texas.py: E402, E501
+    tools/nws_ras2fim_terrain_USGS.py: E402
+    """

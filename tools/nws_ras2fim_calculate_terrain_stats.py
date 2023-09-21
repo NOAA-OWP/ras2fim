@@ -155,9 +155,7 @@ def fn_calculate_terrain_stats(str_geom_hdf_path, str_projection_path, str_terra
 if __name__ == "__main__":
     flt_start_run = time.time()
 
-    parser = argparse.ArgumentParser(
-        description="===== CALCULATE TERRAIN VS HEC-RAS MODEL STATISTICS ====="
-    )
+    parser = argparse.ArgumentParser(description="===== CALCULATE TERRAIN VS HEC-RAS MODEL STATISTICS =====")
 
     parser.add_argument(
         "-i",

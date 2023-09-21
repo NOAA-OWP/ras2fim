@@ -153,7 +153,7 @@ if __name__ == "__main__":
         "-i",
         dest="xsections_shp_file_path",
         help="REQUIRED: Path to shapefile containing HEC-RAS models cross sections:"
-            r" Example: C:\ras2fim_12090301\01_shapes_from_hecras\cross_section_LN_from_ras.shp",
+        r" Example: C:\ras2fim_12090301\01_shapes_from_hecras\cross_section_LN_from_ras.shp",
         required=True,
         metavar="DIR",
         type=str,
@@ -171,8 +171,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-name",
         dest="model_name_field",
-        help='Optional: column/field name of the input shapefile having unique names'
-             ' for HEC-RAS models. Default:"ras_path"',
+        help="Optional: column/field name of the input shapefile having unique names"
+        ' for HEC-RAS models. Default:"ras_path"',
         required=False,
         default="ras_path",
         metavar="STRING",
@@ -193,7 +193,7 @@ if __name__ == "__main__":
         "-conflate",
         dest="conflation_qc_path",
         help='Optional: path to the conflation qc file in "02_shapes_from_conflation"'
-             ' folder. Default=no_qc',
+        " folder. Default=no_qc",
         required=False,
         default="no_qc",
         metavar="STRING",

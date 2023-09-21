@@ -30,7 +30,6 @@ from shapely.geometry import LineString
 
 # -------------------------
 def fn_get_abs_path(str_base_file_abs, str_relative_path):
-
     # convert the absolute input path to a list of parts
     tup_base_filepath = pathlib.Path(str_base_file_abs).parts
 
@@ -60,7 +59,6 @@ def fn_get_abs_path(str_base_file_abs, str_relative_path):
 
 # -------------------------------------------------
 def fn_paths_from_rasmapper(str_rasmapper_path):
-
     xml_tree = et.parse(str_rasmapper_path)
     xml_root = xml_tree.getroot()
 
@@ -106,7 +104,6 @@ def fn_paths_from_rasmapper(str_rasmapper_path):
 
 # -------------------------------------------------
 def fn_calculate_terrain_stats(str_geom_hdf_path, str_projection_path, str_terrain_path):
-    
     hf = h5py.File(str_geom_hdf_path, "r")
 
     # XY points of the plan view of the cross section
@@ -144,7 +141,6 @@ def fn_calculate_terrain_stats(str_geom_hdf_path, str_projection_path, str_terra
     int_start_xs_pnt = 0
 
     for i in range(len(arr_pnts_per_xs)):
-
         # -------------------------------------------
         # get a list of the plan cross section points
         int_pnts_in_plan_xs = arr_pnts_per_xs[i][1]
@@ -190,7 +186,7 @@ def fn_calculate_terrain_stats(str_geom_hdf_path, str_projection_path, str_terra
             gdf_sta_elev_pnts.loc[int_pnt, "geometry"] = geom_interp_pnt
 
             # item() to convert from numpy value
-            gdf_sta_elev_pnts.loc[int_pnt, "ras_elev"] = flt_elev.item()  
+            gdf_sta_elev_pnts.loc[int_pnt, "ras_elev"] = flt_elev.item()
 
             int_index += 1
             int_pnt += 1
@@ -268,7 +264,6 @@ def fn_get_list_of_lists_to_compute(str_path_ras_files):
 
 # -------------------------------------------------
 def fn_get_stats_dataseries(list_files_for_stats):
-
     # get a dataseries of the requested data
     list_stats_dataseries = []
 
@@ -305,7 +300,6 @@ def fn_get_stats_dataseries(list_files_for_stats):
 
 # -------------------------------------------------
 def fn_calculate_all_terrain_stats(str_input_dir):
-
     flt_start_run = time.time()
 
     print(" ")
@@ -372,7 +366,6 @@ def fn_calculate_all_terrain_stats(str_input_dir):
 
 # -------------------------------------------------
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(
         description="===== CALCULATE TERRAIN STATISTICS FOR MULTIPLE HEC-RAS MODELS ====="
     )

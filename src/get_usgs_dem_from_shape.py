@@ -169,7 +169,7 @@ def fn_get_usgs_dem_from_shape(
 
     # get crs of the input shapefile
     aoi_prj_crs = pyproj.CRS.from_string(str(gdf_aoi_prj.crs))
-    
+
     # convert the input shapefile to lambert
     gdf_aoi_lambert = gdf_aoi_prj.to_crs(LAMBERT)
 
@@ -291,8 +291,10 @@ def fn_get_usgs_dem_from_shape(
         str_URL_header = (
             r"https://elevation.nationalmap.gov/arcgis/services/3DEPElevation/ImageServer/WCSServer?"
         )
-        str_URL_query_1 = r'SERVICE=WCS&VERSION=1.0.0&REQUEST=GetCoverage&coverage=DEP3Elevation' \
-                          r'&CRS=EPSG:3857&FORMAT=GeoTiff'
+        str_URL_query_1 = (
+            r"SERVICE=WCS&VERSION=1.0.0&REQUEST=GetCoverage&coverage=DEP3Elevation"
+            r"&CRS=EPSG:3857&FORMAT=GeoTiff"
+        )
 
         for index, row in gdf_tiles_intersect_only.iterrows():
             list_str_tile_name.append(gdf_tiles_intersect_only["tile_name"][index])
@@ -391,7 +393,7 @@ def fn_get_usgs_dem_from_shape(
             usgs_wcs_local_proj = usgs_wcs_dem.rio.reproject(aoi_prj_crs)
             # rio no longer likes in place reprojections, so we will save to disk temp, then reload
 
-            #usgs_wcs_local_proj = usgs_wcs_dem.rio.write_crs(aoi_prj_crs, inplace=True)
+            # usgs_wcs_local_proj = usgs_wcs_dem.rio.write_crs(aoi_prj_crs, inplace=True)
 
             if model_unit == "feet":
                 # scale the raster from meters to feet

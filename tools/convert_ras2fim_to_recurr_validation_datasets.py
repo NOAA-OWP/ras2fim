@@ -318,9 +318,7 @@ def extract_ras(args, huc):
 
         # Get list of extent grid paths
         reproj_out_grid_dir = reproj_grid_dir / interval
-        ras_list = [
-            str(reproj_out_grid_dir / r) for r in listdir(reproj_out_grid_dir) if ".aux.xml" not in r
-            ]
+        ras_list = [str(reproj_out_grid_dir / r) for r in listdir(reproj_out_grid_dir) if ".aux.xml" not in r]
 
         # Remove any grids that do not have extents for every recurrence interval
         for id in exclude_feature_ids:

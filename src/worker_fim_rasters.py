@@ -12,29 +12,22 @@
 #
 # Uses the 'ras2fim' conda environment
 # ************************************************************
-
 import os
-import json
 import re
-
 import traceback
 from datetime import date
 
-import geopandas as gpd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tick
 import numpy as np
 import pandas as pd
 import win32com.client
-
-# from rasterio.warp import calculate_default_transform, reproject
-from rasterio import Affine
-from rasterio.enums import Resampling
-from rasterio.mask import mask
 from scipy.interpolate import interp1d
-from shapely.geometry import LineString
 
 import shared_functions as sf
+
+
+# from rasterio.warp import calculate_default_transform, reproject
 
 
 # windows component object model for interaction with HEC-RAS API
@@ -78,7 +71,8 @@ def fn_create_firstpass_flowlist(int_fn_starting_flow, int_fn_max_flow, int_fn_n
 
 # -------------------------------------------------
 def fn_create_profile_names(list_profiles, str_suffix):
-    str_profile_names = "Profile Names="
+    str_profile_names = 'Profile Names='
+
     for i in range(len(list_profiles)):
         str_profile_names += str(list_profiles[i]) + str_suffix
         if i < (len(list_profiles) - 1):
@@ -284,7 +278,7 @@ def fn_create_rating_curve(
         df_rating_curve["stage_mm"] = df_rating_curve["stage_mm"].astype("int")
 
         df_rating_curve["wse_m"] = np.round(df_rating_curve["wse_ft"].values * 0.3048, 3)
-    else:  ## meters
+    else:  # meters
         # need rounding (precison control even for unit of meters)
         df_rating_curve["discharge_cms"] = np.round(df_rating_curve["discharge_cms"].values, 3)
         df_rating_curve["stage_m"] = np.round(df_rating_curve["stage_m"].values, 3)
@@ -332,7 +326,6 @@ def fn_create_flow_file_second_pass(
         str_flow_title = str_flow_title[11:]  # remove first 11 characters
 
     int_fn_num_profiles = len(list_step_profiles_fn)
-
 
     f1.close()
 
@@ -458,12 +451,7 @@ def fn_create_ras_mapper_xml(
 
         if model_unit == "meter":
             str_ras_mapper_file += (
-                'Terrain" StoredFilename=".'
-                 + "\\BLE_"
-                 + str_feature_id_fn
-                 + "\\Depth (" 
-                 + str(i) 
-                 + 'm).vrt"'
+                'Terrain" StoredFilename=".' + "\\BLE_" + str_feature_id_fn + "\\Depth (" + str(i) + 'm).vrt"'
             )
         else:
             str_ras_mapper_file += (
@@ -547,9 +535,9 @@ def fn_create_ras_mapper_xml(
 '''
 # """"""""""""""""""""""""""
 def fn_create_study_area(str_polygon_path_fn, str_feature_id_poly_fn, tpl_settings):
-    
+
     # get settings from the tpl_settings
-    flt_buffer = tpl_settings[14] 
+    flt_buffer = tpl_settings[14]
 
     # Function to create the study limits shapefile (polyline)
 
@@ -626,7 +614,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
         # reading project nodes: cross-sections, bridges, culverts, etc.
         v1, v2, NNod, TabRS, TabNTyp = hec.Geometry_GetNodes(RivID, RchID, NNod, TabRS, TabNTyp)
 
-        # HEC-RAS ID of output variables: Max channel depth, channel reach length, 
+        # HEC-RAS ID of output variables: Max channel depth, channel reach length,
         # and water surface elevation
         int_max_depth_id, int_node_chan_length, int_water_surface_elev, int_q_total = 4, 42, 2, 9
 
@@ -781,7 +769,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
         # convert list of interpolated float values to integer list
         list_int_step_flows = [int(i) for i in list_step_flows]
 
-        int_max_wse = int(max(list_avg_water_surface_elev) // flt_interval)
+        # int_max_wse = int(max(list_avg_water_surface_elev) // flt_interval)
         int_min_wse = int((min(list_avg_water_surface_elev) // flt_interval) + 1)
 
         list_step_profiles_wse = []
@@ -1385,7 +1373,7 @@ def fn_main_hecras(record_requested_stream):
         # sometimes the HEC-RAS model
         # does not run (example: duplicate points)
 
-        river = fn_create_hecras_files(
+        fn_create_hecras_files(
             str_feature_id,
             str_geom_path,
             flt_ds_xs,

@@ -22,6 +22,7 @@ import matplotlib.ticker as tick
 import pandas as pd
 from scipy.interpolate import interp1d
 
+
 #########
 # TODO: Sept 6, 2023
 # This file should really be cleaned up (no __main__ and alot of inline logic)
@@ -140,7 +141,6 @@ def fn_create_rating_curve(
 
         flt_percent_bias = (flt_sum_value_dif / flt_sum_value_ble_depth) * 100
 
-        
     except Exception:
         flt_madd = 0
         flt_percent_bias = 0
