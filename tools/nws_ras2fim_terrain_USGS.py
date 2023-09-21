@@ -28,10 +28,7 @@
 
 
 import argparse
-import json
 import os
-import random
-import string
 import sys
 import time
 import urllib.request
@@ -43,6 +40,7 @@ import rasterio
 import rioxarray as rxr
 from rasterio.merge import merge
 from shapely.geometry import Polygon
+
 
 sys.path.append("..")
 import ras2fim.src.shared_functions as sf
@@ -391,10 +389,10 @@ if __name__ == "__main__":
         # Downloading the DEM tiles from the list_str_url
 
         # Initial call to print 0% progress
-        l = len(list_str_url)
+        len_url = len(list_str_url)
 
         str_prefix = "Poly " + str(index_gdf_int + 1) + " of " + str(len(gdf_aoi_lambert))
-        fn_print_progress_bar(0, l, prefix=str_prefix, suffix="Complete", length=50)
+        fn_print_progress_bar(0, len_url, prefix=str_prefix, suffix="Complete", length=50)
 
         i = 0
         results = ThreadPool(10).imap_unordered(fn_download_tiles, list_merge_url_file)
@@ -402,7 +400,7 @@ if __name__ == "__main__":
         for str_requested_tile in results:
             time.sleep(0.1)
             i += 1
-            fn_print_progress_bar(i, l, prefix=str_prefix, suffix="Complete", length=50)
+            fn_print_progress_bar(i, len_url, prefix=str_prefix, suffix="Complete", length=50)
         # **************************
 
         dem_files = list_tile_download_path

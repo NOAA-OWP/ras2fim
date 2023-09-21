@@ -14,6 +14,7 @@
 _You may update this checklist before and/or after creating the PR. If you're unsure about any of them, please ask, we're here to help! These items are what we are going to look for before merging your code._
 
 - [ ] Informative and human-readable title, using the format: `[_pt] PR: <description>`
+- [ ] Pre-commit executed and linting changes made.
 - [ ] Links are provided if this PR resolves an issue, or depends on another other PR
 - [ ] If submitting a PR to the `dev` branch (the default branch), you have a descriptive [Feature Branch](https://www.atlassian.com/git/tutorials/comparing-workflows/feature-branch-workflow) name using the format: `dev-<description-of-change>` (e.g.: `dev-revise-levee-masking`)
 - [ ] Changes are limited to a single goal (no scope creep)
@@ -24,3 +25,7 @@ _You may update this checklist before and/or after creating the PR. If you're un
 - [ ] Placeholder code is flagged / future todos are captured in comments
 - [ ] Project documentation has been updated ([CHANGELOG](/doc/CHANGELOG.md) and/or [README](/README.md))
 - [ ] [Reviewers requested](https://help.github.com/articles/requesting-a-pull-request-review/)
+
+### Merge Checklist (For Technical Lead use only)
+
+- [ ] Update [CHANGELOG](/docs/CHANGELOG.md) with latest version number and merge date

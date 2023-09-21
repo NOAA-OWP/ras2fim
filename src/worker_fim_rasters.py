@@ -12,7 +12,6 @@
 #
 # Uses the 'ras2fim' conda environment
 # ************************************************************
-
 import os
 import re
 import traceback
@@ -24,9 +23,16 @@ import numpy as np
 import pandas as pd
 import win32com.client
 
+# from rasterio.warp import calculate_default_transform, reproject
+from rasterio import Affine
+from rasterio.enums import Resampling
+from rasterio.mask import mask
 from scipy.interpolate import interp1d
 
 import shared_functions as sf
+
+
+# from rasterio.warp import calculate_default_transform, reproject
 
 
 # windows component object model for interaction with HEC-RAS API
@@ -70,7 +76,8 @@ def fn_create_firstpass_flowlist(int_fn_starting_flow, int_fn_max_flow, int_fn_n
 
 # -------------------------------------------------
 def fn_create_profile_names(list_profiles, str_suffix):
-    str_profile_names = "Profile Names="
+    str_profile_names = 'Profile Names='
+
     for i in range(len(list_profiles)):
         str_profile_names += str(list_profiles[i]) + str_suffix
         if i < (len(list_profiles) - 1):
@@ -767,7 +774,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
         # convert list of interpolated float values to integer list
         list_int_step_flows = [int(i) for i in list_step_flows]
 
-        int_max_wse = int(max(list_avg_water_surface_elev) // flt_interval)
+        # int_max_wse = int(max(list_avg_water_surface_elev) // flt_interval)
         int_min_wse = int((min(list_avg_water_surface_elev) // flt_interval) + 1)
 
         list_step_profiles_wse = []
@@ -1371,7 +1378,7 @@ def fn_main_hecras(record_requested_stream):
         # sometimes the HEC-RAS model
         # does not run (example: duplicate points)
 
-        river = fn_create_hecras_files(
+        fn_create_hecras_files(
             str_feature_id,
             str_geom_path,
             flt_ds_xs,

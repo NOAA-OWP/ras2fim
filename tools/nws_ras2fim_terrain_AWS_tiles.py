@@ -13,7 +13,6 @@
 # Created by: Andy Carter, PE
 # Last revised - 2021.06.22
 
-import json
 import math
 import os
 import sys
@@ -25,6 +24,7 @@ import requests
 import rioxarray as rxr
 from rasterio.merge import merge
 from shapely.geometry import Polygon
+
 
 sys.path.append("..")
 import ras2fim.src.shared_functions as sf

@@ -30,7 +30,6 @@ def write_metadata_file(
     log_name,
     verbose,
 ):
-
     """
     Overview:
 
@@ -118,7 +117,6 @@ def write_metadata_file(
 # Functions for handling units
 # -----------------------------------------------------------------
 def get_unit_from_string(string):
-
     if "meters" in string or "meter" in string or "m" in string or "metre" in string or "metres" in string:
         return "m"
     elif "feet" in string or "foot" in string or "ft" in string:
@@ -156,7 +154,6 @@ def dir_reformat_ras_rc(
     hecras_shapes_file,
     metric_file,
 ):
-
     """
     Overview:
 
@@ -491,7 +488,6 @@ def dir_reformat_ras_rc(
 def compile_ras_rating_curves(
     input_folder_path, output_save_folder, save_logs, verbose, num_workers, source, location_type, active
 ):
-
     """
     Overview:
 
@@ -811,7 +807,6 @@ def compile_ras_rating_curves(
 
 # -------------------------------------------------
 if __name__ == "__main__":
-
     """
     Sample usage:
 

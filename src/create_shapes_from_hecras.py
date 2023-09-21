@@ -231,7 +231,7 @@ def fn_geodataframe_cross_sections(str_path_hecras_project_fn, STR_CRS_MODEL):
     for int_numPnts in list_points_per_cross_section_line:
         # Create linesting data with shapely
         gdf_cross_sections.loc[i, "geometry"] = LineString(
-            cross_section_points[int_startPoint: (int_startPoint + int_numPnts)]
+            cross_section_points[int_startPoint : (int_startPoint + int_numPnts)]
         )
 
         # River and Reach - these are numpy bytes and
@@ -348,7 +348,7 @@ def fn_geodataframe_stream_centerline(str_path_hecras_project_fn, STR_CRS_MODEL)
     for int_numPnts in list_points_per_stream_line:
         # Create linesting data with shapely
         gdf_streams.loc[i, "geometry"] = LineString(
-            stream_points[int_startPoint: (int_startPoint + int_numPnts)]
+            stream_points[int_startPoint : (int_startPoint + int_numPnts)]
         )
 
         # Write the River and Reach - these are numpy bytes and need to be
@@ -589,7 +589,6 @@ def fn_print_progress_bar(
 
 # -------------------------------------------------
 def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg):
-
     # INPUT
     flt_start_create_shapes_from_hecras = time.time()
 

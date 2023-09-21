@@ -20,7 +20,6 @@
 
 import glob
 import io
-import json
 import os
 import shutil
 import sys
@@ -35,6 +34,7 @@ import rasterio
 import requests
 from rasterio.mask import mask
 from rasterio.merge import merge
+
 
 sys.path.append("..")
 import ras2fim.src.shared_functions as sf
@@ -232,7 +232,6 @@ def fn_download_tiles(str_tile_url):
     if check:
         z = zipfile.ZipFile(io.BytesIO(r.content))
         z.extractall(str_dem_download_path)
-
 
 
 # -------------------------------------------------

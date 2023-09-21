@@ -39,7 +39,10 @@ All documentation in this repo are based on the default folder structure.
 
 ## Downloading Data from ESIP
 
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/esip-logo.png" align="right" alt="esip logo" height="50">There are folders and files that will need to be downloaded locally prior to running the RAS2FIM code.  This data can be found in an Amazon S3 Bucket hosted by [Earth Science Information Partners (ESIP)](https://www.esipfed.org/). The data can be accessed using the AWS Command Line Interface (CLI) tools. AWS CLI installation details are shown below.  The ESIP / NOAA NWS OWP FIM S3 Bucket (`s3://noaa-nws-owp-fim`) is set up to allow for anonymous free downloads.<br>
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/esip-logo.png" align="right" alt="esip logo" height="50">There are folders and files that will need to be downloaded locally prior to running the RAS2FIM code.  This data can be found in an Amazon S3 Bucket hosted by [Earth Science Information Partners (ESIP)](https://www.esipfed.org/). The data can be accessed using the AWS Command Line Interface (CLI) tools. AWS CLI installation details are shown below. This S3 Bucket (`s3://noaa-nws-owp-fim`) is set up as a "Requester Pays" bucket. Read more about what that means [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html).
+
+You will need permission from ESIP to access this data. Please contact Carson Pruitt (carson.pruitt@noaa.gov) or Fernando Salas (fernando.salas@noaa.gov) for assistance.
+
 
 ### Configuring the AWS CLI
 
@@ -50,13 +53,13 @@ All documentation in this repo are based on the default folder structure.
 
 To list folders prior to download:
 ```
-aws s3 ls s3://noaa-nws-owp-fim --no-sign-request
+aws s3 ls s3://noaa-nws-owp-fim --requester-pays
 ```
 
 ## Output Samples
 If you want to review a sample output for ras2fim.py, you can dowload a folder that was generated using five models in 12090301 HUC8.
 ```
-aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/output_ras2fim C:\ras2fim_data\output_ras2fim --no-sign-request
+aws s3 sync s3://noaa-nws-owp-fim/ras2fim/output_ras2fim C:\ras2fim_data\output_ras2fim --requester-pays
 ```
 
 ## Prior to Running the Code (if you choose to do some processing)
@@ -71,7 +74,7 @@ The OWP tools to preprocess HEC-RAS data to OWP_ras_models is not yet available.
 ### (1) Get AWS Folder - Inputs
 <img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> The downloaded inputs folder is appx 14.3 Gb.
 ```
-aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/inputs c:\ras2fim_data\inputs --no-sign-request
+aws s3 sync s3://noaa-nws-owp-fim/ras2fim/inputs c:\ras2fim_data\inputs --requester-pays
 ```
 This download will include the following files / folders:
 
@@ -88,7 +91,7 @@ At this point, ras2fim.py needs a file named OWP_ras_models_catalog.csv, or simi
 
 To download the `OWP_ras_models` folder, you AWS CLI command will be (adjusting for path overrides if you like):
 ```
-aws s3 cp --recursive s3://noaa-nws-owp-fim/ras2fim/OWP_ras_models c:\ras2fim_data\OWP_ras_models --no-sign-request
+aws s3 sync s3://noaa-nws-owp-fim/ras2fim/OWP_ras_models c:\ras2fim_data\OWP_ras_models --requester-pays
 ```
 
 ### (3) Install HEC-RAS verion 6.0
@@ -128,7 +131,7 @@ Please see the issue tracker on GitHub and the [Ras2Fim Wiki](https://github.com
 
 ## Getting involved
 
-NOAA's National Water Center welcomes anyone to contribute to the RAS2FIM repository to improve flood inundation mapping capabilities. Please contact Brad Bates (bradford.bates@noaa.gov) or Fernando Salas (fernando.salas@noaa.gov) to get started.
+NOAA's National Water Center welcomes anyone to contribute to the RAS2FIM repository to improve flood inundation mapping capabilities. Please contact Carson Pruitt (carson.pruitt@noaa.gov) or Fernando Salas (fernando.salas@noaa.gov) to get started.
 
 ----
 
