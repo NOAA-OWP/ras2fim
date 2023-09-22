@@ -496,7 +496,6 @@ def dir_reformat_ras_rc(
     print()
 
 
-
 # -----------------------------------------------------------------
 # Compiles the rating curve and points from each directory
 # -----------------------------------------------------------------

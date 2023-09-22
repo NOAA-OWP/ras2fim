@@ -29,7 +29,7 @@ import xarray as xr
 from fiona import collection
 from geopandas.tools import sjoin
 from shapely import wkt
-from shapely.geometry import MultiLineString, Point, mapping
+from shapely.geometry import Point, mapping
 
 import errors
 import shared_variables as sv
