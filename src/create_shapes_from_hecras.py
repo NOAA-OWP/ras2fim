@@ -43,14 +43,14 @@ def fn_open_hecras(str_ras_project_path):
     try:
         # opening HEC-RAS
 
+        if os.path.exists(str_ras_project_path) is False:
+            raise Exception(f"str_ras_project_path value of {str_ras_project_path} does not exist")
+
         hec = win32com.client.Dispatch("RAS60.HECRASController")
 
         # hec.ShowRas()
 
         # opening HEC-RAS
-
-        if os.path.exists(str_ras_project_path) is False:
-            raise Exception(f"str_ras_project_path value of {str_ras_project_path} does not exist")
 
         hec.Project_Open(str_ras_project_path)
 

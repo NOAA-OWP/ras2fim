@@ -7,6 +7,7 @@ import shutil
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
+from datetime import datetime
 from pathlib import Path
 
 import geopandas as gpd
@@ -203,9 +204,9 @@ def dir_reformat_ras_rc(
     # Create empty output log
 
     print()
-    overall_start_time = datetime.utcnow()
+    overall_start_time = datetime.now()
     dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-    print(f"Started (UTC time): {dt_string}")
+    print(f"Started : {dt_string}")
 
     output_log = []
     output_log.append(" ")
@@ -305,7 +306,7 @@ def dir_reformat_ras_rc(
         # (but keep the metadata from the HEC-RAS cross-sections)
 
         if verbose is True:
-            print(" ")
+            print()
             print("Reading shapefiles and generating crosssection/streamline intersection points ...")
 
         # Read shapefiles
@@ -385,7 +386,7 @@ def dir_reformat_ras_rc(
         # Build output table
 
         # Get a current timestamp
-        timestamp = datetime.datetime.now()
+        timestamp = datetime.now()
 
         # Assemble output table
         dir_output_table = pd.DataFrame(
@@ -469,7 +470,7 @@ def dir_reformat_ras_rc(
             print(f"Saved directory outputs for {dir_input_folder_path}.")
 
         # Get timestamp for metadata
-        start_time_string = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+        start_time_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
 
         # Write README metadata file for the intermediate file
         write_metadata_file(
@@ -488,9 +489,9 @@ def dir_reformat_ras_rc(
             print(f"Saved metadata to {intermediate_filepath}.")
 
     print()
-    end_time = datetime.utcnow()
-    dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
-    print(f"Ended (UTC time): {dt_string}")
+    end_time = datetime.now()
+    dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+    print(f"Ended : {dt_string}")
     time_duration = end_time - overall_start_time
     print(f"Duration: {str(time_duration).split('.')[0]}")
     print()
@@ -540,8 +541,8 @@ def compile_ras_rating_curves(
     intermediate_filename = sv.R2F_OUTPUT_DIR_RAS2CALIBRATION
 
     # Record and print start time
-    start_time = datetime.datetime.now()
-    start_time_string = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+    start_time = datetime.now()
+    start_time_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
 
     # Settings block
     print("-----------------------------------------------------------------------------------------------")
@@ -811,7 +812,7 @@ def compile_ras_rating_curves(
     )
 
     # Record end time, calculate runtime, and print runtime
-    end_time = datetime.datetime.now()
+    end_time = datetime.now()
     runtime = end_time - start_time
 
     print()
