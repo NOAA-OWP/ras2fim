@@ -358,7 +358,7 @@ def get_stnd_date():
     # Standardizes date pattern
     # Returns YYMMDD as in 230725  (UTC)
 
-    str_date = dt.utcnow.strftime("%y%m%d")
+    str_date = dt.utcnow().strftime("%y%m%d")
     return str_date
 
 
