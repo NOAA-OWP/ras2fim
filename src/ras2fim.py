@@ -442,8 +442,7 @@ def fn_run_ras2fim(
             print("++++ (Skipping creating geocurve polygon) +++++++")
 
         # Produce geocurves
-        # job_number = os.cpu_count() - 1
-        job_number = 1
+        job_number = os.cpu_count() - 2
         manage_geo_rating_curves_production(
             ras2fim_output_dir=huc_crs_output_dir,
             version=os.path.join(os.path.dirname(os.path.dirname(__file__)), "doc", "CHANGELOG.md"),
