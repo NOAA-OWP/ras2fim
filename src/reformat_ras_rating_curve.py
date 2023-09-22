@@ -201,6 +201,12 @@ def dir_reformat_ras_rc(
     """
 
     # Create empty output log
+
+    print()
+    overall_start_time = datetime.utcnow()
+    dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+    print(f"Started (UTC time): {dt_string}")
+
     output_log = []
     output_log.append(" ")
     output_log.append(f"Directory: {dir_input_folder_path}")
@@ -480,6 +486,15 @@ def dir_reformat_ras_rc(
 
         if verbose is True:
             print(f"Saved metadata to {intermediate_filepath}.")
+
+    print()
+    end_time = datetime.utcnow()
+    dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    print(f"Ended (UTC time): {dt_string}")
+    time_duration = end_time - overall_start_time
+    print(f"Duration: {str(time_duration).split('.')[0]}")
+    print()
+
 
 
 # -----------------------------------------------------------------

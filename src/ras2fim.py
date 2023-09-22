@@ -375,7 +375,7 @@ def fn_run_ras2fim(
     flt_resolution_depth_grid = int(output_resolution)
 
     print()
-    print("+++++++ Processing:  STEP 5/6 (simplifying fim rasters and create metrics)  +++++++")
+    print("+++++++ Processing: 5.b (STEP 5/6 simplifying fim rasters and create metrics)  +++++++")
 
     fn_simplify_fim_rasters(
         str_hecras_out_dir, flt_resolution_depth_grid, sv.DEFAULT_RASTER_OUTPUT_CRS, model_unit

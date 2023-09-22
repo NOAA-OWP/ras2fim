@@ -305,19 +305,8 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
 
     for index, row in gdf_segments.iterrows():
         shp_geom = row["geometry"]
-        str_geom_wkt = shp_geom.wkt
-        if str_geom_wkt[0:4] == "LINE":
-            shp_simplified_line = shp_geom.simplify(flt_tolerance, preserve_topology=False)
-            gdf_segments.at[index, "geometry"] = shp_simplified_line
-        else:
-            # is a multilinestring
-            list_lines = []
-            for shp_line in shp_geom:
-                shp_line_simple = shp_line.simplify(flt_tolerance, preserve_topology=False)
-                list_lines.append(list(shp_line_simple.coords))
-            shp_simplified_line = MultiLineString(list_lines)
-            # TODO - 2021.09.22 - handle the multilinestring - ignored for now
-            # gdf_lines.at[index, 'geometry'] = shp_simplified_line
+        shp_simplified_line = shp_geom.simplify(flt_tolerance, preserve_topology=False)
+        gdf_segments.at[index, "geometry"] = shp_simplified_line
 
     # create merged geometry of all streams
     shply_line = gdf_segments.geometry.unary_union
