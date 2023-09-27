@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 
+import multiprocessing as mp
 import os
 import sys
+import traceback
+#from concurrent import futures
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
-
-sys.path.append("..")
 import boto3
 import botocore.exceptions
 from botocore.client import ClientError
 from tqdm import tqdm
 
-import ras2fim.src.shared_variables as sv
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+import shared_variables as sv
+import shared_functions as sf
 
 
 ####################################################################
@@ -215,15 +220,28 @@ def delete_s3_folder(bucket_name, s3_folder_path, is_verbose):
     except Exception as ex:
         print("-----------------")
         print(f"** Error deleting files at S3: {ex}")
-    raise ex
+        raise ex
 
 
 ####################################################################
-def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_path, is_verbose):
+def copy_file_in_s3(s3_client, bucket_name, src_file_path, target_file_path):
+    """
+    Copy a single file from one folder to another. Assumes same bucket.
+    This is generally used for multi-threading.
+    """
+
+    #print(f"Copying __{src_file_path}")
+    copy_source = {'Bucket': bucket_name, 'Key': src_file_path}
+    s3_client.copy_object(Bucket=bucket_name, CopySource = copy_source, Key = target_file_path)
+
+
+####################################################################
+def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_path):
     """
     Overview:
         To move an S3 folder, we have to copy all of it's objects recursively
-        then delete the original folder objects
+        then delete the original folder objects.
+        S3/boto3 has no "move" specific tools.
 
     Input:
         - bucket_name: e.g mys3bucket_name
@@ -233,79 +251,78 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
     try:
         print("===================================================================")
         print("")
-        print(f"Moving folder from {s3_src_folder_path} to {s3_target_folder_path}")
+        print(f"Moving folder from {s3_src_folder_path}  to  {s3_target_folder_path}")
 
         client = boto3.client("s3")
 
         # use paginator as it can handle more than the 1000 file limit max from list_objects_v2
-        paginator = client.get_paginator("list_objects_v2")
+        paginator = client.get_paginator("list_objects")
         operation_parameters = {"Bucket": bucket_name, "Prefix": s3_src_folder_path}
 
         page_iterator = paginator.paginate(**operation_parameters)
 
-        file_count = len(page_iterator)
+        # Lets run quickly through it once to get a count and a list of src files names
+        # (only take a min or two) but the copying is slower.
+        s3_files = []  # a list of dictionaries (src file path, targ file path)
+        print("Loading existing files... standby (~1 to 2 mins)")
+        for page in page_iterator:
+            if "Contents" in page:
+                for key in page["Contents"]:
+                    if key['Size'] != 0:
+                        src_file_path = key["Key"]
+                        target_file_path = src_file_path.replace(s3_src_folder_path, s3_target_folder_path, 1)
+                        item = {
+                            's3_client': client,
+                            'bucket_name': bucket_name,
+                            'src_file_path': src_file_path,
+                            'target_file_path': target_file_path
+                        }
+                        # adds a dict to the list
+                        s3_files.append(item)
+                    #pbar.update(1)
+        print(f"Number of files to be copied is {len(s3_files)}")
 
-        with tqdm(
-            total=file_count,
-            desc=f"Moving {file_count} files in S3",
-            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
-            ncols=80,
-            disable=is_verbose,
-        ) as pbar:
-            for page in page_iterator:
-                print(page["Contents"])
-                if "Contents" in page:
-                    for key in page["Contents"]:
-                        keyString = key["Key"]
-                        print(keyString)
-                        pbar.update(1)
-
-        """
         # If the bucket is incorrect, it will throw an exception that already makes sense
-        s3_src_objs = client.list_objects_v2(Bucket=bucket_name, Prefix=s3_src_folder_path)
+        #s3_src_objs = client.list_objects_v2(Bucket=bucket_name, Prefix=s3_src_folder_path)
         
-        if s3_src_objs["KeyCount"] == 0:
+        if len(s3_files) == 0:
             print(f"No files in source folder of {s3_src_folder_path}. Move invalid.")
             return
         
-        source_key = s3_src_objs["Contents"][0]["Key"]
+        # As we are threading, we can add more than one thread per proc, but for calc purposes
+        # and to not overload the systems or internet pipe, so it is hardcoded at 20
+        num_workers = 20
 
-        copy_source = {'Bucket': bucket_name, 'Key': s3_src_folder_path}
+        # copy the files first
+        #session = boto3.client("s3")
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
 
-        client.copy_object(Bucket = bucket_name, CopySource = copy_source, Key = old_key_name + your_destination_file_name)
+            executor_dict = {}
 
-        # s3 doesn't really use folder names, it jsut makes a key with a long name with slashs
-        # in it.
-        for folder_name_key in s3_src_objs.get("CommonPrefixes"):
-            # comes in like this: output_ras2fim/12090301_2277_230811/
-            # strip of the prefix and last slash so we have straight folder names
-            key = folder_name_key["Prefix"]
+            for copy_file_args in s3_files:
+                #print(f"__ copy_file_args src is {copy_file_args['src_file_path']}")
 
-            if is_verbose is True:
-                print("--------------------")
-                print(f"key is {key}")
+                try:
+                    future = executor.submit(copy_file_in_s3, **copy_file_args)
+                    executor_dict[future] = copy_file_args['src_file_path']
+                except Exception as tp_ex:
+                    print(f"*** {tp_ex}")
+                    traceback.print_exc()
+                    sys.exit(1)                    
 
-            # strip to the final folder names (but first occurance of the prefix only)
-            key_child_folder = key.replace(sv.S3_OUTPUT_RAS2FIM_FOLDER, "", 1)
-
-            # We easily could get extra folders that are not huc folders, but we will purge them
-            # if it is valid key, add it to a list. Returns a dict.
-            # If it does not match a pattern we want, the first element of the tuple will be
-            # the word error, but we don't care. We only want valid huc_crs_date pattern folders.
-            existing_dic = s3_sf.parse_huc_crs_folder_name(key_child_folder)
-            if 'error' in existing_dic: # if error exists, just skip this one
-                continue
-
-            # see if the huc and crs it matches the incoming huc number and crs
-            if (existing_dic['key_huc'] == src_name_dict['key_huc']) and (
-                existing_dic['key_crs_number'] == src_name_dict['key_crs_number']
-            ):
-                s3_huc_crs_folder_names.append(key_child_folder)
-
-        if is_verbose is True:
-            print("huc_crs folders found are ...")
-            print(s3_huc_crs_folder_names)
             """
+            for future in futures.as_completed(executor_dict):
+                key = future_to_key[future]
+                exception = future.exception()
+
+                if not exception:
+                    yield key, future.result()
+                else:
+                    yield key, exception
+            """
+
+            sf.progress_bar_handler(executor_dict, True, f"Copying files with {num_workers} workers")
+
 
     except botocore.exceptions.NoCredentialsError:
         print("-----------------")

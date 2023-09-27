@@ -674,7 +674,7 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
         print("Compute HEC-RAS Models: " + str(len(list_models_to_compute)))
 
         # create a pool of processors
-        num_processors = mp.cpu_count() - 1
+        num_processors = mp.cpu_count() - 2
         p = Pool(processes=num_processors)
 
         # multi-process the HEC-RAS calculation of these models

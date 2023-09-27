@@ -177,7 +177,7 @@ def fn_create_fim_rasters(
         df_streams_merge_2.at[index, "settings"] = tpl_input
 
     # create a pool of processors
-    num_processors = mp.cpu_count() - 1
+    num_processors = mp.cpu_count() - 2
     with Pool(processes=num_processors) as executor:
         df_huc12 = gpd.read_file(str_huc12_area_shp)
         int_huc12_index = 0

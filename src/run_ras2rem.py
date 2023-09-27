@@ -141,7 +141,7 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
     for rem_value in rem_values:
         rem_info_arguments.append((rem_value, r2f_simplified_grids_dir, r2f_ras2rem_dir))
 
-    num_processors = mp.cpu_count() - 1
+    num_processors = mp.cpu_count() - 2
     with Pool(processes=num_processors) as executor:
         # pool = Pool(processes = num_processors)
         list(

@@ -10,11 +10,11 @@ import boto3
 import pandas as pd
 
 
-sys.path.append("..")
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import s3_shared_functions as s3_sf
 
-import ras2fim.src.shared_functions as sf
-import ras2fim.src.shared_variables as sv
+import shared_functions as sf
+import shared_variables as sv
 
 
 """
@@ -53,31 +53,32 @@ Overall logic flow:
 
 """
 
-TRACKER_ACTIONS = ["initial_load", "moved_to_arch", "overwriting_prev", "staight_to_arch"]
+TRACKER_ACTIONS = ["initial_load", "moved_to_arch", "overwriting_prev", "straight_to_arch"]
 
 
 ####################################################################
-def save_output_to_s3(src_path_to_huc_crs_output_dir, s3_bucket_name, is_verbose):
+def ras_to_s3(src_huc_output_dir_path, s3_bucket_name, is_verbose):
+    # 
     start_time = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
     print("")
     print("=================================================================")
     print("          RUN ras2fim_to_s3 ")
-    print(f" (-s): Source huc/crs folder {src_path_to_huc_crs_output_dir} ")
+    print(f" (-s): Source huc/crs folder {src_huc_output_dir_path} ")
     print(f" (-b): s3 bucket name {s3_bucket_name}")
-    print(f" Saving HUC/CRS output folder to S3 start: {dt_string} (UTC time) ")
+    print(f" Saving HUC output folder to S3 start: {dt_string} (UTC time) ")
     print("=================================================================")
 
     # --------------------
     # validate input variables and setup key variables
-    varibles_dict = __validate_input(src_path_to_huc_crs_output_dir, s3_bucket_name)
+    varibles_dict = __validate_input(src_huc_output_dir_path, s3_bucket_name)
 
     # why have this come in from variables_dict? the src_path_to_huc_crs_output_dir can come in not
     # fully pathed, just the huc/crs folder in the default folder path
-    src_path = varibles_dict["src_huc_crs_full_path"]
+    src_path = varibles_dict["src_huc_full_path"]
     # eg. c:\ras2fim_data\output_ras2fim\12030202_102739_230810
-    huc_crs_folder_name = varibles_dict["src_huc_crs_dir"]
+    huc_crs_folder_name = varibles_dict["src_huc_dir"]
     # eg. 12030202_102739_230810
     s3_full_output_path = varibles_dict["s3_full_output_path"]
     # e.g. s3://xyz/output_ras2fim
@@ -91,8 +92,7 @@ def save_output_to_s3(src_path_to_huc_crs_output_dir, s3_bucket_name, is_verbose
     print("")
     print(f" --- s3 folder target path is {s3_full_huc_crs_path}")
     print(f" --- S3 archive folder path (if applicable) is {s3_full_archive_path}")
-    print(f" --- source huc_crs_full_path is {src_path}")
-    print("===================================================================")
+    print(f" --- source huc path is {src_path}")
     print("")
 
     # --------------------
@@ -100,7 +100,7 @@ def save_output_to_s3(src_path_to_huc_crs_output_dir, s3_bucket_name, is_verbose
     # Depending on what we find will tell us where to uploading the incoming folder
     # and what to do with pre-existing if there are any pre-existing folders
     # matching the huc/crs.
-    __upload_to_ras2fim_s3(s3_bucket_name, src_path, huc_crs_folder_name, is_verbose)
+    __process_upload(s3_bucket_name, src_path, huc_crs_folder_name, is_verbose)
 
     # --------------------
     print()
@@ -117,7 +117,7 @@ def save_output_to_s3(src_path_to_huc_crs_output_dir, s3_bucket_name, is_verbose
 
 
 ####################################################################
-def __upload_to_ras2fim_s3(bucket_name, src_path, huc_crs_folder_name, is_verbose):
+def __process_upload(bucket_name, src_path, huc_crs_folder_name, is_verbose):
     """
     Processing Steps:
       - Load all first level folder names from that folder. ie) output_ras2fim
@@ -146,12 +146,12 @@ def __upload_to_ras2fim_s3(bucket_name, src_path, huc_crs_folder_name, is_verbos
     """
 
     print("===================================================================")
-    print("Checking existing s3 folders for folders starting with same huc number" " and crs value")
+    print("Checking existing s3 folders for folders starting with same huc number and crs value")
     print("")
     print(
-        "** NOTE: The intention is that only one HUC/CRS output folder, usually the most current,"
+        "-- The intention is that only one HUC/CRS output folder, usually the most current,"
         " is kept in the offical output_ras2fim folder. All HUC/CRS folders in the s3 output_ras2fim"
-        "  folder will be included for ras2releases, and duplicate HUC/CRS foldes are likely undesirable."
+        " folder will be included for ras2releases, and duplicate HUC/CRS folders are likely undesirable."
     )
     print("")
 
@@ -168,19 +168,16 @@ def __upload_to_ras2fim_s3(bucket_name, src_path, huc_crs_folder_name, is_verbos
     # than one... something went wrong or someone loaded one directly.
     s3_huc_crs_folder_names = __get_s3_huc_crs_folder_list(bucket_name, src_name_dict, is_verbose)
 
-    if len(s3_huc_crs_folder_names) > 1:
+    if len(s3_huc_crs_folder_names) > 0:
         s3_huc_crs_folder_names.sort()
 
-        print("*********************")
-        print("*** NOTE  ")
+        print("+++++++++++++++++++++++++")
+        print("")
         print(
             "We have detected one or more existing s3 folders with the same HUC and CRS "
-            f"as the new incoming folder name of {huc_crs_folder_name}) at "
-            f"s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_FOLDER}).\n\n"
-            "Sets of questions will be asked by the program comparing the incoming folder name with each "
-            "of the pre-existing folder names, each one at a time."
+            f"as the new incoming folder name of {huc_crs_folder_name} at "
+            f"s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_FOLDER}."
         )
-        print("*********************")
 
         # ---------------
         # Figure out the action (by asking the user)
@@ -210,43 +207,32 @@ def __upload_to_ras2fim_s3(bucket_name, src_path, huc_crs_folder_name, is_verbos
                 action = __ask_user_about_different_date_folder_name(
                     huc_crs_folder_name,
                     bucket_name,
-                    s3_existing_folder_name,
-                    existing_name_dict["key_date_as_str"],
+                    existing_name_dict["huc_crs_folder_name"],
                     is_existing_older,
                 )
 
             # --------------------------
             # Now process the action  (aka we start the uploads to S3 and changes in S3)
-            if action == "overwrite":  # overwrite the pre-existing same named folder with the incoming
+            if action == TRACKER_ACTIONS[2]:  # overwrite the pre-existing same named folder with the incoming
                 #  version, we need to delete the original folder so we don't leave junk it int.
                 __overwrite_s3_existing_folder(
                     src_path, bucket_name, src_name_dict["huc_crs_folder_name"], is_verbose
                 )
 
-            elif action == "archive" or action == "existing":
-                # The words "archive" and "existing" are interchangeable in relations
-                # to process, but differnt words and phrases for the end user's choices.
-                # The two words are used differently in different contexts.
-                # Either way and older folder will be moved to archive and the new one uploaded
+            elif action == TRACKER_ACTIONS[1]: # moved_to_arch
+                # existing moved to archive, new one to output
 
                 # We will change the name to add on "_BK_yymmdd_hhmm".
                 #  eg) s3://xyz/output_ras2fim_archive/12030105_2276_230810_BK_230825_1406
                 # On the super rare that it was updated in the exact date hr and min, just overwrite it
 
-                # ----------------------
-                # Steps:
-                #     1) Move the existing folder to the archive folder, renaming at as it goes.
-                #
-                #     2) Upload the new incoming folder to outputs_ras2fim
-
-                # Step 1:
                 new_s3_folder_name = __adjust_folder_name_for_archive(s3_existing_folder_name)
 
-                __move_s3_folder_to_archive(
-                    bucket_name, src_path, huc_crs_folder_name, new_s3_folder_name, is_verbose
-                )
+                # move existing to archive
+                __move_s3_folder_to_archive(bucket_name, src_path, s3_existing_folder_name, new_s3_folder_name)
 
-                # Step 2:
+                # move new one to output
+                """
                 __upload_s3_folder(
                     bucket_name,
                     src_path,
@@ -256,22 +242,20 @@ def __upload_to_ras2fim_s3(bucket_name, src_path, huc_crs_folder_name, is_verbos
                     huc_crs_folder_name,
                     is_verbose,
                 )
+                """
 
-            elif action == "incoming":  # then upload the incoming straight to archive
-                # This option was allowed as the system might find a record that is newer already
-                # existing in the current output_ras2fim. If this happens, the user will be asked
-                # if they want to keep the newer one in output_ras2fim and upload the incoming
-                # straight to archive (or abort)
+            elif action == TRACKER_ACTIONS[3]: # straight_to_arch
 
                 new_s3_folder_name = __adjust_folder_name_for_archive(huc_crs_folder_name)
 
+                # new incoming goes straight to archive
                 __upload_s3_folder(
                     bucket_name,
                     src_path,
                     huc_crs_folder_name,
                     TRACKER_ACTIONS[3],
-                    sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER,
-                    new_s3_folder_name,
+                    sv.S3_OUTPUT_RAS2FIM_FOLDER,
+                    huc_crs_folder_name,
                     is_verbose,
                 )
 
@@ -280,15 +264,117 @@ def __upload_to_ras2fim_s3(bucket_name, src_path, huc_crs_folder_name, is_verbos
 
     else:
         # folder with the same huc_crs doesn't exist and we can load to the output folder
-        """
         __upload_s3_folder(bucket_name,
-                            src_path,
-                            huc_crs_folder_name,
-                            TRACKER_ACTIONS[0],
-                            sv.S3_OUTPUT_RAS2FIM_FOLDER,
-                            huc_crs_folder_name,
-                            is_verbose)
-        """
+                        src_path,
+                        huc_crs_folder_name,
+                        TRACKER_ACTIONS[0],
+                        sv.S3_OUTPUT_RAS2FIM_FOLDER,
+                        huc_crs_folder_name,
+                        is_verbose)
+
+
+####################################################################
+# Note: There is enough differnce that I wanted a seperate function for this scenario
+def __ask_user_about_dup_folder_name(huc_crs_folder_name, bucket_name):
+    print()
+    print("*********************")
+
+    msg = (
+        f"You are wanting to upload a folder using the huc/crs of {huc_crs_folder_name}. "
+        "However, a folder of the exact same name already exists at"
+        f" s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_FOLDER}.\n"
+        "Ensure that other staff has not uploaded the same huc/crs combination including same date.\n\n"
+        "   -- Type 'overwrite' if you want to overwrite the current folder.\n"
+        "           Note: If you overwrite an existing folder, the s3 version will be deleted first,\n"
+        "           then the new incoming folder will be loaded.\n"
+        "   -- Type 'archive' if you want to move the existing folder in to the archive folder.\n "
+        "   -- Type 'abort' to stop the program.\n"
+        "  ?="
+    )
+
+    resp = input(msg).lower()
+    if (resp) == "abort":
+        print(f"\n.. You have selected {resp}. Program stopped.\n")
+        sys.exit(0)
+    elif (resp) == "overwrite":
+        action = TRACKER_ACTIONS[2]  # overwriting_prev        
+        print(f"\n.. You have selected {resp}. Folder will be overwritten.\n")
+
+    elif (resp) == "archive":
+        action = TRACKER_ACTIONS[1]  # moved_to_arch        
+        print(
+            f"\n.. You have selected {resp}. Existing folder will be moved to "
+            f"s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER}.\n"
+        )
+
+    else:
+        print(f"\n.. You have entered an invalid value of '{resp}'. Program stopped.\n")
+        sys.exit(0)
+
+    return action
+
+
+####################################################################
+# Note: There is enough differnce that I wanted a seperate function for this scenario
+def __ask_user_about_different_date_folder_name(
+    src_huc_crs_folder_name, bucket_name, existing_folder_name, is_existing_older
+):
+    # is_existing_older = True means existing migth be 230814, but target is 230722)
+    # is_existing_older = False means existing migth be 221103, but target is 230816)
+    # if the dates are the same, we handle it in a different function (enough differences)
+
+    print()
+    print("*********************")
+
+    msg = (
+        f"You are attempting to upload a folder using the huc/crs of {src_huc_crs_folder_name}."
+        " However, a folder of the starting with the same huc and crs already exists as "
+        f"s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_FOLDER}/{existing_folder_name}.\n"
+    )
+
+    if is_existing_older is True:
+        msg += "The incoming folder has an older date than the existing folder.\n\n"
+    else:
+        msg += "The incoming folder has a newer date than the existing folder.\n\n"
+
+    msg += (
+        f"Only one can remain in the {sv.S3_OUTPUT_RAS2FIM_FOLDER} folder, the other can be moved"
+        " to the archive folder.\n\n"
+        "... Which of the two do you want to move to archive?\n"
+    )
+    msg += (
+        "   -- Type 'incoming' to upload the incoming folder"
+        " straight to archive and keep the existing in outputs\n"
+        "   -- Type 'existing' to move the existing one to the archive folder and"
+        " upload the incoming folder to outputs.\n"
+        "   -- Type 'abort' to stop the program.\n"
+        "  ?="
+    )
+
+    resp = input(msg).lower()
+    if resp == "abort":
+        print(f"\n.. You have selected {resp}. Program stopped.\n")
+        sys.exit(0)
+
+    elif resp == "incoming":
+        action = TRACKER_ACTIONS[3] # incoming straight_to_arch        
+        print(
+            f"\n.. You have selected {resp}. The new incoming folder will be uploaded directly to the"
+            f" archive folder at s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER}.\n"
+        )
+
+    elif resp == "existing":
+        action = TRACKER_ACTIONS[1] # existing moved_to_arch        
+        print(
+            f"\n.. You have selected {resp}. The pre-existing folder will be moved to the archive folder at"
+            f" s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER}.\n"
+        )
+
+    else:
+        print(f"\n.. You have entered an invalid value of '{resp}'. Program stopped.\n")
+        sys.exit(0)
+
+    return action
 
 
 ####################################################################
@@ -337,6 +423,7 @@ def __move_s3_folder_to_archive(bucket_name, src_path, orig_folder_name, target_
 
     s3_sf.move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_path, is_verbose)
 
+    # TRACKER_ACTIONS[1] = moved_to_arch
     __add_record_to_tracker(
         bucket_name,
         src_path,
@@ -377,6 +464,7 @@ def __overwrite_s3_existing_folder(src_path, bucket_name, huc_crs_folder_name, i
         src_path, bucket_name, sv.S3_OUTPUT_RAS2FIM_FOLDER, huc_crs_folder_name, is_verbose
     )
 
+    # TRACKER_ACTIONS[2] = overwriting_prev
     __add_record_to_tracker(
         bucket_name,
         src_path,
@@ -400,121 +488,15 @@ def __adjust_folder_name_for_archive(folder_name):
     # all UTC
     # Why rename it for the archive folder? we can't have dup folder names
 
-    cur_date = sf.get_stnd_date(True)  # eg. 230825  (in UTC)
-    cur_time = datetime.utcnow().strftime("%H%m")  # eg  2315  (11:15 pm) (in UTC)
+    if folder_name.endswith("/"):
+        folder_name = folder_name[:-1]
+
+    cur_date = sf.get_stnd_date()  # eg. 230825  (in UTC)
+    cur_time = dt.datetime.utcnow().strftime("%H%m")  # eg  2315  (11:15 pm) (in UTC)
     new_s3_folder_name = f"{folder_name}_BK_{cur_date}_{cur_time}"
 
     return new_s3_folder_name
 
-
-####################################################################
-# Note: There is enough differnce that I wanted a seperate function for this scenario
-def __ask_user_about_dup_folder_name(huc_crs_folder_name, bucket_name):
-    print()
-    print("*********************")
-
-    msg = (
-        f"You are wanting to upload a folder using the huc/crs of {huc_crs_folder_name}. "
-        "However, a folder of the same name already exists at"
-        f" s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_FOLDER}.\n"
-        "Ensure that other staff has not uploaded the same huc/crs combination today. \n\n"
-        "   -- Type 'overwrite' if you want to overwrite the current folder.\n"
-        "           Note: if you overwrite an existing folder, the s3 version will be deleted first,\n"
-        "           then the new incoming will be loaded.\n\n"
-        "   -- Type 'archive' if you want to move the existing folder in to the archive folder.\n "
-        "   -- Type 'abort' to stop the program.\n"
-        ">>"
-    )
-
-    action = input(msg).lower()
-    if (action) == "abort":
-        print()
-        print(f".. You have selected {action}. Program stopped.")
-        print()
-        sys.exit(0)
-    elif (action) == "overwrite":
-        print()
-        print(f".. You have selected {action}. Folder will be overwritten.")
-        print()
-    elif (action) == "archive":
-        print()
-        print(
-            f".. You have selected {action}. Existing folder will be moved to "
-            f"s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER}."
-        )
-        print()
-    else:
-        print()
-        print(f".. You have entered an invalid value of '{action}'. Program stopped.")
-        print()
-        sys.exit(0)
-
-    return action
-
-
-####################################################################
-# Note: There is enough differnce that I wanted a seperate function for this scenario
-def __ask_user_about_different_date_folder_name(
-    src_huc_crs_folder_name, bucket_name, existing_folder_name, is_existing_older
-):
-    # is_existing_older = True means existing migth be 230814, but target is 230722)
-    # is_existing_older = False means existing migth be 221103, but target is 230816)
-    # if the dates are the same, we handle it in a different function (enough differences)
-
-    print()
-    print("*********************")
-
-    msg = (
-        f"You are wanting to upload a folder using the huc/crs of {src_huc_crs_folder_name}. "
-        "However, a folder of the starting with the same huc and crs already exists as "
-        f"s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_FOLDER}/{existing_folder_name}.\n"
-    )
-
-    if is_existing_older is True:
-        msg += "The incoming folder has an older date then the existing folder.\n\n"
-    else:
-        msg += "The incoming folder has an newer date then the existing folder.\n\n"
-
-    msg += (
-        f"Only one can remain in the {sv.S3_OUTPUT_RAS2FIM_FOLDER} folder, the other can be moved "
-        "to the archive folder.\n\n"
-        "... Which of the two do you want to move to archive?\n"
-    )
-    msg += (
-        "   -- Type 'existing' to keep the existing and put the incoming folder straight to archive.\n "
-        "   -- Type 'incoming' to keep the new incoming folder and move the existing one to "
-        "      to the archive folder.\n\n"
-        "   -- Type 'abort' to stop the program.\n"
-        ">>"
-    )
-
-    action = input(msg).lower()
-    if (action) == "abort":
-        print()
-        print(f".. You have selected {action}. Program stopped.")
-        print()
-        sys.exit(0)
-    elif (action) == "incoming":
-        print()
-        print(
-            f".. You have selected {action}. The new incoming folder will be moved to the archive folder at"
-            f" s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER}."
-        )
-        print()
-    elif (action) == "existing":
-        print()
-        print(
-            f".. You have selected {action}. The pre-existing folder will be moved to the archive folder at"
-            f" s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER}."
-        )
-        print()
-    else:
-        print()
-        print(f".. You have entered an invalid value of '{action}'. Program stopped.")
-        print()
-        sys.exit(0)
-
-    return action
 
 
 ####################################################################
@@ -570,6 +552,14 @@ def __get_s3_huc_crs_folder_list(bucket_name, src_name_dict, is_verbose):
             # strip to the final folder names (but first occurance of the prefix only)
             key_child_folder = key.replace(sv.S3_OUTPUT_RAS2FIM_FOLDER, "", 1)
 
+            # strip off last folder slash (might be more than one in middle)
+            if key_child_folder.endswith("/"):
+                key_child_folder = key_child_folder[:-1]
+
+            # strip off last folder slash (might be more than one in middle)
+            if key_child_folder.startswith("/"):
+                key_child_folder = key_child_folder[1:]
+
             # We easily could get extra folders that are not huc folders, but we will purge them
             # if it is valid key, add it to a list. Returns a dict.
             # If it does not match a pattern we want, the first element of the tuple will be
@@ -600,7 +590,7 @@ def __get_s3_huc_crs_folder_list(bucket_name, src_name_dict, is_verbose):
 
 ####################################################################
 def __add_record_to_tracker(
-    bucket_name, src_huc_crs_full_path, orig_folder_name, cur_action, cur_folder_name, s3_folder, is_verbose
+    bucket_name, src_huc_full_path, orig_folder_name, cur_action, cur_folder_name, s3_folder, is_verbose
 ):
     """
     Overview:
@@ -614,7 +604,7 @@ def __add_record_to_tracker(
 
     Inputs:
         - bucket_name
-        - src_huc_crs_full_path: local folder of the huc_crs dir being saved up to s3.
+        - src_huc_full_path: local folder of the huc_crs dir being saved up to s3.
         - orig_folder_name:  eg. 12090301_2276_230815
         - cur_action: initial_load, moved_to_arch, overwriting_prev  (see TRACKER_ACTIONS)
         - cur_folder_name: When folders go to the archive directory, it gets a date and time stamp
@@ -659,7 +649,7 @@ def __add_record_to_tracker(
         new_rec["CRS"] = str(huc_crs_folder_dict["key_crs_number"])
         new_rec["orig_folder_name"] = orig_folder_name
 
-        dt_stamp = datetime.utcnow().strftime("%m-%d-%Y %H:%M:%S")
+        dt_stamp = dt.datetime.utcnow().strftime("%m-%d-%Y %H:%M:%S")
         new_rec["dt_action"] = dt_stamp
         new_rec["action"] = cur_action
         new_rec["cur_folder_name"] = cur_folder_name
@@ -672,7 +662,7 @@ def __add_record_to_tracker(
 
         # we need to save it temporarily so we will put it in the source huc_crs folder
         # then delete it once it gets to s3.
-        df_tracker_local_path = os.path.join(src_huc_crs_full_path, sv.S3_OUTPUT_TRACKER_FILE)
+        df_tracker_local_path = os.path.join(src_huc_full_path, sv.S3_OUTPUT_TRACKER_FILE)
 
         if is_verbose is True:
             print(f"Saving tracker file to {df_tracker_local_path}")
@@ -711,7 +701,7 @@ def __add_record_to_tracker(
             "\n\nAll applicable files and folder have been loaded to S3, but"
             f" there was a problem updating the {sv.S3_OUTPUT_TRACKER_FILE} file."
             " Depending where the error occurred for updating the tracker file,"
-            f" there may be an updated copy in your {src_huc_crs_full_path} folder.\n\n"
+            f" there may be an updated copy in your {src_huc_full_path} folder.\n\n"
             " Please download the tracker file from S3, make any applicable edits,"
             " and save it back to S3 as quick as reasonably possible.\n\n"
             " Please do not simply re-run this script as it will make duplicate copies"
@@ -757,25 +747,25 @@ def __validate_input(src_path_to_huc_crs_output_dir, s3_bucket_name):
     src_path_segs = src_path_to_huc_crs_output_dir.split("\\")
     # We need the source huc_crs folder name for later and the full path
     if len(src_path_segs) == 1:
-        rtn_varibles_dict["src_huc_crs_dir"] = src_path_segs[0]
-        huc_crs_parent_dir = sv.R2F_DEFAULT_OUTPUT_MODELS
-        rtn_varibles_dict["src_huc_crs_full_path"] = os.path.join(
-            huc_crs_parent_dir, rtn_varibles_dict["src_huc_crs_dir"]
+        rtn_varibles_dict["src_huc_dir"] = src_path_segs[0]
+
+        rtn_varibles_dict["src_huc_full_path"] = os.path.join(
+            sv.R2F_DEFAULT_OUTPUT_MODELS, rtn_varibles_dict["src_huc_dir"]
         )
     else:
-        rtn_varibles_dict["src_huc_crs_dir"] = src_path_segs[-1]
+        rtn_varibles_dict["src_huc_dir"] = src_path_segs[-1]
         # strip of the parent path
-        rtn_varibles_dict["src_huc_crs_full_path"] = src_path_to_huc_crs_output_dir
+        rtn_varibles_dict["src_huc_full_path"] = src_path_to_huc_crs_output_dir
 
-    if not os.path.exists(rtn_varibles_dict["src_huc_crs_full_path"]):
-        raise ValueError(f"Source HUC/CRS folder not found at {rtn_varibles_dict['src_huc_crs_full_path']}")
+    if not os.path.exists(rtn_varibles_dict["src_huc_full_path"]):
+        raise ValueError(f"Source HUC folder not found at {rtn_varibles_dict['src_huc_full_path']}")
 
     # --------------------
     # make sure it has a "final" folder and has some contents
-    final_dir = os.path.join(rtn_varibles_dict["src_huc_crs_full_path"], sv.R2F_OUTPUT_DIR_FINAL)
+    final_dir = os.path.join(rtn_varibles_dict["src_huc_full_path"], sv.R2F_OUTPUT_DIR_FINAL)
     if not os.path.exists(final_dir):
         raise ValueError(
-            f"Source HUC/CRS 'final folder' not found at {final_dir}."
+            f"Source HUC 'final folder' not found at {final_dir}."
             " Ensure ras2fim has been run to completion."
         )
 
@@ -783,37 +773,37 @@ def __validate_input(src_path_to_huc_crs_output_dir, s3_bucket_name):
     file_count = len(os.listdir(final_dir))
     if file_count == 0:
         raise ValueError(
-            f"Source HUC/CRS 'final folder' at {final_dir}" " does not appear to have any files or folders."
+            f"Source HUC 'final folder' at {final_dir}" " does not appear to have any files or folders."
         )
 
     # --------------------
     # check ras2fim output bucket exists
 
     print()
-    print(f"Validating that the s3 bucket of {s3_bucket_name} exists")
+    msg = f"Validating that the s3 bucket of {s3_bucket_name} exists"
     if s3_sf.does_s3_bucket_exist(s3_bucket_name) is False:
-        raise ValueError(f"{s3_bucket_name} does not exist")
+        raise ValueError(f"{msg} ... does not exist")
     else:
-        print(".... found")
+        print(f"{msg} ... found")
 
     # --------------------
-    # check ras2fim bucket folder
+    # check ras2fim output folder exists
     s3_full_output_path = f"s3://{s3_bucket_name}/{sv.S3_OUTPUT_RAS2FIM_FOLDER}"
-    print()
-    print(f"Validating S3 output folder of {s3_full_output_path}")
-
-    # it will throw an error if it does not exist
-    s3_sf.is_valid_s3_folder(s3_full_output_path)  # don't care about return values here
-    print(".... found")
-    rtn_varibles_dict["s3_full_output_path"] = s3_full_output_path
+    msg = f"Validating that the S3 output folder of {s3_full_output_path} exists"
+    if s3_sf.is_valid_s3_folder(s3_full_output_path) is False:
+        raise ValueError(f"{msg} ... does not exist")
+    else:
+        print(f"{msg} ... found")
+    rtn_varibles_dict["s3_full_output_path"] = s3_full_output_path    
 
     # --------------------
-    # check ras2fim archive bucket folder
+    # check ras2fim archive folder exists
     s3_full_archive_path = f"s3://{s3_bucket_name}/{sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER}"
-    print()
-    print(f"Validating S3 archive folder of {s3_full_archive_path}")
-    s3_sf.is_valid_s3_folder(s3_full_archive_path)  # don't care about return values here
-    print(".... found")
+    msg = f"Validating that the S3 archive folder of {s3_full_archive_path} exists"
+    if s3_sf.is_valid_s3_folder(s3_full_archive_path) is False:
+        raise ValueError(f"{msg} ... does not exist")
+    else:
+        print(f"{msg} ... found")
     rtn_varibles_dict["s3_full_archive_path"] = s3_full_archive_path
 
     return rtn_varibles_dict
@@ -835,16 +825,16 @@ if __name__ == "__main__":
     # The folder name from the source folder (not path) will automatically becomes the s3 folder name.
 
     parser = argparse.ArgumentParser(
-        description="Saving ras2fim HUC/CRS output folders back to S3",
+        description="Saving ras2fim HUC output folders back to S3",
         formatter_class=argparse.RawTextHelpFormatter,
     )
 
     parser.add_argument(
         "-s",
-        "--src_path_to_huc_crs_output_dir",
+        "--src_huc_output_dir_path",
         help="REQUIRED: Can be used in two ways:\n"
-        "1) Add just the output huc_crs folder name (assumed default pathing)\n"
-        "2) A full defined path including output huc_crs folder\n"
+        "1) Add just the output huc folder name (assumed default pathing)\n"
+        "2) A full defined path including output huc folder\n"
         " ie) c:\my_ras\output\\12030202_102739_230810\n"
         "  or just 12030202_102739_230810",
         required=True,
@@ -873,4 +863,4 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    save_output_to_s3(**args)
+    ras_to_s3(**args)

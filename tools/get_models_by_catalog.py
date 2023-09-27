@@ -12,9 +12,10 @@ import traceback
 import pandas as pd
 import s3fs
 
-sys.path.append("..")
-import ras2fim.src.shared_validators as val
-import ras2fim.src.shared_variables as sv
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+import shared_validators as val
+import shared_variables as sv
 
 
 """
@@ -138,6 +139,7 @@ class Get_Models_By_Catalog:
         dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
         self.lprint("****************************************")
         self.lprint(f"Get ras models folders from s3 started: {dt_string}")
+        self.lprint(f" ... HUC: {huc_number} ; CRS: {projection} ...")
 
         # ----------
         # Validate inputs
@@ -149,6 +151,12 @@ class Get_Models_By_Catalog:
             target_owp_ras_models_csv_file,
             list_only,
         )
+
+        self.lprint(f"Source download path for models is {self.src_owp_model_folder_path}")
+        self.lprint(f"Target file name and path for the filtered csv is {self.target_filtered_csv_path}")
+        self.lprint(f"Target path for models is {self.target_owp_ras_models_path}")
+        self.lprint("")
+
 
         self.list_only = list_only
         self.is_verbose = is_verbose
@@ -311,7 +319,7 @@ class Get_Models_By_Catalog:
         self.huc_number = huc_number
 
         # ---------------
-        crs_number, is_valid, err_msg = val.is_valid_crs(projection)  # I don't need the crs_number for now
+        is_valid, err_msg, crs_number = val.is_valid_crs(projection)  # I don't need the crs_number for now
         if is_valid is False:
             raise ValueError(err_msg)
 
@@ -368,10 +376,6 @@ class Get_Models_By_Catalog:
         target_owp_ras_models_path_parent = os.path.dirname(target_owp_ras_models_path)
         self.log_folder_path = os.path.join(target_owp_ras_models_path_parent, "logs")
 
-        self.lprint(f"Source download path for models is {self.src_owp_model_folder_path}")
-        self.lprint(f"Target file name and path for the filtered csv is {self.target_filtered_csv_path}")
-        self.lprint(f"Target path for models is {self.target_owp_ras_models_path}")
-        self.lprint("")
 
     # -------------------------------------------------
     def download_files(self, folder_list):

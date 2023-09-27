@@ -500,8 +500,6 @@ def make_catchments(
 
     print("Getting maxment files")
 
-    num_processors = mp.cpu_count() - 1
-
     # Create a list of lists with the mxmt args for the multi-proc
     mxmts_args = []
     for feature_id in all_feature_ids:
@@ -509,6 +507,7 @@ def make_catchments(
 
     rasters_paths_to_mosaic = []
 
+    num_processors = mp.cpu_count() - 2
     with Pool(processes=num_processors) as executor:
         rasters_paths_to_mosaic = list(
             tqdm.tqdm(

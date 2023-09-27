@@ -266,7 +266,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
         list_points_aggregate.append(tpl_request)
 
     # create a pool of processors
-    num_processors = mp.cpu_count() - 1
+    num_processors = mp.cpu_count() - 2
     pool = Pool(processes=num_processors)
 
     len_points_agg = len(list_points_aggregate)
@@ -358,7 +358,7 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     list_dataframe_args_snap = df_points_within_buffer.values.tolist()
 
     print("+-----------------------------------------------------------------+")
-    p = mp.Pool(processes=(mp.cpu_count() - 1))
+    p = mp.Pool(processes=(mp.cpu_count() - 2))
 
     list_df_points_projected = list(
         tqdm.tqdm(

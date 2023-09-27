@@ -26,7 +26,7 @@ from errors import ModelUnitError
 
 
 # -------------------------------------------------
-def confirm_models_unit(proj_crs, str_ras_path_arg):
+def confirm_models_unit(proj_crs, input_models_path):
     """
     - calls two other functions to infer units from ras models and -p projection.
     - raises an exception if units do not match.
@@ -35,7 +35,11 @@ def confirm_models_unit(proj_crs, str_ras_path_arg):
 
     unit = None
     try:
-        unit_from_ras = model_unit_from_ras_prj(str_ras_path_arg)
+
+        if os.path.exists(input_models_path) is False: 
+            raise ValueError(f"The path of {input_models_path} can not be found.")
+
+        unit_from_ras = model_unit_from_ras_prj(input_models_path)
         unit_from_crs = model_unit_from_crs(proj_crs)
 
         if unit_from_ras == unit_from_crs:  # if both are the same, return one of them
