@@ -88,12 +88,11 @@ def init_and_run_ras2fim(
     if str_huc8_arg.isnumeric() is False:  # can handle leading zeros
         raise ValueError("the -w flag (HUC8) does not appear to be a HUC8")
 
-
     # -------------------
     # -i  (ie OWP_ras_models\models) (HECRAS models)
     if os.path.exists(input_models_path) is False:
         raise ValueError(f"the -i arg ({input_models_path}) does not appear to be a valid folder.")
-    
+
     # -------------------
     proj_crs = pyproj.CRS.from_string(str_crs_arg)
     model_unit = sf.confirm_models_unit(proj_crs, input_models_path)

@@ -1,26 +1,25 @@
 #!/usr/bin/env python3
 
-import multiprocessing as mp
 import os
 import sys
 import traceback
-#from concurrent import futures
-from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# from concurrent import futures
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 import boto3
 import botocore.exceptions
 from botocore.client import ClientError
-from tqdm import tqdm
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
-import shared_variables as sv
 import shared_functions as sf
+import shared_variables as sv
 
 
 ####################################################################
-def upload_file_to_s3(src_path, bucket_name, s3_folder_path, file_name="", is_verbose=False):
+def upload_file_to_s3(bucket_name, src_path, s3_folder_path, file_name=""):
     """
     Overview:
         This file upload will overwrite an existing file it if already exists. Use caution
@@ -50,18 +49,14 @@ def upload_file_to_s3(src_path, bucket_name, s3_folder_path, file_name="", is_ve
         s3_folder_path = s3_folder_path.replace("//", "/")
 
         s3_full_target_path = f"s3://{bucket_name}/{s3_folder_path}"
-        if is_verbose is True:
-            print(f".. s3 target path is {s3_full_target_path}")
 
         s3_key_path = f"{s3_folder_path}/{s3_file_name}"
 
         client = boto3.client("s3")
 
         with open(src_path, "rb"):
-            # s3.Bucket(bucket_name).put_object(Key=s3_key_path, Body=data)
             client.upload_file(src_path, bucket_name, s3_key_path)
-            if is_verbose is True:
-                print(f".... File uploaded {src_path} as {s3_full_target_path}/{s3_file_name}")
+            print(f".... File uploaded {src_path} as {s3_full_target_path}/{s3_file_name}")
 
     except botocore.exceptions.NoCredentialsError:
         print("-----------------")
@@ -77,79 +72,95 @@ def upload_file_to_s3(src_path, bucket_name, s3_folder_path, file_name="", is_ve
         raise ex
 
 
-####################################################################
-def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, huc_crs_folder_name, is_verbose):
+###################################################################
+def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name):
     """
     Input
         - src_path: e.g c:\ras2fim_data\output_ras2fim\12030202_102739_230810
         - bucket_name: e.g mys3bucket_name
         - s3_folder_path: e.g.  output_ras2fim or output_ras2fim_archive
-        - target_huc_crs_folder_name:  12030105_2276_230810 (slash stripped off the end)
+        - unit_folder_name:  12030105_2276_230810 (slash stripped off the end)
     """
+
+    s3_full_target_path = f"s3://{bucket_name}/{s3_folder_path}/{unit_folder_name}"
 
     print("===================================================================")
     print("")
+    print(f"Uploading folder from {src_path}  to  {s3_full_target_path}")
+    print()
+
+    # nested function
+    def __upload_file(s3_client, bucket_name, src_file_path, target_file_path):
+        with open(src_file_path, "rb"):
+            # s3.Bucket(bucket_name).put_object(Key=s3_key_path, Body=data)
+            s3_client.upload_file(src_file_path, bucket_name, target_file_path)
 
     try:
-        # we are going to walk it twice, once to get a file count, the other for TQDM processing
-        file_count = 0
-        for subdir, dirs, files in os.walk(src_path):
-            file_count += len(files)
-
         client = boto3.client("s3")
 
-        with tqdm(
-            total=file_count,
-            desc=f"Uploading {file_count} files to S3",
-            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
-            ncols=80,
-            disable=is_verbose,
-        ) as pbar:
-            for subdir, dirs, files in os.walk(src_path):
-                for file in files:
-                    # don't let it upload a local copy of the tracker file
-                    # if it happens to exist in the source folder.
-                    if sv.S3_OUTPUT_TRACKER_FILE in file:
-                        pbar.update(1)
-                        continue
+        s3_files = []  # a list of dictionaries (src file path, targ file path)
+        for subdir, dirs, files in os.walk(src_path):
+            for file in files:
+                # don't let it upload a local copy of the tracker file
+                # if it happens to exist in the source folder.
+                if sv.S3_OUTPUT_TRACKER_FILE in file:
+                    continue
 
-                    # print(f".. src file = {file}")
-                    src_file_path = os.path.join(src_path, subdir, file)
-                    if is_verbose is True:
-                        print("-----------------")
-                        print(f".. src file_path = {src_file_path}")
+                # print(f".. src file = {file}")
+                src_file_path = os.path.join(src_path, subdir, file)
+                src_ref_path = subdir.replace(src_path, "")
 
-                    src_ref_path = subdir.replace(src_path, "")
+                # switch the slash
+                src_ref_path = src_ref_path.replace("\\", "/")
+                s3_key_path = f"{s3_folder_path}/{unit_folder_name}/{src_ref_path}/{file}"
+                # safety feature in case we have more than one foreward slash as that can
+                # be a mess in S3 (it will honor all slashs)
+                s3_key_path = s3_key_path.replace("//", "/")
 
-                    # switch the slash
-                    src_ref_path = src_ref_path.replace("\\", "/")
-                    # s3_key_path = s3_folder_path + src_ref_path + '/' + file
-                    s3_key_path = f"{s3_folder_path}/{huc_crs_folder_name}/{src_ref_path}/{file}"
-                    # safety feature in case we have more than one foreward slash as that can
-                    # be a mess in S3 (it will honor all slashs)
-                    s3_key_path = s3_key_path.replace("//", "/")
+                item = {
+                    's3_client': client,
+                    'bucket_name': bucket_name,
+                    'src_file_path': src_file_path,
+                    'target_file_path': s3_key_path,
+                }
+                # adds a dict to the list
+                s3_files.append(item)
 
-                    s3_full_target_path = f"s3://{bucket_name}/{s3_key_path}"
-                    if is_verbose is True:
-                        print(f".. s3 target path is {s3_full_target_path}")
+        if len(s3_files) == 0:
+            print(f"No files in source folder of {src_path}. Upload invalid.")
+            return
 
-                    try:
-                        with open(src_file_path, "rb"):
-                            # s3.Bucket(bucket_name).put_object(Key=s3_key_path, Body=data)
-                            client.upload_file(src_file_path, bucket_name, s3_key_path)
-                            if is_verbose is True:
-                                print(".... File uploaded")
+        print(f"Number of files to be uploaded is {len(s3_files)}")
 
-                    except FileNotFoundError:
-                        print("-----------------")
-                        print(f"** The file {src_file_path} was not found")
-                        print(
-                            "** This is considered a critical error as the file name was"
-                            " found programatically."
-                        )
-                        sys.exit(1)
+        # As we are threading, we can add more than one thread per proc, but for calc purposes
+        # and to not overload the systems or internet pipe, so it is hardcoded at 20 for now
+        num_workers = 20
 
-                    pbar.update(1)
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+            executor_dict = {}
+
+            for upload_file_args in s3_files:
+                try:
+                    future = executor.submit(__upload_file, **upload_file_args)
+                    executor_dict[future] = upload_file_args['src_file_path']
+
+                except Exception as tp_ex:
+                    print(f"*** {tp_ex}")
+                    traceback.print_exc()
+                    sys.exit(1)
+
+            """
+            for future in futures.as_completed(executor_dict):
+                key = future_to_key[future]
+                exception = future.exception()
+
+                if not exception:
+                    yield key, future.result()
+                else:
+                    yield key, exception
+            """
+
+            sf.progress_bar_handler(executor_dict, True, f"Uploading files with {num_workers} workers")
 
     except botocore.exceptions.NoCredentialsError:
         print("-----------------")
@@ -166,7 +177,7 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, huc_crs_folder_na
 
 
 ####################################################################
-def delete_s3_folder(bucket_name, s3_folder_path, is_verbose):
+def delete_s3_folder(bucket_name, s3_folder_path):
     """
     Overview:
         Sometimes we want to delete s3 folder before loading a replacement.
@@ -182,34 +193,58 @@ def delete_s3_folder(bucket_name, s3_folder_path, is_verbose):
 
     print("===================================================================")
     print("")
-    print(f"Deleting the files and folder at {s3_full_target_path}")
+    print(f"Deleting the files and folders at {s3_full_target_path}")
+    print()
+
+    # nested function
+    def __delete_file(s3_client, bucket_name, s3_file_path):
+        s3_client.delete_object(Bucket=bucket_name, Key=s3_file_path)
 
     try:
         client = boto3.client("s3")
 
-        # Files inside the folder (yes.. technically there are no folders)
-        # but it is possible to a folder that is empty (prefix with no keys)
-        s3_files = client.list_objects(Bucket=bucket_name, Prefix=s3_folder_path + "/")
+        # use paginator as it can handle more than the 1000 file limit max from list_objects_v2
+        paginator = client.get_paginator("list_objects")
+        operation_parameters = {"Bucket": bucket_name, "Prefix": s3_folder_path}
 
-        file_count = len(s3_files)
+        page_iterator = paginator.paginate(**operation_parameters)
 
-        if file_count == 0:  # no files to delete but it is possible to have an empty folder
-            client.delete_object(Bucket=bucket_name, Key=s3_folder_path + "/")  # slash added
+        # Lets run quickly through it once to get a count and a list of src files names
+        # (only take a min or two) but the copying is slower.
+        s3_files = []  # a list of dictionaries (src file path, targ file path)
+        print("Calculating list of files to be deleted ... standby (~1 to 2 mins)")
+        for page in page_iterator:
+            if "Contents" in page:
+                for key in page["Contents"]:
+                    item = {'s3_client': client, 'bucket_name': bucket_name, 's3_file_path': key["Key"]}
+                    # adds a dict to the list
+                    s3_files.append(item)
 
-        with tqdm(
-            total=file_count,
-            desc=f"Deleting {file_count} files from S3",
-            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
-            ncols=80,
-            disable=is_verbose,
-        ) as pbar:
-            # Delete all objects in the folder
-            for s3_file in s3_files["Contents"]:
-                client.delete_object(Bucket=bucket_name, Key=s3_file["Key"])
+        if len(s3_files) == 0:
+            print(f"No files in s3 folder of {s3_full_target_path} to be deleted.")
+            return
 
-            pbar.update(1)
+        print(f"Number of files to be deleted in s3 is {len(s3_files)}")
 
-        # remove the folder that is left over
+        # As we are threading, we can add more than one thread per proc, but for calc purposes
+        # and to not overload the systems or internet pipe, so it is hardcoded at 20
+        num_workers = 20
+
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+            executor_dict = {}
+
+            for del_file_args in s3_files:
+                try:
+                    future = executor.submit(__delete_file, **del_file_args)
+                    executor_dict[future] = del_file_args['s3_file_path']
+                except Exception as tp_ex:
+                    print(f"*** {tp_ex}")
+                    traceback.print_exc()
+                    sys.exit(1)
+
+            sf.progress_bar_handler(executor_dict, True, f"Deleting files with {num_workers} workers")
+
+        # remove the folder that is left over (Did we check it if existed?)
         client.delete_object(Bucket=bucket_name, Key=s3_folder_path + "/")  # slash added
 
     except botocore.exceptions.NoCredentialsError:
@@ -221,18 +256,6 @@ def delete_s3_folder(bucket_name, s3_folder_path, is_verbose):
         print("-----------------")
         print(f"** Error deleting files at S3: {ex}")
         raise ex
-
-
-####################################################################
-def copy_file_in_s3(s3_client, bucket_name, src_file_path, target_file_path):
-    """
-    Copy a single file from one folder to another. Assumes same bucket.
-    This is generally used for multi-threading.
-    """
-
-    #print(f"Copying __{src_file_path}")
-    copy_source = {'Bucket': bucket_name, 'Key': src_file_path}
-    s3_client.copy_object(Bucket=bucket_name, CopySource = copy_source, Key = target_file_path)
 
 
 ####################################################################
@@ -248,10 +271,25 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         - s3_src_folder_path: e.g. output_ras2fim/12030105_2276_230810
         - s3_target_folder_path: e.g.  output_ras2fim_archive/12030105_2276_230810
     """
+
+    # nested function
+    def __copy_file(s3_client, bucket_name, src_file_path, target_file_path):
+        """
+        Copy a single file from one folder to another.
+        This is used for multi-threading.
+        """
+
+        # print(f"Copying __{src_file_path}")
+        copy_source = {'Bucket': bucket_name, 'Key': src_file_path}
+        s3_client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=target_file_path)
+
     try:
         print("===================================================================")
         print("")
         print(f"Moving folder from {s3_src_folder_path}  to  {s3_target_folder_path}")
+        print()
+        print("***  NOTE: s3 can not move files, it can only copy then delete them.")
+        print()
 
         client = boto3.client("s3")
 
@@ -264,7 +302,7 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         # Lets run quickly through it once to get a count and a list of src files names
         # (only take a min or two) but the copying is slower.
         s3_files = []  # a list of dictionaries (src file path, targ file path)
-        print("Loading existing files... standby (~1 to 2 mins)")
+        print("Creating list of files to be copied ... standby (~1 to 2 mins)")
         for page in page_iterator:
             if "Contents" in page:
                 for key in page["Contents"]:
@@ -275,54 +313,41 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
                             's3_client': client,
                             'bucket_name': bucket_name,
                             'src_file_path': src_file_path,
-                            'target_file_path': target_file_path
+                            'target_file_path': target_file_path,
                         }
                         # adds a dict to the list
                         s3_files.append(item)
-                    #pbar.update(1)
-        print(f"Number of files to be copied is {len(s3_files)}")
 
         # If the bucket is incorrect, it will throw an exception that already makes sense
-        #s3_src_objs = client.list_objects_v2(Bucket=bucket_name, Prefix=s3_src_folder_path)
-        
+
         if len(s3_files) == 0:
             print(f"No files in source folder of {s3_src_folder_path}. Move invalid.")
             return
-        
+
+        print(f"Number of files to be copied is {len(s3_files)}")
+
         # As we are threading, we can add more than one thread per proc, but for calc purposes
         # and to not overload the systems or internet pipe, so it is hardcoded at 20
         num_workers = 20
 
         # copy the files first
-        #session = boto3.client("s3")
+        # session = boto3.client("s3")
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
-
             executor_dict = {}
 
             for copy_file_args in s3_files:
-                #print(f"__ copy_file_args src is {copy_file_args['src_file_path']}")
-
                 try:
-                    future = executor.submit(copy_file_in_s3, **copy_file_args)
+                    future = executor.submit(__copy_file, **copy_file_args)
                     executor_dict[future] = copy_file_args['src_file_path']
                 except Exception as tp_ex:
                     print(f"*** {tp_ex}")
                     traceback.print_exc()
-                    sys.exit(1)                    
-
-            """
-            for future in futures.as_completed(executor_dict):
-                key = future_to_key[future]
-                exception = future.exception()
-
-                if not exception:
-                    yield key, future.result()
-                else:
-                    yield key, exception
-            """
+                    sys.exit(1)
 
             sf.progress_bar_handler(executor_dict, True, f"Copying files with {num_workers} workers")
 
+        # now delete the original ones
+        delete_s3_folder(bucket_name, s3_src_folder_path)
 
     except botocore.exceptions.NoCredentialsError:
         print("-----------------")
@@ -403,14 +428,14 @@ def does_s3_bucket_exist(bucket_name):
 
 
 ####################################################################
-def parse_huc_crs_folder_name(huc_crs_folder_name):
+def parse_unit_folder_name(unit_folder_name):
     """
     Overview:
         While all uses of this function pass back errors if invalid the calling code can decide if it is
         an exception. Sometimes it doesn't, it just want to check to see if the key is a huc crs key.
 
     Input:
-        huc_crs_folder_name: migth be a full s3 string, or a s3 key or just the folder name
+        unit_folder_name: migth be a full s3 string, or a s3 key or just the folder name
            e.g.  s3://xzy/output_ras2fim/12090301_2277_230811
               or output_ras2fim/12090301_2277_230811
               or 12090301_2277_230811
@@ -421,7 +446,7 @@ def parse_huc_crs_folder_name(huc_crs_folder_name):
                        key_crs_number,
                        key_date_as_str (date string eg: 230811),
                        key_date_as_dt  (date obj for 230811)
-                       huc_crs_folder_name (12090301_2277_230811) (cleaned version)
+                       unit_folder_name (12090301_2277_230811) (cleaned version)
         OR
         If in error, dictionary will have only one key of "error", saying why it the
            reason for the error. It lets the calling code to decide if it wants to raise
@@ -434,29 +459,29 @@ def parse_huc_crs_folder_name(huc_crs_folder_name):
 
     rtn_varibles_dict = {}
 
-    if huc_crs_folder_name == "":
-        raise ValueError("huc_crs_folder_name can not be empty")
+    if unit_folder_name == "":
+        raise ValueError("unit_folder_name can not be empty")
 
     # cut off the s3 part if there is any.
-    huc_crs_folder_name = huc_crs_folder_name.replace("s3://", "")
+    unit_folder_name = unit_folder_name.replace("s3://", "")
 
     # s3_folder_path and we want to strip the first one only. (can be deeper levels)
-    if huc_crs_folder_name.endswith("/"):
-        huc_crs_folder_name = huc_crs_folder_name[:-1]  # strip the ending slash
+    if unit_folder_name.endswith("/"):
+        unit_folder_name = unit_folder_name[:-1]  # strip the ending slash
 
     # see if there / in it and split out based on the last one (migth not be one)
-    huc_crs_folder_segs = huc_crs_folder_name.rsplit("/", 1)
-    if len(huc_crs_folder_segs) > 1:
-        huc_crs_folder_name = huc_crs_folder_segs[-1]
+    unit_folder_segs = unit_folder_name.rsplit("/", 1)
+    if len(unit_folder_segs) > 1:
+        unit_folder_name = unit_folder_segs[-1]
 
     # The best see if it has an underscore in it, split if based on that, then
     # see the first chars are an 8 digit number and that it has two underscores (3 segs)
     # and will split it to a list of tuples
-    if "_" not in huc_crs_folder_name or len(huc_crs_folder_name) < 9:
+    if "_" not in unit_folder_name or len(unit_folder_name) < 9:
         rtn_varibles_dict["error"] = "Does not contain any underscore or folder name to short."
         return rtn_varibles_dict
 
-    segs = huc_crs_folder_name.split("_")
+    segs = unit_folder_name.split("_")
     if len(segs) != 3:
         rtn_varibles_dict["error"] = (
             "Expected three segments split by two underscores." "e.g . 12090301_2277_230811"
@@ -502,6 +527,6 @@ def parse_huc_crs_folder_name(huc_crs_folder_name):
     rtn_varibles_dict["key_crs_number"] = key_crs
     rtn_varibles_dict["key_date_as_str"] = key_date
     rtn_varibles_dict["key_date_as_dt"] = dt_key_date
-    rtn_varibles_dict["huc_crs_folder_name"] = huc_crs_folder_name  # cleaned version
+    rtn_varibles_dict["unit_folder_name"] = unit_folder_name  # cleaned version
 
     return rtn_varibles_dict

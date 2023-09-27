@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import datetime as dt
 import fnmatch
 import json
 import os
@@ -35,8 +34,7 @@ def confirm_models_unit(proj_crs, input_models_path):
 
     unit = None
     try:
-
-        if os.path.exists(input_models_path) is False: 
+        if os.path.exists(input_models_path) is False:
             raise ValueError(f"The path of {input_models_path} can not be found.")
 
         unit_from_ras = model_unit_from_ras_prj(input_models_path)

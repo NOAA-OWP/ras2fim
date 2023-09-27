@@ -157,7 +157,6 @@ class Get_Models_By_Catalog:
         self.lprint(f"Target path for models is {self.target_owp_ras_models_path}")
         self.lprint("")
 
-
         self.list_only = list_only
         self.is_verbose = is_verbose
         # from here on, use the self. in front of variables as the variable might have been adjusted
@@ -182,18 +181,22 @@ class Get_Models_By_Catalog:
 
             filter_msg = (
                 "Note: some may have been filtered out. Current filters are: status is ready;"
-                " final_name_key does not start with 1_ or 2_; huc number exists in the huc column;"
-                " and matching crs column values."
+                " final_name_key does not start with 1_, 2_ or 3_; huc number exists in the huc column;"
+                " and matching crs column values.\n"
+                " 1_ and 2_ means errors or needs review in pre-processing.\n"
+                " 3_ means invalid conflation and needs review in preprocessing."
             )
 
-            # look for records that are ready, contains the huc number and does not start with 1_ or 20_
-            # NOTE: for some reason if you change
-            # df_all["final_name_key"].str.startswith("1_") == False)  to
-            # df_all["final_name_key"].str.startswith("1_") is False).. it fails. and Not doesnt' work either
+            # look for records that are ready, contains the huc number and does not start with 1_, 2_ or 3_
+            # NOTE: for some reason if you change the lines below, now that the pattern of:
+            # df_all["final_name_key"].str.startswith("1_") is False).. it fails (not sure why)
+            # So I keep the pattern of == False.
+            # #### The E712 override has been added to the toml file.
             df_huc = df_all.loc[
                 (df_all["status"] == "ready")
                 & (df_all["final_name_key"].str.startswith("1_") == False)
                 & (df_all["final_name_key"].str.startswith("2_") == False)
+                & (df_all["final_name_key"].str.startswith("3_") == False)
                 & (df_all["hucs"].str.contains(str(self.huc_number), na=False))
             ]
 
@@ -375,7 +378,6 @@ class Get_Models_By_Catalog:
         # models target.
         target_owp_ras_models_path_parent = os.path.dirname(target_owp_ras_models_path)
         self.log_folder_path = os.path.join(target_owp_ras_models_path_parent, "logs")
-
 
     # -------------------------------------------------
     def download_files(self, folder_list):

@@ -24,9 +24,6 @@ import pandas as pd
 import win32com.client
 
 # from rasterio.warp import calculate_default_transform, reproject
-from rasterio import Affine
-from rasterio.enums import Resampling
-from rasterio.mask import mask
 from scipy.interpolate import interp1d
 
 import shared_functions as sf
