@@ -8,7 +8,7 @@
 # clip_dem_from_shape, convert_tif_to_ras_hdf5, create_fim_rasters,
 # worker_fim_raster, simplify_fim_rasters, calculate_all_terrain_stats]
 #
-# This is built to run on a Windows machine and requires that HEC-RAS v6.0
+# This is built to run on a Windows machine and requires that HEC-RAS v6.3
 # be installed prior to execution.
 #
 # Created by: Andy Carter, PE
@@ -118,7 +118,7 @@ def init_and_run_ras2fim(
         )
 
     # -------------------
-    # -r  (ie: C:\Program Files (x86)\HEC\HEC-RAS\6.0)
+    # -r  (ie: C:\Program Files (x86)\HEC\HEC-RAS\6.3)
     if os.path.exists(str_hec_path) is False:
         raise ValueError("the -r arg (HEC-RAS engine path) does not appear to be correct.")
 
@@ -223,7 +223,7 @@ def fn_run_ras2fim(
     print("  ---(o) OUTPUT DIRECTORY: " + huc_crs_output_dir)
     print("  ---(p) PROJECTION OF HEC-RAS MODELS: " + str(str_crs_arg))
     print("  ---(n) PATH TO NATIONAL DATASETS: " + str(str_nation_arg))
-    print("  ---(r) PATH TO HEC-RAS v6.0: " + str(str_hec_path))
+    print("  ---(r) PATH TO HEC-RAS v6.3: " + str(str_hec_path))
     print("  ---[t] Optional: Terrain to Utilize" + str(str_terrain_override))
     print("  ---[mc] Optional: path to models catalog - " + str(model_huc_catalog_path))
     print("  ---[s] Optional: step to start at - " + str(int_step))
@@ -565,7 +565,7 @@ if __name__ == "__main__":
 
     # 2) You can also use the current code in legacy fashion with all of it's previous arguments.
     #    ie) python ras2fim.py -w 10170204 -i C:\HEC\input_folder -o C:\HEC\output_folder -p EPSG:26915
-    #            -n E:\X-NWS\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.0"
+    #            -n E:\X-NWS\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.3"
     #
     #    But any and all optional arguments can be overridden, so let's try this version:
     #    ie) python ras2fim.py -w 12090301 -i C:\HEC\input_folder
@@ -632,8 +632,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-r",
         dest="str_hec_path",
-        help=r"OPTIONAL: path to HEC-RAS 6.0: Defaults to C:\Program Files (x86)\HEC\HEC-RAS\6.0"
-        r' but you can override it, Example: "C:\Program Files (x86)\HEC\HEC-RAS\6.3" (wrap in quotes)',
+        help=r"OPTIONAL: path to HEC-RAS 6.3: Defaults to C:\Program Files (x86)\HEC\HEC-RAS\6.3"
+        r' but you can override it, Example: "C:\Program Files (x86)\HEC\HEC-RAS\6.4" (wrap in quotes)',
         required=False,
         metavar="",
         default=sv.DEFAULT_HECRAS_ENGINE_PATH,

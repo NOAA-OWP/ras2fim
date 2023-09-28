@@ -262,8 +262,8 @@ def fix_proj_path_error():
     # GDAL_DATA="C:\\Users\\rdp-user\\anaconda3\\envs\\ras2fim\\Library\\share\\gdal'
     # PROJ_LIB="C:\\Users\\rdp-user\\anaconda3\\envs\\ras2fim\\Library\\site-packages\\pyproj\\proj_dir\\share\\proj'
     # GDAL_DATA="C:\\Users\\rdp-user\\anaconda3\\envs\\ras2fim\\Library\\site-packages\\pyproj\\proj_dir\\share\\gdal'
-    # PROJ_LIB="C:\\Program Files (x86)\\HEC\\HEC-RAS\\6.0\\GDAL\\common\\data'
-    # GDAL_DATA="C:\\Program Files (x86)\\HEC\\HEC-RAS\\6.0\\GDAL\\common\\data'
+    # PROJ_LIB="C:\\Program Files (x86)\\HEC\\HEC-RAS\\6.3\\GDAL\\common\\data'
+    # GDAL_DATA="C:\\Program Files (x86)\\HEC\\HEC-RAS\\6.3\\GDAL\\common\\data'
 
     # File 'C:\Users\rdp-user\Projects\dev-linter\ras2fim\src\get_usgs_dem_from_shape.py', line 428,
     #    in fn_get_usgs_dem_from_shape
