@@ -1,6 +1,30 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.x.x - 2023-09-28 - [PR#176](https://github.com/NOAA-OWP/ras2fim/pull/176)
+
+Upgrade our HEC-RAS software from 6.0 to 6.3.0.  Even though there is a 6.4x versions, we can not use it at this time.
+
+Note: The actual change was a couple small fixes changing the value of `win32com.client.Dispatch("RAS60.HECRASController")` to `win32com.client.Dispatch("RAS630.HECRASController")`  (60 to 630).  Also changed the default pathing on the file system from 6.0 to 6.3.
+
+The rest of the changes are documentation either in the README.md, output or inline comments.
+
+### Changes  
+
+- `README.md`:  Text updates
+- `src`
+    - `convert_tif_to_ras_hdf5.py`: Comment changes.
+    - `create_shapes_from_hecras.py`: HECRAS controller changed from 60 to 630, plus comment changes.
+    - `ras2fim.py`: Comment and output note changes.
+    - `shared_functions.py`: Comment changes.
+    - `shared_variables.py`: Changed default pathing to the HECRAS software.
+    - `worker_fim_rasters.py`: HECRAS controller changed from 60 to 630, plus comment changes.
+ - `tools`
+     - `nws_ras2fim_terrain_iowa.py`: HECRAS controller changed from 60 to 630, plus comment changes. Note: not tested, not believed to be in use anymore.
+
+<br/><br/>
+
+
 ## v1.27.0 - 2023-09-21 - [PR#165](https://github.com/NOAA-OWP/ras2fim/pull/165)
 
 Added pre-commit hooks.
