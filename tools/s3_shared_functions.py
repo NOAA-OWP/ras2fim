@@ -19,7 +19,7 @@ import shared_variables as sv
 
 
 ####################################################################
-def upload_file_to_s3(bucket_name, src_path, s3_folder_path, file_name=""):
+def upload_file_to_s3(bucket_name, src_path, s3_folder_path, file_name="", show_upload_msg=True):
     """
     Overview:
         This file upload will overwrite an existing file it if already exists. Use caution
@@ -56,7 +56,9 @@ def upload_file_to_s3(bucket_name, src_path, s3_folder_path, file_name=""):
 
         with open(src_path, "rb"):
             client.upload_file(src_path, bucket_name, s3_key_path)
-            print(f".... File uploaded {src_path} as {s3_full_target_path}/{s3_file_name}")
+
+            if show_upload_msg is True:
+                print(f".... File uploaded {src_path} as {s3_full_target_path}/{s3_file_name}")
 
     except botocore.exceptions.NoCredentialsError:
         print("-----------------")
