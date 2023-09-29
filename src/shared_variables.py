@@ -9,7 +9,7 @@ Common pathing, and mostly defaults. Most can be changed or overwritten at this 
 
 # BASIC ROOT FOLDERS
 DEFAULT_BASE_DIR = r"c:\ras2fim_data"
-DEFAULT_HECRAS_ENGINE_PATH = r"C:\Program Files (x86)\HEC\HEC-RAS\6.0"
+DEFAULT_HECRAS_ENGINE_PATH = r"C:\Program Files (x86)\HEC\HEC-RAS\6.3"
 
 # INPUT FOLDERS
 ROOT_DIR_INPUTS = os.path.join(DEFAULT_BASE_DIR, "inputs")

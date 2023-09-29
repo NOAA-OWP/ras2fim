@@ -61,8 +61,8 @@ STR_PRJ_FILE = r"E:\X-IowaFloodCenter\RockValley_PreProcess\10170204_huc_12_ar.p
 # Directory to place the HDF terrain files
 STR_RAS_TERRAIN_OUT = r"E:\X-IowaFloodCenter\Terrain_Output\Terrain_Processed\HEC-RAS-HDF"
 
-# Path to the HEC-RAS v6.0 beta 3 RasProcess.exe
-STR_HEC_RAS_6_PATH = r"C:\Junk\Test_HEC_RAS\6.0 Beta 3\RasProcess.exe"
+# Path to the HEC-RAS v6.3 RasProcess.exe
+STR_HEC_RAS_6_PATH = r"C:\Junk\Test_HEC_RAS\6.3\RasProcess.exe"
 
 
 # -------------------------------------------------
@@ -145,7 +145,7 @@ for i in list_files:
 
 # Convert the GeoTIFFs of HUC-12 terrain to HEC-RAS HDF5
 #
-# Note that this uses a CLI to the RasProcess.exe in HEC-RAS 6.0 beta 3.
+# Note that this uses a CLI to the RasProcess.exe in HEC-RAS 6.3.
 # This will need access to the cooresponding and support files
 # (dll, exe, etc...).  As this is a CLI call it will run async with this
 # notebook.

@@ -720,7 +720,7 @@ def __add_record_to_tracker(
             print("Starting tracker file upload to s3")
 
         s3_sf.upload_file_to_s3(
-            bucket_name, df_tracker_local_path, sv.S3_OUTPUT_RAS2FIM_FOLDER, sv.S3_OUTPUT_TRACKER_FILE
+            bucket_name, df_tracker_local_path, sv.S3_OUTPUT_RAS2FIM_FOLDER, sv.S3_OUTPUT_TRACKER_FILE, False
         )
 
         if is_verbose is True:

@@ -33,7 +33,7 @@ import shared_functions as sf
 
 
 # windows component object model for interaction with HEC-RAS API
-# This routine uses RAS60.HECRASController (HEC-RAS v6.0.0 must be
+# This routine uses RAS60.HECRASController (HEC-RAS v6.3.0 must be
 # installed on this machine prior to execution
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -596,7 +596,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
         list_path = str_ras_projectpath.split(os.sep)
         str_feature_id = str(list_path[-3])
 
-        hec = win32com.client.Dispatch("RAS60.HECRASController")
+        hec = win32com.client.Dispatch("RAS630.HECRASController")
         # hec.ShowRas()
 
         hec.Project_Open(str_ras_projectpath)  # opening HEC-RAS
