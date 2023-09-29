@@ -11,7 +11,7 @@ Also took care of a couple of other tidbits that I ran into:
 eg. 
 ![image](https://github.com/NOAA-OWP/ras2fim/assets/90854818/63e12a0f-78bd-4a87-afab-9c79e450bd3b)
 
-2) Added a duration timer to calibration (reformat_ras_rating_curves.py)
+2) Added a duration timer to calibration `reformat_ras_rating_curves.py`
 
 ### Changes  
 - `src`
