@@ -7,7 +7,7 @@ We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 Errors were being thrown by `conflate_hecras_to_nwm` as it iterated through a shape layer, with some records being linestrings and others being multilinestrings.   Upon closer examination, it was doing some unnecessary "simplifying".  Cleaning that up took care of it, as it did not need to attempt to split a multi line string to independent segments to run simplify.
 
 Also took care of a couple of other tidbits that I ran into:
-1) During Step 2 (`create_shapes_from_hecras``), the hecras engine would throw errors saying if it could not find some key input files. This has now been fixed. Note: Later, this should be logged.
+1) During Step 2 (`create_shapes_from_hecras`), the hecras engine would throw errors saying if it could not find some key input files. This has now been fixed. Note: Later, this should be logged.
 eg. 
 ![image](https://github.com/NOAA-OWP/ras2fim/assets/90854818/63e12a0f-78bd-4a87-afab-9c79e450bd3b)
 
