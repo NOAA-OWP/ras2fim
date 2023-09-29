@@ -2,7 +2,7 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
-## v1.28.0 - 2023-09-29 - [PR#165](https://github.com/NOAA-OWP/ras2fim/pull/165)
+## v1.28.0 - 2023-09-29 - [PR#168](https://github.com/NOAA-OWP/ras2fim/pull/168)
 
 Errors were being thrown by `conflate_hecras_to_nwm` as it iterated through a shape layer, with some records being linestrings and others being multilinestrings.   Upon closer examination, it was doing some unnecessary "simplifying".  Cleaning that up took care of it, as it did not need to attempt to split a multi line string to independent segments to run simplify.
 
