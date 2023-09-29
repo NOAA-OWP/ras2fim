@@ -1,6 +1,28 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+
+## v1.28.0 - 2023-09-29 - [PR#168](https://github.com/NOAA-OWP/ras2fim/pull/168)
+
+Errors were being thrown by `conflate_hecras_to_nwm` as it iterated through a shape layer, with some records being linestrings and others being multilinestrings.  Upon closer examination, it was doing some unnecessary "simplifying".  Cleaning that up took care of it, as it did not need to attempt to split a multi line string to independent segments to run simplify.
+
+Also took care of a couple of other tidbits that I ran into:
+1) During Step 2 (`create_shapes_from_hecras`), the hecras engine would throw errors saying if it could not find some key input files. This has now been fixed. Note: Later, this should be logged.
+eg. 
+![image](https://github.com/NOAA-OWP/ras2fim/assets/90854818/63e12a0f-78bd-4a87-afab-9c79e450bd3b)
+
+2) Added a duration timer to calibration `reformat_ras_rating_curves.py`
+
+### Changes  
+- `src`
+    - `conflate_hecras_to_nwm.py`:  simplified the code which uses the shapely "simplify" calls.
+    - `create_shapes_from_hecras.py`:  added a test to ensure the ras_project_path (file) exists. 
+    - `ras2fim.py`:  small text change.
+    - `reformat_ras_rating_curve.py`:  added a duration output system.
+
+<br/><br/>
+
+
 ## v1.27.1 - 2023-09-28 - [PR#176](https://github.com/NOAA-OWP/ras2fim/pull/176)
 
 Upgrade our HEC-RAS software from 6.0 to 6.3.0.  Even though there is a 6.4x versions, we can not use it at this time.

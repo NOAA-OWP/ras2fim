@@ -375,7 +375,7 @@ def fn_run_ras2fim(
     flt_resolution_depth_grid = int(output_resolution)
 
     print()
-    print("+++++++ Processing:  STEP 5/6 (simplifying fim rasters and create metrics)  +++++++")
+    print("+++++++ Processing: 5.b (STEP 5/6 simplifying fim rasters and create metrics)  +++++++")
 
     fn_simplify_fim_rasters(
         str_hecras_out_dir, flt_resolution_depth_grid, sv.DEFAULT_RASTER_OUTPUT_CRS, model_unit
@@ -442,8 +442,7 @@ def fn_run_ras2fim(
             print("++++ (Skipping creating geocurve polygon) +++++++")
 
         # Produce geocurves
-        # job_number = os.cpu_count() - 1
-        job_number = 1
+        job_number = os.cpu_count() - 2
         manage_geo_rating_curves_production(
             ras2fim_output_dir=huc_crs_output_dir,
             version=os.path.join(os.path.dirname(os.path.dirname(__file__)), "doc", "CHANGELOG.md"),

@@ -43,11 +43,15 @@ def fn_open_hecras(str_ras_project_path):
     try:
         # opening HEC-RAS
 
+        if os.path.exists(str_ras_project_path) is False:
+            raise Exception(f"str_ras_project_path value of {str_ras_project_path} does not exist")
+
         hec = win32com.client.Dispatch("RAS630.HECRASController")
 
         # hec.ShowRas()
 
         # opening HEC-RAS
+
         hec.Project_Open(str_ras_project_path)
 
         # to be populated: number and list of messages, blocking mode
@@ -60,6 +64,7 @@ def fn_open_hecras(str_ras_project_path):
     except Exception as ex:
         # re-raise it as error handling is farther up the chain
         # but I do need the finally to ensure the hec.QuitRas() is run
+        print()
         print("++++++++++++++++++++++++")
         print("An exception occurred with the HEC-RAS engine or its parameters.")
         print(f"details: {ex}")
