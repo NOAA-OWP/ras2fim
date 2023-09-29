@@ -1,7 +1,7 @@
 # Create HEC-RAS terrain files (HDF5) from GeoTIFFs
 #
 # Purpose:
-# Note that this uses a CLI to the RasProcess.exe in HEC-RAS 6.0.
+# Note that this uses a CLI to the RasProcess.exe in HEC-RAS 6.3.
 # This will need access to the cooresponding and support files
 # (dll, exe, etc...).  As this is a CLI call it will run async with this
 # script.
@@ -96,7 +96,7 @@ def fn_convert_tif_to_ras_hdf5(
     STR_HEC_RAS_6_PATH = str_hec_path
     print("  ---(r) HEC-RAS PATH: " + str(STR_HEC_RAS_6_PATH))
 
-    # STR_HEC_RAS_6_PATH = r'C:\Program Files (x86)\HEC\HEC-RAS\6.0'
+    # STR_HEC_RAS_6_PATH = r'C:\Program Files (x86)\HEC\HEC-RAS\6.3'
     STR_HEC_RAS_6_PATH += r"\RasProcess.exe"
 
     # path to walk to file geotiffs
@@ -185,8 +185,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-r",
         dest="str_hec_path",
-        help="REQUIRED: path to HEC-RAS 6.0 RasProcess.exe: "
-        r'Example: "C:\Program Files (x86)\HEC\HEC-RAS\6.0" (wrap in quotes)',
+        help="REQUIRED: path to HEC-RAS 6.3 RasProcess.exe: "
+        r'Example: "C:\Program Files (x86)\HEC\HEC-RAS\6.3" (wrap in quotes)',
         required=True,
         metavar="DIR",
         type=str,
