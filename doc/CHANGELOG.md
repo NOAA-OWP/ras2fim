@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.x.x - 2023-09-28 - [PR#176](https://github.com/NOAA-OWP/ras2fim/pull/176)
+## v1.27.1 - 2023-09-28 - [PR#176](https://github.com/NOAA-OWP/ras2fim/pull/176)
 
 Upgrade our HEC-RAS software from 6.0 to 6.3.0.  Even though there is a 6.4x versions, we can not use it at this time.
 
