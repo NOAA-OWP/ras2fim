@@ -9,6 +9,11 @@ Note: The actual change was a couple small fixes changing the value of `win32com
 
 The rest of the changes are documentation either in the README.md, output or inline comments.
 
+To apply this update, you must fully un-install HECRAS, then re-install the new version.
+- If you are a NOAA employee, please use software center for this upgrade.
+- If you are not a NOAA employee, please use the link in the README.md file.
+
+
 ### Changes  
 
 - `README.md`:  Text updates
