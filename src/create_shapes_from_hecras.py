@@ -28,7 +28,7 @@ from shapely.ops import linemerge, split
 
 
 # windows component object model for interaction with HEC-RAS API
-# This routine uses RAS60.HECRASController (HEC-RAS v6.0.0 must be
+# This routine uses RAS60.HECRASController (HEC-RAS v6.3.0 must be
 # installed on this machine prior to execution)
 
 # h5py for extracting data from the HEC-RAS g**.hdf files
@@ -46,7 +46,7 @@ def fn_open_hecras(str_ras_project_path):
         if os.path.exists(str_ras_project_path) is False:
             raise Exception(f"str_ras_project_path value of {str_ras_project_path} does not exist")
 
-        hec = win32com.client.Dispatch("RAS60.HECRASController")
+        hec = win32com.client.Dispatch("RAS630.HECRASController")
 
         # hec.ShowRas()
 
