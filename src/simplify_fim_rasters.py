@@ -304,7 +304,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
         list_dataframe_args = df_grids_to_convert.values.tolist()
 
         print("+-----------------------------------------------------------------+")
-        p = mp.Pool(processes=(mp.cpu_count() - 1))
+        p = mp.Pool(processes=(mp.cpu_count() - 2))
 
         list(
             tqdm.tqdm(

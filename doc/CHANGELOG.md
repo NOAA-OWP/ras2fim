@@ -1,6 +1,53 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v1.29.0 - 2023-09-29 - [PR#166](https://github.com/NOAA-OWP/ras2fim/pull/166)
+
+This PR includes a new tool that can take a ras2fim unit output folder and upload it to S3. During that upload processes, it checks the s3 `output_ras2fim` folder to look for folders already share the same huc and crs values. A folder may/may not pre-exist that matches the huc and crs but may/may not share a date.  A new master file called `ras_output_tracker.csv` exists now in the s3 `output_ras2fim` folder which tracks all folders uploaded, moved to archive, and overwritten. All activities done by the new `ras_unit_to_s3.py` update this new master copy in S3.
+
+The s3 `output_ras2fim` folder is intended to have only folder with a given huc and crs and would almost always be the latest version.  All other versions would be renamed to the phrase of "_BK_" and a date and moved into the `output_ras2fim_archive` folder. 
+
+There are some combinations where a user can overwrite older folders or simply move incoming folder straight to the archive folder.   Lots of output including input question to the user with choices of aborting, moving existing folders and other options.
+
+Other small fixes include:
+- [issue 152](https://github.com/NOAA-OWP/ras2fim/issues/152), which changes all ras2fim code to use UTC times.
+- [issue 111](https://github.com/NOAA-OWP/ras2fim/issues/111) to fix is to make use of a previously added method which can validate a CRS when it comes in as an input arg to a file. This has now been applied to both `ras2fim.py` and `get_models_by_catalog.py`.
+- `get_models_by_catalog.py` was renamed from its previous name of `get_ras_models_by_catalog.py`. It was also adjusted for an additional filter as per change in pre-processing (RRASSLER team).
+- change all files with used multi-proc or multi-threading to be cpu proc count - 2 (used to be -1 and it was leaving machines without not enough cpu's to handle other tasks. It was especially noticed when debugging and needed to use Task Manager and it was bogging down the system badly.
+- some small misc cleanup on a few files such as a bit of variable and function renaming, output and formatting.
+
+### Additions  
+- `tools`
+   - `ras_unit_to_s3.py`: As described above.
+   - `s3_shared_functions.py`:  A file to manage all communication with S3, upload, deleted, move, etc. It does not yet have a download function but it will likely be added and plugged into `get_models_by_catalog.py` at a later date. However, other tools that are coming soon can use these same functions.
+
+### Changes  
+- `pyproject.toml`: Added a few adjustments to the pre-file-ignores section.
+- `src`
+    - `calculate_all_terrain_stats.py`: Change multi-proc / number of workers count as mentioned above.
+    - `conflate_hecras_to_nwm.py`: Change multi-proc / number of workers count as mentioned above.
+    - `create_fim_rasters.py`: Change multi-proc / number of workers count as mentioned above.
+    - `create_geocurves.py`: Change multi-proc / number of works and changed date time to UTC.
+    - `create_shapes_from_hecras.py` Change multi-proc / number of works and comments on non standard linting issue.
+    - `ras2catchment.py`: Change multi-proc / number of works and changed date time to UTC.
+    - `ras2fim.py`: Changes include: 
+         - Renamed a few variables to be more descriptive.
+         - Small changes the argument log file.
+         - Small change to track each section being processed by ensuring they have the word `step` in the header (not necessarily followed by a number). This allows for easier searching of the screen output for section headers.
+         - Change multi-proc / number of works and changed date time to UTC.
+     - `reformat_ras_rating_curve.py`: Change multi-proc / number of workers count as mentioned above.
+     - `run_ras2rem.py`: Change multi-proc / number of workers count as mentioned above.
+     - `shared_functions.py`: Moved the print_date_time_duration location in the file.  Added a test that a models folder existed when it was looking to get the projection from ras_proj. Why? It was possible to have invalid values folders or pathing in ras2fim.py and was creating issues on rare occasions (but it happened). Also changed date time to UTC.
+     - `shared_validators.py`: text adjustment
+     - `shared_variables.py`: add three new variables for S3.
+     - `simplify_fim_rasters.py`: Change multi-proc / number of workers count as mentioned above.
+     - `worker_fim_rasters.py`: Linting fix.
+ - `tools`
+     - `get_ras_models_by_catalog.py` renamed to `get_models_by_catalog.py`
+     - `get_models_by_catalog.py:  renamed a page level function name. Changed to UTC time. Added "3_" as a new skip filter for downloading model folders. Removed code to validate incoming CRS value to use the `shared_validators.py` version.
+
+<br/><br/>
+
 
 ## v1.28.0 - 2023-09-29 - [PR#168](https://github.com/NOAA-OWP/ras2fim/pull/168)
 

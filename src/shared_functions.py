@@ -19,48 +19,13 @@ import rasterio
 from dotenv import load_dotenv
 from tqdm import tqdm
 
-import shared_validators as svd
+import shared_validators as val
 import shared_variables as sv
 from errors import ModelUnitError
 
 
 # -------------------------------------------------
-def print_date_time_duration(start_dt, end_dt):
-    """
-    Process:
-    -------
-    Calcuates the diffenence in time between the start and end time
-    and prints is as:
-
-        Duration: 4 hours 23 mins 15 secs
-
-    -------
-    Usage:
-        from utils.shared_functions import FIM_Helpers as fh
-        fh.print_current_date_time()
-
-    -------
-    Returns:
-        Duration as a formatted string
-
-    """
-    time_delta = end_dt - start_dt
-    total_seconds = int(time_delta.total_seconds())
-
-    total_days, rem_seconds = divmod(total_seconds, 60 * 60 * 24)
-    total_hours, rem_seconds = divmod(rem_seconds, 60 * 60)
-    total_mins, seconds = divmod(rem_seconds, 60)
-
-    time_fmt = f"{total_hours:02d} hours {total_mins:02d} mins {seconds:02d} secs"
-
-    duration_msg = "Duration: " + time_fmt
-    print(duration_msg)
-
-    return duration_msg
-
-
-# -------------------------------------------------
-def confirm_models_unit(proj_crs, str_ras_path_arg):
+def confirm_models_unit(proj_crs, input_models_path):
     """
     - calls two other functions to infer units from ras models and -p projection.
     - raises an exception if units do not match.
@@ -69,7 +34,10 @@ def confirm_models_unit(proj_crs, str_ras_path_arg):
 
     unit = None
     try:
-        unit_from_ras = model_unit_from_ras_prj(str_ras_path_arg)
+        if os.path.exists(input_models_path) is False:
+            raise ValueError(f"The path of {input_models_path} can not be found.")
+
+        unit_from_ras = model_unit_from_ras_prj(input_models_path)
         unit_from_crs = model_unit_from_crs(proj_crs)
 
         if unit_from_ras == unit_from_crs:  # if both are the same, return one of them
@@ -266,8 +234,7 @@ def fix_proj_path_error():
     # GDAL_DATA="C:\\Program Files (x86)\\HEC\\HEC-RAS\\6.3\\GDAL\\common\\data'
 
     # File 'C:\Users\rdp-user\Projects\dev-linter\ras2fim\src\get_usgs_dem_from_shape.py', line 428,
-    #    in fn_get_usgs_dem_from_shape
-    #    usgs_wcs_local_proj_clipped = usgs_wcs_local_proj.rio.clip(str_geom)
+    #    in fn_get_usgs_dem_from_shape usgs_wcs_local_proj_clipped = usgs_wcs_local_proj.rio.clip(str_geom)
     # File 'C:\Users\rdp-user\anaconda3\envs\ras2fim\lib\site-packages\rioxarray\raster_array.py',
     #   line 943, in clip
     #    raise NoDataInBounds(
@@ -315,7 +282,7 @@ def fix_proj_path_error():
     except Exception as ex:
         print()
         print(
-            "***An internal error has occurred while attempting to load the proj and gdal"
+            "*** An internal error has occurred while attempting to load the proj and gdal"
             " environment variables. Details"
         )
         print(ex)
@@ -390,8 +357,52 @@ def fn_get_random_string(int_letter_len_fn, int_num_len_fn):
 
 # -------------------------------------------------
 def get_stnd_date():
-    # return YYMMDD as in 230725
-    return dt.now().strftime("%y%m%d")
+    # Standardizes date pattern
+    # Returns YYMMDD as in 230725  (UTC)
+
+    str_date = dt.utcnow().strftime("%y%m%d")
+    return str_date
+
+
+# -------------------------------------------------
+def print_date_time_duration(start_dt, end_dt):
+    # *********************
+    # NOTE:  Ensure the date/tims coming in are UTC in all situations including
+    #     just duration's, even though it really doesn't matter for durations.
+    #     We are attempting to use UTC for ALL dates
+    # *********************
+
+    """
+    Process:
+    -------
+    Calcuates the diffenence in time between the start and end time
+    and prints is as:
+
+        Duration: 4 hours 23 mins 15 secs
+
+    -------
+    Usage:
+        from utils.shared_functions as sf
+        fh.print_current_date_time()
+
+    -------
+    Returns:
+        Duration as a formatted string
+
+    """
+    time_delta = end_dt - start_dt
+    total_seconds = int(time_delta.total_seconds())
+
+    total_days, rem_seconds = divmod(total_seconds, 60 * 60 * 24)
+    total_hours, rem_seconds = divmod(rem_seconds, 60 * 60)
+    total_mins, seconds = divmod(rem_seconds, 60)
+
+    time_fmt = f"{total_hours:02d} hours {total_mins:02d} mins {seconds:02d} secs"
+
+    duration_msg = "Duration: " + time_fmt
+    print(duration_msg)
+
+    return duration_msg
 
 
 # -------------------------------------------------
@@ -414,7 +425,7 @@ def get_stnd_r2f_output_folder_name(huc_number, crs):
 
     # -------------------
     # validate and split out the crs number.
-    is_valid_crs, err_msg, crs_number = svd.is_valid_crs(crs)
+    is_valid_crs, err_msg, crs_number = val.is_valid_crs(crs)
 
     if is_valid_crs is False:
         raise ValueError(err_msg)

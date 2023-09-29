@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-import datetime
+import datetime as dt
 import os
 import shutil
 import sys
@@ -386,7 +386,7 @@ def dir_reformat_ras_rc(
         # Build output table
 
         # Get a current timestamp
-        timestamp = datetime.now()
+        timestamp = dt.datetime.utcnow()
 
         # Assemble output table
         dir_output_table = pd.DataFrame(
@@ -470,7 +470,7 @@ def dir_reformat_ras_rc(
             print(f"Saved directory outputs for {dir_input_folder_path}.")
 
         # Get timestamp for metadata
-        start_time_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+        start_time_string = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
 
         # Write README metadata file for the intermediate file
         write_metadata_file(
@@ -541,8 +541,8 @@ def compile_ras_rating_curves(
     intermediate_filename = sv.R2F_OUTPUT_DIR_RAS2CALIBRATION
 
     # Record and print start time
-    start_time = datetime.now()
-    start_time_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+    start_time = dt.datetime.utcnow()
+    start_time_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
     # Settings block
     print("-----------------------------------------------------------------------------------------------")
@@ -812,7 +812,7 @@ def compile_ras_rating_curves(
     )
 
     # Record end time, calculate runtime, and print runtime
-    end_time = datetime.now()
+    end_time = dt.datetime.utcnow()
     runtime = end_time - start_time
 
     print()

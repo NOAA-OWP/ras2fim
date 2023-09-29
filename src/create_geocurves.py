@@ -16,8 +16,8 @@ import rasterio
 from rasterio.features import shapes
 from shapely.geometry import MultiPolygon, Polygon
 
+import shared_functions as sf
 import shared_variables as sv
-from shared_functions import get_changelog_version, progress_bar_handler
 
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
@@ -166,12 +166,12 @@ def manage_geo_rating_curves_production(
         output_folder (str): The path to the output folder where geo rating curves will be written.
     """
     print()
-    overall_start_time = datetime.now()
-    dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-    print(f"Started: {dt_string}")
+    overall_start_time = datetime.utcnow()
+    dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    print(f"Started (UTC): {dt_string}")
 
     # Check job numbers and raise error if necessary
-    total_cpus_available = os.cpu_count() - 1
+    total_cpus_available = os.cpu_count() - 2
     if job_number > total_cpus_available:
         raise ValueError(
             "The job number, {}, "
@@ -216,7 +216,7 @@ def manage_geo_rating_curves_production(
 
     # Check version arg input.
     if os.path.isfile(version):
-        version = get_changelog_version(version)
+        version = sf.get_changelog_version(version)
         print("Version found: " + version)
 
     # Define paths outputs
@@ -282,13 +282,13 @@ def manage_geo_rating_curves_production(
                 sys.exit(1)
 
         # Send the executor to the progress bar and wait for all MS tasks to finish
-        progress_bar_handler(executor_dict, True, f"Creating geocurves with {job_number} workers")
+        sf.progress_bar_handler(executor_dict, True, f"Creating geocurves with {job_number} workers")
 
     # Calculate duration
     print()
-    end_time = datetime.now()
-    dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-    print(f"Ended: {dt_string}")
+    end_time = datetime.utcnow()
+    dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    print(f"Ended (UTC): {dt_string}")
     time_duration = end_time - overall_start_time
     print(f"Duration: {str(time_duration).split('.')[0]}")
     print()

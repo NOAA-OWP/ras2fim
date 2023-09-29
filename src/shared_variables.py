@@ -56,6 +56,10 @@ R2F_OUTPUT_FILE_RAS2CAL_CSV = "ras2calibration_output_table.csv"
 R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_output_geopackage.gpkg"
 R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt"
 
+# S3 PATHS (FOLDERS)
+S3_OUTPUT_RAS2FIM_FOLDER = "output_ras2fim"
+S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER = "output_ras2fim_archive"
+S3_OUTPUT_TRACKER_FILE = "ras_output_tracker.csv"
 
 # NODATA VALUE
 DEFAULT_NODATA_VAL = 0 - 9999

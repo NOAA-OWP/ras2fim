@@ -312,7 +312,7 @@ def fn_calculate_all_terrain_stats(str_input_dir):
 
     list_of_list_processed = fn_get_list_of_lists_to_compute(str_input_dir)
 
-    p = mp.Pool(processes=(mp.cpu_count() - 1))
+    p = mp.Pool(processes=(mp.cpu_count() - 2))
 
     len_processed = len(list_of_list_processed)
     list_return_values = list(

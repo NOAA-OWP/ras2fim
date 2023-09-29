@@ -521,6 +521,11 @@ def fn_cut_stream_downstream(gdf_return_stream_fn, df_xs_fn):
     df_xs_fn["stream_stn"] = df_xs_fn["stream_stn"].astype(float)
 
     # Get minimum stationed cross section
+
+    # TODO: Linting says with these following lines that flt_ds_xs
+    # does not exist and shoudl be removed. But I am not sure that is true
+    # flt_ds_xs = df_xs_fn["stream_stn"].min()
+    # gdf_ds_xs = df_xs_fn.query("stream_stn==@flt_ds_xs")
     flt_ds_xs = df_xs_fn["stream_stn"].min()
     gdf_ds_xs = df_xs_fn.query("stream_stn==@flt_ds_xs")
 
@@ -674,7 +679,7 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
         print("Compute HEC-RAS Models: " + str(len(list_models_to_compute)))
 
         # create a pool of processors
-        num_processors = mp.cpu_count() - 1
+        num_processors = mp.cpu_count() - 2
         p = Pool(processes=num_processors)
 
         # multi-process the HEC-RAS calculation of these models
