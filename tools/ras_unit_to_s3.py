@@ -173,7 +173,6 @@ def __process_upload(bucket_name, src_path, unit_folder_name, is_verbose):
     s3_unit_folder_names = __get_s3_unit_folder_list(bucket_name, src_name_dict, is_verbose)
 
     if len(s3_unit_folder_names) == 1:
-
         # ---------------
         # Figure out the action (by asking the user)
 
@@ -367,7 +366,7 @@ def __ask_user_about_different_date_folder_name(
     print("*********************")
 
     msg = (
-        f"You have requested to upload a unit folder named {src_unit_folder_name}."        
+        f"You have requested to upload a unit folder named {src_unit_folder_name}."
         " However, a folder of the starting with the same huc and crs already exists as"
         f" s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_FOLDER}/{existing_folder_name}.\n"
     )
@@ -895,7 +894,7 @@ if __name__ == "__main__":
         "-v",
         "--is_verbose",
         help="OPTIONAL: Adding this flag will give additional tracing output."
-        "Default = False (no extra output)",
+        " Default = False (no extra output)",
         required=False,
         default=False,
         action="store_true",
