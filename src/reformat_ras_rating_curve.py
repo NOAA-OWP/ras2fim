@@ -735,6 +735,7 @@ def compile_ras_rating_curves(
         raise ValueError("no geopackage file paths have been found")
 
     # Define output projection from shared variables
+    # TODO: change to sv.DEFAULT_OUTPUT_CRS and test
     compiled_geopackage_CRS = sv.DEFAULT_RASTER_OUTPUT_CRS
 
     compiled_geopackage = None

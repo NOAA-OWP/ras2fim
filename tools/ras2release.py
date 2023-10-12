@@ -50,9 +50,9 @@ def create_ras2release(rel_name, s3_path_to_output_folder, local_working_folder_
     # __download_units_from_s3
 
     # __process_geocurves()
-    # __process_domain_models
+    __process_domain_models(local_src_unit_paths, vd["r2c_local_target_path"])
     # __process_models_used
-    __process_rating_curves(local_src_unit_paths, vd["s3_target_path"])
+    #__process_rating_curves(local_src_unit_paths, vd["r2c_local_target_path"])
     # __save_to_s3(local_wip_folder)
 
     print()
@@ -100,7 +100,7 @@ def __validate_input(rel_name, s3_path_to_output_folder, local_working_folder_pa
     # else, just delete and rebuild
 
     # test that s3 target folder name exists
-    variables["s3_target_path"] = f"{local_working_folder_path}\{rel_name}"
+    variables["r2c_local_target_path"] = f"{local_working_folder_path}\{rel_name}"
 
     return variables
 
@@ -109,7 +109,46 @@ def __validate_input(rel_name, s3_path_to_output_folder, local_working_folder_pa
 # def __process_geocurves():
 
 ####################################################################
-# def __process_domain_models():
+def __process_domain_models(local_src_unit_paths, local_wip_folder):
+
+    # TODO: WIP
+
+    print()
+    print("*** processing domain models")
+
+    output_folder = os.path.join(local_wip_folder, "domain_models")
+    merged_domain_model_file = os.path.join(output_folder, "ras2fim_domain_models.gpkg")
+
+    # ----------------
+    # Copy all domain model geopackages from
+    # the local output unit folders to the ras2release/{rel version}/domain_models folder
+
+    # ----------------
+    # Iterate and join the files
+    model_files = glob.glob(os.path.join(output_folder, "*_models_domain.gpkg"))
+
+    # TODO: This might have to move to Parquet or similar as gpkg have a 2GB limit, in FIM, we have a
+    # parquet file per HUC8. inputs/rating_curve/water_edge_database/calibration_points/
+
+    merged_gkpg_crs = sv.DEFAULT_OUTPUT_CRS
+
+    merged_gkpg = None
+
+    # Add manual tqdm (not multi proc or multi thread)
+    # Iterate through input geopackages and compile them
+    for i in range(len(model_files)):
+        if i == 0:
+            # we have to load the first gkpg directly then concat more after.
+            # Create an empty GeoDataFrame to store the compiled data
+            gkpg_raw = gpd.read_file(model_files[i])
+            merged_gkpg = gkpg_raw.to_crs(merged_gkpg_crs)
+        else:
+            gkpg_raw = gpd.read_file(model_files[i])
+            gkpg_adj = gkpg_raw.to_crs(merged_gkpg_crs)
+            merged_gkpg = pd.concat([merged_gkpg, gkpg_adj], ignore_index=True)
+
+    merged_gkpg.to_file(merged_domain_model_file, driver="GPKG")
+
 
 ####################################################################
 # def __process_models_used():
@@ -130,9 +169,9 @@ def __process_rating_curves(local_src_unit_paths, local_wip_folder):
     print()
     print("*** processing rating curves")
 
-    rc_output_folder = os.path.join(local_wip_folder, "rating_curves")
-    merged_rc_table_file = os.path.join(rc_output_folder, "reformat_ras_rating_curve_table.csv")
-    merged_rc_points_file = os.path.join(rc_output_folder, "reformat_ras_rating_curve_points.gpkg")
+    output_folder = os.path.join(local_wip_folder, "calibration_rating_curves")
+    merged_rc_table_file = os.path.join(output_folder, "reformat_ras_rating_curve_table.csv")
+    merged_rc_points_file = os.path.join(output_folder, "reformat_ras_rating_curve_points.gpkg")
 
     # ----------------
     # Copy all ras2calibration_output_geopackages and ras2calibation output table csv's from
@@ -140,8 +179,8 @@ def __process_rating_curves(local_src_unit_paths, local_wip_folder):
 
     # ----------------
     # Iterate and join the table files
-    print(f"src_output_folder is {rc_output_folder}")
-    rc_table_files = glob.glob(os.path.join(rc_output_folder, "*_ras2calibration_output_table.csv"))
+    print(f"src_output_folder is {output_folder}")
+    rc_table_files = glob.glob(os.path.join(output_folder, "*_ras2calibration_output_table.csv"))
 
     if len(rc_table_files) == 0:
         raise Exception("Internal Error: No ras2calibration_output_table.csv found.")
@@ -155,7 +194,7 @@ def __process_rating_curves(local_src_unit_paths, local_wip_folder):
 
     # ----------------
     # Iterate and join the table files
-    rc_point_files = glob.glob(os.path.join(rc_output_folder, "*_ras2calibration_output_geopackage.gpkg"))
+    rc_point_files = glob.glob(os.path.join(output_folder, "*_ras2calibration_output_geopackage.gpkg"))
 
     # TODO: This might have to move to Parquet or similar as gpkg have a 2GB limit, in FIM, we have a
     # parquet file per HUC8. inputs/rating_curve/water_edge_database/calibration_points/
@@ -175,8 +214,6 @@ def __process_rating_curves(local_src_unit_paths, local_wip_folder):
             compiled_geopackage = pd.concat([compiled_geopackage, data], ignore_index=True)
 
     compiled_geopackage.to_file(merged_rc_points_file, driver="GPKG")
-
-    # TODO: Can we figure out a way to track record counts? to make sure it merged correctly?
 
 
 ####################################################################
