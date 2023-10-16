@@ -27,8 +27,21 @@
 # ***
 
 import os
+
+# may not be loaded via environment.yml
 import py7zr
 import rasterio as rio
+
+
+#########
+# TODO: Sept 6, 2023
+# This file should really be cleaned up (no __main__ and alot of inline logic)
+
+########################
+#  Sep 19, 2023
+#  Note: This file is out of date as py7zr is not currently being installed in the
+#   environment.xml.  Not sure if this should be deprecated.
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 # INPUT
@@ -48,14 +61,12 @@ STR_PRJ_FILE = r"E:\X-IowaFloodCenter\RockValley_PreProcess\10170204_huc_12_ar.p
 # Directory to place the HDF terrain files
 STR_RAS_TERRAIN_OUT = r"E:\X-IowaFloodCenter\Terrain_Output\Terrain_Processed\HEC-RAS-HDF"
 
-# Path to the HEC-RAS v6.0 beta 3 RasProcess.exe
-STR_HEC_RAS_6_PATH = r"C:\Junk\Test_HEC_RAS\6.0 Beta 3\RasProcess.exe"
-# ~~~~~~~~~~~~~~~~~~~~~~~~
+# Path to the HEC-RAS v6.3 RasProcess.exe
+STR_HEC_RAS_6_PATH = r"C:\Junk\Test_HEC_RAS\6.3\RasProcess.exe"
 
 
-# ++++++++++++++++++++++++++
+# -------------------------------------------------
 def fn_list_files(filepath, filetype):
-
     # walks a directory and return a lits of all the
     # files with a given file type
 
@@ -64,42 +75,41 @@ def fn_list_files(filepath, filetype):
         for file in files:
             if file.lower().endswith(filetype.lower()):
                 paths.append(os.path.join(root, file))
-    return(paths)
-# ++++++++++++++++++++++++++
+    return paths
 
+
+# -------------------------------------------------
 
 list_files = fn_list_files(STR_FILE_PATH, "7z")
 
 
-# .........................
+# -------------------------------------------------
 def fn_unzip_list(str_file_path_fn, str_path_out_fn):
-
     # Unzips all the files in a given list (.7z)
     # and place in desired folder
 
-    archive = py7zr.SevenZipFile(str_file_path_fn, mode='r')
+    archive = py7zr.SevenZipFile(str_file_path_fn, mode="r")
     archive.extractall(path=str_path_out_fn)
     archive.close()
-# .........................
 
 
+# -------------------------------------------------
 fn_unzip_list(list_files, STR_PATH_UNIZPPED)
-print('Unzip complete')
+print("Unzip complete")
 
 # Create a list of all the GeoTIFFs (from the unzipped HUC-12's)
 list_files = fn_list_files(STR_PATH_UNIZPPED, "tif")
 
 
-# >>>>>>>>>>>>>>>>>>>>>>>>>
+# -------------------------------------------------
 def fn_convert_terrain(str_input_dem_filepath, str_huc12):
-
     # Load the raster and convert
 
     # Read the overall terrain raster
     src = rio.open(str_input_dem_filepath)
 
     # Copy the metadata of the src terrain
-    out_meta = src.meta.copy()
+    src.meta.copy()
 
     with rio.open(str_input_dem_filepath) as src:
         elevation = src.read()
@@ -108,7 +118,7 @@ def fn_convert_terrain(str_input_dem_filepath, str_huc12):
     a = elevation
 
     # convert numpy datatype to unsigned 16 bit integer
-    b = a.astype('float32')
+    b = a.astype("float32")
 
     # divde all cell values by 100
     b = b / 100
@@ -118,13 +128,13 @@ def fn_convert_terrain(str_input_dem_filepath, str_huc12):
     # change the data type and the null value
     with rio.open(str_input_dem_filepath) as src2:
         profile = src2.profile
-        profile.update(dtype='float32', nodata=-21474836.480, compress='lzw')
+        profile.update(dtype="float32", nodata=-21474836.480, compress="lzw")
 
-        with rio.open(str_convert_file_name, 'w', **profile) as dataset:
+        with rio.open(str_convert_file_name, "w", **profile) as dataset:
             dataset.write(b)
-# >>>>>>>>>>>>>>>>>>>>>>>>>
 
 
+# -------------------------------------------------
 # converting terrain to float32 for each GeoTIFF in list
 
 for i in list_files:
@@ -135,7 +145,7 @@ for i in list_files:
 
 # Convert the GeoTIFFs of HUC-12 terrain to HEC-RAS HDF5
 #
-# Note that this uses a CLI to the RasProcess.exe in HEC-RAS 6.0 beta 3.
+# Note that this uses a CLI to the RasProcess.exe in HEC-RAS 6.3.
 # This will need access to the cooresponding and support files
 # (dll, exe, etc...).  As this is a CLI call it will run async with this
 # notebook.
@@ -159,17 +169,16 @@ for i in list_processed_dem:
     # Build a CLI call for RasProcess.exe CreateTerrain for each
     # terarin tile (HUC-12) in the list
 
-    str_path_ras = "\"" + STR_HEC_RAS_6_PATH + "\"" + " CreateTerrain"
+    str_path_ras = '"' + STR_HEC_RAS_6_PATH + '"' + " CreateTerrain"
     str_path_ras += " units=meter stitch=true prj="
-    str_path_ras += "\"" + STR_PRJ_FILE + "\""
+    str_path_ras += '"' + STR_PRJ_FILE + '"'
     str_path_ras += " out="
-    str_path_ras += "\"" + STR_RAS_TERRAIN_OUT + "\\"
+    str_path_ras += '"' + STR_RAS_TERRAIN_OUT + "\\"
 
-    str_path_ras += i[-16:-4] + ".hdf" + "\""
+    str_path_ras += i[-16:-4] + ".hdf" + '"'
     str_path_ras += " " + i
 
-    print(str(i[-16:-4]) + " : " + str(int_count)
-          + " of " + str(len(list_processed_dem)))
+    print(str(i[-16:-4]) + " : " + str(int_count) + " of " + str(len(list_processed_dem)))
 
     # Use the os object to execute the terrain converstion call
     os.system(str_path_ras)
@@ -177,4 +186,4 @@ for i in list_processed_dem:
     o = os.popen(str_path_ras)
     print(o)
 
-print('Done')
+print("Done")

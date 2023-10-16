@@ -1,3 +1,8 @@
+
+###################
+# ras2fim Exceptions are at the bottom
+###################
+
 # Compiled source #
 ###################
 *.com
@@ -75,3 +80,15 @@ bower_components/
 .grunt/
 src/vendor/
 dist/
+
+###################
+# ras2fim Exceptions below
+###################
+
+config/**
+!config/r2f_config.env
+
+# Base data #
+#############
+national-datasets/
+outputs/
