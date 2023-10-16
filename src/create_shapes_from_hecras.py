@@ -26,12 +26,16 @@ import win32com.client
 from shapely.geometry import LineString
 from shapely.ops import linemerge, split
 
+import ras2fim_logger
 
 # windows component object model for interaction with HEC-RAS API
 # This routine uses RAS60.HECRASController (HEC-RAS v6.3.0 must be
 # installed on this machine prior to execution)
 
 # h5py for extracting data from the HEC-RAS g**.hdf files
+
+# Global Variables
+r2f_log = ras2fim_logger.RAS2FIM_logger()
 
 
 # -------------------------------------------------
@@ -602,6 +606,17 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     print("|    STREAM AND CROSS SECTION SHAPEFILES FROM HEC-RAS DIRECTORY   |")
     print("+-----------------------------------------------------------------+")
 
+    # TODO: Testing logging
+    r2f_log.log.trace("csh - yup.. I am tracing now")
+    r2f_log.log.debug("csh - huh. what is the value I am debugging")
+    r2f_log.log.info("csh - oh boy, do I have some info for you")
+    r2f_log.log.success("csh - Yay.. it is succesful")
+    r2f_log.log.warning("csh - Oh no.. warning Will Robinson")
+    r2f_log.log.error("csh - zooiks.. some error is around")
+    r2f_log.log.critical("csh - AHHH! Critical error. Run for the hills")
+
+
+
     # TODO - not contants - lower case - 2021.09.07
     STR_PATH_RAS_FILES = str_ras_path_arg
     print("  ---(i) INPUT PATH: " + STR_PATH_RAS_FILES)
@@ -757,6 +772,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="============ SHAPEFILES FROM HEC-RAS DIRECTORY ============"
     )
+
+    # TODO: do a logging setup here only if this is called directly? (aka, command line to this script?)
 
     parser.add_argument(
         "-i",
