@@ -25,10 +25,10 @@ import sys
 
 import pyproj
 
+import ras2fim_logger
 import shared_functions as sf
 import shared_validators as val
 import shared_variables as sv
-import ras2fim_logger
 from calculate_all_terrain_stats import fn_calculate_all_terrain_stats
 from clip_dem_from_shape import fn_cut_dems_from_shapes
 from conflate_hecras_to_nwm import fn_conflate_hecras_to_nwm
@@ -47,7 +47,7 @@ from simplify_fim_rasters import fn_simplify_fim_rasters
 # Global Variables
 B_TERRAIN_CHECK_ONLY = False
 ARG_LOG_FILE_NAME = "run_arguments.txt"
-r2f_log = ras2fim_logger.RAS2FIM_logger()
+rlog = ras2fim_logger.RAS2FIM_logger()
 
 # -------------------------------------------------
 # If you are calling this function from an another python file, please just call this function
@@ -160,16 +160,18 @@ def init_and_run_ras2fim(
 
     # -------------------
     # setup the logging class (default unit folder path (HUC/CRS))
-    r2f_log.setup(output_folder_path)
+    rlog.setup(output_folder_path)
 
     # TODO: Testing logging
-    r2f_log.log.trace("yup.. I am tracing now")
-    r2f_log.log.debug("huh. what is the value I am debugging")
-    r2f_log.log.info("oh boy, do I have some info for you")
-    r2f_log.log.success("Yay.. it is succesful")
-    r2f_log.log.warning("Oh no.. warning Will Robinson")
-    r2f_log.log.error("zooiks.. some error is around")
-    r2f_log.log.critical("AHHH! Critical error. Run for the hills")
+    # r2f_log.log.log("LPRINT", "ok, lets check out this lprint thing")
+    # rlog.log.trace("yup.. I am tracing now")
+    rlog.lprint("yup.. a second 'trace' but via lprint")
+    rlog.log.debug("huh. what is the value I am debugging")
+    rlog.log.info("oh boy, do I have some info for you")
+    rlog.log.success("Yay.. it is succesful")
+    rlog.log.warning("Oh no.. warning Will Robinson")
+    rlog.log.error("zooiks.. some error is around")
+    rlog.log.critical("AHHH! Critical error. Run for the hills")
 
     # -------------------------------------------
     # ---- Make the "final" folder now as some modules will write to it through the steps
@@ -228,24 +230,32 @@ def fn_run_ras2fim(
 ):
     start_dt = dt.datetime.utcnow()
 
-    print(" ")
-    print("+=================================================================+")
-    print("|          RUN RAS2FIM FOR A HEC-RAS 1-D DATASET (HUC8)           |")
-    print("|     Created by Andy Carter, PE of the National Water Center     |")
-    print("+-----------------------------------------------------------------+")
+    print()
+    rlog.lprint("+=================================================================+")
+    rlog.lprint("          RUN RAS2FIM FOR A HEC-RAS 1-D DATASET (HUC8)")
+    rlog.lprint("     Created by Andy Carter, PE of the National Water Center")
+    rlog.lprint("+-----------------------------------------------------------------+")
 
-    print("  ---(r) HUC 8 WATERSHED: " + str(str_huc8_arg))
-    print("  ---(i) PATH TO HEC-RAS: " + str(input_models_path))
-    print("  ---(o) OUTPUT DIRECTORY: " + output_folder_path)
-    print("  ---(p) PROJECTION OF HEC-RAS MODELS: " + str(str_crs_arg))
-    print("  ---(n) PATH TO NATIONAL DATASETS: " + str(str_nation_arg))
-    print("  ---(r) PATH TO HEC-RAS v6.3: " + str(str_hec_path))
-    print("  ---[t] Optional: Terrain to Utilize" + str(str_terrain_override))
-    print("  ---[mc] Optional: path to models catalog - " + str(model_huc_catalog_path))
-    print("  ---[s] Optional: step to start at - " + str(int_step))
-    print("  --- The Ras Models unit (extracted from RAS model prj file and given EPSG code): " + model_unit)
-    print("===================================================================")
-    print(" ")
+    # Adds a log file header
+    # r2f_log.log.trace("+=====\n"
+    #                  "+++ RUN RAS2FIM FOR A HEC-RAS 1-D DATASET (HUC8)\n"
+    #                  "+============\n")
+
+    rlog.lprint("  ---(r) HUC 8 WATERSHED: " + str(str_huc8_arg))
+    rlog.lprint("  ---(i) PATH TO HEC-RAS: " + str(input_models_path))
+    rlog.lprint("  ---(o) OUTPUT DIRECTORY: " + output_folder_path)
+    rlog.lprint("  ---(p) PROJECTION OF HEC-RAS MODELS: " + str(str_crs_arg))
+    rlog.lprint("  ---(n) PATH TO NATIONAL DATASETS: " + str(str_nation_arg))
+    rlog.lprint("  ---(r) PATH TO HEC-RAS v6.3: " + str(str_hec_path))
+    rlog.lprint("  ---[t] Optional: Terrain to Utilize " + str(str_terrain_override))
+    rlog.lprint("  ---[mc] Optional: path to models catalog - " + str(model_huc_catalog_path))
+    rlog.lprint("  ---[s] Optional: step to start at - " + str(int_step))
+    rlog.lprint(
+        "  --- The Ras Models unit (extracted from RAS model prj file and given EPSG code): " + model_unit
+    )
+    rlog.lprint("===================================================================")
+    rlog.lprint(f"started: {start_dt}")
+    print()
 
     # -------------------------------------------
     # ---- Make the "final" folder now as some modules will write to it through the steps
@@ -256,7 +266,7 @@ def fn_run_ras2fim(
     # ---- Step 1: create_shapes_from_hecras ----
     # create a folder for the shapefiles from hec-ras
     print()
-    print("+++++++ Processing: STEP 1 (create_shapes_from_hecras) +++++++")
+    rlog.lprint("+++++++ Processing: STEP 1 (create_shapes_from_hecras) +++++++")
 
     str_shapes_from_hecras_dir = os.path.join(output_folder_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS)
     if not os.path.exists(str_shapes_from_hecras_dir):
@@ -267,10 +277,14 @@ def fn_run_ras2fim(
         fn_create_shapes_from_hecras(input_models_path, str_shapes_from_hecras_dir, str_crs_arg)
     # -------------------------------------------
 
+    print()
+    print("testing logging - all done")
+    sys.exit()
+
     # ------ Step 2: conflate_hecras_to_nwm -----
     # do whatever is needed to create folders and determine variables
     print()
-    print("+++++++ Processing: STEP 2 (conflate_hecras_to_nwm) +++++++")
+    rlog.lprint("+++++++ Processing: STEP 2 (conflate_hecras_to_nwm) +++++++")
 
     str_shapes_from_conflation_dir = os.path.join(output_folder_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
     if not os.path.exists(str_shapes_from_conflation_dir):
@@ -283,18 +297,11 @@ def fn_run_ras2fim(
         )
     # -------------------------------------------
 
-
-    print()
-    print("testing logging - all done")
-    sys.exit()
-
-
-
     # ------ Step 3: get_usgs_dem_from_shape or clip_dem_from_shape ----
     str_area_shp_name = str_huc8_arg + "_huc_12_ar.shp"
     str_input_path = os.path.join(str_shapes_from_conflation_dir, str_area_shp_name)
     print()
-    print("+++++++ Processing: STEP 3 get / cut DEM +++++++")
+    rlog.lprint("+++++++ Processing: STEP 3 get / cut DEM +++++++")
 
     # create output folder
     str_terrain_from_usgs_dir = os.path.join(output_folder_path, sv.R2F_OUTPUT_DIR_TERRAIN)
@@ -345,8 +352,9 @@ def fn_run_ras2fim(
     str_hecras_terrain_dir = os.path.join(output_folder_path, sv.R2F_OUTPUT_DIR_HECRAS_TERRAIN)
     if not os.path.exists(str_hecras_terrain_dir):
         os.mkdir(str_hecras_terrain_dir)
+
     print()
-    print("+++++++  Processing: STEP 4 (convert tif to ras hdf5) +++++++")
+    rlog.lprint("+++++++ Processing: STEP 4 (convert tif to ras hdf5 +++++++")
 
     str_area_prj_name = str_huc8_arg + "_huc_12_ar.prj"
     str_projection_path = os.path.join(str_shapes_from_conflation_dir, str_area_prj_name)
@@ -369,7 +377,7 @@ def fn_run_ras2fim(
         os.mkdir(str_hecras_out_dir)
 
     print()
-    print("+++++++ Processing: STEP 5 (create fim rasters) +++++++")
+    rlog.lprint("+++++++ Processing: STEP 5 (create fim rasters +++++++")
 
     # path to standard input (PlanStandardText01.txt, PlanStandardText02.txt, ProjectStandardText01.txt )
     str_std_input_path = os.getcwd()  # assumed as in directory executing script
@@ -398,7 +406,7 @@ def fn_run_ras2fim(
     flt_resolution_depth_grid = int(output_resolution)
 
     print()
-    print("+++++++ Processing: 5.b (simplifying fim rasters and create metrics)  +++++++")
+    rlog.lprint("+++++++ Processing: 5.b (simplifying fim rasters and create metrics) +++++++")
 
     fn_simplify_fim_rasters(
         str_hecras_out_dir, flt_resolution_depth_grid, sv.DEFAULT_RASTER_OUTPUT_CRS, model_unit
@@ -406,14 +414,14 @@ def fn_run_ras2fim(
 
     # ----------------------------------------
     print()
-    print("+++++++ Processing: STEP 5.c (calculate terrain statistics +++++++")
+    rlog.lprint("+++++++ Processing: STEP 5.c (calculate terrain statistics) +++++++")
 
     fn_calculate_all_terrain_stats(str_hecras_out_dir)
 
     # -------------------------------------------------
     if os.getenv("RUN_RAS2CALIBRATION") == "True":
         print()
-        print("+++++++ Processing STEP: Running ras2calibration +++++++")
+        rlog.lprint("+++++++ Processing: STEP: Running ras2calibration +++++++")
 
         dir_reformat_ras_rc(
             output_folder_path,
@@ -456,13 +464,13 @@ def fn_run_ras2fim(
     # -------------------------------------------------
     if os.getenv("PRODUCE_GEOCURVES") == "True":
         print()
-        print("+++++++ Processing STEP: Producing Geocurves +++++++")
+        rlog.lprint("+++++++ Processing: STEP: Producing Geocurves +++++++")
 
         create_polys = os.getenv("PRODUCE_GEOCURVE_POLYGONS") == "True"
         if create_polys is True:
-            print("+++ (Including creating geocurve polygons) +++++++")
+            rlog.lprint("+++ (Including creating geocurve polygons) +++++++")
         else:
-            print("++++ (Skipping creating geocurve polygon) +++++++")
+            rlog.lprint("++++ (Skipping creating geocurve polygon) +++++++")
 
         # Produce geocurves
         job_number = os.cpu_count() - 2
@@ -478,7 +486,7 @@ def fn_run_ras2fim(
     # -------------------------------------------------
     if os.getenv("RUN_RAS2REM") == "True":
         print()
-        print("+++++++ Processing STEP: ras2rem +++++++")
+        rlog.lprint("+++++++ Processing: STEP: ras2rem +++++++")
 
         fn_run_ras2rem(output_folder_path, model_unit)
 
@@ -491,7 +499,7 @@ def fn_run_ras2fim(
     # -------------------------------------------------
     if os.getenv("RUN_RAS2CATCHMENTS") == "True":
         print()
-        print("+++++++ Processing STEP: ras2catchments +++++++")
+        print("+++++++ Processing: STEP: ras2catchments +++++++")
 
         make_catchments(str_huc8_arg, output_folder_path, str_nation_arg, model_huc_catalog_path)
 
@@ -503,7 +511,7 @@ def fn_run_ras2fim(
     # -------------------------------------------------
     if os.getenv("CREATE_RAS_DOMAIN_POLYGONS") == "True":
         print()
-        print("+++++++ Processing STEP: Create polygons for HEC-RAS models domains +++++++")
+        rlog.lprint("+++++++ Processing: STEP: Create polygons for HEC-RAS models domains +++++++")
 
         # get the path to the shapefile containing cross sections of the parent HEC-RAS models
         xsections_shp_file_path = os.path.join(str_shapes_from_hecras_dir, "cross_section_LN_from_ras.shp")
@@ -526,7 +534,7 @@ def fn_run_ras2fim(
 
     # -------------------------------------------------
     print()
-    print("+++++++ Finalizing processing +++++++")
+    rlog.lprint("+++++++ Finalizing processing +++++++")
 
     # TODO: use the models catalog to add columns for success/fail processing for each
     #  model and why it failed if applicable.  (maybe?)
@@ -539,6 +547,8 @@ def fn_run_ras2fim(
     print("  RUN RAS2FIM - Completed                                         |")
     sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
     print("+-----------------------------------------------------------------+")
+
+    # TODO: log duration
 
 
 # -------------------------------------------------

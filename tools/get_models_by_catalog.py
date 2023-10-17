@@ -14,10 +14,11 @@ import s3fs
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+import s3_shared_functions as s3_sf
+
 import ras2fim_logger
 import shared_validators as val
 import shared_variables as sv
-import s3_shared_functions as s3_sf
 
 
 # Global Variables
@@ -217,12 +218,14 @@ class Get_Models_By_Catalog:
             if self.df_filtered.empty:
                 r2f_log.log.error(
                     f"No valid records return for {huc_number} and crs {self.projection}. {filter_msg}"
-                )                
+                )
                 return
 
             self.df_filtered.reset_index(inplace=True)
 
-            r2f_log.log.info(f"Number of model records after filtering is {len(self.df_filtered)} (pre-download).")            
+            r2f_log.log.info(
+                f"Number of model records after filtering is {len(self.df_filtered)} (pre-download)."
+            )
 
             if self.is_verbose is True:
                 # to see the huc list without column trucations (careful as this could be a huge output)
@@ -240,25 +243,25 @@ class Get_Models_By_Catalog:
 
             # we will save it initially but update it and save it again as it goes
             self.df_filtered.to_csv(self.target_filtered_csv_path, index=False)
-            r2f_log.log.info(f"Filtered model catalog saved to : {self.target_filtered_csv_path}")            
+            r2f_log.log.info(f"Filtered model catalog saved to : {self.target_filtered_csv_path}")
             if self.list_only is False:
                 print(
                     "Note: This csv represents all filtered models folders that are pending to be"
                     " downloaded.\nThe csv will be updated with statuses after downloads are complete."
-                )                
+                )
 
             # make list from the models_catalog.final_name_key which should be the list of folder
             # names to be downloaded
             folders_to_download = self.df_filtered["final_name_key"].tolist()
             folders_to_download.sort()
-       
+
             # ----------
             # If inc_download_folders, otherwise we just stop.  Sometimes a list is wanted but
             # not the downloads
             if self.list_only is False:
                 self.download_files(folders_to_download)
 
-            #self.lprint("")
+            # self.lprint("")
             print()
             if self.list_only is True:
                 r2f_log.log.info("List only as per (-f) flag - no downloads attempted")
@@ -268,11 +271,15 @@ class Get_Models_By_Catalog:
                 )
 
             else:
-                r2f_log.log.success(f"Number of models folders successfully downloaded: {self.num_success_downloads}")
+                r2f_log.log.success(
+                    f"Number of models folders successfully downloaded: {self.num_success_downloads}"
+                )
                 num_skips = self.num_pending_downloads - self.num_success_downloads
-                r2f_log.log.info(f"Number of models folders skipped / errored during download: {num_skips}")                
+                r2f_log.log.info(f"Number of models folders skipped / errored during download: {num_skips}")
                 if num_skips > 0:
-                    r2f_log.log.warning("Please review the output logs or the filtered csv for skip/error details.")
+                    r2f_log.log.warning(
+                        "Please review the output logs or the filtered csv for skip/error details."
+                    )
 
         except Exception:
             errMsg = "--------------------------------------\n An error has occurred"
@@ -377,7 +384,6 @@ class Get_Models_By_Catalog:
         if s3_sf.is_valid_s3_folder(self.src_owp_model_folder_path) is False:
             raise ValueError(f"S3 output folder of {self.src_owp_model_folder_path} ... does not exist")
 
-
     # -------------------------------------------------
     def download_files(self, folder_list):
         print()
@@ -468,7 +474,6 @@ class Get_Models_By_Catalog:
 
     # -------------------------------------------------
     def __setup_logs(self):
-
         start_time = dt.datetime.utcnow()
         file_dt_string = start_time.strftime("%y%m%d-%H%M")
 
@@ -476,6 +481,7 @@ class Get_Models_By_Catalog:
         # setup the logging class (default unit folder path (HUC/CRS))
         file_name = f"get_models_{self.huc_number}_{self.crs_number}-{file_dt_string}.log"
         r2f_log.setup(self.target_parent_path, file_name)
+
 
 # -------------------------------------------------
 if __name__ == "__main__":

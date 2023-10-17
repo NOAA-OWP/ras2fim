@@ -367,10 +367,9 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
 
 ####################################################################
 def is_valid_s3_folder(s3_bucket_and_folder):
-
     """
     Process:  This will throw exceptions for all errors
-    Input: 
+    Input:
         - s3_bucket_and_folder: eg. s3://ras2fim/OWP_ras_models
     """
 
