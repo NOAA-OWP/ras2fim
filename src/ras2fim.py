@@ -16,7 +16,6 @@
 # Main code for ras2fim
 # Uses the 'ras2fim' conda environment
 
-
 import argparse
 import datetime as dt
 import os
@@ -49,12 +48,11 @@ B_TERRAIN_CHECK_ONLY = False
 ARG_LOG_FILE_NAME = "run_arguments.txt"
 rlog = ras2fim_logger.RAS2FIM_logger()
 
+
 # -------------------------------------------------
 # If you are calling this function from an another python file, please just call this function
 # as it validates inputs and sets up other key variables.
 # Then will make the call to fn_run_ras2fim
-
-
 def init_and_run_ras2fim(
     str_huc8_arg,
     str_crs_arg,
@@ -68,7 +66,6 @@ def init_and_run_ras2fim(
     output_resolution=10,
     config_file=sv.DEFAULT_CONFIG_FILE_PATH,
 ):
-    # sf.fix_proj_path_error()
     config_file = sf.load_config_enviro_path(config_file)
 
     ####################################################################
@@ -163,15 +160,14 @@ def init_and_run_ras2fim(
     rlog.setup(output_folder_path)
 
     # TODO: Testing logging
-    # r2f_log.log.log("LPRINT", "ok, lets check out this lprint thing")
-    # rlog.log.trace("yup.. I am tracing now")
-    rlog.lprint("yup.. a second 'trace' but via lprint")
-    rlog.log.debug("huh. what is the value I am debugging")
-    rlog.log.info("oh boy, do I have some info for you")
-    rlog.log.success("Yay.. it is succesful")
-    rlog.log.warning("Oh no.. warning Will Robinson")
-    rlog.log.error("zooiks.. some error is around")
-    rlog.log.critical("AHHH! Critical error. Run for the hills")
+    print()
+    rlog.lprint("yup.. this is standard lprint (print with logging)")
+    rlog.debug("huh. what is the value I am debugging")
+    rlog.info("oh boy, do I have some info for you")
+    rlog.success("Yay.. it is succesful")
+    rlog.warning("Oh no.. warning Will Robinson")
+    rlog.error("zooiks.. some error is around")
+    rlog.critical("AHHH! Critical error. Run for the hills")
 
     # -------------------------------------------
     # ---- Make the "final" folder now as some modules will write to it through the steps
@@ -197,6 +193,8 @@ def init_and_run_ras2fim(
     if (os.getenv("RUN_RAS2CATCHMENTS") == "True") and (os.getenv("RUN_RAS2REM") != "True"):
         raise ValueError("For the catchments module to run, the env.RUN_RAS2REM must be True.")
 
+    # -------------------
+    # Now call the processing function
     fn_run_ras2fim(
         str_huc8_arg,
         input_models_path,
@@ -236,11 +234,6 @@ def fn_run_ras2fim(
     rlog.lprint("     Created by Andy Carter, PE of the National Water Center")
     rlog.lprint("+-----------------------------------------------------------------+")
 
-    # Adds a log file header
-    # r2f_log.log.trace("+=====\n"
-    #                  "+++ RUN RAS2FIM FOR A HEC-RAS 1-D DATASET (HUC8)\n"
-    #                  "+============\n")
-
     rlog.lprint("  ---(r) HUC 8 WATERSHED: " + str(str_huc8_arg))
     rlog.lprint("  ---(i) PATH TO HEC-RAS: " + str(input_models_path))
     rlog.lprint("  ---(o) OUTPUT DIRECTORY: " + output_folder_path)
@@ -254,7 +247,7 @@ def fn_run_ras2fim(
         "  --- The Ras Models unit (extracted from RAS model prj file and given EPSG code): " + model_unit
     )
     rlog.lprint("===================================================================")
-    rlog.lprint(f"started: {start_dt}")
+    rlog.lprint(f"Program Started: {sf.get_stnd_date()}")
     print()
 
     # -------------------------------------------
@@ -277,10 +270,6 @@ def fn_run_ras2fim(
         fn_create_shapes_from_hecras(input_models_path, str_shapes_from_hecras_dir, str_crs_arg)
     # -------------------------------------------
 
-    print()
-    print("testing logging - all done")
-    sys.exit()
-
     # ------ Step 2: conflate_hecras_to_nwm -----
     # do whatever is needed to create folders and determine variables
     print()
@@ -302,6 +291,7 @@ def fn_run_ras2fim(
     str_input_path = os.path.join(str_shapes_from_conflation_dir, str_area_shp_name)
     print()
     rlog.lprint("+++++++ Processing: STEP 3 get / cut DEM +++++++")
+    rlog.lprint(f"Module Started: {sf.get_stnd_date()}")
 
     # create output folder
     str_terrain_from_usgs_dir = os.path.join(output_folder_path, sv.R2F_OUTPUT_DIR_TERRAIN)
@@ -355,6 +345,7 @@ def fn_run_ras2fim(
 
     print()
     rlog.lprint("+++++++ Processing: STEP 4 (convert tif to ras hdf5 +++++++")
+    rlog.lprint(f"Module Started: {sf.get_stnd_date()}")
 
     str_area_prj_name = str_huc8_arg + "_huc_12_ar.prj"
     str_projection_path = os.path.join(str_shapes_from_conflation_dir, str_area_prj_name)
@@ -378,6 +369,7 @@ def fn_run_ras2fim(
 
     print()
     rlog.lprint("+++++++ Processing: STEP 5 (create fim rasters +++++++")
+    rlog.lprint(f"Module Started: {sf.get_stnd_date()}")
 
     # path to standard input (PlanStandardText01.txt, PlanStandardText02.txt, ProjectStandardText01.txt )
     str_std_input_path = os.getcwd()  # assumed as in directory executing script
@@ -407,6 +399,7 @@ def fn_run_ras2fim(
 
     print()
     rlog.lprint("+++++++ Processing: 5.b (simplifying fim rasters and create metrics) +++++++")
+    rlog.lprint(f"Module Started: {sf.get_stnd_date()}")
 
     fn_simplify_fim_rasters(
         str_hecras_out_dir, flt_resolution_depth_grid, sv.DEFAULT_RASTER_OUTPUT_CRS, model_unit
@@ -415,6 +408,7 @@ def fn_run_ras2fim(
     # ----------------------------------------
     print()
     rlog.lprint("+++++++ Processing: STEP 5.c (calculate terrain statistics) +++++++")
+    rlog.lprint(f"Module Started: {sf.get_stnd_date()}")
 
     fn_calculate_all_terrain_stats(str_hecras_out_dir)
 
@@ -422,6 +416,7 @@ def fn_run_ras2fim(
     if os.getenv("RUN_RAS2CALIBRATION") == "True":
         print()
         rlog.lprint("+++++++ Processing: STEP: Running ras2calibration +++++++")
+        rlog.lprint(f"Module Started: {sf.get_stnd_date()}")
 
         dir_reformat_ras_rc(
             output_folder_path,
@@ -471,6 +466,7 @@ def fn_run_ras2fim(
             rlog.lprint("+++ (Including creating geocurve polygons) +++++++")
         else:
             rlog.lprint("++++ (Skipping creating geocurve polygon) +++++++")
+        rlog.lprint(f"Module Started: {sf.get_stnd_date()}")
 
         # Produce geocurves
         job_number = os.cpu_count() - 2
@@ -487,6 +483,7 @@ def fn_run_ras2fim(
     if os.getenv("RUN_RAS2REM") == "True":
         print()
         rlog.lprint("+++++++ Processing: STEP: ras2rem +++++++")
+        rlog.lprint(f"Module Started: {sf.get_stnd_date()}")
 
         fn_run_ras2rem(output_folder_path, model_unit)
 
@@ -499,7 +496,8 @@ def fn_run_ras2fim(
     # -------------------------------------------------
     if os.getenv("RUN_RAS2CATCHMENTS") == "True":
         print()
-        print("+++++++ Processing: STEP: ras2catchments +++++++")
+        rlog.lprint("+++++++ Processing: STEP: ras2catchments +++++++")
+        rlog.lprint(f"Module Started: {sf.get_stnd_date()}")
 
         make_catchments(str_huc8_arg, output_folder_path, str_nation_arg, model_huc_catalog_path)
 
@@ -512,6 +510,7 @@ def fn_run_ras2fim(
     if os.getenv("CREATE_RAS_DOMAIN_POLYGONS") == "True":
         print()
         rlog.lprint("+++++++ Processing: STEP: Create polygons for HEC-RAS models domains +++++++")
+        rlog.lprint(f"Module Started: {sf.get_stnd_date()}")
 
         # get the path to the shapefile containing cross sections of the parent HEC-RAS models
         xsections_shp_file_path = os.path.join(str_shapes_from_hecras_dir, "cross_section_LN_from_ras.shp")
@@ -543,12 +542,11 @@ def fn_run_ras2fim(
     run_arguments_filepath = os.path.join(output_folder_path, "run_arguments.txt")
     shutil.copy2(run_arguments_filepath, r2f_final_dir)
 
-    print("+=================================================================+")
-    print("  RUN RAS2FIM - Completed                                         |")
-    sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
-    print("+-----------------------------------------------------------------+")
-
-    # TODO: log duration
+    rlog.lprint("+=================================================================+")
+    rlog.lprint("  RUN RAS2FIM - Completed                                         |")
+    dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
+    rlog.lprint(dur_msg)
+    rlog.lprint("+-----------------------------------------------------------------+")
 
 
 # -------------------------------------------------

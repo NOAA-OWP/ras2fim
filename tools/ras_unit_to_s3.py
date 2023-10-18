@@ -534,7 +534,7 @@ def __adjust_folder_name_for_archive(folder_name):
     if folder_name.endswith("/"):
         folder_name = folder_name[:-1]
 
-    cur_date = sf.get_stnd_date()  # eg. 230825  (in UTC)
+    cur_date = sf.get_stnd_date(False)  # eg. 230825  (in UTC)
     cur_time = dt.datetime.utcnow().strftime("%H%M")  # eg  2315  (11:15 pm) (in UTC)
     new_s3_folder_name = f"{folder_name}_BK_{cur_date}_{cur_time}"
 

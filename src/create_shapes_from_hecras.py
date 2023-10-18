@@ -27,6 +27,7 @@ from shapely.geometry import LineString
 from shapely.ops import linemerge, split
 
 import ras2fim_logger
+import shared_functions as sf
 
 
 # windows component object model for interaction with HEC-RAS API
@@ -36,7 +37,7 @@ import ras2fim_logger
 # h5py for extracting data from the HEC-RAS g**.hdf files
 
 # Global Variables
-r2f_log = ras2fim_logger.RAS2FIM_logger()
+rlog = ras2fim_logger.RAS2FIM_logger()
 
 
 # -------------------------------------------------
@@ -70,9 +71,9 @@ def fn_open_hecras(str_ras_project_path):
         # re-raise it as error handling is farther up the chain
         # but I do need the finally to ensure the hec.QuitRas() is run
         print()
-        print("++++++++++++++++++++++++")
-        print("An exception occurred with the HEC-RAS engine or its parameters.")
-        print(f"details: {ex}")
+        rlog.critical("++++++++++++++++++++++++")
+        rlog.critical("An exception occurred with the HEC-RAS engine or its parameters.")
+        rlog.critical(f"details: {ex}")
         print()
         # re-raise it for logging (coming)
         raise ex
@@ -87,8 +88,8 @@ def fn_open_hecras(str_ras_project_path):
             try:
                 hec.QuitRas()  # close HEC-RAS no matter watch
             except Exception as ex2:
-                print("--- An error occured trying to close the HEC-RAS window process")
-                print(f"--- Details: {ex2}")
+                rlog.critical("--- An error occured trying to close the HEC-RAS window process")
+                rlog.critical(f"--- Details: {ex2}")
                 print()
                 # do nothng
 
@@ -603,29 +604,24 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     flt_start_create_shapes_from_hecras = time.time()
 
     print()
-    print("+=================================================================+")
-    print("|    STREAM AND CROSS SECTION SHAPEFILES FROM HEC-RAS DIRECTORY   |")
-    print("+-----------------------------------------------------------------+")
+    rlog.lprint("+=================================================================+")
+    rlog.lprint("|    STREAM AND CROSS SECTION SHAPEFILES FROM HEC-RAS DIRECTORY   |")
+    rlog.lprint("+-----------------------------------------------------------------+")
+    rlog.lprint(f"Module Started: {sf.get_stnd_date()}")
 
-    # Adds a log file header
-    r2f_log.log.trace(
-        "+=====\n" "+++ STREAM AND CROSS SECTION SHAPEFILES FROM HEC-RAS DIRECTORY\n" "+============\n"
-    )
+    path_ras_files = str_ras_path_arg
+    print("  ---(i) INPUT PATH: " + str_ras_path_arg)
 
-    # TODO - not contants - lower case - 2021.09.07
-    STR_PATH_RAS_FILES = str_ras_path_arg
-    print("  ---(i) INPUT PATH: " + STR_PATH_RAS_FILES)
+    path_to_output = str_shp_out_arg
+    print("  ---(o) OUTPUT PATH: " + path_to_output)
+    path_to_output += "\\"
 
-    STR_PATH_TO_OUTPUT = str_shp_out_arg
-    print("  ---(o) OUTPUT PATH: " + STR_PATH_TO_OUTPUT)
-    STR_PATH_TO_OUTPUT += "\\"
+    crs_model = str_crs_arg
+    print("  ---(p) MODEL PROJECTION: " + crs_model)
 
-    STR_CRS_MODEL = str_crs_arg
-    print("  ---(p) MODEL PROJECTION: " + STR_CRS_MODEL)
+    str_path_to_output_streams = path_to_output + "stream_LN_from_ras.shp"
 
-    str_path_to_output_streams = STR_PATH_TO_OUTPUT + "stream_LN_from_ras.shp"
-
-    str_path_to_output_cross_sections = STR_PATH_TO_OUTPUT + "cross_section_LN_from_ras.shp"
+    str_path_to_output_cross_sections = path_to_output + "cross_section_LN_from_ras.shp"
 
     print("+-----------------------------------------------------------------+")
 
@@ -634,7 +630,7 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
 
     list_files = []
 
-    for root, dirs, files in os.walk(STR_PATH_RAS_FILES):
+    for root, dirs, files in os.walk(path_ras_files):
         for file in files:
             if file.endswith(".prj") or file.endswith(".PRJ"):
                 # Note the case sensitive issue
@@ -710,10 +706,10 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
 
     for ras_path in list_files_valid_prj:
         # print(ras_path)
-        gdf_return_stream = fn_geodataframe_stream_centerline(ras_path, STR_CRS_MODEL)
+        gdf_return_stream = fn_geodataframe_stream_centerline(ras_path, crs_model)
 
         df_flows = fn_get_flow_dataframe(fn_get_active_flow(ras_path))
-        df_xs = fn_geodataframe_cross_sections(ras_path, STR_CRS_MODEL)
+        df_xs = fn_geodataframe_cross_sections(ras_path, crs_model)
         if df_xs.empty:
             print("Empty geometry in " + ras_path)
             continue
@@ -802,6 +798,13 @@ if __name__ == "__main__":
     str_ras_path_arg = args["str_ras_path_arg"]
     str_shp_out_arg = args["str_shp_out_arg"]
     str_crs_arg = args["str_crs_arg"]
+
+    # -------------------
+    # TODO: need a path (usually the unit output path)
+    # eg. C:\ras2fim_data\output_ras2fim\12030105_2276_231017
+    # NOTE: the folder of "logs" is auto added on the end.
+    # Setup the logging class (default unit folder path (HUC/CRS))
+    # rlog.setup(output_folder_path)
 
     fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

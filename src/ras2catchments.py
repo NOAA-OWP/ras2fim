@@ -576,7 +576,7 @@ def make_catchments(
     # -------------------
     print()
     print("ras2catchment processing complete")
-    sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
+    print(sf.print_date_time_duration(start_dt, dt.datetime.utcnow()))
     print("===================================================================")
     print("")
 
