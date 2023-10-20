@@ -15,14 +15,20 @@ import argparse
 import datetime
 import multiprocessing as mp
 import os
+import sys
 import time
+import traceback
 from multiprocessing import Pool
 
 import geopandas as gpd
 import pandas as pd
 
-# ras2fim python worker for multiprocessing
+import ras2fim_logger
 import worker_fim_rasters
+
+
+# Global Variables
+RLOG = ras2fim_logger.RAS2FIM_logger()
 
 
 # -------------------------------------------------
@@ -88,28 +94,28 @@ def fn_create_fim_rasters(
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    print(" ")
-    print("+=================================================================+")
-    print("|                NWM RASTER LIBRARY FROM HEC-RAS                  |")
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|                NWM RASTER LIBRARY FROM HEC-RAS                  |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
     STR_HUC8 = str_desired_huc8
-    print("  ---(w) HUC-8 WATERSHED: " + STR_HUC8)
+    RLOG.lprint("  ---(w) HUC-8 WATERSHED: " + STR_HUC8)
 
     STR_INPUT_FOLDER = str_input_folder
-    print("  ---(i) INPUT PATH: " + STR_INPUT_FOLDER)
+    RLOG.lprint("  ---(i) INPUT PATH: " + STR_INPUT_FOLDER)
 
     STR_ROOT_OUTPUT_DIRECTORY = str_output_folder
-    print("  ---(o) OUTPUT PATH: " + STR_ROOT_OUTPUT_DIRECTORY)
+    RLOG.lprint("  ---(o) OUTPUT PATH: " + STR_ROOT_OUTPUT_DIRECTORY)
 
     STR_PATH_TO_PROJECTION = str_projection_path
-    print("  ---(p) PROJECTION PATH: " + STR_PATH_TO_PROJECTION)
+    RLOG.lprint("  ---(p) PROJECTION PATH: " + STR_PATH_TO_PROJECTION)
 
     STR_PATH_TO_TERRAIN = str_terrain_path
-    print("  ---(t) TERRAIN PATH: " + STR_PATH_TO_TERRAIN)
+    RLOG.lprint("  ---(t) TERRAIN PATH: " + STR_PATH_TO_TERRAIN)
 
     STR_PATH_TO_STANDARD_INPUT = str_std_input_path
-    print("  ---[s]   Optional: Standard Input Path: " + STR_PATH_TO_STANDARD_INPUT)
+    RLOG.lprint("  ---[s]   Optional: Standard Input Path: " + STR_PATH_TO_STANDARD_INPUT)
 
     # Path to the standard plan file text
     STR_PLAN_MIDDLE_PATH = STR_PATH_TO_STANDARD_INPUT + r"\PlanStandardText01.txt"
@@ -117,10 +123,10 @@ def fn_create_fim_rasters(
     STR_PROJECT_FOOTER_PATH = STR_PATH_TO_STANDARD_INPUT + r"\ProjectStandardText01.txt"
 
     FLT_INTERVAL = flt_interval
-    print("  ---[z]   Optional: Output Elevation Step: " + str(FLT_INTERVAL))
-    print("  ---[c]   Optional: Terrain Check Only: " + str(b_terrain_check_only))
+    RLOG.lprint("  ---[z]   Optional: Output Elevation Step: " + str(FLT_INTERVAL))
+    RLOG.lprint("  ---[c]   Optional: Terrain Check Only: " + str(b_terrain_check_only))
 
-    print("===================================================================")
+    RLOG.lprint("===================================================================")
 
     # "" is just a filler (for an old redundant parameter) simply to keep the order of item unchanged.
     tpl_input = (
@@ -216,8 +222,13 @@ def fn_create_fim_rasters(
             # create a list of lists from the dataframe
             list_of_lists_df_streams = df_streams_huc12_mod1.values.tolist()
 
-            if len(list_of_lists_df_streams) > 0:
-                executor.map(worker_fim_rasters.fn_main_hecras, list_of_lists_df_streams)
+            try:
+                if len(list_of_lists_df_streams) > 0:
+                    executor.map(worker_fim_rasters.fn_main_hecras, list_of_lists_df_streams)
+            except Exception as pex:
+                # It has already been logged in fn_main_hecras
+                RLOG.critical(pex)
+                sys.exit(1)
 
     tif_count = 0
     for root, dirs, files in os.walk(STR_ROOT_OUTPUT_DIRECTORY):
@@ -228,12 +239,12 @@ def fn_create_fim_rasters(
     flt_time_create_fim = (flt_end_create_fim - flt_start_create_fim) // 1
     time_pass_create_fim = datetime.timedelta(seconds=flt_time_create_fim)
 
-    print(" ")
-    print("ALL AREAS COMPLETE")
-    print("Number of tif's generated: " + str(tif_count))
-    print("Compute Time: " + str(time_pass_create_fim))
+    RLOG.lprint("")
+    RLOG.lprint("ALL AREAS COMPLETE")
+    RLOG.lprint("Number of tif's generated: " + str(tif_count))
+    RLOG.lprint("Compute Time: " + str(time_pass_create_fim))
 
-    print("====================================================================")
+    RLOG.lprint("====================================================================")
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -331,14 +342,34 @@ if __name__ == "__main__":
     flt_interval = args["flt_interval"]
     b_terrain_check_only = args["b_terrain_check_only"]
 
-    fn_create_fim_rasters(
-        str_desired_huc8,
-        str_input_folder,
-        str_output_folder,
-        str_projection_path,
-        str_terrain_path,
-        str_std_input_path,
-        flt_interval,
-        b_terrain_check_only,
-    )
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    log_file_folder = args["str_output_folder"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
+
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(log_file_folder, script_file_name + ".log")
+
+        # call main program
+        fn_create_fim_rasters(
+            str_desired_huc8,
+            str_input_folder,
+            str_output_folder,
+            str_projection_path,
+            str_terrain_path,
+            str_std_input_path,
+            flt_interval,
+            b_terrain_check_only,
+        )
+
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            ras2fim_logger.logger.critical(traceback.format_exc())
+        else:
+            print(traceback.format_exc())

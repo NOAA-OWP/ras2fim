@@ -1,5 +1,11 @@
 import sys
 
+import ras2fim_logger
+
+
+# Global Variables
+RLOG = ras2fim_logger.RAS2FIM_logger()
+
 
 class ModelUnitError(Exception):
     """
@@ -34,5 +40,5 @@ def check_conflated_models_count(conflated_number):
         else:
             return True
     except NoConflatedModelError as e:
-        print(e)
+        RLOG.critical(e)
         sys.exit()

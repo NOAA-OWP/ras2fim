@@ -19,6 +19,7 @@ import os
 import pathlib
 import re
 import time
+import traceback
 from time import sleep
 
 import geopandas as gpd
@@ -27,11 +28,14 @@ import pandas as pd
 import rioxarray as rxr
 import tqdm
 
+import ras2fim_logger
 import shared_functions as sf
 import shared_variables as sv
 
 
 # -------------------------------------------------
+# Global Variables
+RLOG = ras2fim_logger.RAS2FIM_logger()
 # buffer distance of the input flood polygon - in CRS units
 FLT_BUFFER = 15
 
@@ -151,24 +155,24 @@ def fn_create_grid(list_of_df_row):
 def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_crs, model_unit):
     flt_start_simplify_fim = time.time()
 
-    print(" ")
-    print("+=================================================================+")
-    print("|                SIMPLIFIED GEOTIFFS FOR RAS2FIM                  |")
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|                SIMPLIFIED GEOTIFFS FOR RAS2FIM                  |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
     STR_MAP_OUTPUT = r2f_hecras_outputs_dir
-    print("  ---(i) INPUT PATH (HEC-RAS outputs): " + str(STR_MAP_OUTPUT))
-    print("  --- HEC-RAS outputs unit: " + model_unit)
+    RLOG.lprint("  ---(i) INPUT PATH (HEC-RAS outputs): " + str(STR_MAP_OUTPUT))
+    RLOG.lprint("  --- HEC-RAS outputs unit: " + model_unit)
 
     # output interval of the flood depth raster - in CRS units
     FLT_DESIRED_RES = flt_resolution
-    print("  ---[r]   Optional: RESOLUTION: " + str(FLT_DESIRED_RES) + "m")
+    RLOG.lprint("  ---[r]   Optional: RESOLUTION: " + str(FLT_DESIRED_RES) + "m")
 
     # requested tile size in lambert units (meters)
     STR_OUTPUT_CRS = str_output_crs
-    print("  ---[p]   Optional: PROJECTION OF OUTPUT: " + str(STR_OUTPUT_CRS))
+    RLOG.lprint("  ---[p]   Optional: PROJECTION OF OUTPUT: " + str(STR_OUTPUT_CRS))
 
-    print("===================================================================")
+    RLOG.lprint("===================================================================")
 
     # create the base 06_metric path
     # change the 05 path to the 06 path and make it
@@ -303,7 +307,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
 
         list_dataframe_args = df_grids_to_convert.values.tolist()
 
-        print("+-----------------------------------------------------------------+")
+        RLOG.lprint("+-----------------------------------------------------------------+")
         p = mp.Pool(processes=(mp.cpu_count() - 2))
 
         list(
@@ -319,8 +323,8 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
         p.close()
         p.join()
 
-    print("+-----------------------------------------------------------------+")
-    print("Making metric rating curve files")
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("Making metric rating curve files")
     all_rating_files = list(pathlib.Path(r2f_hecras_outputs_dir).rglob("*rating_curve.csv"))
     all_rating_curve_df = pd.DataFrame()
     for file in all_rating_files:
@@ -355,7 +359,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
     r2f_metric_dir = r2f_hecras_outputs_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, sv.R2F_OUTPUT_DIR_METRIC)
     all_rating_curve_df.to_csv(os.path.join(r2f_metric_dir, "all_rating_curves.csv"), index=False)
 
-    print("Making metric wse for cross sections")
+    RLOG.lprint("Making metric wse for cross sections")
     all_xs_files = list(pathlib.Path(r2f_hecras_outputs_dir).rglob("*cross_sections.csv"))
     all_xs_df = pd.DataFrame()
     for file in all_xs_files:
@@ -388,14 +392,14 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
     r2f_metric_dir = r2f_hecras_outputs_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, sv.R2F_OUTPUT_DIR_METRIC)
     all_xs_df.to_csv(os.path.join(r2f_metric_dir, "all_cross_sections.csv"), index=False)
 
-    print("COMPLETE")
+    RLOG.lprint("COMPLETE")
 
     flt_end_simplify_fim = time.time()
     flt_time_simplify_fim = (flt_end_simplify_fim - flt_start_simplify_fim) // 1
     time_pass_simplify_fim = datetime.timedelta(seconds=flt_time_simplify_fim)
-    print("Compute Time: " + str(time_pass_simplify_fim))
+    RLOG.lprint("Compute Time: " + str(time_pass_simplify_fim))
 
-    print("====================================================================")
+    RLOG.lprint("====================================================================")
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -440,9 +444,29 @@ if __name__ == "__main__":
     flt_resolution = args["flt_resolution"]
     str_output_crs = args["str_output_crs"]
 
-    # find model_unit of HEC-RAS outputs (ft vs m) using a sample rating curve file
-    r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-    model_unit = sf.find_model_unit_from_rating_curves(r2f_hecras_outputs_dir)
+    log_file_folder = args["r2f_huc_parent_dir"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
 
-    fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_crs, model_unit)
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(log_file_folder, script_file_name + ".log")
+
+        # find model_unit of HEC-RAS outputs (ft vs m) using a sample rating curve file
+        r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+        model_unit = sf.find_model_unit_from_rating_curves(r2f_hecras_outputs_dir)
+
+        # call main program
+        fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_crs, model_unit)
+
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            ras2fim_logger.logger.critical(traceback.format_exc())
+        else:
+            print(traceback.format_exc())

@@ -27,10 +27,16 @@ import datetime
 import os
 import subprocess
 import time
+import traceback
 
 import pyproj
 
+import ras2fim_logger
 import shared_functions as sf
+
+
+# Global Variables
+RLOG = ras2fim_logger.RAS2FIM_logger()
 
 
 # -------------------------------------------------
@@ -75,7 +81,7 @@ def fn_print_progress_bar(
     print(f"\r{prefix} |{bar}| {percent}% {suffix}", end=printEnd)
     # Print New Line on Complete
     if iteration == total:
-        print()
+        print("")
 
 
 # -------------------------------------------------
@@ -86,34 +92,34 @@ def fn_convert_tif_to_ras_hdf5(
     # INPUT
     flt_start_convert_tif = time.time()
 
-    print()
-    print("+=================================================================+")
-    print("|       CONVERT TERRAIN GEOTIFFS TO HEC-RAS TERRAINS (HDF5)       |")
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|       CONVERT TERRAIN GEOTIFFS TO HEC-RAS TERRAINS (HDF5)       |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
     # path to the directory that contains RasProcess and associated dll
 
     STR_HEC_RAS_6_PATH = str_hec_path
-    print("  ---(r) HEC-RAS PATH: " + str(STR_HEC_RAS_6_PATH))
+    RLOG.lprint("  ---(r) HEC-RAS PATH: " + str(STR_HEC_RAS_6_PATH))
 
     # STR_HEC_RAS_6_PATH = r'C:\Program Files (x86)\HEC\HEC-RAS\6.3'
     STR_HEC_RAS_6_PATH += r"\RasProcess.exe"
 
     # path to walk to file geotiffs
     STR_CONVERT_FILEPATH = str_geotiff_dir
-    print("  ---(i) GEOTIFF INPUT PATH: " + str(STR_CONVERT_FILEPATH))
+    RLOG.lprint("  ---(i) GEOTIFF INPUT PATH: " + str(STR_CONVERT_FILEPATH))
 
     # path to walk to file geotiffs
     STR_RAS_TERRAIN_OUT = str_dir_to_write_hdf5
-    print("  ---(o) DIRECTORY TO WRITE TERRAIN HDF5: " + str(STR_RAS_TERRAIN_OUT))
+    RLOG.lprint("  ---(o) DIRECTORY TO WRITE TERRAIN HDF5: " + str(STR_RAS_TERRAIN_OUT))
 
     # path to walk to file geotiffs
     STR_PRJ_FILE = str_projection
-    print("  ---(p) PROJECTION TO WRITE DEMS: " + str(STR_PRJ_FILE))
+    RLOG.lprint("  ---(p) PROJECTION TO WRITE DEMS: " + str(STR_PRJ_FILE))
 
-    print("  --- The Ras Models unit (extracted from given GIS prj file): " + model_unit)
+    RLOG.lprint("  --- The Ras Models unit (extracted from given GIS prj file): " + model_unit)
 
-    print("===================================================================")
+    RLOG.lprint("===================================================================")
 
     list_processed_dem = fn_get_filepaths(STR_CONVERT_FILEPATH, "tif")
     len_processed_dems = len(list_processed_dem)
@@ -156,24 +162,24 @@ def fn_convert_tif_to_ras_hdf5(
         if int_return_code == 0:
             int_valid_count += 1
         else:
-            print("Error on: " + str(i))
+            RLOG.error(f"Error on: {i} ({STR_CONVERT_FILEPATH})")
 
         # A '0' error code will be given if the file already exists in the
         # output directory.  Terrain will not be over-written with this
         # routine.  It will be skipped.
 
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("+-----------------------------------------------------------------+")
     if int_valid_count == len(list_processed_dem):
-        print("All terrains processed successfully")
+        RLOG.lprint("All terrains processed successfully")
     else:
-        print("Errors when processing - Check output")
+        RLOG.error(F"Errors when processing {STR_CONVERT_FILEPATH} - Check output or logs")
 
     flt_end_convert_tif = time.time()
     flt_time_convert_tif = (flt_end_convert_tif - flt_start_convert_tif) // 1
     time_pass_convert_tif = datetime.timedelta(seconds=flt_time_convert_tif)
-    print("Compute Time: " + str(time_pass_convert_tif))
+    RLOG.lprint("Compute Time: " + str(time_pass_convert_tif))
 
-    print("===================================================================")
+    RLOG.lprint("===================================================================")
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -232,7 +238,27 @@ if __name__ == "__main__":
     proj_crs = pyproj.CRS(prj_text)
     model_unit = sf.model_unit_from_crs(proj_crs)
 
-    fn_convert_tif_to_ras_hdf5(
-        str_hec_path, str_geotiff_dir, str_dir_to_write_hdf5, str_projection, model_unit
-    )
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    log_file_folder = args["str_dir_to_write_hdf5"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
+
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(log_file_folder, script_file_name + ".log")
+
+        # call main program
+        fn_convert_tif_to_ras_hdf5(
+            str_hec_path, str_geotiff_dir, str_dir_to_write_hdf5, str_projection, model_unit
+        )
+
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            ras2fim_logger.logger.critical(traceback.format_exc())
+        else:
+            print(traceback.format_exc())

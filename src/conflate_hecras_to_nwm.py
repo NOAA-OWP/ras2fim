@@ -10,11 +10,12 @@
 # Uses the 'ras2fim' conda environment
 
 import argparse
-import datetime
 import datetime as dt
 import multiprocessing as mp
 import os
-import warnings
+import traceback
+
+# import warnings
 from functools import partial
 from multiprocessing import Pool
 from time import sleep
@@ -38,14 +39,17 @@ import shared_variables as sv
 
 
 # Global Variables
-rlog = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.RAS2FIM_logger()
 
 
 # -------------------------------------------------
 def fn_wkt_loads(x):
     try:
         return wkt.loads(x)
-    except Exception:
+    except Exception as ex:
+        RLOG.warning("fn_wkt_loads errored out")
+        RLOG.warning(x)
+        RLOG.warning(f"Details: {ex}")
         return None
 
 
@@ -88,31 +92,31 @@ def fn_create_gdf_of_points(tpl_request):
 def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg):
     # TODO: Oct 2023: Review and remove this surpression
     # supress all warnings
-    warnings.filterwarnings("ignore", category=UserWarning)
+    # warnings.filterwarnings("ignore", category=UserWarning)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     # INPUT
 
     start_dt = dt.datetime.utcnow()
 
-    print()
-    rlog.lprint("+=================================================================+")
-    rlog.lprint("|        CONFLATE HEC-RAS TO NATIONAL WATER MODEL STREAMS         |")
-    rlog.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|        CONFLATE HEC-RAS TO NATIONAL WATER MODEL STREAMS         |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
-    rlog.lprint("  ---(w) HUC-8: " + str_huc8)
+    RLOG.lprint("  ---(w) HUC-8: " + str_huc8)
 
     ble_shp_in_dir = str_shp_in_arg
-    rlog.lprint("  ---(i) HEC-RAS INPUT SHP DIRECTORY: " + ble_shp_in_dir)
+    RLOG.lprint("  ---(i) HEC-RAS INPUT SHP DIRECTORY: " + ble_shp_in_dir)
 
     # note the files names are hardcoded in 1 of 2
     ble_stream_ln = ble_shp_in_dir + "\\" + "stream_LN_from_ras.shp"
     ble_cross_section_ln = ble_shp_in_dir + "\\" + "cross_section_LN_from_ras.shp"
 
     shp_out_path = str_shp_out_arg
-    rlog.lprint("  ---(o) OUTPUT DIRECTORY: " + shp_out_path)
-    rlog.lprint("  ---(n) NATIONAL DATASET LOCATION: " + str_nation_arg)
-    rlog.lprint(f"Module Started: {sf.get_stnd_date()}")
+    RLOG.lprint("  ---(o) OUTPUT DIRECTORY: " + shp_out_path)
+    RLOG.lprint("  ---(n) NATIONAL DATASET LOCATION: " + str_nation_arg)
+    RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     # distance to buffer around modeled stream centerlines
@@ -156,8 +160,8 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     # ````````````````````````
 
     # Load the geopackage into geodataframe - 1 minute +/-
-    rlog.lprint("+-----------------------------------------------------------------+")
-    rlog.lprint("Loading Watershed Boundary Dataset ~ 20 sec")
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("Loading Watershed Boundary Dataset ~ 20 sec")
 
     # Use the HUC8 small vector to mask the large full WBD_Nation.gpkg.
     # This is much faster
@@ -222,8 +226,8 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     gdf_stream = gdf_stream.rename(columns={"ID": "feature_id"})
 
     # Load the netCDF file to pandas dataframe - 15 seconds
-    rlog.lprint("+-----------------------------------------------------------------+")
-    rlog.lprint("Loading the National Water Model Recurrence Flows ~ 15 sec")
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("Loading the National Water Model Recurrence Flows ~ 15 sec")
     ds = xr.open_dataset(str_netcdf_path)
     df_all_nwm_streams = ds.to_dataframe()
 
@@ -256,7 +260,7 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     # and get the nwm streams that are inside or touch the buffer?
 
     list_points_aggregate = []
-    rlog.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
     for index, row in gdf_streams_nwm_explode.iterrows():
         str_current_linestring = row["geometry"]
@@ -322,8 +326,8 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     # reproject the points
     gdf_points = gdf_points.to_crs(gdf_segments.crs)
 
-    rlog.lprint("+-----------------------------------------------------------------+")
-    rlog.lprint("Buffering stream centerlines ~ 60 sec")
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("Buffering stream centerlines ~ 60 sec")
     # buffer the merged stream ceterlines - distance to find valid conflation point
     shp_buff = shply_line.buffer(int_buffer_dist)
 
@@ -351,7 +355,7 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     # TODO - 2021.09.21 - create a new df that has only the variables needed in the desired order
     list_dataframe_args_snap = df_points_within_buffer.values.tolist()
 
-    rlog.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("+-----------------------------------------------------------------+")
     p = mp.Pool(processes=(mp.cpu_count() - 2))
 
     list_df_points_projected = list(
@@ -443,8 +447,8 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     # Loop through all feature_ids in the provided
     # National Water Model stream shapefile
 
-    rlog.lprint("+-----------------------------------------------------------------+")
-    rlog.lprint("Determining conflated stream centerlines")
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("Determining conflated stream centerlines")
 
     int_count = len(gdf_nwm_stream_raspath)
 
@@ -512,13 +516,13 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     # Creates a summary documents
     # Check to see if matching model is found
 
-    rlog.lprint("+-----------------------------------------------------------------+")
-    rlog.lprint("Creating Quality Control Output")
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("Creating Quality Control Output")
 
     str_str_qc_csv_File = os.path.join(shp_out_path, f"{str_huc8}_stream_qc.csv")
     df_summary_data.to_csv(str_str_qc_csv_File)
 
-    rlog.lprint("Number of feature_id's matched: " + str(df_summary_data["feature_id"].nunique()))
+    RLOG.lprint("Number of feature_id's matched: " + str(df_summary_data["feature_id"].nunique()))
 
     # check the number of conflated models and stop the code if the number is 0
     errors.check_conflated_models_count(len(df_summary_data))
@@ -543,12 +547,12 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     # write the shapefile
     gdf_non_match.to_file(str_filepath_nwm_stream)
 
-    print()
-    rlog.lprint("COMPLETE")
+    RLOG.lprint("")
+    RLOG.lprint("COMPLETE")
 
     dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
-    rlog.lprint(dur_msg)
-    rlog.lprint("+=================================================================+")
+    RLOG.lprint(dur_msg)
+    RLOG.lprint("+=================================================================+")
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -606,5 +610,25 @@ if __name__ == "__main__":
     str_shp_out_arg = args["str_shp_out_arg"]
     str_nation_arg = args["str_nation_arg"]
 
-    fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg)
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    log_file_folder = args["str_shp_out_arg"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
+
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(log_file_folder, script_file_name + ".log")
+
+        # call main program
+        fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg)
+
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            ras2fim_logger.logger.critical(traceback.format_exc())
+        else:
+            print(traceback.format_exc())

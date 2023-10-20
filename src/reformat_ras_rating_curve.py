@@ -6,6 +6,7 @@ import os
 import shutil
 import sys
 import time
+import traceback
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from pathlib import Path
@@ -13,8 +14,13 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 
+import ras2fim_logger
 import shared_functions as sf
 import shared_variables as sv
+
+
+# Global Variables
+RLOG = ras2fim_logger.RAS2FIM_logger()
 
 
 # -----------------------------------------------------------------
@@ -111,7 +117,7 @@ def write_metadata_file(
             f.write(f"{line}\n")
 
     if verbose is True:
-        print(f"Metadata README saved to {metadata_path}")
+        RLOG.debug(f"Metadata README saved to {metadata_path}")
 
 
 # -----------------------------------------------------------------
@@ -203,10 +209,10 @@ def dir_reformat_ras_rc(
 
     # Create empty output log
 
-    print()
-    overall_start_time = datetime.now()
-    dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-    print(f"Started : {dt_string}")
+    RLOG.lprint("")
+    overall_start_time = datetime.utcnow()
+    dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    RLOG.lprint(f"Started (UTC): {dt_string}")
 
     output_log = []
     output_log.append(" ")
@@ -214,8 +220,8 @@ def dir_reformat_ras_rc(
 
     if verbose is True:
         print()
-        print("======================")
-        print(f"Directory: {dir_input_folder_path}")
+        RLOG.debug("======================")
+        RLOG.debug(f"Directory: {dir_input_folder_path}")
         print()
 
     # ------------------------------------------------------------------------------------------------
@@ -228,8 +234,9 @@ def dir_reformat_ras_rc(
     try:
         with open(run_arguments_filepath, "r") as file:
             lines = file.readlines()
-    except Exception:
-        print(f"Unable to open run_arguments.txt, skipping directory {dir_input_folder_path}.")
+    except Exception as ex:
+        RLOG.error(f"Unable to open run_arguments.txt, skipping directory {dir_input_folder_path}.")
+        RLOG.error(f"\n details: {ex}")
         lines = None
 
     # Search for and extract the model unit and projection from run_arguments.txt
@@ -245,7 +252,7 @@ def dir_reformat_ras_rc(
     model_unit = get_unit_from_string(model_unit)
 
     if verbose is True:
-        print(
+        RLOG.debug(
             f"Model settings: model_unit {model_unit} | str_huc8_arg: {str_huc8_arg} | proj_crs: {proj_crs}"
         )
 
@@ -263,12 +270,12 @@ def dir_reformat_ras_rc(
     if len(rc_path_list) == 0:
         log = "ERROR: No paths in rating curve path list. "
         output_log.append(log)
-        print(log)
+        RLOG.warning(log)
     elif len(rc_path_list) >= 1:
         rc_path = rc_path_list[0]
 
     if os.path.isfile(rc_path) is False:
-        print(f"No rating curve file available for {dir_input_folder_path}, skipping this directory.")
+        RLOG.warning(f"No rating curve file available for {dir_input_folder_path}, skipping this directory.")
         output_log.append("Rating curve NOT available.")
         dir_log_filename = int_log_label
         dir_log_filepath = os.path.join(intermediate_filepath, dir_log_filename)
@@ -294,20 +301,22 @@ def dir_reformat_ras_rc(
         )
 
         if not os.path.exists(nwm_all_lines_filepath):
-            print(f"Error: No file at {nwm_all_lines_filepath}")
-            output_log.append(f"Error: No file at {nwm_all_lines_filepath}")
+            msg = f"Error: No file at {nwm_all_lines_filepath}"
+            RLOG.warning(msg)
+            output_log.append(msg)
 
         if not os.path.exists(hecras_crosssections_filepath):
-            print(f"Error: No file at {hecras_crosssections_filepath}")
-            output_log.append(f"Error: No file at {hecras_crosssections_filepath}")
+            msg = f"Error: No file at {hecras_crosssections_filepath}"
+            RLOG.warning(msg)
+            output_log.append(msg)
 
         # ------------------------------------------------------------------------------------------------
         # Intersect NWM lines and HEC-RAS crosssections to get the points
         # (but keep the metadata from the HEC-RAS cross-sections)
 
         if verbose is True:
-            print()
-            print("Reading shapefiles and generating crosssection/streamline intersection points ...")
+            RLOG.debug()
+            RLOG.debug("Reading shapefiles and generating crosssection/streamline intersection points ...")
 
         # Read shapefiles
         hecras_crosssections_shp = gpd.read_file(hecras_crosssections_filepath)
@@ -368,9 +377,10 @@ def dir_reformat_ras_rc(
         # Read compiled rating curve and append huc8 from intersections
         try:
             rc_df = pd.read_csv(rc_path)
-        except Exception:
-            print(f"Unable to read rating curve at path {rc_path}")
-            output_log.append(f"Unable to read rating curve at path {rc_path}")
+        except Exception as ex:
+            msg = f"Unable to read rating curve at path {rc_path}"
+            RLOG.warning(msg + f"\n details: {ex}")
+            output_log.append(msg)
 
         # Join some of the geospatial data to the rc_df data
         rc_geospatial_df = pd.merge(
@@ -448,10 +458,12 @@ def dir_reformat_ras_rc(
         try:
             intersection_prj_gdf.to_file(dir_output_geopackage_filepath, driver="GPKG")
             if verbose is True:
-                print("HECRAS-NWM intersection geopackage saved.")
-        except Exception:
-            print("Unable to save HEC-RAS points geopackage.")
-            output_log.append("Unable to save HEC-RAS points geopackage.")
+                RLOG.debug("HECRAS-NWM intersection geopackage saved.")
+        except Exception as ex:
+            msg = "Unable to save HEC-RAS points geopackage."
+            RLOG.warning(msg)
+            RLOG.warning(f"\n details: {ex}")
+            output_log.append(msg)
 
         # Save output table for directory
         dir_output_table_filename = int_output_table_label
@@ -466,11 +478,11 @@ def dir_reformat_ras_rc(
                 f.write(f"{line}\n")
 
         if verbose is True:
-            print()
-            print(f"Saved directory outputs for {dir_input_folder_path}.")
+            RLOG.debug()
+            RLOG.debug(f"Saved directory outputs for {dir_input_folder_path}.")
 
         # Get timestamp for metadata
-        start_time_string = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+        start_time_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
         # Write README metadata file for the intermediate file
         write_metadata_file(
@@ -486,15 +498,15 @@ def dir_reformat_ras_rc(
         )
 
         if verbose is True:
-            print(f"Saved metadata to {intermediate_filepath}.")
+            RLOG.debug(f"Saved metadata to {intermediate_filepath}.")
 
-    print()
-    end_time = datetime.now()
-    dt_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-    print(f"Ended : {dt_string}")
+    RLOG.lprint("")
+    end_time = datetime.utcnow()
+    dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    RLOG.lprint(f"Ended : {dt_string}")
     time_duration = end_time - overall_start_time
-    print(f"Duration: {str(time_duration).split('.')[0]}")
-    print()
+    RLOG.lprint(f"Duration: {str(time_duration).split('.')[0]}")
+    RLOG.lprint("")
 
 
 # -----------------------------------------------------------------
@@ -545,43 +557,49 @@ def compile_ras_rating_curves(
     start_time_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
     # Settings block
-    print("-----------------------------------------------------------------------------------------------")
-    print("Begin rating curve compilation process.")
-    print()
-    print(f"Start time: {start_time_string}.")
-    print()
-    print(f"Verbose: {str(verbose)}")
-    print(f"Save output log to folder: {str(save_logs)}")
-    print(f"Number of workers: {num_workers}")
-    print()
+    RLOG.lprint(
+        "-----------------------------------------------------------------------------------------------"
+    )
+    RLOG.lprint("Begin rating curve compilation process.")
+    RLOG.lprint("")
+    RLOG.lprint(f"Start time: {start_time_string}.")
+    RLOG.lprint("")
+    RLOG.lprint(f"Verbose: {str(verbose)}")
+    RLOG.lprint(f"Save output log to folder: {str(save_logs)}")
+    RLOG.lprint(f"Number of workers: {num_workers}")
+    RLOG.lprint("")
 
     # Get default paths from shared variables if they aren't included
     if input_folder_path == "":
         input_folder_path = sv.R2F_DEFAULT_OUTPUT_MODELS  # ras2fim output folder
-        print(f"Using default input folder path: {input_folder_path}")
+        RLOG.lprint(f"Using default input folder path: {input_folder_path}")
 
         if not os.path.exists(input_folder_path):
-            print(f"No file exists at {input_folder_path}")
+            RLOG.warning(f"No file exists at {input_folder_path}")
 
     # Error out if the input folder doesn't exist
     if not os.path.exists(input_folder_path):
-        sys.exit(f"No folder at input folder path: {input_folder_path}")
+        msg = f"No folder at input folder path: {input_folder_path}"
+        RLOG.critical(msg)
+        sys.exit(msg)
 
     # Check for output folders
 
     if output_save_folder == "":  # Using the default filepath
         output_save_folder = sv.R2F_OUTPUT_DIR_RELEASES
-        print(f"Attempting to use default output save folder: {output_save_folder}")
+        RLOG.lprint(f"Attempting to use default output save folder: {output_save_folder}")
 
         # Attempt to make default output folder if it doesn't exist, error out if it doesn't work.
         if not os.path.exists(output_save_folder):
-            print(f"No folder found at {output_save_folder}")
+            RLOG.lprint(f"No folder found at {output_save_folder}")
             try:
-                print("Creating output folder.")
+                RLOG.lprint("Creating output folder.")
                 os.mkdir(output_save_folder)
             except OSError:
-                print(OSError)
-                sys.exit(f"Unable to create default output save folder at {output_save_folder}")
+                msg = f"Unable to create default output save folder at {output_save_folder}"
+                RLOG.critical(msg)
+                RLOG.critical(OSError)
+                sys.exit()
 
         # Assemble the output subfolder filepath
         output_save_subfolder = os.path.join(sv.R2F_OUTPUT_DIR_RELEASES, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
@@ -591,7 +609,7 @@ def compile_ras_rating_curves(
             shutil.rmtree(output_save_subfolder)
             # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
             # so sometimes mkdir can fail if rmtree isn't done
-            time.sleep(2)  # 2 seconds
+            time.sleep(1)
 
         # Make the output subfolder
         os.mkdir(output_save_subfolder)
@@ -599,11 +617,10 @@ def compile_ras_rating_curves(
     else:  # Using the specified filepath
         # Check that the destination filepath exists. If it doesn't, give error and quit.
         if not os.path.exists(output_save_folder):
-            print(f"Error: No folder found at {output_save_folder}.")
-            print(
-                "Create this parent directory or specify a different output folder"
-                " using `-o` followed by the directory filepath."
-            )
+            msg = f"Error: No folder found at {output_save_folder}.\n"
+            "Create this parent directory or specify a different output folder"
+            " using `-o` followed by the directory filepath."
+            RLOG.critical(msg)
             sys.exit()
 
         # Assemble the output subfolder filepath
@@ -614,7 +631,7 @@ def compile_ras_rating_curves(
             shutil.rmtree(output_save_subfolder)
             # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
             # so sometimes mkdir can fail if rmtree isn't done
-            time.sleep(2)  # 2 seconds
+            time.sleep(1)
 
         # Make the output subfolder
         os.mkdir(output_save_subfolder)
@@ -637,6 +654,7 @@ def compile_ras_rating_curves(
 
         huc_number = dir[0:8]
         if not huc_number.isnumeric():
+            RLOG.warning(f"dir of {dir} does not start with a huc_number")
             continue
 
         dirlist.append(dir)
@@ -658,10 +676,10 @@ def compile_ras_rating_curves(
 
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         if verbose is True:
-            print()
-            print("--------------------------------------------------------------")
-            print("Begin iterating through directories with multiprocessor...")
-            print()
+            RLOG.debug()
+            RLOG.debug("--------------------------------------------------------------")
+            RLOG.debug("Begin iterating through directories with multiprocessor...")
+            RLOG.debug()
 
         for dir in dirlist:
             dir_input_folder_path = os.path.join(input_folder_path, dir)
@@ -692,10 +710,10 @@ def compile_ras_rating_curves(
     # Read in all intermedate files (+ output logs) and combine them
 
     if verbose is True:
-        print()
-        print("--------------------------------------------------------------")
-        print("Begin compiling multiprocessor outputs...")
-        print()
+        RLOG.debug()
+        RLOG.debug("--------------------------------------------------------------")
+        RLOG.debug("Begin compiling multiprocessor outputs...")
+        RLOG.debug()
 
     # Get list of intermediate files from path
     int_output_table_files = []
@@ -782,9 +800,9 @@ def compile_ras_rating_curves(
     output_log.append(f"Geopackage initial save location: {geopackage_path}")
     output_log.append(f"Compiled rating curve csv initial save location: {csv_path}")
     if verbose is True:
-        print()
-        print(f"Compiled geopackage saved to {geopackage_path}")
-        print(f"Compiled rating curve csv saved to {csv_path}")
+        RLOG.debug()
+        RLOG.debug(f"Compiled geopackage saved to {geopackage_path}")
+        RLOG.debug(f"Compiled rating curve csv saved to {csv_path}")
 
     # Save output log if the log option was selected
     log_name = "reformat_ras_rating_curve_log.txt"
@@ -794,9 +812,9 @@ def compile_ras_rating_curves(
         with open(log_path, "w") as f:
             for line in output_log:
                 f.write(f"{line}\n")
-        print(f"Compiled output log saved to {log_path}.")
+        RLOG.lprint(f"Compiled output log saved to {log_path}.")
     else:
-        print("No output log saved.")
+        RLOG.lprint("No output log saved.")
 
     # Write README metadata file
     write_metadata_file(
@@ -815,9 +833,9 @@ def compile_ras_rating_curves(
     end_time = dt.datetime.utcnow()
     runtime = end_time - start_time
 
-    print()
-    print(f"Process finished. Total runtime: {runtime}")
-    print("-----------------------------------------------------------------------------------------------")
+    RLOG.lprint("")
+    RLOG.lprint(f"Process finished. Total runtime: {runtime}")
+    RLOG.lprint("--------------------------------------------")
 
 
 # -------------------------------------------------
@@ -935,7 +953,27 @@ if __name__ == "__main__":
     active = str(args["active"])
     source = "ras2fim"
 
-    # Run main function
-    compile_ras_rating_curves(
-        input_folder_path, output_save_folder, log, verbose, num_workers, source, location_type, active
-    )
+    log_file_folder = args["output_path"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
+
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(log_file_folder, script_file_name + ".log")
+
+        # call main program
+        compile_ras_rating_curves(
+            input_folder_path, output_save_folder, log, verbose, num_workers, source, location_type, active
+        )
+
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            ras2fim_logger.logger.critical(traceback.format_exc())
+        else:
+            print(traceback.format_exc())

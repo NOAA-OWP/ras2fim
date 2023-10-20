@@ -16,9 +16,13 @@ import rasterio
 from rasterio.features import shapes
 from shapely.geometry import MultiPolygon, Polygon
 
+import ras2fim_logger
 import shared_functions as sf
 import shared_variables as sv
 
+
+# Global Variables
+RLOG = ras2fim_logger.RAS2FIM_logger()
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
@@ -92,12 +96,12 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
 
                 except AttributeError as ae:
                     # TODO why does this happen? I suspect bad geometry. Small extent?
-                    # TODO: We should log this when the logging system comes online.
-                    print("^^^^^^^^^^^^^^^^^^")
-                    print("Error...")
-                    print(f"  huc is {huc}; feature_id = {feature_id}; depth_grid is {depth_grid}")
-                    print(f"  Details: {ae}")
-                    print("^^^^^^^^^^^^^^^^^^")
+                    RLOG.lprint("^^^^^^^^^^^^^^^^^^")
+                    msg = "Warning...\n"
+                    msg += f"  huc is {huc}; feature_id = {feature_id}; depth_grid is {depth_grid}\n"
+                    msg += f"  Details: {ae}"
+                    RLOG.warning(msg)
+                    RLOG.lprint("^^^^^^^^^^^^^^^^^^")
                     continue
 
                 # -- Add more attributes -- #
@@ -144,12 +148,13 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
                 os.path.join(geocurves_dir, feature_id + "_" + huc + "_rating_curve_geo.csv")
             )
 
-    except Exception as ex:
-        print("*******************")
-        print("Error:")
-        print(f"  huc is {huc}; feature_id = {feature_id}; depth_grid is {depth_grid}")
-        errMsg = str(ex) + " \n   " + traceback.format_exc()
-        print(errMsg)
+    except Exception:
+        RLOG.lprint("*******************")
+        errMsg = "Error:\n"
+        errMsg += f"  huc is {huc}; feature_id = {feature_id}; depth_grid is {depth_grid}\n"
+        errMsg += " \n   " + traceback.format_exc()
+        RLOG.critical(errMsg)
+        sys.exit(1)
 
 
 # -------------------------------------------------
@@ -165,10 +170,10 @@ def manage_geo_rating_curves_production(
         job_number (int): The number of jobs to use when parallel processing feature_ids.
         output_folder (str): The path to the output folder where geo rating curves will be written.
     """
-    print()
+    RLOG.lprint("")
     overall_start_time = datetime.utcnow()
     dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
-    print(f"Started (UTC): {dt_string}")
+    RLOG.lprint(f"Started (UTC): {dt_string}")
 
     # Check job numbers and raise error if necessary
     total_cpus_available = os.cpu_count() - 2
@@ -181,6 +186,7 @@ def manage_geo_rating_curves_production(
 
     # Set up output folders. (final outputs folder now created early in the ras2fim.py lifecycle)
     if not os.path.exists(ras2fim_output_dir):
+        RLOG.error(f"{ras2fim_output_dir} does not exist")
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), ras2fim_output_dir)
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -195,7 +201,7 @@ def manage_geo_rating_curves_production(
 
     for gc_dir in geocurve_dirs:
         if os.path.exists(gc_dir) and not overwrite:
-            print(
+            RLOG.lprint(
                 "The output directory, "
                 + gc_dir
                 + ", already exists. Use the overwrite flag (-o) to overwrite."
@@ -217,7 +223,7 @@ def manage_geo_rating_curves_production(
     # Check version arg input.
     if os.path.isfile(version):
         version = sf.get_changelog_version(version)
-        print("Version found: " + version)
+        RLOG.lprint("Version found: " + version)
 
     # Define paths outputs
     simplified_depth_grid_parent_dir = os.path.join(
@@ -233,6 +239,7 @@ def manage_geo_rating_curves_production(
     for huc in local_dir_list:
         full_huc_path = os.path.join(simplified_depth_grid_parent_dir, huc)
         if not os.path.isdir(full_huc_path):
+            RLOG.warning(f"{full_huc_path} is not a directory")
             continue
         feature_id_list = os.listdir(full_huc_path)
         for feature_id in feature_id_list:
@@ -243,6 +250,7 @@ def manage_geo_rating_curves_production(
             try:
                 depth_grid_list = os.listdir(feature_id_depth_grid_dir)
             except FileNotFoundError:
+                RLOG.warning(f"{feature_id_depth_grid_dir} raised an FileNotFoundError")
                 continue
             full_path_depth_grid_list = []
             for depth_grid in depth_grid_list:
@@ -276,22 +284,21 @@ def manage_geo_rating_curves_production(
             try:
                 future = executor.submit(produce_geocurves, **produce_gc_args)
                 executor_dict[future] = feature_id
-            except Exception as ex:
-                print(f"*** {ex}")
-                traceback.print_exc()
+            except Exception:
+                RLOG.critical(traceback.format_exc())
                 sys.exit(1)
 
         # Send the executor to the progress bar and wait for all MS tasks to finish
         sf.progress_bar_handler(executor_dict, True, f"Creating geocurves with {job_number} workers")
 
     # Calculate duration
-    print()
+    RLOG.lprint("")
     end_time = datetime.utcnow()
     dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
-    print(f"Ended (UTC): {dt_string}")
+    RLOG.lprint(f"Ended (UTC): {dt_string}")
     time_duration = end_time - overall_start_time
-    print(f"Duration: {str(time_duration).split('.')[0]}")
-    print()
+    RLOG.lprint(f"Duration: {str(time_duration).split('.')[0]}")
+    RLOG.lprint("")
 
 
 # -------------------------------------------------
@@ -325,4 +332,26 @@ if __name__ == "__main__":
     )
 
     args = vars(parser.parse_args())
-    manage_geo_rating_curves_production(**args)
+
+    log_file_folder = args["output_folder"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
+
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(log_file_folder, script_file_name + ".log")
+
+        # call main program
+        manage_geo_rating_curves_production(**args)
+
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            ras2fim_logger.logger.critical(traceback.format_exc())
+        else:
+            print(traceback.format_exc())

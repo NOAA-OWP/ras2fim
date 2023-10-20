@@ -11,6 +11,7 @@ CUSTOM_LOG_FILES_PATHS = {}
 LOG_DEFAULT_FOLDER = ""
 LOG_DEFAULT_FILE_PATH = ""
 LOG_DEFAULT_FILE_NAME = ""
+LOG_SYSTEM_IS_SETUP = False
 
 
 # -------------------------------------------------
@@ -88,7 +89,8 @@ class RAS2FIM_logger:
         # in the __init__ method
 
         # Allows us to write the app wide global variables
-        global LOG_DEFAULT_FOLDER, LOG_DEFAULT_FILE_PATH, LOG_DEFAULT_FILE_NAME
+        global LOG_DEFAULT_FOLDER, LOG_DEFAULT_FILE_PATH
+        global LOG_DEFAULT_FILE_NAME, LOG_SYSTEM_IS_SETUP
 
         file_logger_format = "{time:YYYY-MM-DD > HH:mm:ss!UTC} ({level}) || {message}"
 
@@ -143,13 +145,16 @@ class RAS2FIM_logger:
             # Default behaviour for loguru is to file log only DEBUG and higher.
             # As we are highjacking TRACE via lprint, we want it all to go to the log
             # file but the log files will all share the same format
+
             logger.add(def_log_file, format=file_logger_format, level="TRACE", enqueue=True, mode="w")
+            # logger.add(def_log_file, format=file_logger_format, level="TRACE", mode="w")
 
             # ---------------
             # For levels of ERROR and CRITICAL, they will get logged in the standard log file, but
             # also to a second log files specificall for errors and critical messages.
             # The log file name is the root file name plus "_errors.log". ie) ras2fim_errors.log
             error_log_file = os.path.join(LOG_DEFAULT_FOLDER, file_name_parts[0] + "_errors.log")
+
             logger.add(
                 error_log_file,
                 format=file_logger_format,
@@ -158,6 +163,18 @@ class RAS2FIM_logger:
                 enqueue=True,
                 mode="w",
             )
+
+            """
+            logger.add(
+                error_log_file,
+                format=file_logger_format,
+                level="ERROR",
+                backtrace=True,
+                mode="w",
+            )
+            """
+
+            LOG_SYSTEM_IS_SETUP = True
 
         except Exception as ex:
             print("An internal error occurred while setting up the logging system")
@@ -250,8 +267,8 @@ class RAS2FIM_logger:
             the key here will work.
           - It is fine to have an empty msg logged if you like.
         """
-        # ie) rlog.make_custom_log("model_list", "some path and file name")
-        # ie) rlog.write_c_log("model_list", "hey there")
+        # ie) RLOG.make_custom_log("model_list", "some path and file name")
+        # ie) RLOG.write_c_log("model_list", "hey there")
 
         global CUSTOM_LOG_FILES_PATHS
 

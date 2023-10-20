@@ -6,6 +6,7 @@ import re
 import shutil
 import sys
 import time
+import traceback
 from multiprocessing import Pool
 from pathlib import Path
 
@@ -15,8 +16,13 @@ import rasterio
 import tqdm
 from rasterio.merge import merge
 
+import ras2fim_logger
 import shared_functions as sf
 import shared_variables as sv
+
+
+# Global Variables
+RLOG = ras2fim_logger.RAS2FIM_logger()
 
 
 # -------------------------------------------------
@@ -34,10 +40,9 @@ def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir, model_unit):
 
     all_rating_files = list(Path(r2f_hecras_outputs_dir).rglob("*rating_curve.csv"))
     if len(all_rating_files) == 0:
-        print(
-            "Error: Make sure you have specified a correct input directory with at least one"
-            "'*.rating curve.csv' file."
-        )
+        msg = "Error: Make sure you have specified a correct input directory with at least one"
+        "'*.rating curve.csv' file."
+        RLOG.critical(msg)
         sys.exit(1)
 
     for file in all_rating_files:
@@ -126,9 +131,9 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
 
     all_tif_files = list(Path(r2f_simplified_grids_dir).rglob("*.tif"))
     if len(all_tif_files) == 0:
-        print(
-            "Error: Make sure you have specified a correct input directory with at" " least one '*.tif' file."
-        )
+        msg = "Error: Make sure you have specified a correct input directory with at"
+        "least one '*.tif' file."
+        RLOG.critical(msg)
         sys.exit(1)
 
     rem_values = list(map(lambda var: str(var).split(".tif")[0].split("-")[-1], all_tif_files))
@@ -155,8 +160,8 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
         )
 
     # now make the final rem
-    print("+-----------------------------------------------------------------+")
-    print("Merging all rem files to create the final rem")
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("Merging all rem files to create the final rem")
 
     all_rem_files = list(Path(r2f_ras2rem_dir).rglob("*_rem.tif"))
     raster_to_mosiac = []
@@ -229,20 +234,20 @@ def fn_run_ras2rem(r2f_huc_parent_dir, model_unit):
         shutil.rmtree(r2f_ras2rem_dir)
         # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
         # so sometimes mkdir can fail if rmtree isn't done
-        time.sleep(2)  # 2 seconds
+        time.sleep(1)
 
     os.mkdir(r2f_ras2rem_dir)
 
     ####################################################################
     #  Start processing
-    print("+=================================================================+")
-    print("|                       Run ras2rem                               |")
-    print("  --- (p) RAS2FIM parent output path: " + str(r2f_huc_parent_dir))
-    print("  --- HEC-RAS outputs path: " + str(r2f_hecras_outputs_dir))
-    print("  --- HEC-RAS outputs unit: " + model_unit)
-    print("  --- RAS2FIM 'simplified' depth grids path: " + str(r2f_simplified_grids_dir))
-    print("  --- RAS2REM Outputs directory: " + str(r2f_ras2rem_dir))
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|                       Run ras2rem                               |")
+    RLOG.lprint("  --- (p) RAS2FIM parent output path: " + str(r2f_huc_parent_dir))
+    RLOG.lprint("  --- HEC-RAS outputs path: " + str(r2f_hecras_outputs_dir))
+    RLOG.lprint("  --- HEC-RAS outputs unit: " + model_unit)
+    RLOG.lprint("  --- RAS2FIM 'simplified' depth grids path: " + str(r2f_simplified_grids_dir))
+    RLOG.lprint("  --- RAS2REM Outputs directory: " + str(r2f_ras2rem_dir))
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
     flt_start_ras2rem = time.time()
 
@@ -252,7 +257,7 @@ def fn_run_ras2rem(r2f_huc_parent_dir, model_unit):
     flt_end_ras2rem = time.time()
     flt_time_pass_ras2rem = (flt_end_ras2rem - flt_start_ras2rem) // 1
     time_pass_ras2rem = datetime.timedelta(seconds=flt_time_pass_ras2rem)
-    print("Compute Time: " + str(time_pass_ras2rem))
+    RLOG.lprint("Compute Time: " + str(time_pass_ras2rem))
 
 
 # -------------------------------------------------
@@ -297,8 +302,29 @@ if __name__ == "__main__":
 
     r2f_huc_parent_dir = args["r2f_huc_parent_dir"]
 
-    # find model_unit of HEC-RAS outputs (ft vs m) using a sample rating curve file
-    r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-    model_unit = sf.find_model_unit_from_rating_curves(r2f_hecras_outputs_dir)
+    log_file_folder = args["r2f_huc_parent_dir"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
 
-    fn_run_ras2rem(r2f_huc_parent_dir, model_unit)
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(log_file_folder, script_file_name + ".log")
+
+        # find model_unit of HEC-RAS outputs (ft vs m) using a sample rating curve file
+        r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+        model_unit = sf.find_model_unit_from_rating_curves(r2f_hecras_outputs_dir)
+
+        # call main program
+        fn_run_ras2rem(r2f_huc_parent_dir, model_unit)
+
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            ras2fim_logger.logger.critical(traceback.format_exc())
+        else:
+            print(traceback.format_exc())

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import sys
+import traceback
 from concurrent.futures import ProcessPoolExecutor
 from os import listdir, remove
 from pathlib import Path
@@ -14,9 +16,15 @@ from rasterio.mask import mask
 from rasterio.merge import merge
 from rasterio.warp import reproject
 
-import src.shared_variables as sv
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+
+import ras2fim_logger
+import shared_variables as sv
 
 
+# Global Variables
+RLOG = ras2fim_logger.RAS2FIM_logger()
 PREP_PROJECTION = (
     'PROJCS["USA_Contiguous_Albers_Equal_Area_Conic_USGS_version",'
     'GEOGCS["NAD83",DATUM["North_American_Datum_1983",'
@@ -235,7 +243,7 @@ def extract_ras(args, huc):
                         reproj_gridname = reproj_out_grid_dir / f"{feature_id}-{closest_rc_max_depth}.tif"
                         reproject_raster(extent_gridname, reproj_gridname, PREP_PROJECTION)
                     else:
-                        print(
+                        RLOG.lprint(
                             f"Missing depth grid {depth_grid} for feature id {feature_id} in HUC {huc}."
                             f" Interpolated depth: {interp_depth}."
                         )
@@ -256,7 +264,7 @@ def extract_ras(args, huc):
                     write_rating_curves(ras_rc_rec_dir, aggregate_rc, reccur_flow_rc)
 
                 else:
-                    print(
+                    RLOG.lprint(
                         f"No {interval} depth grid exists within search window for feature id {feature_id}"
                         f"in HUC {huc}. Interpolated depth: {interp_depth}."
                     )
@@ -276,7 +284,7 @@ def extract_ras(args, huc):
                     missing_flows = pd.concat([missing_flows, df_new_row], ignore_index=True)
 
             else:
-                print(
+                RLOG.lprint(
                     f"{interval} recurrence flow for feature id {feature_id} in HUC {huc}"
                     " outside of ras2fim rating curve bounds"
                 )
@@ -338,19 +346,7 @@ def extract_ras(args, huc):
 
 
 # -------------------------------------------------
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Convert depth grids to inundation extents")
-    parser.add_argument(
-        "-val_dir", "--validation-dir", help="Validation data directory", required=True, type=str
-    )
-    parser.add_argument("-ras_dir", "--ras-dir", help="HEC-RAS model directory", required=True, type=str)
-    parser.add_argument("-j", "--jobs", help="number of jobs", required=False, type=int, default=1)
-
-    args = vars(parser.parse_args())
-    recurrence_dir = Path(args["validation_dir"])
-    ras_model_dir = Path(args["ras_dir"])
-    num_workers = args["jobs"]
-
+def process_convert_to_datasets(recurrence_dir, ras_model_dir, num_workers):
     # Set paths
     ras_reorg_dir = ras_model_dir / "ras_reorg"
     huc_list = listdir(ras_reorg_dir)
@@ -364,7 +360,7 @@ if __name__ == "__main__":
 
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         # Find nearest depth grid and convert to inundation extent for each recurrence interval
-        convert_depth_grids = [executor.submit(extract_ras, extent_grid_args, str(huc)) for huc in huc_list]
+        [executor.submit(extract_ras, extent_grid_args, str(huc)) for huc in huc_list]
 
     # Collect tables for missing grids and append to single table
     all_missing_flows_logfile = ras_model_dir / "missing_flows.csv"
@@ -416,3 +412,41 @@ if __name__ == "__main__":
     extent_grids_reproj = output_dir / "extent_grids_reproj"
     if extent_grids_reproj.is_dir():
         rmtree(extent_grids_reproj)
+
+
+# -------------------------------------------------
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Convert depth grids to inundation extents")
+    parser.add_argument(
+        "-val_dir", "--validation-dir", help="Validation data directory", required=True, type=str
+    )
+    parser.add_argument("-ras_dir", "--ras-dir", help="HEC-RAS model directory", required=True, type=str)
+    parser.add_argument("-j", "--jobs", help="number of jobs", required=False, type=int, default=1)
+
+    args = vars(parser.parse_args())
+    recurrence_dir = Path(args["validation_dir"])
+    ras_model_dir = Path(args["ras_dir"])
+    num_workers = args["jobs"]
+
+    log_file_folder = args["ras_dir"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
+
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(log_file_folder, script_file_name + ".log")
+
+        # call main program
+        process_convert_to_datasets(recurrence_dir, ras_model_dir, num_workers)
+
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            ras2fim_logger.logger.critical(traceback.format_exc())
+        else:
+            print(traceback.format_exc())

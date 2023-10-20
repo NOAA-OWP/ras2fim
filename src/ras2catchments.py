@@ -6,6 +6,7 @@ import multiprocessing as mp
 import os
 import shutil
 import time
+import traceback
 from multiprocessing import Pool
 from pathlib import Path
 
@@ -20,8 +21,13 @@ from rasterio import features
 from rasterio.merge import merge
 from shapely.geometry import Polygon
 
+import ras2fim_logger
 import shared_functions as sf
 import shared_variables as sv
+
+
+# Global Variables
+RLOG = ras2fim_logger.RAS2FIM_logger()
 
 
 # NOTE: This tool might be deprecated. If it is re-used... double check the right sizes for maxments.
@@ -33,11 +39,11 @@ import shared_variables as sv
 # matches the Depth Grid processing extents ("maxments") from ras2fim Step 5.
 def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_path, rating_curve_path):
     if os.path.exists(rating_curve_path) is False:
-        raise Exception(
-            "The file rating_curve.csv does not exist. It needs to be in"
-            f" the {sv.R2F_OUTPUT_DIR_METRIC} subfolder."
-            " Ensure ras2fim has been run and created a the file."
-        )
+        err_msg = "The file rating_curve.csv does not exist. It needs to be in"
+        f" the {sv.R2F_OUTPUT_DIR_METRIC} subfolder."
+        " Ensure ras2fim has been run and created a the file."
+        RLOG.critical(err_msg)
+        raise Exception(err_msg)
 
     # as in the r2f_features_{huc_num}.tif  (we can assume it is here are we created it in this file)
     with rasterio.open(mosaic_features_raster_path) as r2f_features_src:
@@ -120,18 +126,16 @@ def vectorize(mosaic_features_raster_path, changelog_path, model_huc_catalog_pat
     # fix the last_modified to utc not not linux time units
     gdf["last_modified"] = gdf["last_modified"].fillna(-1)  # model_catalog field
     try:
-        gdf["last_modified"] = [
-            dt.datetime.utcfromtimestamp(t).strftime("%Y-%m-%d") for t in gdf["last_modified"]
-        ]
+        gdf["last_modified"] = [dt.datetime.utcnow().strftime("%Y-%m-%d") for t in gdf["last_modified"]]
     except Exception as e:
-        print("Model catalog date issue. Moving on.")
-        print(e)
+        RLOG.warning("Model catalog date issue. Moving on.")
+        RLOG.warning(e)
 
     # this could change if the model was updated and re-ran against this huc
     gdf.rename(columns={"last_modified": "hecras_model_last_modified"}, inplace=True)
 
     # populate the rating_curve field with today's utc date
-    gdf["last_updated"] = dt.datetime.utcnow(dt.timezone.utc).strftime("%Y-%m-%d")
+    gdf["last_updated"] = dt.datetime.utcnow().strftime("%Y-%m-%d")
     # renamed a few columns
     gdf.rename(columns={"last_updated": "ras2fim_processed_date"}, inplace=True)
 
@@ -303,7 +307,7 @@ def __validate_make_catchments(huc_num, r2f_huc_parent_dir, model_huc_catalog_pa
         shutil.rmtree(r2f_catchments_dir)
         # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
         # so sometimes mkdir can fail if rmtree isn't done
-        time.sleep(2)  # 2 seconds
+        time.sleep(1)  # 1 seconds
 
     os.mkdir(r2f_catchments_dir)
     rtn_varibles_dict["r2f_catchments_dir"] = r2f_catchments_dir
@@ -379,18 +383,18 @@ def make_catchments(
     #  Start processing
     start_dt = dt.datetime.utcnow()
 
-    print(" ")
-    print("+=================================================================+")
-    print("|                 CREATE CATCHMENTS                               |")
-    print("+-----------------------------------------------------------------+")
-    print("  ---(w) HUC-8: " + huc_num)
-    print("  ---(p) PARENT RAS2FIM HUC DIRECTORY: " + r2f_huc_parent_dir)
-    print("  ---(n) PATH TO NATIONAL DATASETS: " + national_ds_path)
-    print("  ---(mc) PATH TO MODELS_CATALOG: " + rtn_varibles_dict.get("model_huc_catalog_path"))
-    print("===================================================================")
-    print(" ")
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|                 CREATE CATCHMENTS                               |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("  ---(w) HUC-8: " + huc_num)
+    RLOG.lprint("  ---(p) PARENT RAS2FIM HUC DIRECTORY: " + r2f_huc_parent_dir)
+    RLOG.lprint("  ---(n) PATH TO NATIONAL DATASETS: " + national_ds_path)
+    RLOG.lprint("  ---(mc) PATH TO MODELS_CATALOG: " + rtn_varibles_dict.get("model_huc_catalog_path"))
+    RLOG.lprint("===================================================================")
+    RLOG.lprint("")
 
-    print("Getting list of feature IDs")
+    RLOG.lprint("Getting list of feature IDs")
 
     # -------------------
     # Make a list of all tif file in the 05_  Depth_Grid (focusing on the depth not the feature ID)
@@ -401,32 +405,29 @@ def make_catchments(
     # Get a list of features (using the file names)
 
     depth_grid_path = os.path.join(r2f_06_metric_dir, sv.R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS)
-    print(f"depth_grid_path is {depth_grid_path}")
+    RLOG.lprint(f"depth_grid_path is {depth_grid_path}")
 
     all_depth_grid_tif_files = list(Path(r2f_06_metric_dir).glob("**/*-*.tif"))
     if len(all_depth_grid_tif_files) == 0:
-        raise Exception(
-            "No depth grid tif's found. Please ensure that ras2fim has been run and the 06_metrics"
-            " has depth grid tifs in the pattern of {featureID-{depth value}.tif. ie) 5789848-18.tif"
-        )
+        err_msg = "No depth grid tif's found. Please ensure that ras2fim has been run and the 06_metrics"
+        " has depth grid tifs in the pattern of {featureID-{depth value}.tif. ie) 5789848-18.tif"
+        raise Exception(err_msg)
 
     feature_file_names = list(map(lambda var: str(var).rsplit("\\", 1)[1], all_depth_grid_tif_files))
     if len(feature_file_names) == 0:
         # in case the file name pattern changed
-        raise Exception(
-            "Feature Id's are extracted from depth grid tif file names using"
-            " the pattern of {featureID-{depth value}.tif. ie) 5789848-18.tif."
-            " No files found matching the pattern."
-        )
+        err_msg = "Feature Id's are extracted from depth grid tif file names using"
+        " the pattern of {featureID-{depth value}.tif. ie) 5789848-18.tif."
+        " No files found matching the pattern."
+        raise Exception(err_msg)
 
     feature_id_values = list(map(lambda var: str(var).rsplit("-")[0], feature_file_names))
     if len(feature_id_values) == 0:
         # in case the file name pattern changed
-        raise Exception(
-            "Feature Id's are extracted from depth grid tif file names using"
-            " the pattern of {featureID-{depth value}.tif. ie) 5789848-18.tif."
-            " No files found matching the pattern."
-        )
+        err_msg = "Feature Id's are extracted from depth grid tif file names using"
+        " the pattern of {featureID-{depth value}.tif. ie) 5789848-18.tif."
+        " No files found matching the pattern."
+        raise Exception(err_msg)
 
     # -------------------
     # Make a list of all unique feature id,
@@ -434,27 +435,27 @@ def make_catchments(
     all_feature_ids = list(set(feature_id_values))
     all_feature_ids = [int(x) for x in all_feature_ids]
 
-    print(f"The number of unique feature ID's is {len(all_feature_ids)}")
+    RLOG.lprint(f"The number of unique feature ID's is {len(all_feature_ids)}")
 
     # The following file needs to point to a NWM catchments shapefile (local.. not S3 (for now))
     # -------------------
-    print()
-    print("Subsetting NWM Catchments from HUC8, no buffer")
-    print()
+    RLOG.lprint("")
+    RLOG.lprint("Subsetting NWM Catchments from HUC8, no buffer")
+    RLOG.lprint("")
 
     # subset the nwm_catchments CONUS gkpg to the huc8 to speed it up
     huc8_wbd_db = gpd.read_file(rtn_varibles_dict.get("wbd_huc8_file"))
     huc8_nwm_df = gpd.read_file(rtn_varibles_dict.get("src_nwm_catchments_file"), mask=huc8_wbd_db)
 
     # -------------------
-    print("Getting all relevant catchment polys")
-    print()
+    RLOG.lprint("Getting all relevant catchment polys")
+    RLOG.lprint("")
     filtered_catchments_df = huc8_nwm_df.loc[huc8_nwm_df["ID"].isin(all_feature_ids)]
     nwm_filtered_df = gpd.GeoDataFrame.copy(filtered_catchments_df)
 
     # -------------------
     # We need to project the output gpkg to match the incoming raster projection.
-    print("Reprojecting filtered nwm_catchments to rem rasters crs")
+    RLOG.lprint("Reprojecting filtered nwm_catchments to rem rasters crs")
 
     # Let's create one overall gpkg that has all of the relavent polys, for quick validation
     reproj_nwm_filtered_df = nwm_filtered_df.to_crs(sv.DEFAULT_RASTER_OUTPUT_CRS)
@@ -468,7 +469,7 @@ def make_catchments(
         shutil.rmtree(datatyped_rems_dir)
         # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
         # so sometimes mkdir can fail if rmtree isn't done
-        time.sleep(2)  # 2 seconds
+        time.sleep(1)  # 1 seconds
 
     os.mkdir(datatyped_rems_dir)
 
@@ -481,7 +482,7 @@ def make_catchments(
     # Create a single copy of a REM created by ras2rem so that we make sure our final feature ID tif is
     # really the same size (so that we're not off by a pixel)
     # add nodata REM file to list of rasters to merge, so that the final merged raster has same extent
-    print("Creating rem extent file")
+    RLOG.lprint("Creating rem extent file")
     r2f_rem_extent_path = None
     r2f_rem_path = os.path.join(rtn_varibles_dict["r2f_06_metric_dir"], sv.R2F_OUTPUT_DIR_RAS2REM, "rem.tif")
     if os.path.exists(r2f_rem_path):
@@ -498,7 +499,7 @@ def make_catchments(
     else:
         raise Exception(f"{r2f_rem_path} doesn't exist")
 
-    print("Getting maxment files")
+    RLOG.lprint("Getting maxment files")
 
     # Create a list of lists with the mxmt args for the multi-proc
     mxmts_args = []
@@ -523,9 +524,9 @@ def make_catchments(
 
     # -------------------
     # Merge all the feature IDs' max depths together
-    print("Merging all max depths")
+    RLOG.lprint("Merging all max depths")
     if is_verbose:
-        print(rasters_paths_to_mosaic)
+        RLOG.debug(rasters_paths_to_mosaic)
 
     mosaic, output = merge(list(map(rasterio.open, rasters_paths_to_mosaic)), method="min")
 
@@ -551,14 +552,14 @@ def make_catchments(
     )
     with rasterio.open(mosaic_features_raster_path, "w", **output_meta, compress="LZW") as m:
         m.write(mosaic)
-        print(f"** Writing final features mosaiced to {mosaic_features_raster_path}")
+        RLOG.lprint(f"** Writing final features mosaiced to {mosaic_features_raster_path}")
 
     # Ensure the metric columns exist in the meta file about to be created in vectorize
     r2f_06_metric_dir = rtn_varibles_dict.get("r2f_06_metric_dir")
     rating_curve_path = os.path.join(r2f_06_metric_dir, sv.R2F_OUTPUT_DIR_RAS2REM)
     sf.convert_rating_curve_to_metric(rating_curve_path)
 
-    print("*** Vectorizing Feature IDs and creating metadata")
+    RLOG.lprint("*** Vectorizing Feature IDs and creating metadata")
     model_huc_catalog_path = rtn_varibles_dict.get("model_huc_catalog_path")
     current_script_path = os.path.realpath(os.path.dirname(__file__))
     catalog_md_path = os.path.join(current_script_path, "..", "doc", "CHANGELOG.md")
@@ -574,11 +575,11 @@ def make_catchments(
         time.sleep(2)  # 2 seconds
 
     # -------------------
-    print()
-    print("ras2catchment processing complete")
-    print(sf.print_date_time_duration(start_dt, dt.datetime.utcnow()))
-    print("===================================================================")
-    print("")
+    RLOG.lprint("")
+    RLOG.lprint("ras2catchment processing complete")
+    RLOG.lprint(sf.print_date_time_duration(start_dt, dt.datetime.utcnow()))
+    RLOG.lprint("===================================================================")
+    RLOG.lprint("")
 
 
 ####################################################################
@@ -669,4 +670,33 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
+    # creates the log file name as the script name
+    script_file_name = os.path.basename(__file__).split('.')[0]
+    # Assumes RLOG has been added as a global var.
+    RLOG.setup(args["r2f_huc_parent_dir"], script_file_name + ".log")
+
+    # call main program
     make_catchments(**args)
+
+    log_file_folder = args["r2f_huc_parent_dir"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
+
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(log_file_folder, script_file_name + ".log")
+
+        # call main program
+        make_catchments(**args)
+
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            ras2fim_logger.logger.critical(traceback.format_exc())
+        else:
+            print(traceback.format_exc())

@@ -13,7 +13,10 @@
 # Uses the 'ras2fim' conda environment
 # ************************************************************
 import os
+import random
 import re
+import sys
+import time
 import traceback
 from datetime import date
 
@@ -26,7 +29,12 @@ import win32com.client
 # from rasterio.warp import calculate_default_transform, reproject
 from scipy.interpolate import interp1d
 
+import ras2fim_logger
 import shared_functions as sf
+
+
+# Global Variables
+RLOG = ras2fim_logger.RAS2FIM_logger()
 
 
 # from rasterio.warp import calculate_default_transform, reproject
@@ -61,6 +69,7 @@ import shared_functions as sf
 # -------------------------------------------------
 def fn_create_firstpass_flowlist(int_fn_starting_flow, int_fn_max_flow, int_fn_number_of_steps):
     # create a list of flows for the first pass HEC-RAS
+
     list_first_pass_flows = []
 
     int_fn_deltaflowstep = int(int_fn_max_flow // (int_fn_number_of_steps - 2))
@@ -117,7 +126,7 @@ def fn_format_flow_values(list_flow):
 # -------------------------------------------------
 def fn_append_error(str_f_id_fn, str_geom_path_fn, str_huc12_fn, str_directory_fn, exception_msg):
     # creates a csv file of the errors found during processing
-    str_error_path = os.path.join(str_directory_fn, "error_found.csv")
+    str_error_path = os.path.join(str_directory_fn, "worker_fim_raster_errors_found.csv")
 
     # if file exists then open it
     if os.path.exists(str_error_path):
@@ -589,7 +598,9 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
     int_number_of_steps = tpl_settings[11]
     int_starting_flow = tpl_settings[12]
 
+    # needed scoped here to ensure it is closed in an event of an exception
     hec = None
+    has_exception = False
 
     try:
         # Get the feature_id
@@ -809,6 +820,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
 
         # ------------------------------------------
         # generate the rating curve data
+        RLOG.debug(f"Creating rating curve for {str_feature_id}")
         fn_create_rating_curve(
             list_int_step_flows,
             list_step_profiles,
@@ -819,9 +831,6 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
             all_x_sections_info,
         )
         # ------------------------------------------
-
-        hec.QuitRas()  # close HEC-RAS
-
         # append the flow file with one for the second pass at even depth intervals
         fn_create_flow_file_second_pass(
             str_ras_projectpath, list_int_step_flows, list_step_profiles, model_unit
@@ -844,9 +853,12 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
             # computations of the current plan
             v1, NMsg, TabMsg, v2 = hec.Compute_CurrentPlan(NMsg, TabMsg, block)
 
-            hec.QuitRas()  # close HEC-RAS
-
             # *************************************
+
+        # Close HEC-RAS as soon as we don't need it.
+        # We will reopen it later. Keepign win32 coms open any longer
+        # then we need especially in multi-proc can create problems.
+        hec.QuitRas()  # close HEC-RAS
 
         """
             # *************************************************
@@ -861,17 +873,16 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
             #*************************************************
 
         """
-        # del hec             # delete HEC-RAS controller
 
-    except Exception as ex:
+    except Exception:
         # re-raise it as error handling is farther up the chain
         # but I do need the finally to ensure the hec.QuitRas() is run
-        print("++++++++++++++++++++++++")
-        print("An exception occurred with the HEC-RAS engine or its parameters.")
-        print(f"details: {ex}")
-        print()
-        # re-raise it for logging (coming)
-        raise ex
+        RLOG.critical("++++++++++++++++++++++++")
+        RLOG.critical("An exception occurred with the HEC-RAS engine or its parameters.")
+        RLOG.critical(f"str_ras_projectpath is {str_ras_projectpath}")
+        RLOG.critical(traceback.format_exc())
+        RLOG.critical("")
+        has_exception = True
 
     finally:
         # Especially with multi proc, if an error occurs with HEC-RAS (engine
@@ -883,10 +894,14 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
             try:
                 hec.QuitRas()  # close HEC-RAS no matter watch
             except Exception as ex2:
-                print("--- An error occured trying to close the HEC-RAS window process")
-                print(f"--- Details: {ex2}")
-                print()
-                # do nothng
+                RLOG.warning("--- An error occured trying to close the HEC-RAS window process")
+                RLOG.warning(f"str_ras_projectpath is {str_ras_projectpath}")
+                RLOG.warning(f"--- Details: {ex2}")
+                RLOG.warning()
+                # do nothing
+
+        if has_exception is True:
+            sys.exit(1)
 
 
 # -------------------------------------------------
@@ -1183,8 +1198,8 @@ def fn_create_hecras_files(
     pattern = re.compile(r"River Reach=.*")
     matches = pattern.finditer(file_contents)
 
-    for match in matches:
-        str_river_reach = file_contents[match.start() : match.end()]
+    for reach_match in matches:
+        str_river_reach = file_contents[reach_match.start() : reach_match.end()]
         # remove first 12 characters
         str_river_reach = str_river_reach[12:]
         # split the data on the comma
@@ -1317,6 +1332,15 @@ def fn_create_hecras_files(
 
 # -------------------------------------------------
 def fn_main_hecras(record_requested_stream):
+    # There are known issues with loguru sometimes merging output lines together
+    # when multi-proc is in use.
+    # We will do a quick random timer to start it so we have a little less
+    # exact time collisions.
+    # we will do a random float value between 0 and 1 second (defaults to 0 and 1)
+    rand_num = random.random()
+    print(rand_num)
+    time.sleep(rand_num)
+
     str_feature_id = str(record_requested_stream[0])
     flt_us_xs = float(record_requested_stream[1])
     flt_ds_xs = float(record_requested_stream[2])
@@ -1365,6 +1389,8 @@ def fn_main_hecras(record_requested_stream):
     str_hecras_path_to_create = str_path_to_create + "\\HEC-RAS"
     os.makedirs(str_hecras_path_to_create, exist_ok=True)
 
+    RLOG.debug(f"Starting processing for {str_feature_id}")
+    RLOG.debug(f"str_path_to_create is {str_path_to_create}")
     # print(str_feature_id + ': ' + str_geom_path + ': ' + str(int_max_q))
 
     # river = fn_create_hecras_files(str_feature_id, str_geom_path, flt_ds_xs, flt_us_xs,
@@ -1386,13 +1412,21 @@ def fn_main_hecras(record_requested_stream):
         )
     except Exception as ex:
         # print("HEC-RAS Error: " + str_geom_path)
-        print("*******************")
-        print("Error:")
-        print(f"   str_feature_id = {str_feature_id}")
+        RLOG.critical("*******************")
+        RLOG.critical(f"   str_feature_id = {str_feature_id}")
+        RLOG.critical(f"   str_path_to_create is {str_path_to_create}")
+        RLOG.critical(
+            "   for more details.. see the " "05_hecras_output / worker_fim_raster_errors_found.csv"
+        )
+        RLOG.critical(traceback.format_exc())
+
         errMsg = str(ex) + " \n   " + traceback.format_exc()
-        print(errMsg)
-        print("   for more details.. see the 05_hecras_output / errors_found.log")
         fn_append_error(str_feature_id, str_geom_path, str_huc12, str_root_output_directory, errMsg)
-        print("*******************")
+
+        RLOG.critical("*******************")
+        # we need to re-raise to kill the multi-proc
+        raise ex
+
+    RLOG.debug(f"Finished processing for {str_feature_id}")
 
     # return(str_feature_id)

@@ -16,6 +16,7 @@ import multiprocessing as mp
 import os
 import pathlib
 import time
+import traceback
 import xml.etree.ElementTree as et
 from time import sleep
 
@@ -26,6 +27,12 @@ import pandas as pd
 import rasterio
 import tqdm
 from shapely.geometry import LineString
+
+import ras2fim_logger
+
+
+# Global Variables
+RLOG = ras2fim_logger.RAS2FIM_logger()
 
 
 # -------------------------
@@ -302,13 +309,13 @@ def fn_get_stats_dataseries(list_files_for_stats):
 def fn_calculate_all_terrain_stats(str_input_dir):
     flt_start_run = time.time()
 
-    print(" ")
-    print("+=================================================================+")
-    print("|    CALCULATE TERRAIN STATISTICS FOR MULTIPLE HEC-RAS MODELS     |")
-    print("+-----------------------------------------------------------------+")
+    print("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|    CALCULATE TERRAIN STATISTICS FOR MULTIPLE HEC-RAS MODELS     |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
-    print("  ---(i) RAS MAPPER DIRECTORY: " + str_input_dir)
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("  ---(i) RAS MAPPER DIRECTORY: " + str_input_dir)
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
     list_of_list_processed = fn_get_list_of_lists_to_compute(str_input_dir)
 
@@ -355,13 +362,13 @@ def fn_calculate_all_terrain_stats(str_input_dir):
     flt_time_pass = (flt_end_run - flt_start_run) // 1
     time_pass = datetime.timedelta(seconds=flt_time_pass)
 
-    print(" ")
-    print("mean of mean terrain difference: " + str(df_combined_stats["mean"].mean()))
-    print(" ")
-    print("Compute Time: " + str(time_pass))
+    print("")
+    RLOG.lprint("mean of mean terrain difference: " + str(df_combined_stats["mean"].mean()))
+    print("")
+    RLOG.lprint("Compute Time: " + str(time_pass))
 
-    print("COMPLETE")
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("COMPLETE")
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
 
 # -------------------------------------------------
@@ -383,4 +390,25 @@ if __name__ == "__main__":
 
     str_input_dir = args["str_input_dir"]
 
-    fn_calculate_all_terrain_stats(str_input_dir)
+    log_file_folder = args["str_input_dir"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
+
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(log_file_folder, script_file_name + ".log")
+
+        # call main program
+        fn_calculate_all_terrain_stats(str_input_dir)
+
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            ras2fim_logger.logger.critical(traceback.format_exc())
+        else:
+            print(traceback.format_exc())

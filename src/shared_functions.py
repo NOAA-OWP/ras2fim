@@ -19,9 +19,14 @@ import rasterio
 from dotenv import load_dotenv
 from tqdm import tqdm
 
+import ras2fim_logger
 import shared_validators as val
 import shared_variables as sv
 from errors import ModelUnitError
+
+
+# Global Variables
+RLOG = ras2fim_logger.RAS2FIM_logger()
 
 
 # -------------------------------------------------

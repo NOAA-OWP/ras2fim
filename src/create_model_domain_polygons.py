@@ -2,12 +2,19 @@ import argparse
 import datetime
 import os
 import time
+import traceback
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 from shapely.geometry import LineString, Point, Polygon
 from shapely.validation import make_valid
+
+import ras2fim_logger
+
+
+# Global Variables
+RLOG = ras2fim_logger.RAS2FIM_logger()
 
 
 # -------------------------------------------------
@@ -48,18 +55,21 @@ def fn_make_domain_polygons(
 
     """
 
-    print(
+    RLOG.lprint("")
+    RLOG.lprint("+++++++ Create polygons for HEC-RAS models domains +++++++")
+
+    RLOG.lprint(
         "  --- (-i) Path to the shapefile containing HEC-RAS models cross sections: "
         + str(xsections_shp_file_path)
     )
-    print("  --- (-o) path to the GPKG output file: " + str(polygons_output_file_path))
-    print(
+    RLOG.lprint("  --- (-o) path to the GPKG output file: " + str(polygons_output_file_path))
+    RLOG.lprint(
         "  --- (-name) column/field name of the input shapefile having unique names for HEC-RAS models: "
         + str(model_name_field)
     )
-    print("  --- (-catalog) path to the model catalog: " + str(model_huc_catalog_path))
-    print("  --- (-conflate) path to the conflation qc file: " + str(conflation_qc_path))
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("  --- (-catalog) path to the model catalog: " + str(model_huc_catalog_path))
+    RLOG.lprint("  --- (-conflate) path to the conflation qc file: " + str(conflation_qc_path))
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
     flt_start_domain = time.time()
 
@@ -142,7 +152,7 @@ def fn_make_domain_polygons(
     flt_end_domain = time.time()
     flt_time_pass_domain = (flt_end_domain - flt_start_domain) // 1
     time_pass_domain = datetime.timedelta(seconds=flt_time_pass_domain)
-    print("Compute Time: " + str(time_pass_domain))
+    RLOG.lprint("Compute Time: " + str(time_pass_domain))
 
 
 # -------------------------------------------------
@@ -208,13 +218,31 @@ if __name__ == "__main__":
     model_catalog_path = args["model_catalog_path"]
     conflation_qc_path = args["conflation_qc_path"]
 
-    print()
-    print("+++++++ Create polygons for HEC-RAS models domains +++++++")
+    polygons_output_file_path = args["polygons_output_file_path"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
 
-    fn_make_domain_polygons(
-        xsections_shp_file_path,
-        polygons_output_file_path,
-        model_name_field,
-        model_catalog_path,
-        conflation_qc_path,
-    )
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(polygons_output_file_path, script_file_name + ".log")
+
+        # call main program
+        fn_make_domain_polygons(
+            xsections_shp_file_path,
+            polygons_output_file_path,
+            model_name_field,
+            model_catalog_path,
+            conflation_qc_path,
+        )
+
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            ras2fim_logger.logger.critical(traceback.format_exc())
+        else:
+            print(traceback.format_exc())
