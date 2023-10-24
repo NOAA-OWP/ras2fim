@@ -820,7 +820,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
 
         # ------------------------------------------
         # generate the rating curve data
-        RLOG.debug(f"Creating rating curve for {str_feature_id}")
+        RLOG.debug(f"Creating rating curve for feature id: {str_feature_id}")
         fn_create_rating_curve(
             list_int_step_flows,
             list_step_profiles,
@@ -884,11 +884,16 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
         RLOG.critical("")
         has_exception = True
 
+        # we need to re-raise to kill the parent multi-proc on it.
+
     finally:
         # Especially with multi proc, if an error occurs with HEC-RAS (engine
         # or values submitted), HEC-RAS will not close itself just becuase of an python
         # exception. This leaves orphaned process threads (visible in task manager)
         # and sometimes visually as well.
+
+        # TODO
+        RLOG.lprint("Rob H is testing failures")
 
         if hec is not None:
             try:
@@ -1388,7 +1393,7 @@ def fn_main_hecras(record_requested_stream):
     str_hecras_path_to_create = str_path_to_create + "\\HEC-RAS"
     os.makedirs(str_hecras_path_to_create, exist_ok=True)
 
-    RLOG.debug(f"Starting processing for {str_feature_id}")
+    RLOG.debug(f"Starting processing for feature id: {str_feature_id}")
     RLOG.debug(f"str_path_to_create is {str_path_to_create}")
     # print(str_feature_id + ': ' + str_geom_path + ': ' + str(int_max_q))
 

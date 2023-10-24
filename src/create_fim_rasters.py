@@ -189,7 +189,7 @@ def fn_create_fim_rasters(
         int_huc12_index = 0
 
         len_df_huc12 = len(df_huc12)
-        str_prefix = r"Processing HUCs (0 of " + str(len_df_huc12) + "):"
+        str_prefix = r"Processing HUC12s (0 of " + str(len_df_huc12) + "):"
         fn_print_progress_bar(0, len_df_huc12, prefix=str_prefix, suffix="Complete", length=27)
 
         # Loop through each HUC-12
@@ -197,7 +197,7 @@ def fn_create_fim_rasters(
             str_huc12 = str(df_huc12["HUC_12"][i])
             int_huc12_index += 1
             # print(str_huc12)
-            str_prefix = r"Processing HUCs (" + str(int_huc12_index) + " of " + str(len_df_huc12) + "):"
+            str_prefix = r"Processing HUC12s (" + str(int_huc12_index) + " of " + str(len_df_huc12) + "):"
             fn_print_progress_bar(
                 int_huc12_index, len_df_huc12, prefix=str_prefix, suffix="Complete", length=27
             )

@@ -211,7 +211,7 @@ def manage_geo_rating_curves_production(
     geocurves_dir = os.path.join(output_folder, "geocurves")
     geocurve_dirs.append(geocurves_dir)
 
-    polys_dir = os.path.join(output_folder, "polys")
+    polys_dir = os.path.join(output_folder, "geocurve_polys")
     geocurve_dirs.append(polys_dir)
 
     for gc_dir in geocurve_dirs:
