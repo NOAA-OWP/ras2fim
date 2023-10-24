@@ -45,6 +45,7 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
     """
     try:
         depth_grid = ""
+        feature_id_rating_curve_geo = None
 
         # Read rating curve for feature_id
         rating_curve_df = pd.read_csv(rating_curve)
@@ -67,6 +68,7 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
 
                 # if the array only has values of zero, then skip it (aka.. no heights above surface)
                 if np.min(reclass_inundation_array) == 0 and np.max(reclass_inundation_array) == 0:
+                    RLOG.warning(f"depth_grid of {depth_grid} does not have any heights above surfase.")
                     continue
 
                 # Aggregate shapes
@@ -170,6 +172,19 @@ def manage_geo_rating_curves_production(
         job_number (int): The number of jobs to use when parallel processing feature_ids.
         output_folder (str): The path to the output folder where geo rating curves will be written.
     """
+
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|                   Create GeoCurves                              |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
+
+    RLOG.lprint(f"  ---(f) ras2fim_output_dir: {ras2fim_output_dir}")
+    RLOG.lprint(f"  ---(v) version: {version}")
+    RLOG.lprint(f"  ---(j) job_number: {job_number}")
+    RLOG.lprint(f"  ---(t) output_folder: {output_folder}")
+    RLOG.lprint(f"  ---(o) overwrite: {overwrite}")
+    RLOG.lprint(f"  ---(p) produce_polys: {produce_polys}")
+
     RLOG.lprint("")
     overall_start_time = datetime.utcnow()
     dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
@@ -215,6 +230,7 @@ def manage_geo_rating_curves_production(
     #  before replacing it so we don't have left over garbage
     os.makedirs(geocurves_dir)
 
+    # later logic will ask if their dir exists to decide if polys are to be created.
     if produce_polys:
         os.makedirs(polys_dir)
     else:
@@ -303,6 +319,14 @@ def manage_geo_rating_curves_production(
 
 # -------------------------------------------------
 if __name__ == "__main__":
+    # Sample command
+    # python create_geocurves.py -f  'c:\ras2fim_data\output_ras2fim\12090301_2277_230923'
+    #  -v 'doc\CHANGELOG.md'
+    #  -j 6
+    #  -t 'c:\ras2fim_data\output_ras2fim\12090301_2277_230923\final'
+    #  -o
+    #  -p
+
     # Parse arguments
     parser = argparse.ArgumentParser(description="Produce Geo Rating Curves for RAS2FIM")
     parser.add_argument(
@@ -342,7 +366,7 @@ if __name__ == "__main__":
         # to have setup the logger.
 
         # creates the log file name as the script name
-        script_file_name = os.path.basename(__file__).split('.')[0]
+        script_file_name = os.path.basename(__file__).split(".")[0]
 
         # Assumes RLOG has been added as a global var.
         RLOG.setup(log_file_folder, script_file_name + ".log")

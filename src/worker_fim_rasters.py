@@ -82,7 +82,7 @@ def fn_create_firstpass_flowlist(int_fn_starting_flow, int_fn_max_flow, int_fn_n
 
 # -------------------------------------------------
 def fn_create_profile_names(list_profiles, str_suffix):
-    str_profile_names = 'Profile Names='
+    str_profile_names = "Profile Names="
 
     for i in range(len(list_profiles)):
         str_profile_names += str(list_profiles[i]) + str_suffix
@@ -629,7 +629,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
 
         # HEC-RAS ID of output variables: Max channel depth, channel reach length,
         # and water surface elevation
-        int_max_depth_id, int_node_chan_length, int_water_surface_elev, int_q_total = 4, 42, 2, 9
+        int_max_depth_id, int_node_chan_length, int_water_surface_elev, int_q_total = (4, 42, 2, 9)
 
         # ----------------------------------
         # Create a list of the simulated flows
@@ -683,22 +683,22 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
             for i in range(0, NNod):
                 if TabNTyp[i] == "":  # this is a XS (not a bridge, culvert, inline, etc...)
                     # reading max depth in cross section
-                    arr_max_depth[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(
+                    (arr_max_depth[int_count_nodes], v1, v2, v3, v4, v5, v6) = hec.Output_NodeOutput(
                         RivID, RchID, i + 1, 0, int_prof + 1, int_max_depth_id
                     )
 
                     # reading water surface elevation in cross section
-                    arr_water_surface_elev[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(
+                    (arr_water_surface_elev[int_count_nodes], v1, v2, v3, v4, v5, v6) = hec.Output_NodeOutput(
                         RivID, RchID, i + 1, 0, int_prof + 1, int_water_surface_elev
                     )
 
                     # reading the distance between cross sections (center of channel)
-                    arr_channel_length[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(
+                    (arr_channel_length[int_count_nodes], v1, v2, v3, v4, v5, v6) = hec.Output_NodeOutput(
                         RivID, RchID, i + 1, 0, int_prof + 1, int_node_chan_length
                     )
 
                     # reading the Q total of the cross section
-                    arr_q_total[int_count_nodes], v1, v2, v3, v4, v5, v6 = hec.Output_NodeOutput(
+                    (arr_q_total[int_count_nodes], v1, v2, v3, v4, v5, v6) = hec.Output_NodeOutput(
                         RivID, RchID, i + 1, 0, int_prof + 1, int_q_total
                     )
 
@@ -1336,9 +1336,8 @@ def fn_main_hecras(record_requested_stream):
     # when multi-proc is in use.
     # We will do a quick random timer to start it so we have a little less
     # exact time collisions.
-    # we will do a random float value between 0 and 1 second (defaults to 0 and 1)
-    rand_num = random.random()
-    print(rand_num)
+    # we will do a random float value between 0 and 1 seconds
+    rand_num = random.uniform(0, 1)
     time.sleep(rand_num)
 
     str_feature_id = str(record_requested_stream[0])

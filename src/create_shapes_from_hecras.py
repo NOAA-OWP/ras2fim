@@ -70,7 +70,7 @@ def fn_open_hecras(str_ras_project_path):
         # We need to compute.  Opening RAS Mapper creates the Geom HDF
         v1, NMsg, TabMsg, v2 = hec.Compute_CurrentPlan(NMsg, TabMsg, block)
 
-    except Exception as ex:
+    except Exception:
         # re-raise it as error handling is farther up the chain
         # but I do need the finally to ensure the hec.QuitRas() is run
         print("")
