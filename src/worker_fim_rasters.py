@@ -15,7 +15,6 @@
 import os
 import random
 import re
-import sys
 import time
 import traceback
 from datetime import date
@@ -593,16 +592,15 @@ def fn_create_study_area(str_polygon_path_fn, str_feature_id_poly_fn, tpl_settin
 
 # -------------------------------------------------
 def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
-    # get settings from tpl_settings
-    flt_interval = tpl_settings[7]
-    int_number_of_steps = tpl_settings[11]
-    int_starting_flow = tpl_settings[12]
-
     # needed scoped here to ensure it is closed in an event of an exception
     hec = None
-    has_exception = False
 
     try:
+        # get settings from tpl_settings
+        flt_interval = tpl_settings[7]
+        int_number_of_steps = tpl_settings[11]
+        int_starting_flow = tpl_settings[12]
+
         # Get the feature_id
         list_path = str_ras_projectpath.split(os.sep)
         str_feature_id = str(list_path[-3])
@@ -830,6 +828,12 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
             list_step_profiles_wse,
             all_x_sections_info,
         )
+
+        # Close HEC-RAS as soon as we don't need it.
+        # We will reopen it later. Keepign win32 coms open any longer
+        # then we need especially in multi-proc can create problems.
+        hec.QuitRas()  # close HEC-RAS
+
         # ------------------------------------------
         # append the flow file with one for the second pass at even depth intervals
         fn_create_flow_file_second_pass(
@@ -882,7 +886,6 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
         RLOG.critical(f"str_ras_projectpath is {str_ras_projectpath}")
         RLOG.critical(traceback.format_exc())
         RLOG.critical("")
-        has_exception = True
 
         # we need to re-raise to kill the parent multi-proc on it.
 
@@ -892,9 +895,6 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
         # exception. This leaves orphaned process threads (visible in task manager)
         # and sometimes visually as well.
 
-        # TODO
-        RLOG.lprint("Rob H is testing failures")
-
         if hec is not None:
             try:
                 hec.QuitRas()  # close HEC-RAS no matter watch
@@ -902,11 +902,8 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
                 RLOG.warning("--- An error occured trying to close the HEC-RAS window process")
                 RLOG.warning(f"str_ras_projectpath is {str_ras_projectpath}")
                 RLOG.warning(f"--- Details: {ex2}")
-                RLOG.warning()
-                # do nothing
-
-        if has_exception is True:
-            sys.exit(1)
+                RLOG.warning("")
+                # do nothing as we want the procs to continue
 
 
 # -------------------------------------------------

@@ -317,7 +317,7 @@ def find_model_unit_from_rating_curves(r2f_hecras_outputs_dir):
     except Exception:
         print(
             "Error: Make sure you have specified a correct input directory with has at least"
-            "one '*.rating curve.csv' file."
+            " one '*.rating curve.csv' file."
         )
         sys.exit(1)
 

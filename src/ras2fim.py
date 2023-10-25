@@ -179,8 +179,8 @@ def init_and_run_ras2fim(
 
     # -------------------
     # validate dependencies of optional env flags
-    # TODO: Create list for module dependencies for any given section (instead of the "if" tests)
-    # NOTE: Order is critical here.
+    # TODO: Sept 2023: Create list for module dependencies for any given section (instead of the "if" tests)?
+    # NOTE: Sept 2023: Order is critical here.
     if (os.getenv("RUN_RAS2CATCHMENTS") == "True") and (os.getenv("RUN_RAS2REM") != "True"):
         raise ValueError("For the catchments module to run, the env.RUN_RAS2REM must be True.")
 

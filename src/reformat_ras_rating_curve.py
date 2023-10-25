@@ -315,7 +315,7 @@ def dir_reformat_ras_rc(
         # (but keep the metadata from the HEC-RAS cross-sections)
 
         if verbose is True:
-            RLOG.debug()
+            RLOG.debug("")
             RLOG.debug("Reading shapefiles and generating crosssection/streamline intersection points ...")
 
         # Read shapefiles
@@ -478,7 +478,7 @@ def dir_reformat_ras_rc(
                 f.write(f"{line}\n")
 
         if verbose is True:
-            RLOG.debug()
+            RLOG.debug("")
             RLOG.debug(f"Saved directory outputs for {dir_input_folder_path}.")
 
         # Get timestamp for metadata
@@ -676,10 +676,10 @@ def compile_ras_rating_curves(
 
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         if verbose is True:
-            RLOG.debug()
+            RLOG.debug("")
             RLOG.debug("--------------------------------------------------------------")
             RLOG.debug("Begin iterating through directories with multiprocessor...")
-            RLOG.debug()
+            RLOG.debug("")
 
         for dir in dirlist:
             dir_input_folder_path = os.path.join(input_folder_path, dir)
@@ -710,10 +710,10 @@ def compile_ras_rating_curves(
     # Read in all intermedate files (+ output logs) and combine them
 
     if verbose is True:
-        RLOG.debug()
+        RLOG.debug("")
         RLOG.debug("--------------------------------------------------------------")
         RLOG.debug("Begin compiling multiprocessor outputs...")
-        RLOG.debug()
+        RLOG.debug("")
 
     # Get list of intermediate files from path
     int_output_table_files = []
@@ -800,7 +800,7 @@ def compile_ras_rating_curves(
     output_log.append(f"Geopackage initial save location: {geopackage_path}")
     output_log.append(f"Compiled rating curve csv initial save location: {csv_path}")
     if verbose is True:
-        RLOG.debug()
+        RLOG.debug("")
         RLOG.debug(f"Compiled geopackage saved to {geopackage_path}")
         RLOG.debug(f"Compiled rating curve csv saved to {csv_path}")
 
@@ -840,29 +840,31 @@ def compile_ras_rating_curves(
 
 # -------------------------------------------------
 if __name__ == "__main__":
+    # TODO: Oct 24, 2023: -so flag in the notes below does not appear to exist anymore.
+    # Research required and it likely can be removed from the notes below.
     """
     Sample usage:
 
     # Recommended parameters:
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py
+    python reformat_ras_rating_curve.py
         -i 'C:/ras2fim_data/output_ras2fim' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves'
         -v -l
 
     # Minimalist run (all defaults used):
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py
+    python reformat_ras_rating_curve.py
 
     # Maximalist run (all possible arguments):
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py
+    python reformat_ras_rating_curve.py
         -i 'C:/ras2fim_data/output_ras2fim' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves'
         -v -l -j 6 -k -so "ras2fim" -lt "USGS" -ac "True"
 
     # Run with 6 workers:
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py
+    python reformat_ras_rating_curve.py
         -i 'C:/ras2fim_data/output_ras2fim' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves'
         -v -l -j 6
 
     # Input the data source, location type, and active information using the -so, -lt, and -ac flags:
-    python ./Users/rdp-user/projects/reformat-ras2fim/ras2fim/src/reformat_ras_rating_curve.py
+    python reformat_ras_rating_curve.py
         -i 'C:/ras2fim_data/output_ras2fim' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves'
         -v -so "ras2fim" -lt "USGS" -ac "True"
 

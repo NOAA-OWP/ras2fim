@@ -12,11 +12,10 @@
 # Uses the 'ras2fim' conda environment
 # ************************************************************
 import argparse
-import datetime
+import datetime as dt
 import multiprocessing as mp
 import os
 import sys
-import time
 import traceback
 from multiprocessing import Pool
 
@@ -24,6 +23,7 @@ import geopandas as gpd
 import pandas as pd
 
 import ras2fim_logger
+import shared_functions as sf
 import worker_fim_rasters
 
 
@@ -68,8 +68,10 @@ def fn_create_fim_rasters(
     str_std_input_path,
     flt_interval,
     b_terrain_check_only,
+    is_verbose=False,
 ):
-    flt_start_create_fim = time.time()
+    # TODO: Oct 25, 2023, continue with adding the "is_verbose" system
+    start_dt = dt.datetime.utcnow()
 
     # Hard coded constants for this routine
 
@@ -129,6 +131,7 @@ def fn_create_fim_rasters(
     RLOG.lprint("===================================================================")
 
     # "" is just a filler (for an old redundant parameter) simply to keep the order of item unchanged.
+    # TODO: Oct 25, 2023 - complete the is_verbose system
     tpl_input = (
         STR_HUC8,
         STR_INPUT_FOLDER,
@@ -147,6 +150,7 @@ def fn_create_fim_rasters(
         FLT_BUFFER,
         STR_PLAN_FOOTER_PATH,
         b_terrain_check_only,
+        is_verbose,
     )
 
     list_huc8 = []
@@ -214,7 +218,7 @@ def fn_create_fim_rasters(
             # Create a folder for the HUC-12 area
             os.makedirs(str_root_folder_to_create, exist_ok=True)
 
-            # ammend the pandas dataframe
+            # amend the pandas dataframe
             df_streams_huc12_mod1 = df_streams_huc12[
                 ["feature_id", "us_xs", "ds_xs", "peak_flow", "ras_path", "huc12", "settings"]
             ]
@@ -228,6 +232,8 @@ def fn_create_fim_rasters(
             except Exception as pex:
                 # It has already been logged in fn_main_hecras
                 RLOG.critical(pex)
+                executor.terminate()
+                RLOG.critical("Pool terminated")
                 sys.exit(1)
 
     tif_count = 0
@@ -235,20 +241,28 @@ def fn_create_fim_rasters(
         for file in files:
             if file.endswith(".tif"):
                 tif_count += 1
-    flt_end_create_fim = time.time()
-    flt_time_create_fim = (flt_end_create_fim - flt_start_create_fim) // 1
-    time_pass_create_fim = datetime.timedelta(seconds=flt_time_create_fim)
 
     RLOG.lprint("")
     RLOG.lprint("ALL AREAS COMPLETE")
     RLOG.lprint("Number of tif's generated: " + str(tif_count))
-    RLOG.lprint("Compute Time: " + str(time_pass_create_fim))
+
+    dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
+    RLOG.lprint(dur_msg)
 
     RLOG.lprint("====================================================================")
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
+    # TODO: Oct 23, 2023.
+    # Research is required. Comparing a test run against a small set of models, it took
+    # appx 32 mins to process via ras2fim, but through command line it took 6 mins.
+    # Output file count appears to be the same but hash compare will be required to see
+    # if the output files are really the same (not.. comparision has to be done on the
+    # same day as date stamps can be embedded in files which can throw off the hash compare)
+    # This appears to be a previously existing problem.
+    # Watch for outputs from step 5c, calculate terrain stats as it goes to the 06 folder as well
+
     parser = argparse.ArgumentParser(
         description="================ NWM RASTER LIBRARY FROM HEC-RAS =================="
     )
@@ -330,6 +344,16 @@ if __name__ == "__main__":
         action="store_true",
     )
 
+    parser.add_argument(
+        "-v",
+        "--is_verbose",
+        help="OPTIONAL: Adding this flag will give additional tracing output."
+        "Default = False (no extra output)",
+        required=False,
+        default=False,
+        action="store_true",
+    )
+
     args = vars(parser.parse_args())
     # --------------------------------
 
@@ -341,6 +365,7 @@ if __name__ == "__main__":
     str_std_input_path = args["str_std_input_path"]
     flt_interval = args["flt_interval"]
     b_terrain_check_only = args["b_terrain_check_only"]
+    is_verbose = args["is_verbose"]
 
     log_file_folder = args["str_output_folder"]
     try:
@@ -366,6 +391,7 @@ if __name__ == "__main__":
             str_std_input_path,
             flt_interval,
             b_terrain_check_only,
+            is_verbose,
         )
 
     except Exception:

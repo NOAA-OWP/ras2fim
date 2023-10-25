@@ -424,16 +424,26 @@ if __name__ == "__main__":
         help="OPTIONAL: resolution of output raster (crs units): Default=10",
         required=False,
         default=10,
-        metavar="FLOAT",
-        type=float,
+        metavar="int",
+        type=int,
     )
 
     parser.add_argument(
         "-p",
         dest="str_output_crs",
-        help="OPTIONAL: output coordinate reference zone: Default=EPSG:3857",
+        help="OPTIONAL: output coordinate reference zone:" f" Default={sv.DEFAULT_RASTER_OUTPUT_CRS}",
         required=False,
-        default="EPSG:3857",
+        default=sv.DEFAULT_RASTER_OUTPUT_CRS,
+        metavar="STRING",
+        type=str,
+    )
+
+    parser.add_argument(
+        "-u",
+        dest="model_unit",
+        help="OPTIONAL: need to be the value of feet or meter",
+        required=False,
+        default="feet",
         metavar="STRING",
         type=str,
     )
@@ -443,6 +453,7 @@ if __name__ == "__main__":
     r2f_huc_parent_dir = args["r2f_huc_parent_dir"]
     flt_resolution = args["flt_resolution"]
     str_output_crs = args["str_output_crs"]
+    model_unit = args["model_unit"]
 
     log_file_folder = args["r2f_huc_parent_dir"]
     try:
@@ -460,7 +471,7 @@ if __name__ == "__main__":
 
         # find model_unit of HEC-RAS outputs (ft vs m) using a sample rating curve file
         r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-        model_unit = sf.find_model_unit_from_rating_curves(r2f_hecras_outputs_dir)
+        # model_unit = sf.find_model_unit_from_rating_curves(r2f_hecras_outputs_dir)
 
         # call main program
         fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_crs, model_unit)

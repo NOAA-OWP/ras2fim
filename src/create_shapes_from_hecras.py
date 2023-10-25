@@ -94,7 +94,7 @@ def fn_open_hecras(str_ras_project_path):
                 RLOG.warning("--- An error occured trying to close the HEC-RAS window process")
                 RLOG.warning(f"str_ras_project_path is {str_ras_project_path}")
                 RLOG.warning(f"--- Details: {ex2}")
-                RLOG.warning()
+                RLOG.warning("")
                 # do nothing
         if has_exception:
             sys.exit(1)
@@ -773,8 +773,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="============ SHAPEFILES FROM HEC-RAS DIRECTORY ============"
     )
-
-    # TODO: do a logging setup here only if this is called directly? (aka, command line to this script?)
 
     parser.add_argument(
         "-i",
