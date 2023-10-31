@@ -36,7 +36,8 @@ import shared_functions as sf
 
 
 # Global Variables
-RLOG = ras2fim_logger.RAS2FIM_logger()
+# RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.R2F_LOG
 
 
 # -------------------------------------------------

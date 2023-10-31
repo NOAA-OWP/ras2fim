@@ -73,4 +73,3 @@ DEFAULT_CONFIG_FILE_PATH = "config\\r2f_config.env"
 
 # DEFAULT LOGGING VALUES
 DEFAULT_LOG_FOLDER = "Logs"
-DEFAULT_LOG_FILE_NAME = "unit_log_file.txt"

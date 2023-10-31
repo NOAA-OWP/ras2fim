@@ -39,7 +39,8 @@ import shared_functions as sf
 # h5py for extracting data from the HEC-RAS g**.hdf files
 
 # Global Variables
-RLOG = ras2fim_logger.RAS2FIM_logger()
+# RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.R2F_LOG
 
 
 # -------------------------------------------------
@@ -51,6 +52,9 @@ def fn_open_hecras(str_ras_project_path):
 
     try:
         # opening HEC-RAS
+        print(f"(by print) ras project path is {str_ras_project_path}")
+
+        RLOG.debug(f"ras project path is {str_ras_project_path}")
 
         if os.path.exists(str_ras_project_path) is False:
             raise Exception(f"str_ras_project_path value of {str_ras_project_path} does not exist")
@@ -148,6 +152,8 @@ def fn_geodataframe_cross_sections(str_path_hecras_project_fn, STR_CRS_MODEL):
     # Fuction - Creates a GeoDataFrame of the cross sections for the
     # HEC-RAS geometry file in the active plan
 
+    RLOG.debug(f"Creating gdf of cross sections for {str_path_hecras_project_fn}" f" and {STR_CRS_MODEL}")
+
     str_path_to_geom_hdf = (fn_get_active_geom(str_path_hecras_project_fn)) + ".hdf"
 
     if path.exists(str_path_to_geom_hdf):
@@ -174,6 +180,7 @@ def fn_geodataframe_cross_sections(str_path_hecras_project_fn, STR_CRS_MODEL):
 
     # Error handling: edge case, empty (bad) geo
     if n2.ndim == 0:
+        RLOG.warning("Empty dataframe returned")
         return gpd.GeoDataFrame()
 
     # Create a list of  number of points per each stream line
@@ -294,6 +301,7 @@ def fn_geodataframe_stream_centerline(str_path_hecras_project_fn, STR_CRS_MODEL)
 
     # Error handling: edge case, empty (bad) geo
     if n2.ndim == 0:
+        RLOG.warning(f"Polyline parts not found for model of '{STR_CRS_MODEL}'")
         return gpd.GeoDataFrame()
 
     # Get the name of the river and reach
@@ -618,8 +626,6 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     RLOG.lprint("+=================================================================+")
     RLOG.lprint("|    STREAM AND CROSS SECTION SHAPEFILES FROM HEC-RAS DIRECTORY   |")
     RLOG.lprint("+-----------------------------------------------------------------+")
-    RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-
     path_ras_files = str_ras_path_arg
     RLOG.lprint("  ---(i) INPUT PATH: " + str_ras_path_arg)
 
@@ -629,6 +635,7 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
 
     crs_model = str_crs_arg
     RLOG.lprint("  ---(p) MODEL PROJECTION: " + crs_model)
+    RLOG.lprint(f"  --- Module Started: {sf.get_stnd_date()}")
 
     str_path_to_output_streams = path_to_output + "stream_LN_from_ras.shp"
 
@@ -691,6 +698,7 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
             # the hdf file does not exist - add to list of models to compute
             list_models_to_compute.append(str_prj)
 
+    RLOG.lprint(f"len of list_models_to_compute is {len(list_models_to_compute)}")
     if len(list_models_to_compute) > 0:
         RLOG.lprint("Compute HEC-RAS Models: " + str(len(list_models_to_compute)))
 

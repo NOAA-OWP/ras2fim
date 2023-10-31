@@ -51,7 +51,8 @@ import shared_functions as sf
 
 
 # Global Variables
-RLOG = ras2fim_logger.RAS2FIM_logger()
+# RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.R2F_LOG
 
 
 # -------------------------------------------------
@@ -83,7 +84,7 @@ def fn_download_tiles(list_tile_url):
             RLOG.critical(list_tile_url[0])
             RLOG.critical("writing to:" + list_tile_url[1])
             RLOG.critical(traceback.format_exc())
-            raise SystemExit(0)
+            raise SystemExit(1)
 
 
 # -------------------------------------------------

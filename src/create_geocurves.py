@@ -22,7 +22,8 @@ import shared_variables as sv
 
 
 # Global Variables
-RLOG = ras2fim_logger.RAS2FIM_logger()
+# RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.R2F_LOG
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
@@ -378,4 +379,4 @@ if __name__ == "__main__":
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
             ras2fim_logger.logger.critical(traceback.format_exc())
         else:
-            print(traceback.format_exc())
+            print(traceback.t_exc())

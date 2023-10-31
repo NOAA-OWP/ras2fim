@@ -449,7 +449,7 @@ class Get_Models_By_Catalog:
             if process_s3.returncode != 0:
                 msg = f"*** an error occurred while downloading {folder_name}\n"
                 msg += process_s3.stderr
-                RLOG.critical(msg)
+                RLOG.error(msg)
                 progress_msg = f">>> {num_processed} of {self.num_pending_downloads} processed"
                 RLOG.lprint(progress_msg)
 
@@ -480,7 +480,7 @@ class Get_Models_By_Catalog:
         # -------------------
         # setup the logging class (default unit folder path (HUC/CRS))
         file_name = f"get_models_{self.huc_number}_{self.crs_number}-{file_dt_string}.log"
-        RLOG.setup(self.target_parent_path, file_name)
+        RLOG.setup(os.path.join(self.target_parent_path, file_name))
 
 
 # -------------------------------------------------

@@ -36,7 +36,8 @@ import shared_functions as sf
 # Global Variables
 # null value in the exported DEMs
 INT_NO_DATA_VAL = -9999
-RLOG = ras2fim_logger.RAS2FIM_logger()
+# RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.R2F_LOG
 
 
 # -------------------------------------------------

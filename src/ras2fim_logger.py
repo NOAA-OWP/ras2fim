@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 
+import copy
 import os
 import sys
+import traceback
 
 from loguru import logger
 
 
 # Globally scoped
 CUSTOM_LOG_FILES_PATHS = {}
-LOG_DEFAULT_FOLDER = ""
 LOG_DEFAULT_FILE_PATH = ""
-LOG_DEFAULT_FILE_NAME = ""
 LOG_SYSTEM_IS_SETUP = False
+# Note, there is another global variable at the end of this script.
 
 
 # -------------------------------------------------
@@ -30,42 +31,31 @@ class RAS2FIM_logger:
 
     """
 
-    log = logger  # pointer to the logger.logger class
+    global R2F_LOG
+    R2F_LOG = logger  # pointer to the logger.logger class
 
     # -------------------------------------------------
     def __init__(self):
-        # remove() resets all basic defaulted sinks (add's) so we can add our own
-        logger.remove()
-
-        console_trace_format = " {message}"
-        console_non_trace_format = (
-            "<green>{time:YYYY-MM-DD HH:mm:ss!UTC}</green>"
-            " <level>({level: <8})</level>"
-            " || <level>{message}</level>"
-        )
-
-        # DEBUG level and higher will use the enhanced loggin
-        logger.add(sys.stderr, format=console_non_trace_format, level="DEBUG")
-
-        # TRACE level uses a simpler format and it works for TRACE level only
-        logger.add(
-            sys.stdout,
-            format=console_trace_format,
-            level="TRACE",
-            filter=lambda record: record["level"].name == "TRACE",
-        )
+        print(".................")
+        print("in init")
+        print(traceback.print_stack())
+        print(".................")
 
     # -------------------------------------------------
-    def setup(self, output_folder: str, log_file_name: str = "ras2fim.log"):
+    def setup(self, log_file_path: str):
         """
         Note: for ras2fim.py or most files in the /src directory it is recommended that
-        you use the unit output folder:  ie) C:\ras2fim_data\output_ras2fim\12030105_2276_231017
+        you use the unit output folder with the folder name of 'logs' before the file name:
+            ie) C:\ras2fim_data\output_ras2fim\12030105_2276_231017\logs\ras2fim.log
 
-        Folder named "logs" will automatically added to the output folder name:
-        eg. C:\ras2fim_data\output_ras2fim\12030105_2276_230928\logs
+        During this process, a second log file will be created as an error file which will
+        duplicate all log message with the levels of ERROR, and CRITICAL.
 
         Each Level stated below will include the stated level and all with a higher int.
         We have overridden some of the level behaviours.
+
+        # TODO: CHANGE trace back to file only. (if possible)
+
         Levels Available are:
           TRACE (5):  default file and console but with different formatting
           DEBUG (10): default file and console
@@ -85,37 +75,35 @@ class RAS2FIM_logger:
 
         """
 
-        # We are setting up file level logging. Console level logging was setup
-        # in the __init__ method
-
         # Allows us to write the app wide global variables
-        global LOG_DEFAULT_FOLDER, LOG_DEFAULT_FILE_PATH
-        global LOG_DEFAULT_FILE_NAME, LOG_SYSTEM_IS_SETUP
+        global LOG_DEFAULT_FILE_PATH, LOG_SYSTEM_IS_SETUP
 
-        file_logger_format = "{time:YYYY-MM-DD > HH:mm:ss!UTC} ({level}) || {message}"
-
-        # TODO: how do we tell the user that the default has already been setup
-        # ie) ras2fim.py can set it up and it auto proprogates to all children
-        # However, a child might attempt to setup its own default and it will not be
-        # honored unless the child script is running by it's own.
+        # Setup local constants (well, sort of)
+        console_non_trace_format = (
+            "<green>{time:YYYY-MM-DD HH:mm:ss!UTC}</green>"
+            " <level>({level: <8})</level>"
+            " || ... <level>{message}</level>"
+        )
 
         # -----------
         # Validation
-        if output_folder is None:
-            raise ValueError("Error: unit output folder path not defined")
+        if log_file_path is None:
+            raise ValueError("Error: log_file_path not defined")
 
-        output_folder = output_folder.strip()
+        log_file_path = log_file_path.strip()
 
-        if output_folder == "":
-            raise ValueError("Error: unit output folder path can not be empty")
+        if log_file_path == "":
+            raise ValueError("Error: log_file_path can not be empty")
 
-        if os.path.exists(output_folder) is False:
-            raise ValueError(f"Error: unit_output_path of {output_folder} does not exist")
+        # The file need not exist, but folder must
+        folder_path = os.path.dirname(log_file_path)
+        log_file_name = os.path.basename(log_file_path)
 
-        log_file_name = log_file_name.strip()
-
-        if log_file_name == "":
-            raise ValueError("Error: log_file_name can not be empty")
+        if os.path.exists(folder_path) is False:
+            raise ValueError(
+                "Error: The folder for log_file_path does not exist.\n"
+                "Note: The file need not exist, but the folder must"
+            )
 
         # pull out the file name without extension
         file_name_parts = os.path.splitext(log_file_name)
@@ -124,55 +112,70 @@ class RAS2FIM_logger:
 
         # Shouldn't be changed once set. Hard to enforce as someone can call directly
         # to the variable instead of via "setup"
-        if LOG_DEFAULT_FOLDER != "":
+        """
+        if LOG_DEFAULT_FILE_PATH != "":
             raise Exception("The default log folder and name has already been setup")
-
-        # -----------
-        # processing
-        try:
-            # We are setting up file level logging. Console level logging was setup
-            # in the __init__ method
-            LOG_DEFAULT_FOLDER = os.path.join(output_folder, "logs")
-            LOG_DEFAULT_FILE_NAME = log_file_name
-
+        else:
             # Shouldn't be changed once set. Hard to enforce as someone can call directly
             # to the variable instead of via "setup"
             # but.. does not have to be ras2fim.log. ie). maybe get_models_catalog wants to use it,
             # it might set it's default to somethign other than ras2fim.log
-            def_log_file = os.path.join(LOG_DEFAULT_FOLDER, log_file_name)
-            LOG_DEFAULT_FILE_PATH = def_log_file
+            LOG_DEFAULT_FILE_PATH = log_file_path
+        """
+
+        LOG_DEFAULT_FILE_PATH = log_file_path
+
+        # Create the error file name. It pulls of the extenstion and add "_errors"
+        # to file name then adds the extension back on. ie) ras2fim_errors.log
+        error_log_file = LOG_DEFAULT_FILE_PATH.replace(file_name_parts[1], "_errors" + file_name_parts[1])
+
+        print(f"error_log_file is {error_log_file}")
+
+        try:
+            # -----------
+            # processing
+
+            # remove() resets all basic defaulted sinks (add's) so we can add our own
+            logger.remove()
+
+            # TRACE level uses a simpler format and it works for TRACE level only
+            logger.add(
+                sys.stdout,
+                format=" --- {message}",
+                level="TRACE",
+                enqueue=True,
+                filter=lambda record: record["level"].name == "TRACE",
+            )
+
+            # DEBUG level and higher will use the enhanced loggin
+            # logger.add(sys.stderr, format=console_non_trace_format_temp, backtrace=False, level="DEBUG")
+            # logger.add(sys.stdout, format=console_non_trace_format, level="DEBUG")
+            logger.add(sys.stdout, format=console_non_trace_format, enqueue=True, level="DEBUG")
+
+            # We are setting up file level logging. Console level logging was setup
+            # in the __init__ method
+
+            file_logger_format = "{time:YYYY-MM-DD > HH:mm:ss!UTC} ({level}) || {message}"
 
             # Default behaviour for loguru is to file log only DEBUG and higher.
             # As we are highjacking TRACE via lprint, we want it all to go to the log
             # file but the log files will all share the same format
 
-            logger.add(def_log_file, format=file_logger_format, level="TRACE", enqueue=True, mode="w")
+            # logger.add(def_log_file, format=file_logger_format, level="TRACE", enqueue=True, mode="w")
+            # logger.add(LOG_DEFAULT_FILE_PATH, format=file_logger_format, level="TRACE", mode="w")
+            logger.add(
+                LOG_DEFAULT_FILE_PATH, format=file_logger_format, level="TRACE", enqueue=True, mode="w"
+            )
             # logger.add(def_log_file, format=file_logger_format, level="TRACE", mode="w")
-
-            # ---------------
-            # For levels of ERROR and CRITICAL, they will get logged in the standard log file, but
-            # also to a second log files specificall for errors and critical messages.
-            # The log file name is the root file name plus "_errors.log". ie) ras2fim_errors.log
-            error_log_file = os.path.join(LOG_DEFAULT_FOLDER, file_name_parts[0] + "_errors.log")
 
             logger.add(
                 error_log_file,
                 format=file_logger_format,
                 level="ERROR",
-                backtrace=True,
+                backtrace=False,
                 enqueue=True,
                 mode="w",
             )
-
-            """
-            logger.add(
-                error_log_file,
-                format=file_logger_format,
-                level="ERROR",
-                backtrace=True,
-                mode="w",
-            )
-            """
 
             LOG_SYSTEM_IS_SETUP = True
 
@@ -212,7 +215,7 @@ class RAS2FIM_logger:
 
         """
 
-        global CUSTOM_LOG_FILES_PATHS, LOG_DEFAULT_FILE_NAME
+        global CUSTOM_LOG_FILES_PATHS, LOG_DEFAULT_FILE_PATH
 
         # -----------
         # Validation
@@ -240,7 +243,8 @@ class RAS2FIM_logger:
         # default file. I tried using file name and pathing, but backslashs were creating issues
         # during comparison. So, we will make sure the file name is not the same regardless of path.
         file_name = os.path.basename(file_path_and_name)
-        if LOG_DEFAULT_FILE_NAME.lower() == file_name.lower():
+        def_file_name = os.path.basename(LOG_DEFAULT_FILE_PATH)
+        if def_file_name.lower() == file_name.lower():
             raise Exception(
                 "Internal Error: the custom log file name you are creating"
                 " already exists as the log system default file name, even if pathing"
@@ -313,3 +317,14 @@ class RAS2FIM_logger:
 
     def critical(self, msg):
         logger.critical(msg)
+
+
+# global RLOG
+R2F_LOG = RAS2FIM_logger()
+
+
+def pool_init_log():
+    global mp_log
+    print("start pool_init_log")
+    mp_log = copy.deepcopy(R2F_LOG)
+    print("end pool_init_log")

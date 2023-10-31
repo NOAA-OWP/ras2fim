@@ -27,7 +27,8 @@ import shared_variables as sv
 
 
 # Global Variables
-RLOG = ras2fim_logger.RAS2FIM_logger()
+# RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.R2F_LOG
 
 
 # NOTE: This tool might be deprecated. If it is re-used... double check the right sizes for maxments.

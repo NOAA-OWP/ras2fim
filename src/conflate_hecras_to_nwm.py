@@ -13,6 +13,7 @@ import argparse
 import datetime as dt
 import multiprocessing as mp
 import os
+import sys
 import traceback
 
 # import warnings
@@ -29,6 +30,7 @@ import tqdm
 import xarray as xr
 from fiona import collection
 from geopandas.tools import sjoin
+from loguru import logger
 from shapely import wkt
 from shapely.geometry import Point, mapping
 
@@ -39,7 +41,13 @@ import shared_variables as sv
 
 
 # Global Variables
-RLOG = ras2fim_logger.RAS2FIM_logger()
+# RLOG = None
+RLOG = ras2fim_logger.R2F_LOG
+
+# because we are using Multi-proc, we need to create a multiproc manager to share logging
+# manager = mp.Manager()
+# RLOG_test = manager.list()
+# RLOG_test.append("Hi from 1")
 
 
 # -------------------------------------------------
@@ -47,9 +55,9 @@ def fn_wkt_loads(x):
     try:
         return wkt.loads(x)
     except Exception as ex:
-        RLOG.warning("fn_wkt_loads errored out")
-        RLOG.warning(x)
-        RLOG.warning(f"Details: {ex}")
+        logger.warning("fn_wkt_loads errored out")
+        logger.warning(x)
+        logger.warning(f"Details: {ex}")
         return None
 
 
@@ -69,8 +77,36 @@ def fn_snap_point(shply_line, list_of_df_row):
 
 
 # -------------------------------------------------
-def fn_create_gdf_of_points(tpl_request):
+def fn_create_gdf_of_points(rlog_file_path, tpl_request):
+    # This function is included as part of a multiproc so it needs to re-setup the
+    # logging system for
     # function to create and return a geoDataframe from a list of shapely points
+
+    # global RLOG
+    # RLOG = ras2fim_logger.RAS2FIM_logger()
+    # RLOG.setup(rlog_file_path)
+    # each setup creates a new log file and kills the rest, so the last proc counts
+
+    # print(f"mp_rlog_default_file is {mp_log.LOG_DEFAULT_FILE_PATH}")
+    # logger.debug("debug checking from fn_create_gdf_of_points")
+
+    """
+    if mp.parent_process() is None:
+        print("Yes.. is parent process")
+        logger.connect(is_server=True)  # Main process: will receive and log all messages
+    else:
+        print("nope.. is parent process ( is child)")
+        logger.connect(is_server=False)  # Child process: all logs are sent to the server
+    """
+
+    # my_logger = logger.log.
+
+    # RLOG.debug("Yooo what is up")
+
+    # logger.warning("warning checking from fn_create_gdf_of_points")
+
+    print("hi from conflate mp")
+    print(rlog_file_path)
 
     str_feature_id = tpl_request[0]
     str_huc_12 = tpl_request[1]
@@ -79,11 +115,15 @@ def fn_create_gdf_of_points(tpl_request):
     # Create an empty dataframe
     df_points_nwm = pd.DataFrame(list_of_points, columns=["geometry"])
 
-    # convert dataframe to geodataframe
+    # convert dataframe to geodataframeclear
     gdf_points_nwm = gpd.GeoDataFrame(df_points_nwm, geometry="geometry")
 
     gdf_points_nwm["feature_id"] = str_feature_id
     gdf_points_nwm["huc_12"] = str_huc_12
+
+    print(f"feature_id is {str_feature_id} and huc_12 is {str_huc_12}")
+    # print(f" and RLOG.LOG_DEFAULT_FILE is {RLOG.LOG_DEFAULT_FILE}")
+    # RLOG.debug(f"feature_id is {str_feature_id} and huc_12 is {str_huc_12}")
 
     return gdf_points_nwm
 
@@ -96,6 +136,8 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     # INPUT
+
+    # RLOG = ras2fim_logger.RAS2FIM_logger()
 
     start_dt = dt.datetime.utcnow()
 
@@ -116,7 +158,7 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     shp_out_path = str_shp_out_arg
     RLOG.lprint("  ---(o) OUTPUT DIRECTORY: " + shp_out_path)
     RLOG.lprint("  ---(n) NATIONAL DATASET LOCATION: " + str_nation_arg)
-    RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+    RLOG.lprint(f"  --- Module Started: {sf.get_stnd_date()}")
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     # distance to buffer around modeled stream centerlines
@@ -276,22 +318,48 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
 
     # create a pool of processors
     num_processors = mp.cpu_count() - 2
+    # pool = Pool(processes=num_processors, initializer=ras2fim_logger.pool_init_log())
     pool = Pool(processes=num_processors)
+
+    # TODO .. not how to sort as it is a list of tuples
+    list_points_aggregate.sort()
+
+    # fn_create_gdf_of_points_partial = partial(fn_create_gdf_of_points, RLOG)
+    print(f"ras2fim_logger.LOG_DEFAULT_FILE is {ras2fim_logger.LOG_DEFAULT_FILE_PATH}")
+    # fn_create_gdf_of_points_partial = partial(fn_create_gdf_of_points,
+    #   ras2fim_logger.LOG_DEFAULT_FILE_PATH)
+    # fn_create_gdf_of_points_partial = partial(fn_create_gdf_of_points, RLOG)
+
+    # Can't pickle <class 'ras2fim_logger.RAS2FIM_logger'>: it's not the same object
+    #   as ras2fim_logger.RAS2FIM_logger
+
+    # can not pass objects as references to multiprocs
+
+    # my_dict = logger._core.handlers
+
+    fn_create_gdf_of_points_partial = partial(fn_create_gdf_of_points, logger._core.handlers)
 
     len_points_agg = len(list_points_aggregate)
 
+    print("logger dict is")
+    print(logger._core.handlers)
+
     list_gdf_points_all_lines = list(
         tqdm.tqdm(
-            pool.imap(fn_create_gdf_of_points, list_points_aggregate),
+            pool.imap(fn_create_gdf_of_points_partial, list_points_aggregate),
             total=len_points_agg,
             desc="Points on lines",
-            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
             ncols=67,
         )
     )
 
     pool.close()
     pool.join()
+
+    # TODO:
+    print("exit from conflate")
+    sys.exit(0)
 
     gdf_points_nwm = gpd.GeoDataFrame(pd.concat(list_gdf_points_all_lines, ignore_index=True))
     gdf_points_nwm = gdf_points_nwm.set_crs(ble_prj)
@@ -370,6 +438,7 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
 
     p.close()
     p.join()
+    print()
 
     gdf_points_snap_to_ble = gpd.GeoDataFrame(pd.concat(list_df_points_projected, ignore_index=True))
 

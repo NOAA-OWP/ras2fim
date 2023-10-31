@@ -35,7 +35,9 @@ import shared_variables as sv
 
 # -------------------------------------------------
 # Global Variables
-RLOG = ras2fim_logger.RAS2FIM_logger()
+# RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.R2F_LOG
+# RLOG = None
 # buffer distance of the input flood polygon - in CRS units
 FLT_BUFFER = 15
 
@@ -466,8 +468,9 @@ if __name__ == "__main__":
         # creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
 
+        # RLOG = ras2fim_logger.RAS2FIM_logger()
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(log_file_folder, script_file_name + ".log")
+        # RLOG.setup(log_file_folder, script_file_name + ".log")
 
         # find model_unit of HEC-RAS outputs (ft vs m) using a sample rating curve file
         r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)

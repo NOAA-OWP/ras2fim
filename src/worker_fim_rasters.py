@@ -33,7 +33,8 @@ import shared_functions as sf
 
 
 # Global Variables
-RLOG = ras2fim_logger.RAS2FIM_logger()
+# RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.R2F_LOG
 
 
 # from rasterio.warp import calculate_default_transform, reproject
@@ -881,11 +882,11 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
     except Exception:
         # re-raise it as error handling is farther up the chain
         # but I do need the finally to ensure the hec.QuitRas() is run
-        RLOG.critical("++++++++++++++++++++++++")
-        RLOG.critical("An exception occurred with the HEC-RAS engine or its parameters.")
-        RLOG.critical(f"str_ras_projectpath is {str_ras_projectpath}")
-        RLOG.critical(traceback.format_exc())
-        RLOG.critical("")
+        RLOG.error("++++++++++++++++++++++++")
+        RLOG.error("An exception occurred with the HEC-RAS engine or its parameters.")
+        RLOG.error(f"str_ras_projectpath is {str_ras_projectpath}")
+        RLOG.error(traceback.format_exc())
+        RLOG.error("")
 
         # we need to re-raise to kill the parent multi-proc on it.
 
@@ -1413,18 +1414,16 @@ def fn_main_hecras(record_requested_stream):
         )
     except Exception as ex:
         # print("HEC-RAS Error: " + str_geom_path)
-        RLOG.critical("*******************")
-        RLOG.critical(f"   str_feature_id = {str_feature_id}")
-        RLOG.critical(f"   str_path_to_create is {str_path_to_create}")
-        RLOG.critical(
-            "   for more details.. see the " "05_hecras_output / worker_fim_raster_errors_found.csv"
-        )
-        RLOG.critical(traceback.format_exc())
+        RLOG.error("*******************")
+        RLOG.error(f"   str_feature_id = {str_feature_id}")
+        RLOG.error(f"   str_path_to_create is {str_path_to_create}")
+        RLOG.error("   for more details.. see the " "05_hecras_output / worker_fim_raster_errors_found.csv")
+        RLOG.error(traceback.format_exc())
 
         errMsg = str(ex) + " \n   " + traceback.format_exc()
         fn_append_error(str_feature_id, str_geom_path, str_huc12, str_root_output_directory, errMsg)
 
-        RLOG.critical("*******************")
+        RLOG.error("*******************")
         # we need to re-raise to kill the multi-proc
         raise ex
 

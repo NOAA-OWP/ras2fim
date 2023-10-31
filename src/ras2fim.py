@@ -47,7 +47,9 @@ from simplify_fim_rasters import fn_simplify_fim_rasters
 # Global Variables
 B_TERRAIN_CHECK_ONLY = False
 ARG_LOG_FILE_NAME = "run_arguments.txt"
-RLOG = ras2fim_logger.RAS2FIM_logger()
+# RLOG = ras2fim_logger.RAS2FIM_logger()
+# RLOG = None
+RLOG = ras2fim_logger.R2F_LOG
 
 
 # -------------------------------------------------
@@ -158,7 +160,10 @@ def init_and_run_ras2fim(
 
     # -------------------
     # setup the logging class (default unit folder path (HUC/CRS))
-    RLOG.setup(output_folder_path)
+    # Log file must pre-exist
+    log_folder = os.path.join(output_folder_path, "logs")
+    os.mkdir(log_folder)
+    RLOG.setup(os.path.join(log_folder, "ras2fim.log"))
 
     # -------------------------------------------
     # ---- Make the "final" folder now as some modules will write to it through the steps
@@ -276,6 +281,9 @@ def fn_run_ras2fim(
             str_huc8_arg, str_shapes_from_hecras_dir, str_shapes_from_conflation_dir, str_nation_arg
         )
     # -------------------------------------------
+
+    print("all done for now")
+    sys.exit(0)
 
     # ------ Step 3: get_usgs_dem_from_shape or clip_dem_from_shape ----
     str_area_shp_name = str_huc8_arg + "_huc_12_ar.shp"
