@@ -1,6 +1,83 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.0 - 2023-10-25 - [PR#183](https://github.com/NOAA-OWP/ras2fim/pull/183)
+
+A logging system was added using the package loguru with some customizations. 
+
+Almost all files were changed to add in the system.  When ras2fim.py is running, it will setup logging for all child scripts, however, each independent script has the ability to setup its own logging system as required.  
+
+When ras2fim.py or get_models_by_catalog.py is run, it will put all log files in the unit directory, log folder e.g.  C:\ras2fim_data\output_ras2fim\12030106_2276_231025\logs. If other scripts such as get_usgs_dem_from_share.py is called, it will default it's log files in different folders, generally in folders such as one of the step folders e.g. C:\ras2fim_data\output_ras2fim\12030105_2276_231024\01_shapes_from_hecras\logs.  For sample code that is required to for a script that will do some of it's own logging via command line, see most files in the "main" arg_parser sections.
+
+How the system works.
+There are logging levels each with slightly different rules about colors, formatting and log files being used.
+- TRACE: while available, it generally should not be used. It will put message on the screen only and not in a log file.
+- DEBUG: will put a message on the screen and the logs/{name}.log file.
+- INFO:  same as DEBUG and has little value but usable
+- SUCCESS: same as DEBUG
+- WARNING:  same as DEBUG PLUS adds duplicate message to a separate file called logs/{name}_errors.log. This will tell the users of a possible problem but will continue processing.
+- ERROR:  same as WARNING PLUS the log error file. However, this can be used as you see fit but generally is for an exception where the program is stopped. However, sometimes, in multi-proc, you may want to continue anyways.
+- CRITICAL: same as ERROR, and again, you can use it as you see fit, but generally you want the most obvious visiblity and is for complete stop of the program.
+
+To use one of the log with levels, use this syntax (adjusting for level). eg.
+![image](https://github.com/NOAA-OWP/ras2fim/assets/90854818/88180799-9d84-41ed-a364-374262cd73d9)
+or 
+![image](https://github.com/NOAA-OWP/ras2fim/assets/90854818/5ac8d58b-cf6e-42e6-a579-6f1d3ff24c14)
+
+Note: Make sure that when you issue some of these log commands, make sure you give good detail about which feature, huc, etc is involved. Generally, I do not use the syntax of simply:
+   `except Exception as ex:  ... print(ex).` 
+Why? it does not give you the stack trace which is critical in most cases. Now that logging is involved, it will no longer automatically give you the stack trace so you have to add it yourself. In lieu, use the command of `traceback.format_exc()`  to give you full tracing.  eg.
+
+![image](https://github.com/NOAA-OWP/ras2fim/assets/90854818/a00eb069-8422-40f9-a54a-77340b32808a)
+
+Colors and format can be different in various log classes. eg.
+![image](https://github.com/NOAA-OWP/ras2fim/assets/90854818/9d9e75e2-a09e-4a27-b10a-806c15e867ba)
+
+One of the most common logging tools you will use is the `lprint` command.  You can continue to use print as you always have and know it will go the screen only but not the log files..  Almost all of the time, you will want to use `lprint` instead which goes to screen and the logs. eg.
+![image](https://github.com/NOAA-OWP/ras2fim/assets/90854818/5edd9581-2c20-4e39-bb72-efb12c858909)
+
+Another feature is the ability to create and use your own set of logs independent of the new system logging. For details see the functions named `setup_custom_log` and `write_c_log` in `ras2fim_logger.py.`
+
+#### AND.... yes, you will need to delete and re-create, or update your conda enviro. ####
+
+### Additions  
+I will not list all files affected as most are. However, I will list files that have any additional fixes or changes other than adding of logging.
+
+Many files had extra `DEBUG` logging with tracing and/or more context data for `WARNING`, `ERROR` and `CRITICAL`.
+
+Over time, more logging will be added to files for even more visibility to objects and variables.
+
+### Additions
+- `ras2fim_logger.py`: The parent script that runs the entire logging system.
+
+### Changes  
+- ` config`
+    - `r2f_config.env`: Change PRODUCE_GEOCURVE_POLYGONS to True
+- `environment.yml`: added new package for loguru
+- `pyproject.toml`:  adding of an linting exception for convert_ras2fim_to_recurr_valiation_datasets.py`
+- `src`
+   - `conflate_hecras_to_nwm.py`:  Changed a few variable names. Upgraded time stamp and duration system.
+   - `create_fim_rasters.py`: Upgraded time stamp and duration system. Added better error handling for multi-processing pools. Added the start of a verbosity system which can be used to show certain messages only if "is_verbose". More is needed later in this script.
+   - `create_geocurves.py`: Added some screen output for incoming params to match other script patterns.
+   - `create_model_domain_polygons.py`: Added a try/except at a key point. 
+   - `create_shapes_from_hecras.py`: Upgraded the multi-proc pool for better error handling. A few variable name changes.
+   - `ras2inundation.py`: Upgraded some error handling.    
+   - `reformat_ras_rating_curve.py`: Upgrade datetime.now to datetime.utcnow. Updated some of the "sample usage" notes.
+   - `run_ras2rem.py`: Added a try / except at a key location.
+   - `shared_variables.py`: Added some new variables for the logging system.
+   - `simplify_fim_rasters.py`: Fixed a bug allow float values to be passed in as command line arg parse values. Need to be int nad not a float for the resolution size variable.
+   - `worker_fim_rasters.py`: Keep the original "errors.csv" but renamed that output file. Updated a few variable names. Added a system to slightly stagger start of processes in the multi-process system to avoid rare collisions of a bunch of procs starting at once.
+- `tools`
+   - `get_models_by_catalog.py`: Added another delimiter when reading the S3 parent models catalog file, which was dropping records where the final key starts with `3_`.  Small try except updates. Removed its own previously existing logging system in favor of the new logging system.
+- `ras_unit_to_s3.py`: fix some validation checking and updated a bit of error handling.
+- `Note`: None of the files in the tools directory starting with the name of `nws_` were updated as they may be no longer in use.
+
+### Removals 
+- none
+
+<br/><br/>
+
+
 ## v1.29.0 - 2023-09-29 - [PR#166](https://github.com/NOAA-OWP/ras2fim/pull/166)
 
 This PR includes a new tool that can take a ras2fim unit output folder and upload it to S3. During that upload processes, it checks the s3 `output_ras2fim` folder to look for folders already share the same huc and crs values. A folder may/may not pre-exist that matches the huc and crs but may/may not share a date.  A new master file called `ras_output_tracker.csv` exists now in the s3 `output_ras2fim` folder which tracks all folders uploaded, moved to archive, and overwritten. All activities done by the new `ras_unit_to_s3.py` update this new master copy in S3.
