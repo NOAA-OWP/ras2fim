@@ -116,7 +116,7 @@ def fn_cut_dems_from_shapes(
         gdf_boundary_raster_prj.iterrows(),
         total=gdf_boundary_raster_prj.shape[0],
         desc="Clipping Grids",
-        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
         ncols=65,
     ):
         # convert the geoPandas geometry to json
@@ -146,7 +146,7 @@ def fn_cut_dems_from_shapes(
             # compress and write out data
             xds_clipped_reproject.rio.to_raster(str_dem_out, compress="lzw", dtype="float32")
 
-    RLOG.lprint("COMPLETE")
+    RLOG.success("COMPLETE")
     flt_end_run = time.time()
     flt_time_pass = (flt_end_run - flt_start_run) // 1
     time_pass = datetime.timedelta(seconds=flt_time_pass)
@@ -157,6 +157,12 @@ def fn_cut_dems_from_shapes(
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
+    # Sample:
+    # python clip_dem_from_shape.py -i
+    #  c:\ras2fim_data\output_ras2fim\12030105_2276_231024\02_shapes_from_conflation\12030105_huc_12_ar.shp
+    #  -t C:\ras2fim_data\inputs\3dep_dems\HUC8_10m_5070\HUC8_12030105_dem.tif
+    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\03_terrain -b 300 -f HUC_12
+
     parser = argparse.ArgumentParser(
         description="============== CUT DEMs FROM LARGER DEMS PER POLYGON SHAPEFILE  =============="
     )
@@ -223,7 +229,7 @@ if __name__ == "__main__":
     proj_crs = pyproj.CRS(prj_text)
     model_unit = sf.model_unit_from_crs(proj_crs)
 
-    log_file_folder = args["str_output_dir"]
+    log_file_folder = os.path.join(args["str_output_dir"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -235,7 +241,7 @@ if __name__ == "__main__":
         script_file_name = os.path.basename(__file__).split('.')[0]
 
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(log_file_folder, script_file_name + ".log")
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
         fn_cut_dems_from_shapes(
@@ -244,6 +250,6 @@ if __name__ == "__main__":
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

@@ -426,7 +426,7 @@ def fn_get_usgs_dem_from_shape(
             os.remove(str_out_tiff_path)
 
     RLOG.lprint("")
-    RLOG.lprint("ALL AREAS COMPLETE")
+    RLOG.success("ALL AREAS COMPLETE")
 
     flt_end_get_usgs_dem = time.time()
     flt_time_get_usgs_dem = (flt_end_get_usgs_dem - flt_start_get_usgs_dem) // 1
@@ -438,6 +438,8 @@ def fn_get_usgs_dem_from_shape(
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
+    # TODO: Nov 1, 2023 : Add sample
+
     flt_start_run = time.time()
 
     parser = argparse.ArgumentParser(
@@ -511,7 +513,7 @@ if __name__ == "__main__":
     int_tile = args["int_tile"]
     str_field_name = args["str_field_name"]
 
-    log_file_folder = args["str_output_dir"]
+    log_file_folder = os.path.join(args["str_output_dir"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -523,7 +525,7 @@ if __name__ == "__main__":
         script_file_name = os.path.basename(__file__).split('.')[0]
 
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(log_file_folder, script_file_name + ".log")
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # find model unit using the given shapefile
         gis_prj_path = str_input_path[0:-3] + "prj"
@@ -539,6 +541,6 @@ if __name__ == "__main__":
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

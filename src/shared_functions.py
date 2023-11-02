@@ -375,6 +375,16 @@ def get_stnd_date(inc_formating=True):
 
 
 # -------------------------------------------------
+def get_date_with_milli():
+    # This returns a pattern of YYMMDD_HHMMSSf (f meaning milliseconds to 6 decimals)
+    # Some multi processing functions use this for file names
+
+    str_date = dt.utcnow().strftime("%y%m%d_%H%M%S%f")
+
+    return str_date
+
+
+# -------------------------------------------------
 def print_date_time_duration(start_dt, end_dt):
     # *********************
     # NOTE:  Ensure the date/tims coming in are UTC in all situations including
@@ -454,7 +464,7 @@ def progress_bar_handler(executor_dict, verbose, desc):
         total=len(executor_dict),
         disable=(not verbose),
         desc=desc,
-        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
         ncols=100,
     ):
         try:

@@ -516,7 +516,7 @@ def make_catchments(
                 executor.imap(__get_maxment, mxmts_args),
                 total=len(mxmts_args),
                 desc=f"Processing maxments with {num_processors} workers",
-                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
                 ncols=100,
             )
         )
@@ -679,7 +679,7 @@ if __name__ == "__main__":
     # call main program
     make_catchments(**args)
 
-    log_file_folder = args["r2f_huc_parent_dir"]
+    log_file_folder = os.path.join(args["r2f_huc_parent_dir"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -691,13 +691,13 @@ if __name__ == "__main__":
         script_file_name = os.path.basename(__file__).split('.')[0]
 
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(log_file_folder, script_file_name + ".log")
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
         make_catchments(**args)
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

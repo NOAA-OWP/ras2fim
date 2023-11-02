@@ -153,11 +153,13 @@ def fn_make_domain_polygons(
     flt_end_domain = time.time()
     flt_time_pass_domain = (flt_end_domain - flt_start_domain) // 1
     time_pass_domain = datetime.timedelta(seconds=flt_time_pass_domain)
-    RLOG.lprint("Compute Time: " + str(time_pass_domain))
+    RLOG.success("Compute Time: " + str(time_pass_domain))
 
 
 # -------------------------------------------------
 if __name__ == "__main__":
+    # TODO: Nov 1, 2023 - Add Sample
+
     parser = argparse.ArgumentParser(description="==== Make polygons for HEC-RAS models domains ===")
 
     parser.add_argument(
@@ -220,6 +222,7 @@ if __name__ == "__main__":
     conflation_qc_path = args["conflation_qc_path"]
 
     polygons_output_file_path = args["polygons_output_file_path"]
+    log_file_folder = os.path.join(polygons_output_file_path, "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -231,7 +234,7 @@ if __name__ == "__main__":
         script_file_name = os.path.basename(__file__).split('.')[0]
 
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(polygons_output_file_path, script_file_name + ".log")
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
         fn_make_domain_polygons(
@@ -244,6 +247,6 @@ if __name__ == "__main__":
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

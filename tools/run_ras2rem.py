@@ -25,6 +25,13 @@ import shared_variables as sv
 # RLOG = ras2fim_logger.RAS2FIM_logger()
 RLOG = ras2fim_logger.R2F_LOG
 
+# ******************************************
+# NOTE: Nov 2, 2023
+# This file is deprecated and is no longer used. It is also out of date and
+# no longer supported.
+# HOWEVER... If you want to use it, update it and take off the deprecation notice
+# ******************************************
+
 
 # -------------------------------------------------
 def fn_make_rating_curve(r2f_hecras_outputs_dir, r2f_ras2rem_dir, model_unit):
@@ -155,7 +162,7 @@ def fn_make_rems(r2f_simplified_grids_dir, r2f_ras2rem_dir):
                 executor.imap(fn_generate_tif_for_each_rem, rem_info_arguments),
                 total=len(rem_values),
                 desc="Creating REMs",
-                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
                 ncols=67,
             )
         )
@@ -303,7 +310,7 @@ if __name__ == "__main__":
 
     r2f_huc_parent_dir = args["r2f_huc_parent_dir"]
 
-    log_file_folder = args["r2f_huc_parent_dir"]
+    log_file_folder = os.path.join(args["r2f_huc_parent_dir"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -315,7 +322,7 @@ if __name__ == "__main__":
         script_file_name = os.path.basename(__file__).split('.')[0]
 
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(log_file_folder, script_file_name + ".log")
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # find model_unit of HEC-RAS outputs (ft vs m) using a sample rating curve file
         r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
@@ -326,6 +333,6 @@ if __name__ == "__main__":
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

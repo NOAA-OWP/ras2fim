@@ -13,9 +13,7 @@
 # Uses the 'ras2fim' conda environment
 # ************************************************************
 import os
-import random
 import re
-import time
 import traceback
 from datetime import date
 
@@ -33,9 +31,8 @@ import shared_functions as sf
 
 
 # Global Variables
-# RLOG = ras2fim_logger.RAS2FIM_logger()
-RLOG = ras2fim_logger.R2F_LOG
-
+RLOG = ras2fim_logger.R2F_LOG  # the non mp version
+MP_LOG = None  # the mp version
 
 # from rasterio.warp import calculate_default_transform, reproject
 
@@ -126,7 +123,7 @@ def fn_format_flow_values(list_flow):
 # -------------------------------------------------
 def fn_append_error(str_f_id_fn, str_geom_path_fn, str_huc12_fn, str_directory_fn, exception_msg):
     # creates a csv file of the errors found during processing
-    str_error_path = os.path.join(str_directory_fn, "worker_fim_raster_errors_found.csv")
+    str_error_path = os.path.join(str_directory_fn, "errors.csv")
 
     # if file exists then open it
     if os.path.exists(str_error_path):
@@ -819,7 +816,7 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
 
         # ------------------------------------------
         # generate the rating curve data
-        RLOG.debug(f"Creating rating curve for feature id: {str_feature_id}")
+        MP_LOG.debug(f"Creating rating curve for feature id: {str_feature_id}")
         fn_create_rating_curve(
             list_int_step_flows,
             list_step_profiles,
@@ -882,11 +879,10 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
     except Exception:
         # re-raise it as error handling is farther up the chain
         # but I do need the finally to ensure the hec.QuitRas() is run
-        RLOG.error("++++++++++++++++++++++++")
-        RLOG.error("An exception occurred with the HEC-RAS engine or its parameters.")
-        RLOG.error(f"str_ras_projectpath is {str_ras_projectpath}")
-        RLOG.error(traceback.format_exc())
-        RLOG.error("")
+        MP_LOG.error("++++++++++++++++++++++++")
+        MP_LOG.error("An exception occurred with the HEC-RAS engine or its parameters.")
+        MP_LOG.error(f"str_ras_projectpath is {str_ras_projectpath}")
+        MP_LOG.error(traceback.format_exc())
 
         # we need to re-raise to kill the parent multi-proc on it.
 
@@ -900,10 +896,10 @@ def fn_run_hecras(str_ras_projectpath, int_peak_flow, model_unit, tpl_settings):
             try:
                 hec.QuitRas()  # close HEC-RAS no matter watch
             except Exception as ex2:
-                RLOG.warning("--- An error occured trying to close the HEC-RAS window process")
-                RLOG.warning(f"str_ras_projectpath is {str_ras_projectpath}")
-                RLOG.warning(f"--- Details: {ex2}")
-                RLOG.warning("")
+                MP_LOG.warning("--- An error occured trying to close the HEC-RAS window process")
+                MP_LOG.warning(f"str_ras_projectpath is {str_ras_projectpath}")
+                MP_LOG.warning(f"--- Details: {ex2}")
+                MP_LOG.warning("")
                 # do nothing as we want the procs to continue
 
 
@@ -1110,9 +1106,9 @@ def fn_create_hecras_files(
         str_geom += str_footer
 
         # Write the requested file
-        file = open(str_output_filepath + "\\" + str_feature_id + ".g01", "w")
-        file.write(str_geom)
-        file.close()
+        go1_file_path = str_output_filepath + "\\" + str_feature_id + ".g01"
+        with open(go1_file_path, 'w') as go1_file:
+            go1_file.write(str_geom)
 
     # .....................................
 
@@ -1334,15 +1330,7 @@ def fn_create_hecras_files(
 
 
 # -------------------------------------------------
-def fn_main_hecras(record_requested_stream):
-    # There are known issues with loguru sometimes merging output lines together
-    # when multi-proc is in use.
-    # We will do a quick random timer to start it so we have a little less
-    # exact time collisions.
-    # we will do a random float value between 0 and 1 seconds
-    rand_num = random.uniform(0, 1)
-    time.sleep(rand_num)
-
+def fn_main_hecras(mlog_file_path, mlog_file_prefix, record_requested_stream):
     str_feature_id = str(record_requested_stream[0])
     flt_us_xs = float(record_requested_stream[1])
     flt_ds_xs = float(record_requested_stream[2])
@@ -1373,33 +1361,34 @@ def fn_main_hecras(record_requested_stream):
     # str_plan_footer_path = tpl_settings[15]
     # b_terrain_check_only = tpl_settings[16]
 
-    # -------
-    # get settings from tpl_settings
-    str_root_output_directory = tpl_settings[2]
-    flt_max_multiply = tpl_settings[13]
+    global MP_LOG
+    MP_LOG = ras2fim_logger.RAS2FIM_logger()
+    file_id = sf.get_date_with_milli()
+    log_file_name = f"{mlog_file_prefix}-{file_id}.log"
+    MP_LOG.setup(os.path.join(mlog_file_path, log_file_name))
 
-    flt_max_q = flt_max_q * flt_max_multiply
-    int_max_q = int(flt_max_q)
-
-    str_root_folder_to_create = str_root_output_directory + "\\HUC_" + str_huc12
-
-    # create a folder for each feature_id
-    str_path_to_create = str_root_folder_to_create + "\\" + str_feature_id
-    os.makedirs(str_path_to_create, exist_ok=True)
-
-    # create a HEC-RAS folder
-    str_hecras_path_to_create = str_path_to_create + "\\HEC-RAS"
-    os.makedirs(str_hecras_path_to_create, exist_ok=True)
-
-    RLOG.debug(f"Starting processing for feature id: {str_feature_id}")
-    RLOG.debug(f"str_path_to_create is {str_path_to_create}")
-    # print(str_feature_id + ': ' + str_geom_path + ': ' + str(int_max_q))
-
-    # river = fn_create_hecras_files(str_feature_id, str_geom_path, flt_ds_xs, flt_us_xs,
-    #  int_max_q, str_hecras_path_to_create, tpl_settings)
-
-    # create the HEC-RAS truncated models
     try:
+        # -------
+        # get settings from tpl_settings
+        str_root_output_directory = tpl_settings[2]
+        flt_max_multiply = tpl_settings[13]
+
+        flt_max_q = flt_max_q * flt_max_multiply
+        int_max_q = int(flt_max_q)
+
+        str_root_folder_to_create = str_root_output_directory + "\\HUC_" + str_huc12
+
+        # create a folder for each feature_id
+        str_path_to_create = str_root_folder_to_create + "\\" + str_feature_id
+        os.makedirs(str_path_to_create, exist_ok=True)
+
+        # create a HEC-RAS folder
+        str_hecras_path_to_create = str_path_to_create + "\\HEC-RAS"
+        os.makedirs(str_hecras_path_to_create, exist_ok=True)
+
+        MP_LOG.trace(f"Starting processing for feature id: {str_feature_id}")
+        MP_LOG.trace(f"str_path_to_create is {str_path_to_create}")
+
         # sometimes the HEC-RAS model
         # does not run (example: duplicate points)
 
@@ -1412,21 +1401,24 @@ def fn_main_hecras(record_requested_stream):
             str_hecras_path_to_create,
             tpl_settings,
         )
+
     except Exception as ex:
         # print("HEC-RAS Error: " + str_geom_path)
-        RLOG.error("*******************")
-        RLOG.error(f"   str_feature_id = {str_feature_id}")
-        RLOG.error(f"   str_path_to_create is {str_path_to_create}")
-        RLOG.error("   for more details.. see the " "05_hecras_output / worker_fim_raster_errors_found.csv")
-        RLOG.error(traceback.format_exc())
+        # using MP_LOG.error as it is being re-raised which may/may not shut down the app
+        # MP_LOG.critical is normally for full app termation.
+        MP_LOG.error("*******************")
+        MP_LOG.error(f"   str_feature_id = {str_feature_id}")
+        MP_LOG.error(f"   str_path_to_create is {str_path_to_create}")
+        MP_LOG.error(
+            "   for even details.. see the" " 05_hecras_output / errors.csv or the standard log files."
+        )
+        MP_LOG.error(traceback.format_exc())
 
+        # Yes. this is being logged a second time an csv. Might change that later
+        # but the csv has more details and is more traceable.
         errMsg = str(ex) + " \n   " + traceback.format_exc()
         fn_append_error(str_feature_id, str_geom_path, str_huc12, str_root_output_directory, errMsg)
 
-        RLOG.error("*******************")
-        # we need to re-raise to kill the multi-proc
-        raise ex
-
-    RLOG.debug(f"Finished processing for {str_feature_id}")
+    MP_LOG.debug(f"Finished processing for {str_feature_id}")
 
     # return(str_feature_id)

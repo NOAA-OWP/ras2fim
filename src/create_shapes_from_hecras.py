@@ -765,7 +765,7 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     gdf_aggregate_cross_section.to_file(str_path_to_output_cross_sections)
 
     RLOG.lprint("")
-    RLOG.lprint("SHAPEFILES CREATED")
+    RLOG.success("SHAPEFILES CREATED")
     flt_end_create_shapes_from_hecras = time.time()
     flt_time_pass_create_shapes_from_hecras = (
         flt_end_create_shapes_from_hecras - flt_start_create_shapes_from_hecras
@@ -778,6 +778,11 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
+    # Sample:
+    # python create_shapes_from_hecras.py -i C:\ras2fim_data\OWP_ras_models\models-12030105 -small
+    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\01_shapes_from_hecras
+    #  -p EPSG:2276
+
     parser = argparse.ArgumentParser(
         description="============ SHAPEFILES FROM HEC-RAS DIRECTORY ============"
     )
@@ -815,7 +820,7 @@ if __name__ == "__main__":
     str_shp_out_arg = args["str_shp_out_arg"]
     str_crs_arg = args["str_crs_arg"]
 
-    log_file_folder = args["str_shp_out_arg"]
+    log_file_folder = os.path.join(args["str_shp_out_arg"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -827,13 +832,13 @@ if __name__ == "__main__":
         script_file_name = os.path.basename(__file__).split('.')[0]
 
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(log_file_folder, script_file_name + ".log")
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
         fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

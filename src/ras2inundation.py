@@ -132,7 +132,7 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    log_file_folder = args["geocurves_dir"]
+    log_file_folder = os.path.join(args["geocurves_dir"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -144,7 +144,7 @@ if __name__ == "__main__":
         script_file_name = os.path.basename(__file__).split('.')[0]
 
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(log_file_folder, script_file_name + ".log")
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
         start = timer()
@@ -156,6 +156,6 @@ if __name__ == "__main__":
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

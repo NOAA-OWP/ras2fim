@@ -328,7 +328,7 @@ def fn_calculate_all_terrain_stats(str_input_dir):
             p.imap(fn_get_stats_dataseries, list_of_list_processed),
             total=len_processed,
             desc="Computing Stats",
-            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
             ncols=65,
         )
     )
@@ -368,12 +368,16 @@ def fn_calculate_all_terrain_stats(str_input_dir):
     print("")
     RLOG.lprint("Compute Time: " + str(time_pass))
 
-    RLOG.lprint("COMPLETE")
+    RLOG.success("COMPLETE")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
 
 # -------------------------------------------------
 if __name__ == "__main__":
+    # Sample
+    # python calculate_all_terrain_stats.py
+    #   -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\05_hecras_output
+
     parser = argparse.ArgumentParser(
         description="===== CALCULATE TERRAIN STATISTICS FOR MULTIPLE HEC-RAS MODELS ====="
     )
@@ -381,7 +385,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-i",
         dest="str_input_dir",
-        help=r"REQUIRED: directory containing HEC-RAS Mapper Files:  Example: C:\HUC_10170204",
+        help="REQUIRED: directory containing HEC-RAS Mapper Files:"
+        r" Example: C:\HUC_10170204\05_hecras_output",
         required=True,
         metavar="DIR",
         type=str,
@@ -390,8 +395,7 @@ if __name__ == "__main__":
     args = vars(parser.parse_args())
 
     str_input_dir = args["str_input_dir"]
-
-    log_file_folder = args["str_input_dir"]
+    log_file_folder = os.path.join(args["str_input_dir"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -403,13 +407,13 @@ if __name__ == "__main__":
         script_file_name = os.path.basename(__file__).split('.')[0]
 
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(log_file_folder, script_file_name + ".log")
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
         fn_calculate_all_terrain_stats(str_input_dir)
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

@@ -8,7 +8,6 @@ import sys
 import time
 import traceback
 from concurrent.futures import ProcessPoolExecutor
-from datetime import datetime
 from pathlib import Path
 
 import geopandas as gpd
@@ -211,8 +210,8 @@ def dir_reformat_ras_rc(
     # Create empty output log
 
     RLOG.lprint("")
-    overall_start_time = datetime.utcnow()
-    dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    overall_start_time = dt.datetime.utcnow()
+    dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
     RLOG.lprint(f"Started (UTC): {dt_string}")
 
     output_log = []
@@ -483,7 +482,7 @@ def dir_reformat_ras_rc(
             RLOG.debug(f"Saved directory outputs for {dir_input_folder_path}.")
 
         # Get timestamp for metadata
-        start_time_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+        start_time_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
         # Write README metadata file for the intermediate file
         write_metadata_file(
@@ -501,9 +500,9 @@ def dir_reformat_ras_rc(
         if verbose is True:
             RLOG.debug(f"Saved metadata to {intermediate_filepath}.")
 
-    RLOG.lprint("")
-    end_time = datetime.utcnow()
-    dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    RLOG.success("Complete")
+    end_time = dt.datetime.utcnow()
+    dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
     RLOG.lprint(f"Ended : {dt_string}")
     time_duration = end_time - overall_start_time
     RLOG.lprint(f"Duration: {str(time_duration).split('.')[0]}")
@@ -956,7 +955,7 @@ if __name__ == "__main__":
     active = str(args["active"])
     source = "ras2fim"
 
-    log_file_folder = args["output_path"]
+    log_file_folder = os.path.join(args["output_path"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -968,7 +967,7 @@ if __name__ == "__main__":
         script_file_name = os.path.basename(__file__).split('.')[0]
 
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(log_file_folder, script_file_name + ".log")
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
         compile_ras_rating_curves(
@@ -977,6 +976,6 @@ if __name__ == "__main__":
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

@@ -757,7 +757,7 @@ def __add_record_to_tracker(
             RLOG.critical(errMsg)
             RLOG.critical(traceback.format_exc())
             RLOG.critical("-----------------")
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())
         sys.exit(1)
@@ -900,7 +900,7 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    log_file_folder = args["src_unit_dir_path"]
+    log_file_folder = args["src_unit_dir_path"]  # don't put in logs dir
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -919,6 +919,6 @@ if __name__ == "__main__":
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

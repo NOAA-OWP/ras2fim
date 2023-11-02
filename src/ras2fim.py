@@ -38,17 +38,13 @@ from create_geocurves import manage_geo_rating_curves_production
 from create_model_domain_polygons import fn_make_domain_polygons
 from create_shapes_from_hecras import fn_create_shapes_from_hecras
 from get_usgs_dem_from_shape import fn_get_usgs_dem_from_shape
-from ras2catchments import make_catchments
 from reformat_ras_rating_curve import dir_reformat_ras_rc
-from run_ras2rem import fn_run_ras2rem
 from simplify_fim_rasters import fn_simplify_fim_rasters
 
 
 # Global Variables
 B_TERRAIN_CHECK_ONLY = False
 ARG_LOG_FILE_NAME = "run_arguments.txt"
-# RLOG = ras2fim_logger.RAS2FIM_logger()
-# RLOG = None
 RLOG = ras2fim_logger.R2F_LOG
 
 
@@ -165,6 +161,18 @@ def init_and_run_ras2fim(
     os.mkdir(log_folder)
     RLOG.setup(os.path.join(log_folder, "ras2fim.log"))
 
+    print("............... Temp sample RLOG types")
+    RLOG.trace("Sample trace (log file only)")
+    print("Trace logs only to file so you won't see it on screen, this is a print line")
+
+    RLOG.lprint("Sample lprint (console and log file)")
+    RLOG.debug("Sample debug (console and log file)")
+    RLOG.success("Sample success (console and log file)")
+    RLOG.warning("Sample warning (console, log file and warning file)")
+    RLOG.error("Sample error (console, log file, and error file)")
+    RLOG.critical("Sample critical (console log file, and error file)")
+    print("...............")
+
     # -------------------------------------------
     # ---- Make the "final" folder now as some modules will write to it through the steps
     #      why test if it exists with makedir for output above? We are going to be retarting
@@ -181,13 +189,6 @@ def init_and_run_ras2fim(
     # -------------------
     # copy the config env file to the final directory
     shutil.copy2(config_file, r2f_final_dir)
-
-    # -------------------
-    # validate dependencies of optional env flags
-    # TODO: Sept 2023: Create list for module dependencies for any given section (instead of the "if" tests)?
-    # NOTE: Sept 2023: Order is critical here.
-    if (os.getenv("RUN_RAS2CATCHMENTS") == "True") and (os.getenv("RUN_RAS2REM") != "True"):
-        raise ValueError("For the catchments module to run, the env.RUN_RAS2REM must be True.")
 
     # -------------------
     # Now call the processing function
@@ -242,9 +243,7 @@ def fn_run_ras2fim(
     RLOG.lprint(
         "  --- The Ras Models unit (extracted from RAS model prj file and given EPSG code): " + model_unit
     )
-    RLOG.lprint("===================================================================")
-    RLOG.lprint(f"Program Started: {sf.get_stnd_date()}")
-    RLOG.lprint("")
+    RLOG.lprint(f"  --- ras2fim started: {sf.get_stnd_date()}")
 
     # -------------------------------------------
     # ---- Make the "final" folder now as some modules will write to it through the steps
@@ -281,9 +280,6 @@ def fn_run_ras2fim(
             str_huc8_arg, str_shapes_from_hecras_dir, str_shapes_from_conflation_dir, str_nation_arg
         )
     # -------------------------------------------
-
-    print("all done for now")
-    sys.exit(0)
 
     # ------ Step 3: get_usgs_dem_from_shape or clip_dem_from_shape ----
     str_area_shp_name = str_huc8_arg + "_huc_12_ar.shp"
@@ -479,33 +475,6 @@ def fn_run_ras2fim(
         )
 
     # -------------------------------------------------
-    if os.getenv("RUN_RAS2REM") == "True":
-        RLOG.lprint("")
-        RLOG.lprint("+++++++ Processing: STEP: ras2rem +++++++")
-        RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-
-        fn_run_ras2rem(output_folder_path, model_unit)
-
-        r2f_ras2rem_dir = os.path.join(
-            output_folder_path, sv.R2F_OUTPUT_DIR_METRIC, sv.R2F_OUTPUT_DIR_RAS2REM
-        )
-        shutil.copy2(os.path.join(r2f_ras2rem_dir, "rem.tif"), r2f_final_dir)
-        shutil.copy2(os.path.join(r2f_ras2rem_dir, "rating_curve.csv"), r2f_final_dir)
-
-    # -------------------------------------------------
-    if os.getenv("RUN_RAS2CATCHMENTS") == "True":
-        RLOG.lprint("")
-        RLOG.lprint("+++++++ Processing: STEP: ras2catchments +++++++")
-        RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-
-        make_catchments(str_huc8_arg, output_folder_path, str_nation_arg, model_huc_catalog_path)
-
-        r2f_catchments_dir = os.path.join(output_folder_path, sv.R2F_OUTPUT_DIR_CATCHMENTS)
-        shutil.copy2(os.path.join(r2f_catchments_dir, "nwm_catchments_subset.gpkg"), r2f_final_dir)
-        shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features.tif"), r2f_final_dir)
-        shutil.copy2(os.path.join(r2f_catchments_dir, "r2f_features_meta.gpkg"), r2f_final_dir)
-
-    # -------------------------------------------------
     if os.getenv("CREATE_RAS_DOMAIN_POLYGONS") == "True":
         RLOG.lprint("")
         RLOG.lprint("+++++++ Processing: STEP: Create polygons for HEC-RAS models domains +++++++")
@@ -542,7 +511,7 @@ def fn_run_ras2fim(
     shutil.copy2(run_arguments_filepath, r2f_final_dir)
 
     RLOG.lprint("+=================================================================+")
-    RLOG.lprint("  RUN RAS2FIM - Completed                                         |")
+    RLOG.success("  RUN RAS2FIM - Completed                                         |")
     dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
     RLOG.lprint("+-----------------------------------------------------------------+")
@@ -762,6 +731,6 @@ if __name__ == "__main__":
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

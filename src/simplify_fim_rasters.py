@@ -35,9 +35,11 @@ import shared_variables as sv
 
 # -------------------------------------------------
 # Global Variables
-# RLOG = ras2fim_logger.RAS2FIM_logger()
 RLOG = ras2fim_logger.R2F_LOG
-# RLOG = None
+# MP_LOG = None # the mp version
+#    While this code does use multi processing, the function be used inside the MP
+#    is not in this script, so MP_LOG system is not required.
+
 # buffer distance of the input flood polygon - in CRS units
 FLT_BUFFER = 15
 
@@ -309,7 +311,6 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
 
         list_dataframe_args = df_grids_to_convert.values.tolist()
 
-        RLOG.lprint("+-----------------------------------------------------------------+")
         p = mp.Pool(processes=(mp.cpu_count() - 2))
 
         list(
@@ -317,7 +318,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
                 p.imap(fn_create_grid, list_dataframe_args),
                 total=len_grids_convert,
                 desc="Convert Grids",
-                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
                 ncols=65,
             )
         )
@@ -394,7 +395,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
     r2f_metric_dir = r2f_hecras_outputs_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, sv.R2F_OUTPUT_DIR_METRIC)
     all_xs_df.to_csv(os.path.join(r2f_metric_dir, "all_cross_sections.csv"), index=False)
 
-    RLOG.lprint("COMPLETE")
+    RLOG.success("COMPLETE")
 
     flt_end_simplify_fim = time.time()
     flt_time_simplify_fim = (flt_end_simplify_fim - flt_start_simplify_fim) // 1
@@ -406,6 +407,11 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
+    # Sample:
+    # python simplify_fim_rasters.py
+    #  -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\05_hecras_output
+    #  -r 10 -p EPSG:5070
+
     parser = argparse.ArgumentParser(
         description="===== CREATE SIMPLIFIED FLOOD DEPTH RASTER FILES (TIF) ====="
     )
@@ -457,7 +463,7 @@ if __name__ == "__main__":
     str_output_crs = args["str_output_crs"]
     model_unit = args["model_unit"]
 
-    log_file_folder = args["r2f_huc_parent_dir"]
+    log_file_folder = os.path.join(args["r2f_huc_parent_dir"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -468,9 +474,8 @@ if __name__ == "__main__":
         # creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
 
-        # RLOG = ras2fim_logger.RAS2FIM_logger()
         # Assumes RLOG has been added as a global var.
-        # RLOG.setup(log_file_folder, script_file_name + ".log")
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # find model_unit of HEC-RAS outputs (ft vs m) using a sample rating curve file
         r2f_hecras_outputs_dir = os.path.join(r2f_huc_parent_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
@@ -481,6 +486,6 @@ if __name__ == "__main__":
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

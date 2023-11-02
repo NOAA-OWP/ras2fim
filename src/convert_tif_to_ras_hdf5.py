@@ -171,7 +171,7 @@ def fn_convert_tif_to_ras_hdf5(
 
     RLOG.lprint("+-----------------------------------------------------------------+")
     if int_valid_count == len(list_processed_dem):
-        RLOG.lprint("All terrains processed successfully")
+        RLOG.success("All terrains processed successfully")
     else:
         RLOG.error(F"Errors when processing {STR_CONVERT_FILEPATH} - Check output or logs")
 
@@ -185,6 +185,12 @@ def fn_convert_tif_to_ras_hdf5(
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
+    # Sample:
+    # python convert_tif_to_ras_hdf5.py -r 'C:\Program Files (x86)\HEC\HEC-RAS\6.3'
+    #  -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\03_terrain
+    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\04_hecras_terrain
+    #  -p c:\.....\12030105_2276_231024\02_shapes_from_conflation\12030105_huc_12_ar.prj
+
     parser = argparse.ArgumentParser(
         description="==== CONVERT TERRAIN GeoTIFFS TO HEC-RAS TERRAINS (HDF5) ==="
     )
@@ -239,7 +245,7 @@ if __name__ == "__main__":
     proj_crs = pyproj.CRS(prj_text)
     model_unit = sf.model_unit_from_crs(proj_crs)
 
-    log_file_folder = args["str_dir_to_write_hdf5"]
+    log_file_folder = os.path.join(args["str_dir_to_write_hdf5"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -251,7 +257,7 @@ if __name__ == "__main__":
         script_file_name = os.path.basename(__file__).split('.')[0]
 
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(log_file_folder, script_file_name + ".log")
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
         fn_convert_tif_to_ras_hdf5(
@@ -260,6 +266,6 @@ if __name__ == "__main__":
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

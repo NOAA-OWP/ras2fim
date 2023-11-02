@@ -17,6 +17,7 @@ import multiprocessing as mp
 import os
 import sys
 import traceback
+from functools import partial
 from multiprocessing import Pool
 
 import geopandas as gpd
@@ -28,7 +29,6 @@ import worker_fim_rasters
 
 
 # Global Variables
-# RLOG = ras2fim_logger.RAS2FIM_logger()
 RLOG = ras2fim_logger.R2F_LOG
 
 
@@ -187,6 +187,12 @@ def fn_create_fim_rasters(
     for index, row in df_streams_merge_2.iterrows():
         df_streams_merge_2.at[index, "settings"] = tpl_input
 
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("Start of processing in HEC-RAS")
+    log_file_prefix = "fn_main_hecras"
+    fn_main_hecras_partial = partial(
+        worker_fim_rasters.fn_main_hecras, RLOG.LOG_DEFAULT_FOLDER, log_file_prefix
+    )
     # create a pool of processors
     num_processors = mp.cpu_count() - 2
     with Pool(processes=num_processors) as executor:
@@ -229,13 +235,16 @@ def fn_create_fim_rasters(
 
             try:
                 if len(list_of_lists_df_streams) > 0:
-                    executor.map(worker_fim_rasters.fn_main_hecras, list_of_lists_df_streams)
-            except Exception as pex:
-                # It has already been logged in fn_main_hecras
-                RLOG.critical(pex)
+                    executor.map(fn_main_hecras_partial, list_of_lists_df_streams)
+            except Exception:
+                # It has already been logged in fn_main_hecras, might get a dup error rec
+                RLOG.critical(traceback.format_exc())
                 executor.terminate()
                 RLOG.critical("Pool terminated")
                 sys.exit(1)
+
+    # Now that multi-proc is done, lets merge all of the independent log file from each
+    RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
 
     tif_count = 0
     for root, dirs, files in os.walk(STR_ROOT_OUTPUT_DIRECTORY):
@@ -244,8 +253,8 @@ def fn_create_fim_rasters(
                 tif_count += 1
 
     RLOG.lprint("")
-    RLOG.lprint("ALL AREAS COMPLETE")
-    RLOG.lprint("Number of tif's generated: " + str(tif_count))
+    RLOG.success("ALL AREAS COMPLETE")
+    RLOG.success("Number of tif's generated: " + str(tif_count))
 
     dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
@@ -256,13 +265,25 @@ def fn_create_fim_rasters(
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
     # TODO: Oct 23, 2023.
-    # Research is required. Comparing a test run against a small set of models, it took
+    #
+    # RESEARCH IS REQUIRED.
+    #
+    # Comparing a test run against a small set of models, it took
     # appx 32 mins to process via ras2fim, but through command line it took 6 mins.
     # Output file count appears to be the same but hash compare will be required to see
     # if the output files are really the same (not.. comparision has to be done on the
     # same day as date stamps can be embedded in files which can throw off the hash compare)
     # This appears to be a previously existing problem.
     # Watch for outputs from step 5c, calculate terrain stats as it goes to the 06 folder as well
+
+    # Sample
+    # python create_fim_rasters.py -w 12030105
+    #  -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\02_shapes_from_conflation
+    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\05_hecras_output
+    #  -p c:\....\12030105_2276_231024\02_shapes_from_conflation\12030105_huc_12_ar.prj
+    #  -t c:\ras2fim_data\output_ras2fim\12030105_2276_231024\04_hecras_terrain
+    #  -s C:\Users\.....\Documents\NOAA-OWP\Projects\ras2fim\dev-logging\ras2fim\src
+    #  -z 0.5  (leave off -c )
 
     parser = argparse.ArgumentParser(
         description="================ NWM RASTER LIBRARY FROM HEC-RAS =================="
@@ -368,7 +389,7 @@ if __name__ == "__main__":
     b_terrain_check_only = args["b_terrain_check_only"]
     is_verbose = args["is_verbose"]
 
-    log_file_folder = args["str_output_folder"]
+    log_file_folder = os.path.join(args["str_output_folder"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -380,7 +401,7 @@ if __name__ == "__main__":
         script_file_name = os.path.basename(__file__).split('.')[0]
 
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(log_file_folder, script_file_name + ".log")
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
         fn_create_fim_rasters(
@@ -397,6 +418,6 @@ if __name__ == "__main__":
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

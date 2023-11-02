@@ -30,7 +30,8 @@ import tqdm
 import xarray as xr
 from fiona import collection
 from geopandas.tools import sjoin
-from loguru import logger
+
+# from loguru import logger
 from shapely import wkt
 from shapely.geometry import Point, mapping
 
@@ -41,13 +42,8 @@ import shared_variables as sv
 
 
 # Global Variables
-# RLOG = None
-RLOG = ras2fim_logger.R2F_LOG
-
-# because we are using Multi-proc, we need to create a multiproc manager to share logging
-# manager = mp.Manager()
-# RLOG_test = manager.list()
-# RLOG_test.append("Hi from 1")
+RLOG = ras2fim_logger.R2F_LOG  # the non mp version
+MP_LOG = None  # the mp version
 
 
 # -------------------------------------------------
@@ -55,14 +51,14 @@ def fn_wkt_loads(x):
     try:
         return wkt.loads(x)
     except Exception as ex:
-        logger.warning("fn_wkt_loads errored out")
-        logger.warning(x)
-        logger.warning(f"Details: {ex}")
+        RLOG.error("fn_wkt_loads errored out")
+        RLOG.error(x)
+        RLOG.error(f"Details: {ex}")
         return None
 
 
 # -------------------------------------------------
-def fn_snap_point(shply_line, list_of_df_row):
+def mp_snap_point(shply_line, list_of_df_row):
     # int_index, int_feature_id, str_huc12, shp_point = list_of_df_row
     int_index, shp_point, int_feature_id, str_huc12 = list_of_df_row
 
@@ -77,53 +73,44 @@ def fn_snap_point(shply_line, list_of_df_row):
 
 
 # -------------------------------------------------
-def fn_create_gdf_of_points(rlog_file_path, tpl_request):
-    # This function is included as part of a multiproc so it needs to re-setup the
-    # logging system for
+def mp_create_gdf_of_points(rlog_file_path, rlog_file_prefix, tpl_request):
     # function to create and return a geoDataframe from a list of shapely points
 
-    # global RLOG
-    # RLOG = ras2fim_logger.RAS2FIM_logger()
-    # RLOG.setup(rlog_file_path)
-    # each setup creates a new log file and kills the rest, so the last proc counts
+    # This function is included as part of a multiproc so each process needs to have
+    # it's own instance of ras2fim logger.
+    # WHY? this stops file open concurrency as each proc has its own.
+    # We attempt to keep them somewhat sorted by using YYMMDD_HHMMSECMillecond)
 
-    # print(f"mp_rlog_default_file is {mp_log.LOG_DEFAULT_FILE_PATH}")
-    # logger.debug("debug checking from fn_create_gdf_of_points")
+    global MP
+    MP_LOG = ras2fim_logger.RAS2FIM_logger()
 
-    """
-    if mp.parent_process() is None:
-        print("Yes.. is parent process")
-        logger.connect(is_server=True)  # Main process: will receive and log all messages
-    else:
-        print("nope.. is parent process ( is child)")
-        logger.connect(is_server=False)  # Child process: all logs are sent to the server
-    """
+    try:
+        file_id = sf.get_date_with_milli()
+        log_file_name = f"{rlog_file_prefix}-{file_id}.log"
+        MP_LOG.setup(os.path.join(rlog_file_path, log_file_name))
 
-    # my_logger = logger.log.
+        feature_id = tpl_request[0]
+        str_huc_12 = tpl_request[1]
+        list_of_points = tpl_request[2]
 
-    # RLOG.debug("Yooo what is up")
+        MP_LOG.trace(f"feature_id is {feature_id} and huc_12 is {str_huc_12}")
 
-    # logger.warning("warning checking from fn_create_gdf_of_points")
+        # Create an empty dataframe
+        df_points_nwm = pd.DataFrame(list_of_points, columns=["geometry"])
 
-    print("hi from conflate mp")
-    print(rlog_file_path)
+        # convert dataframe to geodataframeclear
+        gdf_points_nwm = gpd.GeoDataFrame(df_points_nwm, geometry="geometry")
 
-    str_feature_id = tpl_request[0]
-    str_huc_12 = tpl_request[1]
-    list_of_points = tpl_request[2]
+        gdf_points_nwm["feature_id"] = feature_id
+        gdf_points_nwm["huc_12"] = str_huc_12
 
-    # Create an empty dataframe
-    df_points_nwm = pd.DataFrame(list_of_points, columns=["geometry"])
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            MP_LOG.critical(traceback.format_exc())
+        else:
+            print(traceback.format_exc())
 
-    # convert dataframe to geodataframeclear
-    gdf_points_nwm = gpd.GeoDataFrame(df_points_nwm, geometry="geometry")
-
-    gdf_points_nwm["feature_id"] = str_feature_id
-    gdf_points_nwm["huc_12"] = str_huc_12
-
-    print(f"feature_id is {str_feature_id} and huc_12 is {str_huc_12}")
-    # print(f" and RLOG.LOG_DEFAULT_FILE is {RLOG.LOG_DEFAULT_FILE}")
-    # RLOG.debug(f"feature_id is {str_feature_id} and huc_12 is {str_huc_12}")
+        sys.exit(0)
 
     return gdf_points_nwm
 
@@ -136,9 +123,6 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~
     # INPUT
-
-    # RLOG = ras2fim_logger.RAS2FIM_logger()
-
     start_dt = dt.datetime.utcnow()
 
     RLOG.lprint("")
@@ -317,50 +301,37 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
         list_points_aggregate.append(tpl_request)
 
     # create a pool of processors
-    num_processors = mp.cpu_count() - 2
-    # pool = Pool(processes=num_processors, initializer=ras2fim_logger.pool_init_log())
-    pool = Pool(processes=num_processors)
-
-    # TODO .. not how to sort as it is a list of tuples
-    list_points_aggregate.sort()
-
-    # fn_create_gdf_of_points_partial = partial(fn_create_gdf_of_points, RLOG)
-    print(f"ras2fim_logger.LOG_DEFAULT_FILE is {ras2fim_logger.LOG_DEFAULT_FILE_PATH}")
-    # fn_create_gdf_of_points_partial = partial(fn_create_gdf_of_points,
-    #   ras2fim_logger.LOG_DEFAULT_FILE_PATH)
-    # fn_create_gdf_of_points_partial = partial(fn_create_gdf_of_points, RLOG)
-
-    # Can't pickle <class 'ras2fim_logger.RAS2FIM_logger'>: it's not the same object
-    #   as ras2fim_logger.RAS2FIM_logger
-
-    # can not pass objects as references to multiprocs
-
-    # my_dict = logger._core.handlers
-
-    fn_create_gdf_of_points_partial = partial(fn_create_gdf_of_points, logger._core.handlers)
-
-    len_points_agg = len(list_points_aggregate)
-
-    print("logger dict is")
-    print(logger._core.handlers)
-
-    list_gdf_points_all_lines = list(
-        tqdm.tqdm(
-            pool.imap(fn_create_gdf_of_points_partial, list_points_aggregate),
-            total=len_points_agg,
-            desc="Points on lines",
-            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
-            ncols=67,
-        )
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("start of creating gdf of points")
+    log_file_prefix = "mp_create_gdf_of_points"
+    fn_create_gdf_of_points_partial = partial(
+        mp_create_gdf_of_points, RLOG.LOG_DEFAULT_FOLDER, log_file_prefix
     )
+    num_processors = mp.cpu_count() - 2
+    with Pool(processes=num_processors) as executor:
+        # TODO .. not how to sort as it is a list of tuples
+        sorted_list_points_aggregate = sorted(list_points_aggregate)
 
-    pool.close()
-    pool.join()
+        len_points_agg = len(sorted_list_points_aggregate)
 
-    # TODO:
-    print("exit from conflate")
-    sys.exit(0)
+        list_gdf_points_all_lines = list(
+            tqdm.tqdm(
+                executor.imap(fn_create_gdf_of_points_partial, sorted_list_points_aggregate),
+                total=len_points_agg,
+                desc="Points on lines",
+                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
+                ncols=67,
+            )
+        )
 
+    # pool.close()
+    # pool.join()
+
+    # Now that multi-proc is done, lets merge all of the independent log file from each
+    RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
+
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("Mapping points to nwm streams")
     gdf_points_nwm = gpd.GeoDataFrame(pd.concat(list_gdf_points_all_lines, ignore_index=True))
     gdf_points_nwm = gdf_points_nwm.set_crs(ble_prj)
 
@@ -428,10 +399,10 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
 
     list_df_points_projected = list(
         tqdm.tqdm(
-            p.imap(partial(fn_snap_point, shply_line), list_dataframe_args_snap),
+            p.imap(partial(mp_snap_point, shply_line), list_dataframe_args_snap),
             total=total_points,
             desc="Snap Points",
-            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
             ncols=67,
         )
     )
@@ -449,6 +420,7 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     # write the shapefile
     str_filepath_ble_points = os.path.join(shp_out_path, f"{str_huc8}_ble_snap_points_PT.shp")
 
+    # TODO: Nov 1, 2023. Somewhere in here is a bug?
     gdf_points_snap_to_ble.to_file(str_filepath_ble_points)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -617,7 +589,7 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     gdf_non_match.to_file(str_filepath_nwm_stream)
 
     RLOG.lprint("")
-    RLOG.lprint("COMPLETE")
+    RLOG.success("COMPLETE")
 
     dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
@@ -679,7 +651,7 @@ if __name__ == "__main__":
     str_shp_out_arg = args["str_shp_out_arg"]
     str_nation_arg = args["str_nation_arg"]
 
-    log_file_folder = args["str_shp_out_arg"]
+    log_file_folder = os.path.join(args["str_shp_out_arg"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -691,13 +663,13 @@ if __name__ == "__main__":
         script_file_name = os.path.basename(__file__).split('.')[0]
 
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(log_file_folder, script_file_name + ".log")
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
         fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg)
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

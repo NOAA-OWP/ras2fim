@@ -416,6 +416,9 @@ def process_convert_to_datasets(recurrence_dir, ras_model_dir, num_workers):
 
 # -------------------------------------------------
 if __name__ == "__main__":
+    # TODO: Nov 1, 2023. Needs Sample..
+    #   Is this even in use?
+
     parser = argparse.ArgumentParser(description="Convert depth grids to inundation extents")
     parser.add_argument(
         "-val_dir", "--validation-dir", help="Validation data directory", required=True, type=str
@@ -428,7 +431,7 @@ if __name__ == "__main__":
     ras_model_dir = Path(args["ras_dir"])
     num_workers = args["jobs"]
 
-    log_file_folder = args["ras_dir"]
+    log_file_folder = os.path.join(args["ras_dir"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -447,6 +450,6 @@ if __name__ == "__main__":
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.format_exc())

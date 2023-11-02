@@ -309,7 +309,7 @@ def manage_geo_rating_curves_production(
         sf.progress_bar_handler(executor_dict, True, f"Creating geocurves with {job_number} workers")
 
     # Calculate duration
-    RLOG.lprint("")
+    RLOG.success("Complete")
     end_time = datetime.utcnow()
     dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
     RLOG.lprint(f"Ended (UTC): {dt_string}")
@@ -358,7 +358,7 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    log_file_folder = args["output_folder"]
+    log_file_folder = os.path.join(args["ras2fim_output_dir"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -370,13 +370,13 @@ if __name__ == "__main__":
         script_file_name = os.path.basename(__file__).split(".")[0]
 
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(log_file_folder, script_file_name + ".log")
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
         manage_geo_rating_curves_production(**args)
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            ras2fim_logger.logger.critical(traceback.format_exc())
+            RLOG.critical(traceback.format_exc())
         else:
             print(traceback.t_exc())
