@@ -1,6 +1,14 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+
+## v1.29.1 - 2023-11-2 - [PR#166](https://github.com/NOAA-OWP/ras2fim/pull/198)
+
+This PR fixes a small bug for making polygons for model domains that results in reporting all models to be not-conflated to NWM reaches. This PR closes #195.
+
+Changes include:
+Updated src/create_model_domain_polygons.py by removing an extra "is True" from a single line. Also, the file tools/ras_unit_to_s3.py changed slightly after performing linting.
+
 ## v1.29.0 - 2023-09-29 - [PR#166](https://github.com/NOAA-OWP/ras2fim/pull/166)
 
 This PR includes a new tool that can take a ras2fim unit output folder and upload it to S3. During that upload processes, it checks the s3 `output_ras2fim` folder to look for folders already share the same huc and crs values. A folder may/may not pre-exist that matches the huc and crs but may/may not share a date.  A new master file called `ras_output_tracker.csv` exists now in the s3 `output_ras2fim` folder which tracks all folders uploaded, moved to archive, and overwritten. All activities done by the new `ras_unit_to_s3.py` update this new master copy in S3.
