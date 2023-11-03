@@ -161,6 +161,7 @@ def init_and_run_ras2fim(
     os.mkdir(log_folder)
     RLOG.setup(os.path.join(log_folder, "ras2fim.log"))
 
+    """
     print("............... Temp sample RLOG types")
     RLOG.trace("Sample trace (log file only)")
     print("Trace logs only to file so you won't see it on screen, this is a print line")
@@ -172,6 +173,7 @@ def init_and_run_ras2fim(
     RLOG.error("Sample error (console, log file, and error file)")
     RLOG.critical("Sample critical (console log file, and error file)")
     print("...............")
+    """
 
     # -------------------------------------------
     # ---- Make the "final" folder now as some modules will write to it through the steps
