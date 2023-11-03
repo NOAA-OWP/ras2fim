@@ -52,8 +52,6 @@ def fn_open_hecras(str_ras_project_path):
 
     try:
         # opening HEC-RAS
-        print(f"(by print) ras project path is {str_ras_project_path}")
-
         RLOG.debug(f"ras project path is {str_ras_project_path}")
 
         if os.path.exists(str_ras_project_path) is False:
