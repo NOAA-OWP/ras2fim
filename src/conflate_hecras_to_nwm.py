@@ -43,7 +43,7 @@ import shared_variables as sv
 
 # Global Variables
 RLOG = ras2fim_logger.R2F_LOG  # the non mp version
-MP_LOG = None  # the mp version
+MP_LOG = ras2fim_logger.RAS2FIM_logger()  # the mp version
 
 
 # -------------------------------------------------
@@ -81,8 +81,8 @@ def mp_create_gdf_of_points(rlog_file_path, rlog_file_prefix, tpl_request):
     # WHY? this stops file open concurrency as each proc has its own.
     # We attempt to keep them somewhat sorted by using YYMMDD_HHMMSECMillecond)
 
-    global MP
-    MP_LOG = ras2fim_logger.RAS2FIM_logger()
+    # global MP
+    # MP_LOG = ras2fim_logger.RAS2FIM_logger()
 
     try:
         file_id = sf.get_date_with_milli()
@@ -110,7 +110,7 @@ def mp_create_gdf_of_points(rlog_file_path, rlog_file_prefix, tpl_request):
         else:
             print(traceback.format_exc())
 
-        sys.exit(0)
+        sys.exit(1)
 
     return gdf_points_nwm
 
@@ -651,7 +651,7 @@ if __name__ == "__main__":
     str_shp_out_arg = args["str_shp_out_arg"]
     str_nation_arg = args["str_nation_arg"]
 
-    log_file_folder = os.path.join(args["str_shp_out_arg"], "logs")
+    log_file_folder = args["str_shp_out_arg"]
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -661,7 +661,6 @@ if __name__ == "__main__":
 
         # creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
-
         # Assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
@@ -669,7 +668,4 @@ if __name__ == "__main__":
         fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg)
 
     except Exception:
-        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            RLOG.critical(traceback.format_exc())
-        else:
-            print(traceback.format_exc())
+        RLOG.critical(traceback.format_exc())

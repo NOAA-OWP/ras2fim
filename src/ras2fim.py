@@ -487,6 +487,11 @@ def fn_run_ras2fim(
         conflation_qc_path = os.path.join(str_shapes_from_conflation_dir, "%s_stream_qc.csv" % str_huc8_arg)
 
         # make output folder and build path to the output file
+        # TODO: Nov 3, 2023: The creation of the output_polygon_dir and polygons_output_file_path
+        # has to be done inside the fn_make_domain_polygons. Why? create_model_domain_polygons.py
+        # fails when being run from command line as the folder doesn't exist
+        # Also see note in __main__ of create_model_domain_polygons.py as a duplicate msg (more less)
+        #  But even after just manually adding that folder it still fails when run from command line.
         output_polygon_dir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_DOMAIN_POLYGONS)
         polygons_output_file_path = os.path.join(output_polygon_dir, "models_domain.gpkg")
         os.mkdir(output_polygon_dir)
@@ -730,7 +735,4 @@ if __name__ == "__main__":
         init_and_run_ras2fim(**args)
 
     except Exception:
-        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            RLOG.critical(traceback.format_exc())
-        else:
-            print(traceback.format_exc())
+        RLOG.critical(traceback.format_exc())

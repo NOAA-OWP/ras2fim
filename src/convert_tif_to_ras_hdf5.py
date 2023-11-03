@@ -33,6 +33,7 @@ import pyproj
 
 import ras2fim_logger
 import shared_functions as sf
+import shared_variables as sv
 
 
 # Global Variables
@@ -185,24 +186,14 @@ def fn_convert_tif_to_ras_hdf5(
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
-    # Sample:
-    # python convert_tif_to_ras_hdf5.py -r 'C:\Program Files (x86)\HEC\HEC-RAS\6.3'
+    # Sample with mins
+    # python convert_tif_to_ras_hdf5.py
     #  -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\03_terrain
     #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\04_hecras_terrain
     #  -p c:\.....\12030105_2276_231024\02_shapes_from_conflation\12030105_huc_12_ar.prj
 
     parser = argparse.ArgumentParser(
         description="==== CONVERT TERRAIN GeoTIFFS TO HEC-RAS TERRAINS (HDF5) ==="
-    )
-
-    parser.add_argument(
-        "-r",
-        dest="str_hec_path",
-        help="REQUIRED: path to HEC-RAS 6.3 RasProcess.exe: "
-        r'Example: "C:\Program Files (x86)\HEC\HEC-RAS\6.3" (wrap in quotes)',
-        required=True,
-        metavar="DIR",
-        type=str,
     )
 
     parser.add_argument(
@@ -232,6 +223,17 @@ if __name__ == "__main__":
         type=str,
     )
 
+    parser.add_argument(
+        "-r",
+        dest="str_hec_path",
+        help="Optional: path to HEC-RAS 6.3 RasProcess.exe: "
+        r'Example: "C:\Program Files (x86)\HEC\HEC-RAS\6.3" (wrap in quotes)',
+        required=False,
+        default=sv.DEFAULT_HECRAS_ENGINE_PATH,
+        metavar="DIR",
+        type=str,
+    )
+
     args = vars(parser.parse_args())
 
     str_hec_path = args["str_hec_path"]
@@ -245,7 +247,7 @@ if __name__ == "__main__":
     proj_crs = pyproj.CRS(prj_text)
     model_unit = sf.model_unit_from_crs(proj_crs)
 
-    log_file_folder = os.path.join(args["str_dir_to_write_hdf5"], "logs")
+    log_file_folder = args["str_dir_to_write_hdf5"]
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -255,7 +257,6 @@ if __name__ == "__main__":
 
         # creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
-
         # Assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
@@ -265,7 +266,4 @@ if __name__ == "__main__":
         )
 
     except Exception:
-        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            RLOG.critical(traceback.format_exc())
-        else:
-            print(traceback.format_exc())
+        RLOG.critical(traceback.format_exc())

@@ -229,7 +229,7 @@ if __name__ == "__main__":
     proj_crs = pyproj.CRS(prj_text)
     model_unit = sf.model_unit_from_crs(proj_crs)
 
-    log_file_folder = os.path.join(args["str_output_dir"], "logs")
+    log_file_folder = args["str_output_dir"]
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -239,7 +239,6 @@ if __name__ == "__main__":
 
         # creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
-
         # Assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
@@ -249,7 +248,4 @@ if __name__ == "__main__":
         )
 
     except Exception:
-        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            RLOG.critical(traceback.format_exc())
-        else:
-            print(traceback.format_exc())
+        RLOG.critical(traceback.format_exc())

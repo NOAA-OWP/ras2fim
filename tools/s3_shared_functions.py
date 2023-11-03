@@ -16,11 +16,10 @@ from botocore.client import ClientError
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import ras2fim_logger
 import shared_functions as sf
-import shared_variables as sv
 
 
 # Global Variables
-RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.R2F_LOG
 
 
 ####################################################################
@@ -81,15 +80,17 @@ def upload_file_to_s3(bucket_name, src_path, s3_folder_path, file_name="", show_
 
 
 ###################################################################
-def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name, default_log_file_name):
+def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name, upload_skip_files=[]):
     """
     Input
         - src_path: e.g c:\ras2fim_data\output_ras2fim\12030202_102739_230810
         - bucket_name: e.g mys3bucket_name
         - s3_folder_path: e.g.  output_ras2fim or output_ras2fim_archive
         - unit_folder_name:  12030105_2276_230810 (slash stripped off the end)
-        - default_log_file_name: we don't want to upload a default log file that is currently being
-          written too.
+        - upload_skip_files: files we don't want uploaded. (fully pathed)
+
+    Notes:
+        - if the file names starts with three underscores, it will not be uploaded to S3.
     """
 
     s3_full_target_path = f"s3://{bucket_name}/{s3_folder_path}/{unit_folder_name}"
@@ -109,33 +110,31 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
         client = boto3.client("s3")
 
         s3_files = []  # a list of dictionaries (src file path, targ file path)
-        for subdir, dirs, files in os.walk(src_path):
+
+        for subdir, dirs, files in os.walk(src_path, followlinks=False):
             for file in files:
-                # don't let it upload a local copy of the tracker file
-                # if it happens to exist in the source folder.
-                if sv.S3_OUTPUT_TRACKER_FILE in file:
+                if file in upload_skip_files:
+                    RLOG.trace(f"skipped: {file}")
                     continue
 
-                # We don't want to try to upload a log file that is currently being
-                # wrote too.
-                if default_log_file_name in file:
-                    continue
-
-                # print(f".. src file = {file}")
                 src_file_path = os.path.join(src_path, subdir, file)
-                src_ref_path = subdir.replace(src_path, "")
+
+                RLOG.trace(f".. src_file_path = {src_file_path}")
+
+                src_folder = os.path.dirname(src_file_path)
+                src_file_name = os.path.basename(src_file_path)
+                trg_folder_path = src_folder.replace(src_path, "")
 
                 # switch the slash
-                src_ref_path = src_ref_path.replace("\\", "/")
-                s3_key_path = f"{s3_folder_path}/{unit_folder_name}/{src_ref_path}/{file}"
+                trg_folder_path = trg_folder_path.replace("\\", "/")
+                s3_key_path = f"{s3_folder_path}/{unit_folder_name}/{trg_folder_path}/{src_file_name}"
                 # safety feature in case we have more than one foreward slash as that can
                 # be a mess in S3 (it will honor all slashs)
                 s3_key_path = s3_key_path.replace("//", "/")
-
                 item = {
                     's3_client': client,
                     'bucket_name': bucket_name,
-                    'src_file_path': src_file_path,
+                    'src_file_path': file,
                     'target_file_path': s3_key_path,
                 }
                 # adds a dict to the list
@@ -164,18 +163,18 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
                     RLOG.critical(traceback.format_exc())
                     sys.exit(1)
 
-            """
-            for future in futures.as_completed(executor_dict):
-                key = future_to_key[future]
-                exception = future.exception()
+        """
+        for future in futures.as_completed(executor_dict):
+            key = future_to_key[future]
+            exception = future.exception()
 
-                if not exception:
-                    yield key, future.result()
-                else:
-                    yield key, exception
-            """
+            if not exception:
+                yield key, future.result()
+            else:
+                yield key, exception
+        """
 
-            sf.progress_bar_handler(executor_dict, True, f"Uploading files with {num_workers} workers")
+        # sf.progress_bar_handler(executor_dict, True, f"Uploading files with {num_workers} workers")
 
     except botocore.exceptions.NoCredentialsError:
         print("-----------------")

@@ -32,7 +32,7 @@ import shared_functions as sf
 
 # Global Variables
 RLOG = ras2fim_logger.R2F_LOG  # the non mp version
-MP_LOG = None  # the mp version
+MP_LOG = ras2fim_logger.RAS2FIM_logger()  # mp version
 
 # from rasterio.warp import calculate_default_transform, reproject
 
@@ -1362,7 +1362,7 @@ def fn_main_hecras(mlog_file_path, mlog_file_prefix, record_requested_stream):
     # b_terrain_check_only = tpl_settings[16]
 
     global MP_LOG
-    MP_LOG = ras2fim_logger.RAS2FIM_logger()
+    # MP_LOG = ras2fim_logger.RAS2FIM_logger()
     file_id = sf.get_date_with_milli()
     log_file_name = f"{mlog_file_prefix}-{file_id}.log"
     MP_LOG.setup(os.path.join(mlog_file_path, log_file_name))

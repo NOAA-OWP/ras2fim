@@ -395,7 +395,7 @@ if __name__ == "__main__":
     args = vars(parser.parse_args())
 
     str_input_dir = args["str_input_dir"]
-    log_file_folder = os.path.join(args["str_input_dir"], "logs")
+    log_file_folder = args["str_input_dir"]
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -405,7 +405,6 @@ if __name__ == "__main__":
 
         # creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
-
         # Assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
@@ -413,7 +412,4 @@ if __name__ == "__main__":
         fn_calculate_all_terrain_stats(str_input_dir)
 
     except Exception:
-        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            RLOG.critical(traceback.format_exc())
-        else:
-            print(traceback.format_exc())
+        RLOG.critical(traceback.format_exc())

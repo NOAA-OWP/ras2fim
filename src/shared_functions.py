@@ -376,10 +376,14 @@ def get_stnd_date(inc_formating=True):
 
 # -------------------------------------------------
 def get_date_with_milli():
-    # This returns a pattern of YYMMDD_HHMMSSf (f meaning milliseconds to 6 decimals)
-    # Some multi processing functions use this for file names
+    # This returns a pattern of YYMMDD_HHMMSSf_{random 4 digit} (f meaning milliseconds to 6 decimals)
+    # Some multi processing functions use this for file names.
+    # We found that some processes can get stuck which can create collisions, so we added a 4 digit
+    # random num on the end (1000 - 9999). Yes.. it happened.
 
     str_date = dt.utcnow().strftime("%y%m%d_%H%M%S%f")
+    random_id = random.randrange(1000, 9999)
+    str_date += "_" + str(random_id)
 
     return str_date
 

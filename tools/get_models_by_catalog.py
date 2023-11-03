@@ -25,7 +25,7 @@ import shared_variables as sv
 # Global Variables
 MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS = "download_success"
 MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON = "download_fail_reason"
-RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.R2F_LOG
 
 
 """
@@ -461,7 +461,7 @@ class Get_Models_By_Catalog:
                 self.df_filtered.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = msg
                 continue
 
-            RLOG.log.success(" ----- successful")
+            RLOG.success(" ----- download model successful")
             self.df_filtered.at[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = "True"
 
             # self.df_row[rowIndex] = df_row
@@ -480,7 +480,7 @@ class Get_Models_By_Catalog:
         # -------------------
         # setup the logging class (default unit folder path (HUC/CRS))
         file_name = f"get_models_{self.huc_number}_{self.crs_number}-{file_dt_string}.log"
-        RLOG.setup(os.path.join(self.target_parent_path, file_name))
+        RLOG.setup(os.path.join(self.target_parent_path, "logs", file_name))
 
 
 # -------------------------------------------------
@@ -609,12 +609,10 @@ if __name__ == "__main__":
         # to have setup the logger.
 
         # RLOG setup inside the main program
+
         # call main program
         obj = Get_Models_By_Catalog()
         obj.get_models(**args)
 
     except Exception:
-        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            RLOG.critical(traceback.format_exc())
-        else:
-            print(traceback.format_exc())
+        RLOG.critical(traceback.format_exc())

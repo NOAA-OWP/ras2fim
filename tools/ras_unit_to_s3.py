@@ -19,9 +19,9 @@ import shared_variables as sv
 
 
 # Global Variables
-RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.R2F_LOG
 TRACKER_ACTIONS = ["uploaded", "moved_to_arch", "overwriting_prev", "straight_to_arch"]
-LOG_FILE_NAME = ""
+TRACKER_SRC_LOCAL_PATH = ""
 
 """
 
@@ -98,6 +98,18 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name, is_verbose):
     # as generaly logic for S3 needs to do it in parts (bucket, and folder). We usually change the
     # folder values to add in the phrase "output_ras2fim" or "output_ras2fim_archive"
 
+    # We don't want to try upload current active log files (for this script)
+    # and the temp local tracker file
+
+    global TRACKER_SRC_LOCAL_PATH
+    TRACKER_SRC_LOCAL_PATH = os.path.join(src_unit_dir_path, sv.S3_OUTPUT_TRACKER_FILE)
+    upload_skip_files = [
+        TRACKER_SRC_LOCAL_PATH,
+        RLOG.LOG_FILE_PATH,
+        RLOG.LOG_WARNING_FILE_PATH,
+        RLOG.LOG_ERROR_FILE_PATH,
+    ]
+
     RLOG.lprint(f" --- source unit full path is {src_path}")
     RLOG.lprint(f" --- s3 folder target path is {s3_full_unit_path}")
     RLOG.lprint(f" --- S3 archive folder path (if applicable) is {s3_full_archive_path}")
@@ -109,7 +121,7 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name, is_verbose):
     # Depending on what we find will tell us where to uploading the incoming folder
     # and what to do with pre-existing if there are any pre-existing folders
     # matching the huc/crs.
-    __process_upload(s3_bucket_name, src_path, unit_folder_name, is_verbose)
+    __process_upload(s3_bucket_name, src_path, unit_folder_name, upload_skip_files, is_verbose)
 
     # --------------------
     RLOG.lprint("")
@@ -126,7 +138,7 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name, is_verbose):
 
 
 ####################################################################
-def __process_upload(bucket_name, src_path, unit_folder_name, is_verbose):
+def __process_upload(bucket_name, src_path, unit_folder_name, upload_skip_files, is_verbose):
     """
     Processing Steps:
       - Load all first level folder names from that folder. ie) output_ras2fim
@@ -150,6 +162,7 @@ def __process_upload(bucket_name, src_path, unit_folder_name, is_verbose):
     Input
         - bucket_name: e.g xyz
         - src_path:  eg. c:\ras2fim_data\output_ras2fim\12030202_102739_230810
+        - upload_skip_files: files that will not be uploaded to S3 (such as ras_unit_to_s3 log files)
         - unit_folder_name:  12030105_2276_230810
 
     """
@@ -197,6 +210,7 @@ def __process_upload(bucket_name, src_path, unit_folder_name, is_verbose):
         if existing_name_dict["unit_folder_name"] == src_name_dict["unit_folder_name"]:
             # exact same folder name including date
             action = __ask_user_about_dup_folder_name(s3_existing_folder_name, bucket_name)
+            RLOG.debug(f"action is {action}")
 
         # An existing s3_folder has a newer or older date
         else:
@@ -208,16 +222,19 @@ def __process_upload(bucket_name, src_path, unit_folder_name, is_verbose):
             action = __ask_user_about_different_date_folder_name(
                 unit_folder_name, bucket_name, existing_name_dict["unit_folder_name"], is_existing_older
             )
+            RLOG.debug(f"action is {action}")
 
         # --------------------------
         # Process the action  (aka we start the uploads to S3 and changes in S3)
         if action == TRACKER_ACTIONS[2]:  # overwrite the pre-existing same named folder with the incoming
+            RLOG.debug(f"action is {TRACKER_ACTIONS[2]}")
             #  version, we need to delete the original folder so we don't leave junk it int.
             __overwrite_s3_existing_folder(
                 src_path, bucket_name, src_name_dict["unit_folder_name"], is_verbose
             )
 
         elif action == TRACKER_ACTIONS[1]:  # moved_to_arch
+            RLOG.debug(f"action is {TRACKER_ACTIONS[1]}")
             # existing moved to archive, new one to output
 
             # We will change the name to add on "_BK_yymmdd_hhmm".
@@ -239,10 +256,12 @@ def __process_upload(bucket_name, src_path, unit_folder_name, is_verbose):
                 TRACKER_ACTIONS[0],
                 sv.S3_OUTPUT_RAS2FIM_FOLDER,
                 unit_folder_name,
+                upload_skip_files,
                 is_verbose,
             )
 
         elif action == TRACKER_ACTIONS[3]:  # straight_to_arch
+            RLOG.debug(f"action is {TRACKER_ACTIONS[3]}")
             new_s3_folder_name = __adjust_folder_name_for_archive(unit_folder_name)
 
             # new incoming goes straight to archive
@@ -253,11 +272,13 @@ def __process_upload(bucket_name, src_path, unit_folder_name, is_verbose):
                 TRACKER_ACTIONS[3],
                 sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER,
                 new_s3_folder_name,
+                upload_skip_files,
                 is_verbose,
             )
 
         else:
             raise Exception(f"Internal Error: Invalid action type of {action}")
+
     elif len(s3_unit_folder_names) > 1:
         RLOG.lprint("+++++++++++++++++++++++++")
         RLOG.lprint("")
@@ -302,6 +323,7 @@ def __process_upload(bucket_name, src_path, unit_folder_name, is_verbose):
             TRACKER_ACTIONS[0],
             sv.S3_OUTPUT_RAS2FIM_FOLDER,
             unit_folder_name,
+            upload_skip_files,
             is_verbose,
         )
 
@@ -314,6 +336,7 @@ def __process_upload(bucket_name, src_path, unit_folder_name, is_verbose):
             TRACKER_ACTIONS[0],
             sv.S3_OUTPUT_RAS2FIM_FOLDER,
             unit_folder_name,
+            upload_skip_files,
             is_verbose,
         )
 
@@ -424,7 +447,14 @@ def __ask_user_about_different_date_folder_name(
 
 ####################################################################
 def __upload_s3_folder(
-    bucket_name, src_path, orig_folder_name, action, s3_folder_path, new_s3_folder_name, is_verbose
+    bucket_name,
+    src_path,
+    orig_folder_name,
+    action,
+    s3_folder_path,
+    new_s3_folder_name,
+    upload_skip_files,
+    is_verbose,
 ):
     """
     Overview:
@@ -441,9 +471,10 @@ def __upload_s3_folder(
         - new_s3_folder_name: eg. 12030202_102739_230810_BK_230825_1406. It may or may not in the process
              of having a new folder names as it is being loaded, especially if an incoming upload folder
              is going straight to archives (which is an option)
+        - upload_skip_files: ie) the wip local tracker file, ras_unit_to_s3 log file
     """
 
-    s3_sf.upload_folder_to_s3(src_path, bucket_name, s3_folder_path, new_s3_folder_name, LOG_FILE_NAME)
+    s3_sf.upload_folder_to_s3(src_path, bucket_name, s3_folder_path, new_s3_folder_name, upload_skip_files)
 
     __add_record_to_tracker(
         bucket_name, src_path, orig_folder_name, action, new_s3_folder_name, s3_folder_path, is_verbose
@@ -468,6 +499,7 @@ def __move_s3_folder_to_archive(bucket_name, src_path, orig_folder_name, target_
 
     # s3 actually can't move files or folders, so we copy them then delete them.
     # move_s3_folder_in_bucket will take care of both
+    RLOG.debug(f"Moving {s3_src_folder_path} to {s3_target_folder_path}")
     s3_sf.move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_path)
 
     # TRACKER_ACTIONS[1] = moved_to_arch
@@ -483,7 +515,7 @@ def __move_s3_folder_to_archive(bucket_name, src_path, orig_folder_name, target_
 
 
 ####################################################################
-def __overwrite_s3_existing_folder(src_path, bucket_name, unit_folder_name, is_verbose):
+def __overwrite_s3_existing_folder(src_path, bucket_name, unit_folder_name, upload_skip_files, is_verbose):
     """
     Overview:
         When the system sees the exact same S3 huc_crs_date combination in output_ras2fim,
@@ -496,13 +528,14 @@ def __overwrite_s3_existing_folder(src_path, bucket_name, unit_folder_name, is_v
         - src_path: eg. c:\ras2fim_data\output_ras2fim\12030202_102739_230810
         - bucket_name: {your bucket name}
         - unit_folder_name: eg. 12030202_102739_230810
-
+        - upload_skip_files: ie) the wip local tracker file, ras_unit_to_s3 log file
     """
     s3_folder_path = f"{sv.S3_OUTPUT_RAS2FIM_FOLDER}/{unit_folder_name}"
 
     print("***  NOTE: we will delete the original directory, then upload the new unit")
     print()
 
+    RLOG.debug(f"Deleting {s3_folder_path}")
     s3_sf.delete_s3_folder(bucket_name, s3_folder_path)
 
     # Yes.. if it deletes but fails to upload the new one, we have a problem.
@@ -510,8 +543,10 @@ def __overwrite_s3_existing_folder(src_path, bucket_name, unit_folder_name, is_v
     #  it from the original existing path, then load the new one, then delete the temp copy.
     # if upload fails, copy back from temp ??
 
+    RLOG.debug(f"Uploading {src_path} to {sv.S3_OUTPUT_RAS2FIM_FOLDER}")
+
     s3_sf.upload_folder_to_s3(
-        src_path, bucket_name, sv.S3_OUTPUT_RAS2FIM_FOLDER, unit_folder_name, LOG_FILE_NAME
+        src_path, bucket_name, sv.S3_OUTPUT_RAS2FIM_FOLDER, unit_folder_name, upload_skip_files
     )
 
     # TRACKER_ACTIONS[2] = overwriting_prev
@@ -673,6 +708,7 @@ def __add_record_to_tracker(
     Outputs:
         None
     """
+
     # it is in the s3 output_ras2fim
     s3_path_to_tracker_file = f"s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_FOLDER}/{sv.S3_OUTPUT_TRACKER_FILE}"
 
@@ -713,28 +749,27 @@ def __add_record_to_tracker(
 
         # we need to save it temporarily so we will put it in the source unit folder
         # then delete it once it gets to s3.
-        df_tracker_local_path = os.path.join(src_unit_full_path, sv.S3_OUTPUT_TRACKER_FILE)
 
         if is_verbose is True:
-            RLOG.debug(f"Saving tracker file to {df_tracker_local_path}")
+            RLOG.debug(f"Saving tracker file to {TRACKER_SRC_LOCAL_PATH}")
 
         # concat original with new record df
         df_tracker = pd.concat([df_cur_tracker, df_new_rec], ignore_index=True)
 
         # temp save to file system
-        df_tracker.to_csv(df_tracker_local_path, index=False)
+        df_tracker.to_csv(TRACKER_SRC_LOCAL_PATH, index=False)
 
         if is_verbose is True:
             RLOG.debug("Starting tracker file upload to s3")
 
         s3_sf.upload_file_to_s3(
-            bucket_name, df_tracker_local_path, sv.S3_OUTPUT_RAS2FIM_FOLDER, sv.S3_OUTPUT_TRACKER_FILE, False
+            bucket_name, TRACKER_SRC_LOCAL_PATH, sv.S3_OUTPUT_RAS2FIM_FOLDER, sv.S3_OUTPUT_TRACKER_FILE, False
         )
 
         if is_verbose is True:
             RLOG.debug("Done upload, removing temp copy")
 
-        os.remove(df_tracker_local_path)
+        os.remove(TRACKER_SRC_LOCAL_PATH)
 
     except Exception:
         # If anything goes wrong just tell the user to look for it in their src path
@@ -908,17 +943,13 @@ if __name__ == "__main__":
         # Otherwise, the script calling one of the functions in here is assumed
         # to have setup the logger.
 
-        # creates the log file name as the script name
+        # Creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
-
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(log_file_folder, script_file_name + ".log")
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
         unit_to_s3(**args)
 
     except Exception:
-        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            RLOG.critical(traceback.format_exc())
-        else:
-            print(traceback.format_exc())
+        RLOG.critical(traceback.format_exc())

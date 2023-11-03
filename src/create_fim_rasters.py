@@ -264,19 +264,10 @@ def fn_create_fim_rasters(
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
-    # TODO: Oct 23, 2023.
-    #
-    # RESEARCH IS REQUIRED.
-    #
-    # Comparing a test run against a small set of models, it took
-    # appx 32 mins to process via ras2fim, but through command line it took 6 mins.
-    # Output file count appears to be the same but hash compare will be required to see
-    # if the output files are really the same (not.. comparision has to be done on the
-    # same day as date stamps can be embedded in files which can throw off the hash compare)
-    # This appears to be a previously existing problem.
-    # Watch for outputs from step 5c, calculate terrain stats as it goes to the 06 folder as well
-
     # Sample
+
+    # TODO: RESEARCH REQUIRED. Does the "-c" flag even work?
+
     # python create_fim_rasters.py -w 12030105
     #  -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\02_shapes_from_conflation
     #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\05_hecras_output
@@ -389,7 +380,7 @@ if __name__ == "__main__":
     b_terrain_check_only = args["b_terrain_check_only"]
     is_verbose = args["is_verbose"]
 
-    log_file_folder = os.path.join(args["str_output_folder"], "logs")
+    log_file_folder = args["str_output_folder"]
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -399,7 +390,6 @@ if __name__ == "__main__":
 
         # creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
-
         # Assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
@@ -417,7 +407,4 @@ if __name__ == "__main__":
         )
 
     except Exception:
-        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            RLOG.critical(traceback.format_exc())
-        else:
-            print(traceback.format_exc())
+        RLOG.critical(traceback.format_exc())

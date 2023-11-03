@@ -320,8 +320,8 @@ def manage_geo_rating_curves_production(
 
 # -------------------------------------------------
 if __name__ == "__main__":
-    # Sample command
-    # python create_geocurves.py -f  'c:\ras2fim_data\output_ras2fim\12090301_2277_230923'
+    # Sample command (all args)
+    # python create_geocurves.py -f 'c:\ras2fim_data\output_ras2fim\12090301_2277_230923'
     #  -v 'doc\CHANGELOG.md'
     #  -j 6
     #  -t 'c:\ras2fim_data\output_ras2fim\12090301_2277_230923\final'
@@ -331,7 +331,10 @@ if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser(description="Produce Geo Rating Curves for RAS2FIM")
     parser.add_argument(
-        "-f", "--ras2fim_output_dir", help="Path to directory containing RAS2FIM outputs", required=True
+        "-f",
+        "--ras2fim_output_dir",
+        help="REQUIRED: Path to directory containing RAS2FIM outputs",
+        required=True,
     )
     parser.add_argument(
         "-v",
@@ -358,7 +361,7 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    log_file_folder = os.path.join(args["ras2fim_output_dir"], "logs")
+    log_file_folder = args["ras2fim_output_dir"]
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -368,7 +371,6 @@ if __name__ == "__main__":
 
         # creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split(".")[0]
-
         # Assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
@@ -376,7 +378,4 @@ if __name__ == "__main__":
         manage_geo_rating_curves_production(**args)
 
     except Exception:
-        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            RLOG.critical(traceback.format_exc())
-        else:
-            print(traceback.t_exc())
+        RLOG.critical(traceback.format_exc())

@@ -158,7 +158,19 @@ def fn_make_domain_polygons(
 
 # -------------------------------------------------
 if __name__ == "__main__":
-    # TODO: Nov 1, 2023 - Add Sample
+    # Sample:
+    # python create_model_domain_polygons.py
+    #  -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\
+    #       01_shapes_from_hecras\cross_section_LN_from_ras.shp
+    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\final\models_domain\models_domain.gpkg
+    #  -name ras_path -catalog c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_12030105.csv
+    #  -conflate c:\ras2fim_data\....\02_shapes_from_conflation\12030105_stream_qc.csv
+
+    # Note: Command line of this tool does not work. An adjustment is required.
+    # TODO: Nov 3, 2023: The creation of the output_polygon_dir and polygons_output_file_path
+    # has to be done inside ras2fim. This needs to be moved to inside the fn_make_domain_polygons
+    # method so it can be run from command line. But even after just manually adding that folder
+    # it still fails when run from command line.
 
     parser = argparse.ArgumentParser(description="==== Make polygons for HEC-RAS models domains ===")
 
@@ -222,7 +234,7 @@ if __name__ == "__main__":
     conflation_qc_path = args["conflation_qc_path"]
 
     polygons_output_file_path = args["polygons_output_file_path"]
-    log_file_folder = os.path.join(polygons_output_file_path, "logs")
+    log_file_folder = polygons_output_file_path
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -232,7 +244,6 @@ if __name__ == "__main__":
 
         # creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
-
         # Assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
@@ -246,7 +257,4 @@ if __name__ == "__main__":
         )
 
     except Exception:
-        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            RLOG.critical(traceback.format_exc())
-        else:
-            print(traceback.format_exc())
+        RLOG.critical(traceback.format_exc())

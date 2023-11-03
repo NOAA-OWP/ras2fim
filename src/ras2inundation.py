@@ -109,10 +109,13 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
 if __name__ == "__main__":
     # Sample Usage
 
+    # can be found in S3 and OWP... data/inundation_review/inundation_nwm_recurr/
+
     #  python ras2inundation.py
     #    -g C:\ras2fim_data\output_ras2fim\12090301_2277_230825\final\geocurves
     #    -f C:\ras2fim_data\inputs\X-National_Datasets\nwm21_17C_recurr_100_0_cms.csv
     #    -t C:\ras2fim_data\output_ras2fim\12090301_2277_230825\final\inundation.gpkg
+    #    -o
 
     # Parse arguments
     parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.")
@@ -132,7 +135,7 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    log_file_folder = os.path.join(args["geocurves_dir"], "logs")
+    log_file_folder = args["geocurves_dir"]
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -142,7 +145,6 @@ if __name__ == "__main__":
 
         # creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
-
         # Assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
@@ -155,7 +157,4 @@ if __name__ == "__main__":
         RLOG.lprint(f"Completed in {round((timer() - start)/60, 2)} minutes.")
 
     except Exception:
-        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            RLOG.critical(traceback.format_exc())
-        else:
-            print(traceback.format_exc())
+        RLOG.critical(traceback.format_exc())

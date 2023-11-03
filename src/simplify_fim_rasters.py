@@ -407,10 +407,9 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
-    # Sample:
+    # Sample (min args)
     # python simplify_fim_rasters.py
     #  -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\05_hecras_output
-    #  -r 10 -p EPSG:5070
 
     parser = argparse.ArgumentParser(
         description="===== CREATE SIMPLIFIED FLOOD DEPTH RASTER FILES (TIF) ====="
@@ -463,7 +462,7 @@ if __name__ == "__main__":
     str_output_crs = args["str_output_crs"]
     model_unit = args["model_unit"]
 
-    log_file_folder = os.path.join(args["r2f_huc_parent_dir"], "logs")
+    log_file_folder = args["r2f_huc_parent_dir"]
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -473,7 +472,6 @@ if __name__ == "__main__":
 
         # creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
-
         # Assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
@@ -485,7 +483,4 @@ if __name__ == "__main__":
         fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_crs, model_unit)
 
     except Exception:
-        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            RLOG.critical(traceback.format_exc())
-        else:
-            print(traceback.format_exc())
+        RLOG.critical(traceback.format_exc())

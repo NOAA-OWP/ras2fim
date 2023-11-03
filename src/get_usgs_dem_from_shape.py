@@ -438,7 +438,11 @@ def fn_get_usgs_dem_from_shape(
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
-    # TODO: Nov 1, 2023 : Add sample
+    # Sample (with min args)
+    # python get_usgs_dem_from_shape.py
+    #  -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\
+    #           02_shapes_from_conflation\12030105_huc_12_ar.shp
+    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\03_terrain
 
     flt_start_run = time.time()
 
@@ -513,7 +517,7 @@ if __name__ == "__main__":
     int_tile = args["int_tile"]
     str_field_name = args["str_field_name"]
 
-    log_file_folder = os.path.join(args["str_output_dir"], "logs")
+    log_file_folder = args["str_output_dir"]
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -523,7 +527,6 @@ if __name__ == "__main__":
 
         # creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
-
         # Assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
@@ -540,7 +543,4 @@ if __name__ == "__main__":
         )
 
     except Exception:
-        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-            RLOG.critical(traceback.format_exc())
-        else:
-            print(traceback.format_exc())
+        RLOG.critical(traceback.format_exc())
