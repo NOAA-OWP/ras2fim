@@ -188,7 +188,7 @@ class RAS2FIM_logger:
                         main_log.write(infile.read())
 
             # now the warning files if there are any
-            log_warning_file_list = list(Path(folder_path).rglob(f"{file_prefix}_warnings*"))
+            log_warning_file_list = list(Path(folder_path).rglob(f"{file_prefix}*_warnings*"))
             if len(log_warning_file_list) > 0:
                 log_warning_file_list.sort()
                 with open(self.LOG_WARNING_FILE_PATH, 'a') as warning_log:
@@ -199,9 +199,10 @@ class RAS2FIM_logger:
                             warning_log.write(infile.read())
 
             # now the warning files if there are any
-            log_error_file_list = list(Path(folder_path).rglob(f"{file_prefix}_errors*"))
+            log_error_file_list = list(Path(folder_path).rglob(f"{file_prefix}*_errors*"))
             if len(log_error_file_list) > 0:
                 log_error_file_list.sort()
+                # doesn't yet exist, then create a blank one
                 with open(self.LOG_ERROR_FILE_PATH, 'a') as error_log:
                     # Iterate through list
                     for temp_log_file in log_error_file_list:
