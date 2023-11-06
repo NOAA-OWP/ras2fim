@@ -25,13 +25,13 @@ def fn_cut_streams_in_two(line, distance):
     if distance <= 0.0 or distance >= line.length:
         return [LineString(line)]
     coords = list(line.coords)
-    for i, p in enumerate(coords):
-        pd = line.project(Point(p))
-        if pd == distance:
-            return [LineString(coords[: i + 1]), LineString(coords[i:])]
-        if pd > distance:
-            cp = line.interpolate(distance)
-            return [LineString(coords[:i] + [(cp.x, cp.y)]), LineString([(cp.x, cp.y)] + coords[i:])]
+    for i2, pi2 in enumerate(coords):
+        pdl = line.project(Point(pi2))
+        if pdl == distance:
+            return [LineString(coords[: i2 + 1]), LineString(coords[i2:])]
+        if pdl > distance:
+            cpl = line.interpolate(distance)
+            return [LineString(coords[:i2] + [(cpl.x, cpl.y)]), LineString([(cpl.x, cpl.y)] + coords[i2:])]
 
 
 # -------------------------------------------------
