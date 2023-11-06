@@ -354,8 +354,6 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     gdf_ble_streams_conflated_bleprj.to_csv(str_shp_out_arg + "//" + "gdf_ble_streams_conflated_bleprj.csv")
     gdf_ble_streams_conflated_bleprj.to_file(str_shp_out_arg + "//" + "gdf_ble_streams_conflated_bleprj.shp")
 
-    # TODO: run pre-commit
-    # TODO: push conflation into github
     # TODO: Add a column to model_catelog to state the reason of excluding a ras model
 
     print()
