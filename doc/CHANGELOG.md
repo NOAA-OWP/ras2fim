@@ -7,60 +7,16 @@ A custom logging system was added. Testing against native python logging as well
 
 The solution here is to let each multi-process (MP) have it's own logging file, which avoids file collisions, then at the end of the MP, let the logger merge them back into the parent log files.  Sorry, it isn't the prettiest of solutions but solves the problem.
 
-Almost all files were changed to add in the system.  When ras2fim.py is running, it will setup logging for all child scripts, however, each independent script has the ability to setup its own logging system as required.  
+Almost all files were changed to add in the system.  When ras2fim.py is running, it will setup logging for all child scripts, however, each independent script has the ability to setup its own logging system as required.  There we no updates to logic of any core files and most files were changed to form the base of the new system. It is expected usage of the new logger functions will grow quicky.
 
-When ras2fim.py or get_models_by_catalog.py is run, it will put all log files in the unit directory, log folder e.g.  C:\ras2fim_data\output_ras2fim\12030106_2276_231025\logs. If other scripts such as get_usgs_dem_from_share.py is called, it will default it's log files in different folders, generally in folders such as one of the step folders e.g. C:\ras2fim_data\output_ras2fim\12030105_2276_231024\01_shapes_from_hecras\logs.  For sample code that is required to for a script that will do some of it's own logging via command line, see most files in the "main" arg_parser sections.
+A conda update is required again (conda remove --name ras2fim --all -y, then conda env create. See previous builds for full examples.
 
-#### How the system works.
-There are logging levels each with slightly different rules about colors, formatting and log files being used.
-- `trace`: It will put message on the screen only and not in a log file. Good for logging detailed info.
-- `lprint`: Goes to console and default log file.
-- `debug`: Goes to console and default log file.
-- `success`: Goes to console and default log file.
-- `warning`:  same as `lprint` PLUS adds duplicate message to a separate file called **{name}_warnings.log**. This will tell the users of a possible problem but will continue processing.
-- `error`:  same as `lprint` PLUS adds duplicate message to a separate file called **{name}_errors.log**.  However, this can be used as you see fit but generally is for an exception where the program is NOT stopped. However, sometimes, in multi-proc, you may want to continue anyways.
-- `critical`: same as `error` , also the  **{name}_errors.log**. Use as you can use it as you see fit, but generally you want the most obvious visibility and is for complete stop of the program.
-
-To use one of the log with levels, use this syntax (adjusting for level). eg.
-![image](https://github.com/NOAA-OWP/ras2fim/assets/90854818/88180799-9d84-41ed-a364-374262cd73d9)
-or 
-![image](https://github.com/NOAA-OWP/ras2fim/assets/90854818/5ac8d58b-cf6e-42e6-a579-6f1d3ff24c14)
-
-**Note:** Make sure that when you issue some of these log commands, make sure you give good detail about which feature, huc, etc is involved. Generally, I do not use the syntax of simply:
-   `except Exception as ex:  ... print(ex).` 
-**Why?** it does not give you the stack trace which is critical in most cases. Now that logging is involved, it will no longer automatically give you the stack trace so you have to add it yourself. In lieu, use the command of `traceback.format_exc()`  to give you full tracing.  eg.
-
-![image](https://github.com/NOAA-OWP/ras2fim/assets/90854818/a00eb069-8422-40f9-a54a-77340b32808a)
-
-Colors and format can be different in various log classes. eg.
-![image](https://github.com/NOAA-OWP/ras2fim/assets/90854818/507eeb70-f9d3-4fb2-903d-d65ab2567554)
-
-One of the most common logging tools you will use is the `lprint` command.  You can continue to use print as you always have and know it will go the screen only but not the log files..  Almost all of the time, you will want to use `lprint` instead which goes to screen and the logs. eg.
-![image](https://github.com/NOAA-OWP/ras2fim/assets/90854818/5edd9581-2c20-4e39-bb72-efb12c858909)
-
-Another feature is the ability to create and use your own set of logs independent of the new system logging. For details see the functions named `setup_custom_log` and `write_c_log` in `ras2fim_logger.py.`
-
-#### Multi Processing (MP_LOG) system.
-OTHER NOTES FOR THE PR : To use the logging system inside functions that are being called inside of a MP, such as workers_fim_rasters.py, it requires some setup to use a system called the `MP_LOG system`. This include an additional global variable (MP_LOG) and  addition of some code for setting up the `MP_LOG`,  and some minor changes to the parent code that runs the pool.
-
-You will need a way to pass in the multi-proc primary function, the `mlog_file_path` and `mlog_file_prefix`. `See worker_fim_rasters.py > fn_main_hecras as an example`. There are multiple ways to pass those values in and in that example, I used a python "partial" command. There are some examples of how the parent pool setups key variables that need to be passed into the MP function. See the "processing in HEC-RAS" portion of the code in create_fim_rasters.py.
-
-There are a number of places in the code that use Pools and **not all of them have been upgraded to MP_LOG**. If you want logs to be added inside a pool that currently does not have it, you will need to add this MP_LOG system.
-
-Use of RLOG inside of functions that are inside of a MP loop will fail (or at least not record).
-
-#### AND.... yes, you will need to delete and re-create, or update your conda enviro. ####
-
-#### TQDM / Progress Bars:  When MP_LOG is part of Pool, it can mess up the progress bars a little. Inside of being a moving single bar, it can add new lines per increments.
-![image](https://github.com/NOAA-OWP/ras2fim/assets/90854818/11edb701-ddac-4f73-aa29-8855462cd916)
-
+There is a wide amount of details on implemenation, usage, background, etc which can be read in the [PR 183](https://github.com/NOAA-OWP/ras2fim/pull/183). We encourage you to read the PR notes to become familiar with the system.
 
 ### Additions  
-I will not list all files affected as most are. However, I will list files that have any additional fixes or changes other than adding of logging.
+We will not list all files affected as most are. However, I will list files that have any additional fixes or changes other than adding of logging.
 
-Many files had extra `DEBUG` logging with tracing and/or more context data for `WARNING`, `ERROR` and `CRITICAL`.
-
-Over time, more logging will be added to files for even more visibility to objects and variables.
+Many files had extra `LPRINT` logging with tracing and/or more context data for `DEBUG`, `WARNING`, `ERROR` and `CRITICAL`.
 
 ### Additions
 - `ras2fim_logger.py`: The parent script that runs the entire logging system.
