@@ -355,6 +355,8 @@ def fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str
     gdf_ble_streams_conflated_bleprj.to_file(str_shp_out_arg + "//" + "gdf_ble_streams_conflated_bleprj.shp")
 
     # TODO: Add a column to model_catelog to state the reason of excluding a ras model
+    # TODO: Make sure that we create an output folder for this step "02_csv_from_conflation"
+    # TODO: discus about outputs of this step
 
     print()
     print("COMPLETE")
