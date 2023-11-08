@@ -1,6 +1,16 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+
+## v1.30.1 - 2023-11-2 - [PR#166](https://github.com/NOAA-OWP/ras2fim/pull/198)
+
+This PR fixes a small bug for making polygons for model domains that results in reporting all models to be not-conflated to NWM reaches. This PR closes #195.
+
+Changes include:
+Updated src/create_model_domain_polygons.py by removing an extra "is True" from a single line. Also, the file tools/ras_unit_to_s3.py changed slightly after performing linting.
+
+<br/><br/>
+
 ## v1.30.0 - 2023-11-08 - [PR#183](https://github.com/NOAA-OWP/ras2fim/pull/183)
 
 A custom logging system was added. Testing against native python logging as well as some independent packages showed none them were reliable for multi-processed logs.
@@ -52,7 +62,6 @@ Many files had extra `LPRINT` logging with tracing and/or more context data for 
 - `Note`: None of the files in the tools directory starting with the name of `nws_` were updated as they may be no longer in use.
 
 <br/><br/>
-
 
 ## v1.29.0 - 2023-09-29 - [PR#166](https://github.com/NOAA-OWP/ras2fim/pull/166)
 
