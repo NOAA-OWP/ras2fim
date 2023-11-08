@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.0 - 2023-10-25 - [PR#183](https://github.com/NOAA-OWP/ras2fim/pull/183)
+## v1.30.0 - 2023-11-08 - [PR#183](https://github.com/NOAA-OWP/ras2fim/pull/183)
 
 A custom logging system was added. Testing against native python logging as well as some independent packages showed none them were reliable for multi-processed logs.
 
@@ -37,7 +37,7 @@ Many files had extra `LPRINT` logging with tracing and/or more context data for 
    - `create_fim_rasters.py`: Upgraded time stamp and duration system. Added better error handling for multi-processing pools. Added the start of a verbosity system which can be used to show certain messages only if "is_verbose". More is needed later in this script.
    - `create_geocurves.py`: Added some screen output for incoming params to match other script patterns. Also added new logging for when some logging when depth grid files are skipped.
    - `create_shapes_from_hecras.py`: Upgraded the multi-proc pool for better error handling. A few variable name changes.
-   - `ras2fim.py`: removed all references to `run_ras2fim` and `ras2catchments`. 
+   - `ras2fim.py`: removed all references to `run_ras2rem` and `ras2catchments`. 
    - `ras2inundation.py`: Upgraded some error handling.    
    - `reformat_ras_rating_curve.py`: Upgrade datetime.now to datetime.utcnow. Updated some of the "sample usage" notes.
    - `run_ras2rem.py`: Added some of the logging but stopped. Moved it to the "tools" directory and marked as deprecated.
