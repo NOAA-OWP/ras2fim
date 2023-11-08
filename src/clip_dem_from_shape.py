@@ -18,6 +18,7 @@ import argparse
 import datetime
 import os
 import time
+import traceback
 
 import geopandas as gpd
 import pandas as pd
@@ -26,13 +27,17 @@ import rasterio
 import rioxarray
 import tqdm
 
+import ras2fim_logger
 import shared_functions as sf
 
 
 # ************************************************************
 
+# Global Variables
 # null value in the exported DEMs
 INT_NO_DATA_VAL = -9999
+# RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.R2F_LOG
 
 
 # -------------------------------------------------
@@ -51,18 +56,18 @@ def fn_cut_dems_from_shapes(
 ):
     flt_start_run = time.time()
 
-    print(" ")
-    print("+=================================================================+")
-    print("|         CUT DEMs FROM LARGER DEM PER POLYGON SHAPEFILE          |")
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|         CUT DEMs FROM LARGER DEM PER POLYGON SHAPEFILE          |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
-    print("  ---(i) SHAPEFILE INPUT PATH: " + str_input_shp_path)
-    print("  ---(t) TERRAIN INPUT PATH: " + str_input_terrain_path)
-    print("  ---(o) DEM OUTPUT PATH: " + str_output_dir)
-    print("  ---[b]   Optional: BUFFER: " + str(int_buffer))
-    print("  ---[f]   Optional: FIELD NAME: " + str(str_field_name))
-    print("  --- The Ras Models unit (extracted from given shapefile): " + model_unit)
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("  ---(i) SHAPEFILE INPUT PATH: " + str_input_shp_path)
+    RLOG.lprint("  ---(t) TERRAIN INPUT PATH: " + str_input_terrain_path)
+    RLOG.lprint("  ---(o) DEM OUTPUT PATH: " + str_output_dir)
+    RLOG.lprint("  ---[b]   Optional: BUFFER: " + str(int_buffer))
+    RLOG.lprint("  ---[f]   Optional: FIELD NAME: " + str(str_field_name))
+    RLOG.lprint("  --- The Ras Models unit (extracted from given shapefile): " + model_unit)
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
     if not os.path.exists(str_output_dir):
         os.mkdir(str_output_dir)
@@ -111,7 +116,7 @@ def fn_cut_dems_from_shapes(
         gdf_boundary_raster_prj.iterrows(),
         total=gdf_boundary_raster_prj.shape[0],
         desc="Clipping Grids",
-        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
         ncols=65,
     ):
         # convert the geoPandas geometry to json
@@ -141,17 +146,23 @@ def fn_cut_dems_from_shapes(
             # compress and write out data
             xds_clipped_reproject.rio.to_raster(str_dem_out, compress="lzw", dtype="float32")
 
-    print("COMPLETE")
+    RLOG.success("COMPLETE")
     flt_end_run = time.time()
     flt_time_pass = (flt_end_run - flt_start_run) // 1
     time_pass = datetime.timedelta(seconds=flt_time_pass)
 
-    print("Compute Time: " + str(time_pass))
-    print("====================================================================")
+    RLOG.lprint("Compute Time: " + str(time_pass))
+    RLOG.lprint("====================================================================")
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
+    # Sample:
+    # python clip_dem_from_shape.py -i
+    #  c:\ras2fim_data\output_ras2fim\12030105_2276_231024\02_shapes_from_conflation\12030105_huc_12_ar.shp
+    #  -t C:\ras2fim_data\inputs\3dep_dems\HUC8_10m_5070\HUC8_12030105_dem.tif
+    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\03_terrain -b 300 -f HUC_12
+
     parser = argparse.ArgumentParser(
         description="============== CUT DEMs FROM LARGER DEMS PER POLYGON SHAPEFILE  =============="
     )
@@ -218,8 +229,23 @@ if __name__ == "__main__":
     proj_crs = pyproj.CRS(prj_text)
     model_unit = sf.model_unit_from_crs(proj_crs)
 
-    fn_cut_dems_from_shapes(
-        str_input_shp_path, str_input_terrain_path, str_output_dir, int_buffer, model_unit, str_field_name
-    )
+    log_file_folder = args["str_output_dir"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
 
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
+
+        # call main program
+        fn_cut_dems_from_shapes(
+            str_input_shp_path, str_input_terrain_path, str_output_dir, int_buffer, model_unit, str_field_name
+        )
+
+    except Exception:
+        RLOG.critical(traceback.format_exc())

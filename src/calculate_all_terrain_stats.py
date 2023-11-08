@@ -16,6 +16,7 @@ import multiprocessing as mp
 import os
 import pathlib
 import time
+import traceback
 import xml.etree.ElementTree as et
 from time import sleep
 
@@ -26,6 +27,13 @@ import pandas as pd
 import rasterio
 import tqdm
 from shapely.geometry import LineString
+
+import ras2fim_logger
+
+
+# Global Variables
+# RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.R2F_LOG
 
 
 # -------------------------
@@ -302,13 +310,13 @@ def fn_get_stats_dataseries(list_files_for_stats):
 def fn_calculate_all_terrain_stats(str_input_dir):
     flt_start_run = time.time()
 
-    print(" ")
-    print("+=================================================================+")
-    print("|    CALCULATE TERRAIN STATISTICS FOR MULTIPLE HEC-RAS MODELS     |")
-    print("+-----------------------------------------------------------------+")
+    print("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|    CALCULATE TERRAIN STATISTICS FOR MULTIPLE HEC-RAS MODELS     |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
-    print("  ---(i) RAS MAPPER DIRECTORY: " + str_input_dir)
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("  ---(i) RAS MAPPER DIRECTORY: " + str_input_dir)
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
     list_of_list_processed = fn_get_list_of_lists_to_compute(str_input_dir)
 
@@ -320,7 +328,7 @@ def fn_calculate_all_terrain_stats(str_input_dir):
             p.imap(fn_get_stats_dataseries, list_of_list_processed),
             total=len_processed,
             desc="Computing Stats",
-            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
             ncols=65,
         )
     )
@@ -355,17 +363,21 @@ def fn_calculate_all_terrain_stats(str_input_dir):
     flt_time_pass = (flt_end_run - flt_start_run) // 1
     time_pass = datetime.timedelta(seconds=flt_time_pass)
 
-    print(" ")
-    print("mean of mean terrain difference: " + str(df_combined_stats["mean"].mean()))
-    print(" ")
-    print("Compute Time: " + str(time_pass))
+    print("")
+    RLOG.lprint("mean of mean terrain difference: " + str(df_combined_stats["mean"].mean()))
+    print("")
+    RLOG.lprint("Compute Time: " + str(time_pass))
 
-    print("COMPLETE")
-    print("+-----------------------------------------------------------------+")
+    RLOG.success("COMPLETE")
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
 
 # -------------------------------------------------
 if __name__ == "__main__":
+    # Sample
+    # python calculate_all_terrain_stats.py
+    #   -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\05_hecras_output
+
     parser = argparse.ArgumentParser(
         description="===== CALCULATE TERRAIN STATISTICS FOR MULTIPLE HEC-RAS MODELS ====="
     )
@@ -373,7 +385,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-i",
         dest="str_input_dir",
-        help=r"REQUIRED: directory containing HEC-RAS Mapper Files:  Example: C:\HUC_10170204",
+        help="REQUIRED: directory containing HEC-RAS Mapper Files:"
+        r" Example: C:\HUC_10170204\05_hecras_output",
         required=True,
         metavar="DIR",
         type=str,
@@ -382,5 +395,21 @@ if __name__ == "__main__":
     args = vars(parser.parse_args())
 
     str_input_dir = args["str_input_dir"]
+    log_file_folder = args["str_input_dir"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
 
-    fn_calculate_all_terrain_stats(str_input_dir)
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
+
+        # call main program
+        fn_calculate_all_terrain_stats(str_input_dir)
+
+    except Exception:
+        RLOG.critical(traceback.format_exc())
