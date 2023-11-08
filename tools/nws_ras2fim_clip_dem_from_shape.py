@@ -106,7 +106,7 @@ def fn_cut_dems_from_shapes(
         gdf_boundary_raster_prj.iterrows(),
         total=gdf_boundary_raster_prj.shape[0],
         desc="Clipping Grids",
-        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
         ncols=65,
     ):
         # convert the geoPandas geometry to json

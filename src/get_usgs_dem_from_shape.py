@@ -33,6 +33,7 @@ import argparse
 import datetime
 import os
 import time
+import traceback
 import urllib.request
 import warnings
 from multiprocessing.pool import ThreadPool
@@ -45,7 +46,13 @@ import rioxarray as rxr
 from rasterio.merge import merge
 from shapely.geometry import Polygon
 
+import ras2fim_logger
 import shared_functions as sf
+
+
+# Global Variables
+# RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.R2F_LOG
 
 
 # -------------------------------------------------
@@ -72,13 +79,12 @@ def fn_download_tiles(list_tile_url):
     if not os.path.exists(list_tile_url[1]):
         try:
             urllib.request.urlretrieve(list_tile_url[0], list_tile_url[1])
-        except urllib.error.HTTPError as exception:
-            print(" -- ALERT --")
-            print(exception)
-            print(" -- ALERT: failed to write out the following DEM tile")
-            print(list_tile_url[0])
-            print("writing to:" + list_tile_url[1])
-            raise SystemExit(0)
+        except urllib.error.HTTPError:
+            RLOG.critical(" -- ALERT: failed to write out the following DEM tile")
+            RLOG.critical(list_tile_url[0])
+            RLOG.critical("writing to:" + list_tile_url[1])
+            RLOG.critical(traceback.format_exc())
+            raise SystemExit(1)
 
 
 # -------------------------------------------------
@@ -124,33 +130,33 @@ def fn_get_usgs_dem_from_shape(
     # output path
     STR_OUTPUT_PATH = str_output_dir
 
-    print(" ")
-    print("+=================================================================+")
-    print("|                   USGS TERRAIN FROM SHAPEFILE                   |")
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|                   USGS TERRAIN FROM SHAPEFILE                   |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
-    print("  ---(i) INPUT PATH: " + STR_AOI_SHP_PATH)
-    print("  ---(o) OUTPUT PATH: " + STR_OUTPUT_PATH)
+    RLOG.lprint("  ---(i) INPUT PATH: " + STR_AOI_SHP_PATH)
+    RLOG.lprint("  ---(o) OUTPUT PATH: " + STR_OUTPUT_PATH)
 
     # requested return resolution in lambert units (meters)
     INT_RESOLUTION = int_res
-    print("  ---[r]   Optional: RESOLUTION: " + str(INT_RESOLUTION) + " meters")
+    RLOG.lprint("  ---[r]   Optional: RESOLUTION: " + str(INT_RESOLUTION) + " meters")
 
     # buffer of the input polygon in lambert units (meters)
     FLT_BUFFER = int_buffer
-    print("  ---[b]   Optional: BUFFER: " + str(FLT_BUFFER) + " meters")
+    RLOG.lprint("  ---[b]   Optional: BUFFER: " + str(FLT_BUFFER) + " meters")
 
     # requested tile size in lambert units (meters)
     INT_TILE_X = INT_TILE_Y = int_tile
-    print("  ---[t]   Optional: TILE SIZE: " + str(INT_TILE_X) + " meters")
+    RLOG.lprint("  ---[t]   Optional: TILE SIZE: " + str(INT_TILE_X) + " meters")
 
     # requested tile size in lambert units (meters)
     STR_FIELD_TO_LABEL = str_field_name
-    print("  ---[f]   Optional: FIELD NAME: " + str(STR_FIELD_TO_LABEL))
+    RLOG.lprint("  ---[f]   Optional: FIELD NAME: " + str(STR_FIELD_TO_LABEL))
 
-    print("  --- The Ras Models unit (extracted from given shapefile): " + model_unit)
+    RLOG.lprint("  --- The Ras Models unit (extracted from given shapefile): " + model_unit)
 
-    print("===================================================================")
+    RLOG.lprint("===================================================================")
 
     # overlap of the requested tiles in lambert units (meters)
     INT_OVERLAP = 50
@@ -196,7 +202,7 @@ def fn_get_usgs_dem_from_shape(
             if df_just_req_field_series.is_unique:
                 b_have_valid_label_field = True
             else:
-                print("No unique values found.  Naming will be random")
+                RLOG.lprint("No unique values found.  Naming will be random")
 
     for index_gdf_int, row_gdf_int in gdf_aoi_lambert.iterrows():
         # the geometry from the requested polygon as wellKnownText
@@ -338,7 +344,7 @@ def fn_get_usgs_dem_from_shape(
 
         # Initial call to print 0% progress
         len_url = len(list_str_url)
-        print()
+        RLOG.lprint("")
 
         str_prefix = "Polygon " + str(index_gdf_int + 1) + " of " + str(len(gdf_aoi_lambert))
         fn_print_progress_bar(0, len_url, prefix=str_prefix, suffix="Complete", length=36)
@@ -419,19 +425,25 @@ def fn_get_usgs_dem_from_shape(
         if os.path.exists(str_out_tiff_path):
             os.remove(str_out_tiff_path)
 
-    print("")
-    print("ALL AREAS COMPLETE")
+    RLOG.lprint("")
+    RLOG.success("ALL AREAS COMPLETE")
 
     flt_end_get_usgs_dem = time.time()
     flt_time_get_usgs_dem = (flt_end_get_usgs_dem - flt_start_get_usgs_dem) // 1
     time_get_usgs_dem = datetime.timedelta(seconds=flt_time_get_usgs_dem)
-    print("Compute Time: " + str(time_get_usgs_dem))
+    RLOG.lprint("Compute Time: " + str(time_get_usgs_dem))
 
-    print("====================================================================")
+    RLOG.lprint("====================================================================")
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
+    # Sample (with min args)
+    # python get_usgs_dem_from_shape.py
+    #  -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\
+    #           02_shapes_from_conflation\12030105_huc_12_ar.shp
+    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\03_terrain
+
     flt_start_run = time.time()
 
     parser = argparse.ArgumentParser(
@@ -505,20 +517,30 @@ if __name__ == "__main__":
     int_tile = args["int_tile"]
     str_field_name = args["str_field_name"]
 
-    # find model unit using the given shapefile
-    gis_prj_path = str_input_path[0:-3] + "prj"
-    with open(gis_prj_path, "r") as prj_file:
-        prj_text = prj_file.read()
-    proj_crs = pyproj.CRS(prj_text)
-    model_unit = sf.model_unit_from_crs(proj_crs)
+    log_file_folder = args["str_output_dir"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
 
-    fn_get_usgs_dem_from_shape(
-        str_input_path, str_output_dir, int_res, int_buffer, int_tile, model_unit, str_field_name
-    )
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
-    flt_end_run = time.time()
-    flt_time_pass = (flt_end_run - flt_start_run) // 1
-    time_pass = datetime.timedelta(seconds=flt_time_pass)
+        # find model unit using the given shapefile
+        gis_prj_path = str_input_path[0:-3] + "prj"
+        with open(gis_prj_path, "r") as prj_file:
+            prj_text = prj_file.read()
+        proj_crs = pyproj.CRS(prj_text)
+        model_unit = sf.model_unit_from_crs(proj_crs)
 
-    print("Compute Time: " + str(time_pass))
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # call main program
+        fn_get_usgs_dem_from_shape(
+            str_input_path, str_output_dir, int_res, int_buffer, int_tile, model_unit, str_field_name
+        )
+
+    except Exception:
+        RLOG.critical(traceback.format_exc())

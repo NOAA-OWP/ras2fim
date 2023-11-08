@@ -5,6 +5,9 @@ import os
 import pathlib
 
 
+# NOTE: Does not have a logging system and likely doesn't need one at this point.
+
+
 # -------------------------------------------------
 def compare_sources(src1, src2, images_only, is_verbose):
     """

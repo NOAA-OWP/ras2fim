@@ -14,8 +14,12 @@ from botocore.client import ClientError
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+import ras2fim_logger
 import shared_functions as sf
-import shared_variables as sv
+
+
+# Global Variables
+RLOG = ras2fim_logger.R2F_LOG
 
 
 ####################################################################
@@ -58,37 +62,42 @@ def upload_file_to_s3(bucket_name, src_path, s3_folder_path, file_name="", show_
             client.upload_file(src_path, bucket_name, s3_key_path)
 
             if show_upload_msg is True:
-                print(f".... File uploaded {src_path} as {s3_full_target_path}/{s3_file_name}")
+                RLOG.lprint(f".... File uploaded {src_path} as {s3_full_target_path}/{s3_file_name}")
 
     except botocore.exceptions.NoCredentialsError:
-        print("-----------------")
-        print(
+        RLOG.critical("-----------------")
+        RLOG.critical(
             "** Credentials not available for the submitted bucket. Try aws configure or review AWS "
             "permissions options."
         )
         sys.exit(1)
 
     except Exception as ex:
-        print("-----------------")
-        print("** Error uploading file to S3:")
+        RLOG.critical("-----------------")
+        RLOG.critical("** Error uploading file to S3:")
+        RLOG.critical(traceback.format_exc())
         raise ex
 
 
 ###################################################################
-def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name):
+def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name, upload_skip_files=[]):
     """
     Input
         - src_path: e.g c:\ras2fim_data\output_ras2fim\12030202_102739_230810
         - bucket_name: e.g mys3bucket_name
         - s3_folder_path: e.g.  output_ras2fim or output_ras2fim_archive
         - unit_folder_name:  12030105_2276_230810 (slash stripped off the end)
+        - upload_skip_files: files we don't want uploaded. (fully pathed)
+
+    Notes:
+        - if the file names starts with three underscores, it will not be uploaded to S3.
     """
 
     s3_full_target_path = f"s3://{bucket_name}/{s3_folder_path}/{unit_folder_name}"
 
-    print("===================================================================")
+    RLOG.lprint("===================================================================")
     print("")
-    print(f"Uploading folder from {src_path}  to  {s3_full_target_path}")
+    RLOG.lprint(f"Uploading folder from {src_path}  to  {s3_full_target_path}")
     print()
 
     # nested function
@@ -101,38 +110,41 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name)
         client = boto3.client("s3")
 
         s3_files = []  # a list of dictionaries (src file path, targ file path)
-        for subdir, dirs, files in os.walk(src_path):
+
+        for subdir, dirs, files in os.walk(src_path, followlinks=False):
             for file in files:
-                # don't let it upload a local copy of the tracker file
-                # if it happens to exist in the source folder.
-                if sv.S3_OUTPUT_TRACKER_FILE in file:
+                if file in upload_skip_files:
+                    RLOG.trace(f"skipped: {file}")
                     continue
 
-                # print(f".. src file = {file}")
                 src_file_path = os.path.join(src_path, subdir, file)
-                src_ref_path = subdir.replace(src_path, "")
+
+                RLOG.trace(f".. src_file_path = {src_file_path}")
+
+                src_folder = os.path.dirname(src_file_path)
+                src_file_name = os.path.basename(src_file_path)
+                trg_folder_path = src_folder.replace(src_path, "")
 
                 # switch the slash
-                src_ref_path = src_ref_path.replace("\\", "/")
-                s3_key_path = f"{s3_folder_path}/{unit_folder_name}/{src_ref_path}/{file}"
+                trg_folder_path = trg_folder_path.replace("\\", "/")
+                s3_key_path = f"{s3_folder_path}/{unit_folder_name}/{trg_folder_path}/{src_file_name}"
                 # safety feature in case we have more than one foreward slash as that can
                 # be a mess in S3 (it will honor all slashs)
                 s3_key_path = s3_key_path.replace("//", "/")
-
                 item = {
                     's3_client': client,
                     'bucket_name': bucket_name,
-                    'src_file_path': src_file_path,
+                    'src_file_path': file,
                     'target_file_path': s3_key_path,
                 }
                 # adds a dict to the list
                 s3_files.append(item)
 
         if len(s3_files) == 0:
-            print(f"No files in source folder of {src_path}. Upload invalid.")
+            RLOG.lprint(f"No files in source folder of {src_path}. Upload invalid.")
             return
 
-        print(f"Number of files to be uploaded is {len(s3_files)}")
+        RLOG.lprint(f"Number of files to be uploaded is {len(s3_files)}")
 
         # As we are threading, we can add more than one thread per proc, but for calc purposes
         # and to not overload the systems or internet pipe, so it is hardcoded at 20 for now
@@ -146,27 +158,27 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name)
                     future = executor.submit(__upload_file, **upload_file_args)
                     executor_dict[future] = upload_file_args['src_file_path']
 
-                except Exception as tp_ex:
-                    print(f"*** {tp_ex}")
-                    traceback.print_exc()
+                except Exception:
+                    RLOG.critical(f"Critical error whild uploading {upload_file_args['src_file_path']}")
+                    RLOG.critical(traceback.format_exc())
                     sys.exit(1)
 
-            """
-            for future in futures.as_completed(executor_dict):
-                key = future_to_key[future]
-                exception = future.exception()
+        """
+        for future in futures.as_completed(executor_dict):
+            key = future_to_key[future]
+            exception = future.exception()
 
-                if not exception:
-                    yield key, future.result()
-                else:
-                    yield key, exception
-            """
+            if not exception:
+                yield key, future.result()
+            else:
+                yield key, exception
+        """
 
-            sf.progress_bar_handler(executor_dict, True, f"Uploading files with {num_workers} workers")
+        # sf.progress_bar_handler(executor_dict, True, f"Uploading files with {num_workers} workers")
 
     except botocore.exceptions.NoCredentialsError:
         print("-----------------")
-        print(
+        RLOG.critical(
             "** Credentials not available for the submitted bucket. Try aws configure or review AWS "
             "permissions options."
         )
@@ -174,7 +186,8 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name)
 
     except Exception as ex:
         print("-----------------")
-        print("** Error uploading files to S3:")
+        RLOG.critical("** Error uploading files to S3:")
+        RLOG.critical(traceback.format_exc())
         raise ex
 
 
@@ -193,9 +206,9 @@ def delete_s3_folder(bucket_name, s3_folder_path):
 
     s3_full_target_path = f"s3://{bucket_name}/{s3_folder_path}"
 
-    print("===================================================================")
+    RLOG.lprint("===================================================================")
     print("")
-    print(f"Deleting the files and folders at {s3_full_target_path}")
+    RLOG.lprint(f"Deleting the files and folders at {s3_full_target_path}")
     print()
 
     # nested function
@@ -214,7 +227,7 @@ def delete_s3_folder(bucket_name, s3_folder_path):
         # Lets run quickly through it once to get a count and a list of src files names
         # (only take a min or two) but the copying is slower.
         s3_files = []  # a list of dictionaries (src file path, targ file path)
-        print("Calculating list of files to be deleted ... standby (~1 to 2 mins)")
+        RLOG.lprint("Calculating list of files to be deleted ... standby (~1 to 2 mins)")
         for page in page_iterator:
             if "Contents" in page:
                 for key in page["Contents"]:
@@ -223,10 +236,10 @@ def delete_s3_folder(bucket_name, s3_folder_path):
                     s3_files.append(item)
 
         if len(s3_files) == 0:
-            print(f"No files in s3 folder of {s3_full_target_path} to be deleted.")
+            RLOG.lprint(f"No files in s3 folder of {s3_full_target_path} to be deleted.")
             return
 
-        print(f"Number of files to be deleted in s3 is {len(s3_files)}")
+        RLOG.lprint(f"Number of files to be deleted in s3 is {len(s3_files)}")
 
         # As we are threading, we can add more than one thread per proc, but for calc purposes
         # and to not overload the systems or internet pipe, so it is hardcoded at 20
@@ -239,9 +252,9 @@ def delete_s3_folder(bucket_name, s3_folder_path):
                 try:
                     future = executor.submit(__delete_file, **del_file_args)
                     executor_dict[future] = del_file_args['s3_file_path']
-                except Exception as tp_ex:
-                    print(f"*** {tp_ex}")
-                    traceback.print_exc()
+                except Exception:
+                    RLOG.critical(f"Critical Error while deleting {del_file_args['s3_file_path']} ")
+                    RLOG.critical(traceback.format_exc())
                     sys.exit(1)
 
             sf.progress_bar_handler(executor_dict, True, f"Deleting files with {num_workers} workers")
@@ -250,13 +263,14 @@ def delete_s3_folder(bucket_name, s3_folder_path):
         client.delete_object(Bucket=bucket_name, Key=s3_folder_path + "/")  # slash added
 
     except botocore.exceptions.NoCredentialsError:
-        print("-----------------")
-        print("** Credentials not available. Try aws configure or review AWS permissions options.")
+        RLOG.critical("-----------------")
+        RLOG.critical("** Credentials not available. Try aws configure or review AWS permissions options.")
         sys.exit(1)
 
     except Exception as ex:
-        print("-----------------")
-        print(f"** Error deleting files at S3: {ex}")
+        RLOG.critical("-----------------")
+        RLOG.critical("** Error deleting files at S3")
+        RLOG.critical(traceback.format_exc())
         raise ex
 
 
@@ -286,9 +300,9 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         s3_client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=target_file_path)
 
     try:
-        print("===================================================================")
+        RLOG.lprint("===================================================================")
         print("")
-        print(f"Moving folder from {s3_src_folder_path}  to  {s3_target_folder_path}")
+        RLOG.lprint(f"Moving folder from {s3_src_folder_path}  to  {s3_target_folder_path}")
         print()
         print("***  NOTE: s3 can not move files, it can only copy then delete them.")
         print()
@@ -304,7 +318,7 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         # Lets run quickly through it once to get a count and a list of src files names
         # (only take a min or two) but the copying is slower.
         s3_files = []  # a list of dictionaries (src file path, targ file path)
-        print("Creating list of files to be copied ... standby (~1 to 2 mins)")
+        RLOG.lprint("Creating list of files to be copied ... standby (~1 to 2 mins)")
         for page in page_iterator:
             if "Contents" in page:
                 for key in page["Contents"]:
@@ -323,10 +337,10 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         # If the bucket is incorrect, it will throw an exception that already makes sense
 
         if len(s3_files) == 0:
-            print(f"No files in source folder of {s3_src_folder_path}. Move invalid.")
+            RLOG.lprint(f"No files in source folder of {s3_src_folder_path}. Move invalid.")
             return
 
-        print(f"Number of files to be copied is {len(s3_files)}")
+        RLOG.lprint(f"Number of files to be copied is {len(s3_files)}")
 
         # As we are threading, we can add more than one thread per proc, but for calc purposes
         # and to not overload the systems or internet pipe, so it is hardcoded at 20
@@ -341,9 +355,9 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
                 try:
                     future = executor.submit(__copy_file, **copy_file_args)
                     executor_dict[future] = copy_file_args['src_file_path']
-                except Exception as tp_ex:
-                    print(f"*** {tp_ex}")
-                    traceback.print_exc()
+                except Exception:
+                    RLOG.critical(f"Error while coping file for {copy_file_args['src_file_path']}")
+                    RLOG.critical(traceback.format_exc())
                     sys.exit(1)
 
             sf.progress_bar_handler(executor_dict, True, f"Copying files with {num_workers} workers")
@@ -352,22 +366,27 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         delete_s3_folder(bucket_name, s3_src_folder_path)
 
     except botocore.exceptions.NoCredentialsError:
-        print("-----------------")
-        print(
+        RLOG.critical("-----------------")
+        RLOG.critical(
             "** Credentials not available for the submitted bucket. Try aws configure or review AWS "
             "permissions options."
         )
         sys.exit(1)
 
     except Exception as ex:
-        print("-----------------")
-        print("** Error moving folders in S3:")
+        RLOG.critical("-----------------")
+        RLOG.critical("** Error moving folders in S3:")
+        RLOG.critical(traceback.format_exc())
         raise ex
 
 
 ####################################################################
 def is_valid_s3_folder(s3_bucket_and_folder):
-    # This will throw exceptions for all errors
+    """
+    Process:  This will throw exceptions for all errors
+    Input:
+        - s3_bucket_and_folder: eg. s3://ras2fim/OWP_ras_models
+    """
 
     if s3_bucket_and_folder.endswith("/"):
         s3_bucket_and_folder = s3_bucket_and_folder[:-1]
@@ -398,9 +417,10 @@ def is_valid_s3_folder(s3_bucket_and_folder):
         raise
 
     except botocore.exceptions.NoCredentialsError:
-        print("** Credentials not available. Try aws configure.")
-    except Exception as ex:
-        print(f"An error has occurred with talking with S3; Details {ex}")
+        RLOG.critical("** Credentials not available. Try aws configure.")
+    except Exception:
+        RLOG.critical("An error has occurred with talking with S3")
+        RLOG.critical(traceback.format_exc())
 
     return bucket_name, s3_folder_path
 
@@ -417,7 +437,7 @@ def does_s3_bucket_exist(bucket_name):
         return True  # no exception?  means it exist
 
     except botocore.exceptions.NoCredentialsError:
-        print("** Credentials not available for submitted bucket. Try aws configure.")
+        RLOG.critical("** Credentials not available for submitted bucket. Try aws configure.")
         sys.exit(1)
 
     except client.exceptions.NoSuchBucket:
@@ -519,6 +539,7 @@ def parse_unit_folder_name(unit_folder_name):
     try:
         dt_key_date = datetime.strptime(key_date, "%y%m%d")
     except Exception:
+        # don't log it
         rtn_varibles_dict["error"] = (
             "Last part of the three segments (date) does not appear"
             " to be in the pattern of yymmdd eg 230812"
