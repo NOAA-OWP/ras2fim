@@ -14,8 +14,18 @@ import s3fs
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+import s3_shared_functions as s3_sf
+
+import ras2fim_logger
+import shared_functions as sf
 import shared_validators as val
 import shared_variables as sv
+
+
+# Global Variables
+MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS = "download_success"
+MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON = "download_fail_reason"
+RLOG = ras2fim_logger.R2F_LOG
 
 
 """
@@ -31,7 +41,7 @@ find that you only need to setup yoru machine once with 'aws configure' and not 
 
 
 Features for this tool include:
-    - Ability to create a list only (log file) without actual downloads (test download).
+    - Ability to create a list only (csv) without actual downloads (test download).
 
     - A log file for the output is created with unique date/time stamp.
 
@@ -40,7 +50,7 @@ Features for this tool include:
          search the log for the word "error"
 
     - Filters downloads from the src models catalog to look for status of "ready" only. Also filters out
-         records where the final_name_key starts with either "1_" or "2_".
+         records where the final_name_key starts with either "1_", "2_" or "3_".
 
     - This script can find huc numbers in the models catalog "hucs" field regardless of string
          format in that column.
@@ -59,9 +69,6 @@ Features for this tool include:
          be "OWP_ras_models_catalog_{HUC}.csv"
 
 """
-
-MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS = "download_success"
-MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON = "download_fail_reason"
 
 
 # -------------------------------------------------
@@ -83,20 +90,20 @@ class Get_Models_By_Catalog:
         Overview  (and Processing Steps)
         -----------------------
         - Calls over to S3 using a save aws configure creds file (needs to be in place prior to the run)
+
         - Reads model catalog csv (from s3_path_to_catalog), looking through the HUC list for matches.
           e.g. OWP_ras_models\OWP_ras_models_catalog.csv
+
         - If downloading folders...  (ie.. not just the list only)
             - Empty the OWP_ras_models\models (or target models path) folder as we know ras2fim will
               automatically read all folders in that directory.
             - Download all of the folders found using data extracted from columns in the filtered
               OWP_ras_models_catalog.csv file. The S3 "models" folder, MUST exist beside the model
               catalog file.
-        - Uses the OWP_ras_models_catalog.csv (or equiv), only records with the status of 'ready'
-        - Current filters when used against the OWP_ras_models_catalog.csv:
-              - 'status' column = 'ready'
-              - 'hucs' column includes the provided huc_number. Note.. more than one huc can be
-                 in that column.
-              - 'crs' column matchs the incoming projection value (case-sensitive)
+
+        - Uses defined filters against the OWP_ras_models_catalog.csv to calculate which models
+          to download.
+
         - If the target_owp_ras_models_csv_file exists, it will be overwritten without warning.
 
         Inputs
@@ -134,13 +141,6 @@ class Get_Models_By_Catalog:
 
         """
 
-        self.lprint("")
-        start_time = dt.datetime.utcnow()
-        dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
-        self.lprint("****************************************")
-        self.lprint(f"Get ras models folders from s3 started: {dt_string}")
-        self.lprint(f" ... HUC: {huc_number} ; CRS: {projection} ...")
-
         # ----------
         # Validate inputs
         self.__validate_inputs(
@@ -152,14 +152,25 @@ class Get_Models_By_Catalog:
             list_only,
         )
 
-        self.lprint(f"Source download path for models is {self.src_owp_model_folder_path}")
-        self.lprint(f"Target file name and path for the filtered csv is {self.target_filtered_csv_path}")
-        self.lprint(f"Target path for models is {self.target_owp_ras_models_path}")
-        self.lprint("")
+        self.__setup_logs()
+
+        print()
+        start_dt = dt.datetime.utcnow()
+
+        RLOG.lprint("****************************************")
+        RLOG.lprint("Get ras models folders from s3")
+        RLOG.lprint(f" Started (UTC): {sf.get_stnd_date()}")
+        RLOG.lprint(f" -- HUC: {huc_number}")
+        RLOG.lprint(f" -- CRS: {projection}")
+        RLOG.lprint("")
+        RLOG.lprint(f" -- Source download path for models: {self.src_owp_model_folder_path}")
+        RLOG.lprint(f" -- Target file name and path for the filtered csv: {self.target_filtered_csv_path}")
+        RLOG.lprint(f" -- Target path for models: {self.target_owp_ras_models_path}")
+        RLOG.lprint(f" -- List only is {list_only}")
+        RLOG.lprint("")
 
         self.list_only = list_only
         self.is_verbose = is_verbose
-        # from here on, use the self. in front of variables as the variable might have been adjusted
 
         # setup an empty variable for scope reasons
         self.df_filtered = pd.DataFrame()
@@ -169,13 +180,13 @@ class Get_Models_By_Catalog:
             df_all = pd.read_csv(self.s3_path_to_catalog_file, header=0, encoding="unicode_escape")
 
             if df_all.empty:
-                self.lprint("The model catalog appears to be empty or did not load correctly")
+                RLOG.error("The model catalog appears to be empty or did not load correctly")
                 return
 
             df_all["nhdplus_comid"] = df_all["nhdplus_comid"].astype(str)
 
             if self.is_verbose is True:
-                self.lprint(f"models catalog raw record count = {len(df_all)}")
+                RLOG.debug(f"models catalog raw record count = {len(df_all)}")
 
             # ----------
 
@@ -184,7 +195,7 @@ class Get_Models_By_Catalog:
                 " final_name_key does not start with 1_, 2_ or 3_; huc number exists in the huc column;"
                 " and matching crs column values.\n"
                 " 1_ and 2_ means errors or needs review in pre-processing.\n"
-                " 3_ means invalid conflation and needs review in preprocessing."
+                " 3_ means invalid conflation and needs review in pre-processing."
             )
 
             # look for records that are ready, contains the huc number and does not start with 1_, 2_ or 3_
@@ -201,21 +212,21 @@ class Get_Models_By_Catalog:
             ]
 
             if df_huc.empty:
-                self.lprint(f"No valid records return for {self.huc_number}. {filter_msg}")
+                RLOG.error(f"No valid records return for {self.huc_number}. {filter_msg}")
                 return
 
             # ----------
             # Now filter based on CRS
             self.df_filtered = df_huc.loc[(df_huc["crs"] == self.projection)]
             if self.df_filtered.empty:
-                self.lprint(
+                RLOG.error(
                     f"No valid records return for {huc_number} and crs {self.projection}. {filter_msg}"
                 )
                 return
 
             self.df_filtered.reset_index(inplace=True)
 
-            self.lprint(f"Number of model records after filtering is {len(self.df_filtered)} (pre-download).")
+            RLOG.lprint(f"Number of model records after filtering is {len(self.df_filtered)} (pre-download).")
 
             if self.is_verbose is True:
                 # to see the huc list without column trucations (careful as this could be a huge output)
@@ -233,9 +244,9 @@ class Get_Models_By_Catalog:
 
             # we will save it initially but update it and save it again as it goes
             self.df_filtered.to_csv(self.target_filtered_csv_path, index=False)
-            self.lprint(f"Filtered model catalog saved to : {self.target_filtered_csv_path}")
+            RLOG.lprint(f"Filtered model catalog saved to : {self.target_filtered_csv_path}")
             if self.list_only is False:
-                self.lprint(
+                print(
                     "Note: This csv represents all filtered models folders that are pending to be"
                     " downloaded.\nThe csv will be updated with statuses after downloads are complete."
                 )
@@ -251,46 +262,43 @@ class Get_Models_By_Catalog:
             if self.list_only is False:
                 self.download_files(folders_to_download)
 
-            self.lprint("")
+            # self.lprint("")
+            print()
             if self.list_only is True:
-                self.lprint("List only as per (-f) flag - no downloads attempted")
-                self.lprint(
-                    "Number of model folders which would be attempted to downloaded is"
+                RLOG.lprint("List only as per (-f) flag - no downloads attempted")
+                RLOG.lprint(
+                    "Number of model folders which would have been attempted to downloaded is"
                     f" {len(self.df_filtered)}"
                 )
-            else:
-                self.lprint(f"Number of models folders successfully downloaded: {self.num_success_downloads}")
-                num_skips = self.num_pending_downloads - self.num_success_downloads
-                self.lprint(f"Number of models folders skipped / errored during download: {num_skips}")
-                if num_skips > 0:
-                    self.lprint("Please review the output logs or the filtered csv for skip/error details.")
 
-        except ValueError:
-            errMsg = "--------------------------------------\n An error has occurred"
-            errMsg = errMsg + traceback.format_exc()
-            # don't log
-            print(errMsg)
-            sys.exit()
+            else:
+                RLOG.success(
+                    f"Number of models folders successfully downloaded: {self.num_success_downloads}"
+                )
+                print()
+                num_skips = self.num_pending_downloads - self.num_success_downloads
+
+                if num_skips > 0:
+                    RLOG.warning(f"Number of models folders skipped / errored during download: {num_skips}")
+                    RLOG.warning("Please review the output logs or the filtered csv for skip/error details.")
+                else:
+                    RLOG.lprint(f"Number of models folders skipped / errored during download: {num_skips}")
 
         except Exception:
             errMsg = "--------------------------------------\n An error has occurred"
             errMsg = errMsg + traceback.format_exc()
-            self.lprint(errMsg)
+            RLOG.critical(errMsg)
+            sys.exit(1)
 
         # resaved with the updates to the download columns
         if (self.df_filtered.empty is False) and (self.list_only is False):
             self.df_filtered.to_csv(self.target_filtered_csv_path, index=False)
-            self.lprint("Filtered model catalog has been update.")
 
-        end_time = dt.datetime.utcnow()
-        dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
-        self.lprint(f"ended: {dt_string}")
+        RLOG.lprint("--------------------------------------")
+        RLOG.success(f"Get ras models completed: {sf.get_stnd_date()}")
 
-        # Calculate duration
-        time_duration = end_time - start_time
-        self.lprint(f"Duration: {str(time_duration).split('.')[0]}")
-
-        self.save_logs()
+        dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
+        RLOG.lprint(dur_msg)
         print()
 
     # -------------------------------------------------
@@ -322,11 +330,12 @@ class Get_Models_By_Catalog:
         self.huc_number = huc_number
 
         # ---------------
-        is_valid, err_msg, crs_number = val.is_valid_crs(projection)  # I don't need the crs_number for now
+        is_valid, err_msg, crs_number = val.is_valid_crs(projection)
         if is_valid is False:
             raise ValueError(err_msg)
 
         self.projection = projection
+        self.crs_number = crs_number
 
         # ---------------
         if target_owp_ras_models_csv_file == "":
@@ -335,13 +344,14 @@ class Get_Models_By_Catalog:
         # ---------------
         target_owp_ras_models_path = target_owp_ras_models_path.replace("/", "\\")
         self.target_owp_ras_models_path = target_owp_ras_models_path
+        self.target_parent_path = os.path.dirname(target_owp_ras_models_path)
 
         if list_only is False:
             if os.path.exists(self.target_owp_ras_models_path):
                 shutil.rmtree(self.target_owp_ras_models_path)
                 # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
                 # so sometimes mkdir can fail if rmtree isn't done
-                time.sleep(1)  # 2 seconds
+                time.sleep(1)  # 1 seconds
 
             os.mkdir(self.target_owp_ras_models_path)
 
@@ -351,7 +361,6 @@ class Get_Models_By_Catalog:
         # ---------------
         # Extract the base s3 bucket name from the catalog pathing.
         # temp remove the s3 tag
-        # note: the path was already used and validated
         self.s3_path_to_catalog_file = s3_path_to_catalog_file
 
         # we need the "s3 part stipped off for now"
@@ -368,21 +377,17 @@ class Get_Models_By_Catalog:
             self.src_owp_model_folder_path += segment + "/"
 
         # The "models" must be beside the models catalog
-        # Note: This value DOES NOT include the bucket name but does add the models folder name
-        # ie). OWP_ras_models/models/   or maybe OWP_ras_models_robtest/models
         self.src_owp_model_folder_path = self.bucket_name + "/" + self.src_owp_model_folder_path
         self.src_owp_model_folder_path += "models"
 
-        # ---------------
-        # The log files will go to a folder that is one level higher (a parent folder) for the
-        # models target.
-        target_owp_ras_models_path_parent = os.path.dirname(target_owp_ras_models_path)
-        self.log_folder_path = os.path.join(target_owp_ras_models_path_parent, "logs")
+        # validate that the bucket and folders (prefixes exist)
+        if s3_sf.is_valid_s3_folder(self.src_owp_model_folder_path) is False:
+            raise ValueError(f"S3 output folder of {self.src_owp_model_folder_path} ... does not exist")
 
     # -------------------------------------------------
     def download_files(self, folder_list):
-        self.lprint("")
-        self.lprint("......................................")
+        print()
+        RLOG.lprint("......................................")
 
         s3 = s3fs.S3FileSystem()
 
@@ -397,27 +402,28 @@ class Get_Models_By_Catalog:
         for folder_name in folder_list:
             num_processed += 1
 
-            self.lprint("")
+            print()
 
             src_path = f"{self.src_owp_model_folder_path}/{folder_name}/"
-            print(src_path)
+            RLOG.lprint(f"Downloading {folder_name}")
 
             # Get row so we can can update it
             rowIndexes = self.df_filtered.index[self.df_filtered["final_name_key"] == folder_name].tolist()
             if len(rowIndexes) != 1:
                 msg = "Sorry, something went wrong looking the specific record with a"
                 f"final_name_key of {folder_name}"
-                self.lprint(f"== {msg}")
+                RLOG.error(f"== {msg}")
                 break
 
             rowIndex = rowIndexes[0]
 
             if s3.exists(src_path) is False:
                 msg = f"skipped - s3 folder of {src_path} doesn't exist"
-                self.lprint(f"== {folder_name}")
-                self.lprint(f".... {msg}")
+                RLOG.error(f"== {folder_name}")
+                RLOG.error(f".... {msg}")
+
                 progress_msg = f">>> {num_processed} of {self.num_pending_downloads} processed"
-                self.lprint(progress_msg)
+                RLOG.lprint(progress_msg)
 
                 # update the df (csv) to show it failed and why
                 self.df_filtered.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = "False"
@@ -425,7 +431,6 @@ class Get_Models_By_Catalog:
                 continue
 
             target_path = os.path.join(self.target_owp_ras_models_path, folder_name)
-            self.lprint(f"== {folder_name} - Downloading to path = {target_path}")
 
             # cmd = root_cmd + f"{src_path} {target_path} --dryrun"
             # NOTE: we are using subprocesses for now as boto3 can not download folders, only files.
@@ -438,15 +443,15 @@ class Get_Models_By_Catalog:
 
             cmd = root_cmd + f'"{src_path}" "{target_path}"'
             if self.is_verbose:
-                self.lprint(f"    {cmd}")
+                RLOG.debug(f"    {cmd}")
 
             process_s3 = subprocess.run(cmd, capture_output=True, text=True)
             if process_s3.returncode != 0:
-                msg = "*** an error occurred\n"
+                msg = f"*** an error occurred while downloading {folder_name}\n"
                 msg += process_s3.stderr
-                self.lprint(msg)
+                RLOG.error(msg)
                 progress_msg = f">>> {num_processed} of {self.num_pending_downloads} processed"
-                self.lprint(progress_msg)
+                RLOG.lprint(progress_msg)
 
                 # so it doesn't interfer with the delimiter
                 msg = msg.replace(",", " ")
@@ -456,62 +461,26 @@ class Get_Models_By_Catalog:
                 self.df_filtered.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = msg
                 continue
 
-            self.lprint(" ----- successful")
+            RLOG.success(" ----- download model successful")
             self.df_filtered.at[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = "True"
 
             # self.df_row[rowIndex] = df_row
             self.num_success_downloads += 1
 
             progress_msg = f">>> {num_processed} of {self.num_pending_downloads} processed"
-            self.lprint(progress_msg)
+            RLOG.lprint(progress_msg)
 
         return
 
     # -------------------------------------------------
-    def lprint(self, msg):
-        """
-        Overview  (and Processing Steps)  (log append and print)
-        -----------------------
-        This will start a new log object if required and it will stay with the object (self).
-        It will keep appending to the log string until it is ready to be output as one
-        large chuck. It does not attempt to live output.
-
-        AND.. will print to screen
-
-        Note: for each new msg coming in, it will add \n to the end of it
-        """
-
-        # if the attribute (class variable) has not been created yet, do it.
-        if hasattr(self, "log_file_msg") is False:
-            self.log_file_msg = ""
-
-        self.log_file_msg += msg + "\n"
-        print(msg)
-
-    # -------------------------------------------------
-    def save_logs(self):
-        """
-        Overview: Saves built up log file data to a file with a unique name
-        """
-        #
-
-        # We want to attempt to log some types of exceptions if possible. Depending on where it fails,
-        # we may or may not yet have assigned self.log_folder_path
-        if hasattr(self, "log_folder_path") is False:
-            return
-
-        if os.path.exists(self.log_folder_path) is False:
-            os.mkdir(self.log_folder_path)
-
+    def __setup_logs(self):
         start_time = dt.datetime.utcnow()
-        file_dt_string = start_time.strftime("%Y%m%d_%H%M%S")
-        log_file_path = os.path.join(
-            self.log_folder_path, f"get_ras_models_{self.huc_number}-{file_dt_string}.log"
-        )
+        file_dt_string = start_time.strftime("%y%m%d-%H%M")
 
-        with open(log_file_path, "w") as log_file:
-            log_file.write(self.log_file_msg)
-            print(f"log file created as {log_file_path}")
+        # -------------------
+        # setup the logging class (default unit folder path (HUC/CRS))
+        file_name = f"get_models_{self.huc_number}_{self.crs_number}-{file_dt_string}.log"
+        RLOG.setup(os.path.join(self.target_parent_path, "logs", file_name))
 
 
 # -------------------------------------------------
@@ -558,8 +527,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Communication with aws s3 data services to download OWP_ras_model folders by HUC"
     )
-
-    # False means you get a list only, not the folders downloaded (at \OWP_ras_models\huc_OWP_ras_models.csv)
 
     # can't default due to security.  ie) s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv
     # Note: the actual models folders are assumed to be a folder named "models" beside the models_catalog.csv
@@ -634,13 +601,18 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    obj = Get_Models_By_Catalog()
-    obj.get_models(
-        list_only=args["list_only"],
-        s3_path_to_catalog_file=args["s3_path_to_catalog_file"],
-        target_owp_ras_models_path=args["target_owp_ras_models_path"],
-        target_owp_ras_models_csv_file=args["target_owp_ras_models_csv_file"],
-        huc_number=args["huc_number"],
-        projection=args["projection"],
-        is_verbose=args["is_verbose"],
-    )
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
+
+        # RLOG setup inside the main program
+
+        # call main program
+        obj = Get_Models_By_Catalog()
+        obj.get_models(**args)
+
+    except Exception:
+        RLOG.critical(traceback.format_exc())

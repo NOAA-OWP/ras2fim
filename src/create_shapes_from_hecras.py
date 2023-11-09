@@ -14,7 +14,9 @@ import datetime
 import multiprocessing as mp
 import os.path
 import re
+import sys
 import time
+import traceback
 from multiprocessing import Pool
 from os import path
 
@@ -26,6 +28,9 @@ import win32com.client
 from shapely.geometry import LineString
 from shapely.ops import linemerge, split
 
+import ras2fim_logger
+import shared_functions as sf
+
 
 # windows component object model for interaction with HEC-RAS API
 # This routine uses RAS60.HECRASController (HEC-RAS v6.3.0 must be
@@ -33,15 +38,21 @@ from shapely.ops import linemerge, split
 
 # h5py for extracting data from the HEC-RAS g**.hdf files
 
+# Global Variables
+# RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = ras2fim_logger.R2F_LOG
+
 
 # -------------------------------------------------
 def fn_open_hecras(str_ras_project_path):
     # Function - runs HEC-RAS (active plan) and closes the file
 
     hec = None
+    has_exception = False
 
     try:
         # opening HEC-RAS
+        RLOG.debug(f"ras project path is {str_ras_project_path}")
 
         if os.path.exists(str_ras_project_path) is False:
             raise Exception(f"str_ras_project_path value of {str_ras_project_path} does not exist")
@@ -61,16 +72,16 @@ def fn_open_hecras(str_ras_project_path):
         # We need to compute.  Opening RAS Mapper creates the Geom HDF
         v1, NMsg, TabMsg, v2 = hec.Compute_CurrentPlan(NMsg, TabMsg, block)
 
-    except Exception as ex:
+    except Exception:
         # re-raise it as error handling is farther up the chain
         # but I do need the finally to ensure the hec.QuitRas() is run
-        print()
-        print("++++++++++++++++++++++++")
-        print("An exception occurred with the HEC-RAS engine or its parameters.")
-        print(f"details: {ex}")
-        print()
-        # re-raise it for logging (coming)
-        raise ex
+        print("")
+        RLOG.critical("++++++++++++++++++++++++")
+        RLOG.critical("An exception occurred with the HEC-RAS engine or its parameters.")
+        RLOG.critical(f"str_ras_project_path is {str_ras_project_path}")
+        RLOG.critical(traceback.format_exc())
+        print("")
+        has_exception = True
 
     finally:
         # Especially with multi proc, if an error occurs with HEC-RAS (engine
@@ -82,10 +93,13 @@ def fn_open_hecras(str_ras_project_path):
             try:
                 hec.QuitRas()  # close HEC-RAS no matter watch
             except Exception as ex2:
-                print("--- An error occured trying to close the HEC-RAS window process")
-                print(f"--- Details: {ex2}")
-                print()
-                # do nothng
+                RLOG.warning("--- An error occured trying to close the HEC-RAS window process")
+                RLOG.warning(f"str_ras_project_path is {str_ras_project_path}")
+                RLOG.warning(f"--- Details: {ex2}")
+                RLOG.warning("")
+                # do nothing
+        if has_exception:
+            sys.exit(1)
 
 
 # -------------------------------------------------
@@ -101,11 +115,11 @@ def fn_get_active_geom(str_path_hecras_project_fn2):
     matches = pattern.finditer(file_contents)
 
     if re.search("Current Plan=", file_contents) is None:
-        print(" -- ALERT: Reconnect files for " + str_path_hecras_project_fn2)
+        RLOG.critical(" -- ALERT: Reconnect files for " + str_path_hecras_project_fn2)
         raise SystemExit(0)
 
     # close the HEC-RAS project file
-    f.close()
+    # f.close()
 
     for match in matches:
         str_current_plan = match.group(0)[-3:]
@@ -121,7 +135,7 @@ def fn_get_active_geom(str_path_hecras_project_fn2):
     matches = pattern.finditer(file_contents)
 
     # close the HEC-RAS plan file
-    f.close()
+    # f.close()
 
     for match in matches:
         str_current_geom = match.group(0)[-3:]
@@ -135,6 +149,8 @@ def fn_get_active_geom(str_path_hecras_project_fn2):
 def fn_geodataframe_cross_sections(str_path_hecras_project_fn, STR_CRS_MODEL):
     # Fuction - Creates a GeoDataFrame of the cross sections for the
     # HEC-RAS geometry file in the active plan
+
+    RLOG.debug(f"Creating gdf of cross sections for {str_path_hecras_project_fn}" f" and {STR_CRS_MODEL}")
 
     str_path_to_geom_hdf = (fn_get_active_geom(str_path_hecras_project_fn)) + ".hdf"
 
@@ -162,6 +178,7 @@ def fn_geodataframe_cross_sections(str_path_hecras_project_fn, STR_CRS_MODEL):
 
     # Error handling: edge case, empty (bad) geo
     if n2.ndim == 0:
+        RLOG.warning("Empty dataframe returned")
         return gpd.GeoDataFrame()
 
     # Create a list of  number of points per each stream line
@@ -282,6 +299,7 @@ def fn_geodataframe_stream_centerline(str_path_hecras_project_fn, STR_CRS_MODEL)
 
     # Error handling: edge case, empty (bad) geo
     if n2.ndim == 0:
+        RLOG.warning(f"Polyline parts not found for model of '{STR_CRS_MODEL}'")
         return gpd.GeoDataFrame()
 
     # Get the name of the river and reach
@@ -384,7 +402,7 @@ def fn_get_active_flow(str_path_hecras_project_fn):
     matches = pattern.finditer(file_contents)
 
     # close the HEC-RAS project file
-    f.close()
+    # f.close()
 
     for match in matches:
         str_current_plan = match.group(0)[-3:]
@@ -400,7 +418,7 @@ def fn_get_active_flow(str_path_hecras_project_fn):
     matches = pattern.finditer(file_contents)
 
     # close the HEC-RAS plan file
-    f.close()
+    # f.close()
 
     # TODO 2021.03.08 - Error here if no flow file in the active plan
     # setting to a default of .f01 - This might not exist
@@ -425,63 +443,68 @@ def fn_get_flow_dataframe(str_path_hecras_flow_fn):
     df["start_xs"] = []
     df["max_flow"] = []
 
-    file1 = open(str_path_hecras_flow_fn, "r")
-    lines = file1.readlines()
-    i = 0  # number of the current row
+    with open(str_path_hecras_flow_fn, "r") as file1:
+        lines = file1.readlines()
+        i = 0  # number of the current row
 
-    for line in lines:
-        if line[:19] == "Number of Profiles=":
-            # determine the number of profiles
-            int_flow_profiles = int(line[19:])
+        for line in lines:
+            if line[:19] == "Number of Profiles=":
+                # determine the number of profiles
+                int_flow_profiles = int(line[19:])
 
-            # determine the number of rows of flow - each row has maximum of 10
-            int_flow_rows = int(int_flow_profiles // 10 + 1)
+                # determine the number of rows of flow - each row has maximum of 10
+                int_flow_rows = int(int_flow_profiles // 10 + 1)
 
-        if line[:15] == "River Rch & RM=":
-            str_river_reach = line[15:]  # remove first 15 characters
+            if line[:15] == "River Rch & RM=":
+                str_river_reach = line[15:]  # remove first 15 characters
 
-            # split the data on the comma
-            list_river_reach = str_river_reach.split(",")
+                # split the data on the comma
+                list_river_reach = str_river_reach.split(",")
 
-            # Get from array - use strip to remove whitespace
-            str_river = list_river_reach[0].strip()
-            str_reach = list_river_reach[1].strip()
-            str_start_xs = list_river_reach[2].strip()
-            flt_start_xs = float(str_start_xs)
+                # Get from array - use strip to remove whitespace
+                str_river = list_river_reach[0].strip()
+                str_reach = list_river_reach[1].strip()
+                str_start_xs = list_river_reach[2].strip()
+                flt_start_xs = float(str_start_xs)
 
-            # Read the flow values line(s)
-            list_flow_values = []
+                # Read the flow values line(s)
+                list_flow_values = []
 
-            # for each line with flow data
-            for j in range(i + 1, i + int_flow_rows + 1):
-                # get the current line
-                line_flows = lines[j]
+                # for each line with flow data
+                for j in range(i + 1, i + int_flow_rows + 1):
+                    # get the current line
+                    line_flows = lines[j]
 
-                # determine the number of values on this
-                # line from character count
-                int_val_in_row = int((len(lines[j]) - 1) / 8)
+                    # determine the number of values on this
+                    # line from character count
+                    int_val_in_row = int((len(lines[j]) - 1) / 8)
 
-                # for each value in the row
-                for k in range(0, int_val_in_row):
-                    # get the flow value (Max of 8 characters)
-                    str_flow = line_flows[k * 8 : k * 8 + 8].strip()
-                    # convert the string to a float
-                    flt_flow = float(str_flow)
-                    # append data to list of flow values
-                    list_flow_values.append(flt_flow)
+                    # for each value in the row
+                    for k in range(0, int_val_in_row):
+                        # get the flow value (Max of 8 characters)
+                        str_flow = line_flows[k * 8 : k * 8 + 8].strip()
+                        # convert the string to a float
+                        flt_flow = float(str_flow)
+                        # append data to list of flow values
+                        list_flow_values.append(flt_flow)
 
-            # Get the max value in list
-            flt_max_flow = max(list_flow_values)
+                # Get the max value in list
+                flt_max_flow = max(list_flow_values)
 
-            # write to dataFrame
-            df_new_row = pd.DataFrame.from_records(
-                [{"river": str_river, "reach": str_reach, "start_xs": flt_start_xs, "max_flow": flt_max_flow}]
-            )
-            df = pd.concat([df, df_new_row], ignore_index=True)
+                # write to dataFrame
+                df_new_row = pd.DataFrame.from_records(
+                    [
+                        {
+                            "river": str_river,
+                            "reach": str_reach,
+                            "start_xs": flt_start_xs,
+                            "max_flow": flt_max_flow,
+                        }
+                    ]
+                )
+                df = pd.concat([df, df_new_row], ignore_index=True)
 
-        i += 1
-
-    file1.close()
+            i += 1
 
     return df
 
@@ -597,34 +620,33 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     # INPUT
     flt_start_create_shapes_from_hecras = time.time()
 
-    print(" ")
-    print("+=================================================================+")
-    print("|    STREAM AND CROSS SECTION SHAPEFILES FROM HEC-RAS DIRECTORY   |")
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|    STREAM AND CROSS SECTION SHAPEFILES FROM HEC-RAS DIRECTORY   |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    path_ras_files = str_ras_path_arg
+    RLOG.lprint("  ---(i) INPUT PATH: " + str_ras_path_arg)
 
-    # TODO - not contants - lower case - 2021.09.07
-    STR_PATH_RAS_FILES = str_ras_path_arg
-    print("  ---(i) INPUT PATH: " + STR_PATH_RAS_FILES)
+    path_to_output = str_shp_out_arg
+    RLOG.lprint("  ---(o) OUTPUT PATH: " + path_to_output)
+    path_to_output += "\\"
 
-    STR_PATH_TO_OUTPUT = str_shp_out_arg
-    print("  ---(o) OUTPUT PATH: " + STR_PATH_TO_OUTPUT)
-    STR_PATH_TO_OUTPUT += "\\"
+    crs_model = str_crs_arg
+    RLOG.lprint("  ---(p) MODEL PROJECTION: " + crs_model)
+    RLOG.lprint(f"  --- Module Started: {sf.get_stnd_date()}")
 
-    STR_CRS_MODEL = str_crs_arg
-    print("  ---(p) MODEL PROJECTION: " + STR_CRS_MODEL)
+    str_path_to_output_streams = path_to_output + "stream_LN_from_ras.shp"
 
-    str_path_to_output_streams = STR_PATH_TO_OUTPUT + "stream_LN_from_ras.shp"
+    str_path_to_output_cross_sections = path_to_output + "cross_section_LN_from_ras.shp"
 
-    str_path_to_output_cross_sections = STR_PATH_TO_OUTPUT + "cross_section_LN_from_ras.shp"
-
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
     # *****MAIN******
     # get a list of all HEC-RAS prj files in a directory
 
     list_files = []
 
-    for root, dirs, files in os.walk(STR_PATH_RAS_FILES):
+    for root, dirs, files in os.walk(path_ras_files):
         for file in files:
             if file.endswith(".prj") or file.endswith(".PRJ"):
                 # Note the case sensitive issue
@@ -653,16 +675,15 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
 
     for str_file_path in list_files:
         if not is_binary_string(open(str_file_path, "rb").read(1024)):
-            file_prj = open(str_file_path, "r")
-            b_found_match = False
+            with open(str_file_path, "r") as file_prj:
+                b_found_match = False
 
-            for line in file_prj:
-                if str_check in line:
-                    b_found_match = True
-                    break
-            if b_found_match:
-                list_files_valid_prj.append(str_file_path)
-            file_prj.close()
+                for line in file_prj:
+                    if str_check in line:
+                        b_found_match = True
+                        break
+                if b_found_match:
+                    list_files_valid_prj.append(str_file_path)
     # -----
 
     # Run all the HEC-RAS models that do not have the geom HDF files
@@ -675,8 +696,9 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
             # the hdf file does not exist - add to list of models to compute
             list_models_to_compute.append(str_prj)
 
+    RLOG.lprint(f"len of list_models_to_compute is {len(list_models_to_compute)}")
     if len(list_models_to_compute) > 0:
-        print("Compute HEC-RAS Models: " + str(len(list_models_to_compute)))
+        RLOG.lprint("Compute HEC-RAS Models: " + str(len(list_models_to_compute)))
 
         # create a pool of processors
         num_processors = mp.cpu_count() - 2
@@ -700,12 +722,12 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
 
     for ras_path in list_files_valid_prj:
         # print(ras_path)
-        gdf_return_stream = fn_geodataframe_stream_centerline(ras_path, STR_CRS_MODEL)
+        gdf_return_stream = fn_geodataframe_stream_centerline(ras_path, crs_model)
 
         df_flows = fn_get_flow_dataframe(fn_get_active_flow(ras_path))
-        df_xs = fn_geodataframe_cross_sections(ras_path, STR_CRS_MODEL)
+        df_xs = fn_geodataframe_cross_sections(ras_path, crs_model)
         if df_xs.empty:
-            print("Empty geometry in " + ras_path)
+            RLOG.warning("Empty geometry in " + ras_path)
             continue
 
         # Fix interpolated cross section names (ends with *)
@@ -740,20 +762,25 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     gdf_aggregate_streams.to_file(str_path_to_output_streams)
     gdf_aggregate_cross_section.to_file(str_path_to_output_cross_sections)
 
-    print(" ")
-    print("SHAPEFILES CREATED")
+    RLOG.lprint("")
+    RLOG.success("SHAPEFILES CREATED")
     flt_end_create_shapes_from_hecras = time.time()
     flt_time_pass_create_shapes_from_hecras = (
         flt_end_create_shapes_from_hecras - flt_start_create_shapes_from_hecras
     ) // 1
     time_pass_create_shapes_from_hecras = datetime.timedelta(seconds=flt_time_pass_create_shapes_from_hecras)
-    print("Compute Time: " + str(time_pass_create_shapes_from_hecras))
+    RLOG.lprint("Compute Time: " + str(time_pass_create_shapes_from_hecras))
 
-    print("====================================================================")
+    RLOG.lprint("====================================================================")
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
+    # Sample:
+    # python create_shapes_from_hecras.py -i C:\ras2fim_data\OWP_ras_models\models-12030105 -small
+    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\01_shapes_from_hecras
+    #  -p EPSG:2276
+
     parser = argparse.ArgumentParser(
         description="============ SHAPEFILES FROM HEC-RAS DIRECTORY ============"
     )
@@ -791,5 +818,21 @@ if __name__ == "__main__":
     str_shp_out_arg = args["str_shp_out_arg"]
     str_crs_arg = args["str_crs_arg"]
 
-    fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    log_file_folder = args["str_shp_out_arg"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
+
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
+
+        # call main program
+        fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
+
+    except Exception:
+        RLOG.critical(traceback.format_exc())
