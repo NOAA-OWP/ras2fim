@@ -2,6 +2,12 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
+## v1____ - 2023-11-9 - [PR#205](https://github.com/NOAA-OWP/ras2fim/pull/205)
+
+This PR updates `reformat_ras_rating_curve.py` to assign the ras2fim version to the `source` column using the get_changelog_version shared function. It also changes the output filenames to be named ras2calibration_rating_curve_points.gpkg and ras2calibration_rating_curve_table.csv, which are more descriptive than the previous names.
+
+<br/><br/>
+
 ## v1.30.1 - 2023-11-2 - [PR#166](https://github.com/NOAA-OWP/ras2fim/pull/198)
 
 This PR fixes a small bug for making polygons for model domains that results in reporting all models to be not-conflated to NWM reaches. This PR closes #195.
