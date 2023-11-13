@@ -1,6 +1,68 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+
+## v1.30.1 - 2023-11-2 - [PR#166](https://github.com/NOAA-OWP/ras2fim/pull/198)
+
+This PR fixes a small bug for making polygons for model domains that results in reporting all models to be not-conflated to NWM reaches. This PR closes #195.
+
+Changes include:
+Updated src/create_model_domain_polygons.py by removing an extra "is True" from a single line. Also, the file tools/ras_unit_to_s3.py changed slightly after performing linting.
+
+<br/><br/>
+
+## v1.30.0 - 2023-11-08 - [PR#183](https://github.com/NOAA-OWP/ras2fim/pull/183)
+
+A custom logging system was added. Testing against native python logging as well as some independent packages showed none them were reliable for multi-processed logs.
+
+The solution here is to let each multi-process (MP) have it's own logging file, which avoids file collisions, then at the end of the MP, let the logger merge them back into the parent log files.  Sorry, it isn't the prettiest of solutions but solves the problem.
+
+Almost all files were changed to add in the system.  When ras2fim.py is running, it will setup logging for all child scripts, however, each independent script has the ability to setup its own logging system as required.  There we no updates to logic of any core files and most files were changed to form the base of the new system. It is expected usage of the new logger functions will grow quicky.
+
+A conda update is required again (conda remove --name ras2fim --all -y, then conda env create. See previous builds for full examples.
+
+There is a wide amount of details on implemenation, usage, background, etc which can be read in the [PR 183](https://github.com/NOAA-OWP/ras2fim/pull/183). We encourage you to read the PR notes to become familiar with the system.
+
+### Additions  
+We will not list all files affected as most are. However, I will list files that have any additional fixes or changes other than adding of logging.
+
+Many files had extra `LPRINT` logging with tracing and/or more context data for `DEBUG`, `WARNING`, `ERROR` and `CRITICAL`.
+
+### Additions
+- `ras2fim_logger.py`: The parent script that runs the entire logging system.
+
+### Removals
+- `src`
+     - `ras2catchments.py`: No longer applicable for V2.
+
+### Changes  
+- ` config`
+    - `r2f_config.env`: Change PRODUCE_GEOCURVE_POLYGONS to True.  Removed flags for RUN_RAS2REM, and RUN_RAS2CATCHMENTS. 
+ 
+- `environment.yml`: added new package for colorma and colored.
+- `pyproject.toml`:  adding of an linting exception for convert_ras2fim_to_recurr_valiation_datasets.py.
+- `src`
+   - `conflate_hecras_to_nwm.py`:  Changed a few variable names. Upgraded time stamp and duration system. Renamed a few functions using multi-processing for easier identification.
+   - `convert_tif_to_ras_hdf5.py`: Added new partial "verbosity" system to allow for optional additional output.
+   - `create_fim_rasters.py`: Upgraded time stamp and duration system. Added better error handling for multi-processing pools. Added the start of a verbosity system which can be used to show certain messages only if "is_verbose". More is needed later in this script.
+   - `create_geocurves.py`: Added some screen output for incoming params to match other script patterns. Also added new logging for when some logging when depth grid files are skipped.
+   - `create_shapes_from_hecras.py`: Upgraded the multi-proc pool for better error handling. A few variable name changes.
+   - `ras2fim.py`: removed all references to `run_ras2rem` and `ras2catchments`. 
+   - `ras2inundation.py`: Upgraded some error handling.    
+   - `reformat_ras_rating_curve.py`: Upgrade datetime.now to datetime.utcnow. Updated some of the "sample usage" notes.
+   - `run_ras2rem.py`: Added some of the logging but stopped. Moved it to the "tools" directory and marked as deprecated.
+   - `shared_functions.py`: Added a new function as well as added new argument to get_stnd_date().
+   - `shared_variables.py`: Added some new variables for the logging system.
+   - `simplify_fim_rasters.py`: Fixed a bug allow float values to be passed in as command line arg parse values. Need to be int and not a float for the resolution size variable.
+   - `worker_fim_rasters.py`: Keep the original "errors.csv" but renamed that output file. Updated a few variable names. Added a system to slightly stagger start of processes in the multi-process system to avoid rare collisions of a bunch of procs starting at once. A couple of minor variable name changes.
+- `tools`
+   - `get_models_by_catalog.py`: Added another delimiter when reading the S3 parent models catalog file, which was dropping records where the final key starts with `3_`.  Small try except updates. Removed its own previously existing logging system in favor of the new logging system.
+- `ras_unit_to_s3.py`: fix some validation checking and updated a bit of error handling. Note: It has a bug in it that appears to be unrelated to logging. A new issue has been issued to be fixed later.
+- `run_ras2rem.py`:  Moved from src directory and added deprecation message.
+- `Note`: None of the files in the tools directory starting with the name of `nws_` were updated as they may be no longer in use.
+
+<br/><br/>
+
 ## v1.29.0 - 2023-09-29 - [PR#166](https://github.com/NOAA-OWP/ras2fim/pull/166)
 
 This PR includes a new tool that can take a ras2fim unit output folder and upload it to S3. During that upload processes, it checks the s3 `output_ras2fim` folder to look for folders already share the same huc and crs values. A folder may/may not pre-exist that matches the huc and crs but may/may not share a date.  A new master file called `ras_output_tracker.csv` exists now in the s3 `output_ras2fim` folder which tracks all folders uploaded, moved to archive, and overwritten. All activities done by the new `ras_unit_to_s3.py` update this new master copy in S3.

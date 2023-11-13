@@ -74,6 +74,7 @@ extend-ignore = """
 
 per-file-ignores = """
     src/create_shapes_from_hecras.py: F841, E731
+    tools/convert_ras2fim_to_recurr_validation_datasets.py: E402
     tools/get_models_by_catalog.py: E712, E402
     tools/nws_ras2fim_clip_dem_from_shape.py: E402
     tools/nws_ras2fim_entwine_dem_from_shp.py: E402

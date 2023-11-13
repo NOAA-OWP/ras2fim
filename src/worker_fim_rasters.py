@@ -11,9 +11,7 @@ import shutil
 # import matplotlib.ticker as tick
 import numpy as np
 import pandas as pd
-
-import ras2fim_logger
-
+import win32com.client
 
 # import win32com.client
 # from scipy.interpolate import interp1d
@@ -812,13 +810,17 @@ def create_ras_flow_file_wse(
         pattern_river = re.compile(r"River Rch & RM=.*")
         matches_river = pattern_river.finditer(flowfile_contents)
 
-        for match in matches_river:
-            str_river_reach = flowfile_contents[match.start() : match.end()]
-            # split the data on the comma
-            list_river_reach_s = str_river_reach.split(",")
-            # Get from array - use strip to remove whitespace
-            str_river = list_river_reach_s[0].strip()
-            str_reach = list_river_reach_s[1].strip()
+    for match in matches:
+        str_river_reach = file_contents[match.start() : match.end()]
+        # remove first 12 characters
+        str_river_reach = str_river_reach[12:]
+        # split the data on the comma
+        list_river_reach = str_river_reach.split(",")
+
+        # Get from array - use strip to remove whitespace
+        str_river = list_river_reach[0].strip()
+        str_reach = list_river_reach[1].strip()
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         # -------------------------------------------------
         # Write the flow file
