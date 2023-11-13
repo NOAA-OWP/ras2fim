@@ -11,12 +11,14 @@ import shutil
 # import matplotlib.ticker as tick
 import numpy as np
 import pandas as pd
-import win32com.client
+
+import ras2fim_logger
+import shared_functions as sf
 
 # import win32com.client
 # from scipy.interpolate import interp1d
 
-# from datetime import date
+from datetime import date
 
 
 # Global Variables
@@ -28,15 +30,87 @@ MP_LOG = ras2fim_logger.RAS2FIM_logger()  # mp version
 
 
 # -------------------------------------------------
+def fn_create_firstpass_flowlist(int_fn_starting_flow, int_fn_max_flow, int_fn_number_of_steps):
+    # create a list of flows for the first pass HEC-RAS
+
+    list_first_pass_flows = []
+
+    int_fn_deltaflowstep = int(int_fn_max_flow // (int_fn_number_of_steps - 2))
+
+    for i in range(int_fn_number_of_steps):
+        list_first_pass_flows.append(int_fn_starting_flow + (i * int_fn_deltaflowstep))
+
+    return list_first_pass_flows
+
+
+# -------------------------------------------------
 def fn_create_profile_names(list_profiles, str_suffix):
     str_profile_names = 'Profile Names='
 
     for i in range(len(list_profiles)):
-        str_profile_names += 'flow' + str(list_profiles[i]) + str_suffix  # flow was added to this line
+        str_profile_names += 'flow' + str(list_profiles[i]) + str_suffix
         if i < (len(list_profiles) - 1):
             str_profile_names = str_profile_names + ','
 
     return str_profile_names
+
+
+# -------------------------------------------------
+def fn_format_flow_values(list_flow):
+    int_number_of_profiles = len(list_flow)
+    str_all_flows = ""
+
+    int_number_of_new_rows = int((int_number_of_profiles // 10) + 1)
+    int_items_in_new_last_row = int_number_of_profiles % 10
+
+    # write out new rows of 10 grouped flows
+    if int_number_of_new_rows > 1:
+        # write out the complete row of 10
+        for j in range(int_number_of_new_rows - 1):
+            str_flow = ""
+            for k in range(10):
+                int_Indexvalue = j * 10 + k
+                # format to 8 characters that are right alligned
+                str_current_flow = "{:>8}".format(str(list_flow[int_Indexvalue]))
+                str_flow = str_flow + str_current_flow
+            str_all_flows += str_flow + "\n"
+
+    # write out the last row
+    str_flow_last_row = ""
+    for j in range(int_items_in_new_last_row):
+        int_indexvalue = (int_number_of_new_rows - 1) * 10 + j
+        str_current_flow = "{:>8}".format(str(list_flow[int_indexvalue]))
+        str_flow_last_row += str_current_flow
+    str_all_flows += str_flow_last_row
+
+    return str_all_flows
+
+# -------------------------------------------------
+# def fn_append_error(str_f_id_fn, str_geom_path_fn, str_huc12_fn, str_directory_fn, exception_msg):
+#     # creates a csv file of the errors found during processing
+#     str_error_path = os.path.join(str_directory_fn, "error_found.csv")
+
+#     # if file exists then open it
+#     if os.path.exists(str_error_path):
+#         # open the csv
+#         df_error = pd.read_csv(str_error_path, index_col=0)
+#         # add the record to the file
+#         ds_series = pd.Series(
+#             [str_f_id_fn, str_geom_path_fn, str_huc12_fn, exception_msg],
+#             index=["feature_id", "geom_path", "huc_12", "err"],
+#         )
+#         df_error = pd.concat([df_error, ds_series], ignore_index=True)
+#     else:
+#         # create the file and append new row
+#         df_error = pd.DataFrame(
+#             [[str_f_id_fn, str_geom_path_fn, str_huc12_fn, exception_msg]],
+#             columns=["feature_id", "geom_path", "huc_12", "err"],
+#         )
+
+#     # write out the file
+#     df_error.to_csv(str_error_path)
+#     # close the dataframe
+#     del df_error
 
 
 # -------------------------------------------------
@@ -109,51 +183,6 @@ def fn_get_flow_dataframe(str_path_hecras_flow_fn):
     file1.close()
 
     return df
-
-
-# -------------------------------------------------
-def fn_create_firstpass_flowlist(int_fn_starting_flow, int_fn_max_flow, int_fn_number_of_steps):
-    # create a list of flows for the first pass HEC-RAS
-
-    list_first_pass_flows = []
-
-    int_fn_deltaflowstep = int(int_fn_max_flow // (int_fn_number_of_steps - 2))
-
-    for i in range(int_fn_number_of_steps):
-        list_first_pass_flows.append(int_fn_starting_flow + (i * int_fn_deltaflowstep))
-
-    return list_first_pass_flows
-
-
-# -------------------------------------------------
-def fn_format_flow_values(list_flow):
-    int_number_of_profiles = len(list_flow)
-    str_all_flows = ""
-
-    int_number_of_new_rows = int((int_number_of_profiles // 10) + 1)
-    int_items_in_new_last_row = int_number_of_profiles % 10
-
-    # write out new rows of 10 grouped flows
-    if int_number_of_new_rows > 1:
-        # write out the complete row of 10
-        for j in range(int_number_of_new_rows - 1):
-            str_flow = ""
-            for k in range(10):
-                int_Indexvalue = j * 10 + k
-                # format to 8 characters that are right alligned
-                str_current_flow = "{:>8}".format(str(list_flow[int_Indexvalue]))
-                str_flow = str_flow + str_current_flow
-            str_all_flows += str_flow + "\n"
-
-    # write out the last row
-    str_flow_last_row = ""
-    for j in range(int_items_in_new_last_row):
-        int_indexvalue = (int_number_of_new_rows - 1) * 10 + j
-        str_current_flow = "{:>8}".format(str(list_flow[int_indexvalue]))
-        str_flow_last_row += str_current_flow
-    str_all_flows += str_flow_last_row
-
-    return str_all_flows
 
 
 # -------------------------------------------------
@@ -810,17 +839,13 @@ def create_ras_flow_file_wse(
         pattern_river = re.compile(r"River Rch & RM=.*")
         matches_river = pattern_river.finditer(flowfile_contents)
 
-    for match in matches:
-        str_river_reach = file_contents[match.start() : match.end()]
-        # remove first 12 characters
-        str_river_reach = str_river_reach[12:]
-        # split the data on the comma
-        list_river_reach = str_river_reach.split(",")
-
-        # Get from array - use strip to remove whitespace
-        str_river = list_river_reach[0].strip()
-        str_reach = list_river_reach[1].strip()
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        for match in matches_river:
+            str_river_reach = flowfile_contents[match.start() : match.end()]
+            # split the data on the comma
+            list_river_reach_s = str_river_reach.split(",")
+            # Get from array - use strip to remove whitespace
+            str_river = list_river_reach_s[0].strip()
+            str_reach = list_river_reach_s[1].strip()
 
         # -------------------------------------------------
         # Write the flow file
