@@ -6,6 +6,12 @@ We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 This PR updates `reformat_ras_rating_curve.py` to assign the ras2fim version to the `source` column using the get_changelog_version shared function. It also changes the output filenames to be named ras2calibration_rating_curve_points.gpkg and ras2calibration_rating_curve_table.csv, which are more descriptive than the previous names.
 
+
+### Changes  
+- `src/ras2fim.py`: Removes the 'ras2fim' argument from the line that runs `dir_reformat_ras_rc`. 
+- `src/reformat_ras_rating_curve.py`: Added functinoality to automatically get the ras2fim version from `CHANGELOG.md`. Removed hardcoded `source` variables and vestigial references to the previously-removed `-so` flag.
+- `src/shared_variables.py`: Changed the `R2F_OUTPUT_FILE_RAS2CAL_CSV` and `R2F_OUTPUT_FILE_RAS2CAL_GPKG` variable names to be more descriptive. 
+
 <br/><br/>
 
 ## v1.30.1 - 2023-11-2 - [PR#166](https://github.com/NOAA-OWP/ras2fim/pull/198)
