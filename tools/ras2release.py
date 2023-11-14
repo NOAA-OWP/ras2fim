@@ -117,6 +117,7 @@ def __process_domain_models(local_src_unit_paths, local_wip_folder):
     print("*** processing domain models")
 
     output_folder = os.path.join(local_wip_folder, "domain_models")
+    # TODO: incoming files have been renamed.
     merged_domain_model_file = os.path.join(output_folder, "ras2fim_domain_models.gpkg")
 
     # ----------------
@@ -180,6 +181,7 @@ def __process_rating_curves(local_src_unit_paths, local_wip_folder):
     # ----------------
     # Iterate and join the table files
     print(f"src_output_folder is {output_folder}")
+    # TODO: incoming files have been renamed.
     rc_table_files = glob.glob(os.path.join(output_folder, "*_ras2calibration_output_table.csv"))
 
     if len(rc_table_files) == 0:
@@ -194,6 +196,7 @@ def __process_rating_curves(local_src_unit_paths, local_wip_folder):
 
     # ----------------
     # Iterate and join the table files
+    # TODO: incoming files have been renamed.
     rc_point_files = glob.glob(os.path.join(output_folder, "*_ras2calibration_output_geopackage.gpkg"))
 
     # TODO: This might have to move to Parquet or similar as gpkg have a 2GB limit, in FIM, we have a
