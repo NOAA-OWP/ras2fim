@@ -103,9 +103,14 @@ The install package can be downloaded from [the USACE website](https://github.co
 ### (4) Clone the Git-hub repository
 <img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/Git_logo.png" align="right" alt="git logo" height="80"> Install [git](https://git-scm.com/downloads) onto your Windows machine. Next, clone this ras2fim reporitory on to your Windows machine. Path to the windows folder of your choice, then type:
 ```
-git clone https://github.com/NOAA-OWP/ras2fim.git
+git clone https://github.com/NOAA-OWP/ras2fim.git***
 ```
+**Note: ras2fim V2 series has started development as of early November 2023. Initial check-ins for the default branch will fail for the short term future until an advanced version is ready.** When the CHANGELOG.md shows version check-ins starting with the phrase `V2.0.beta.x`, means the branch is not yet operational but you are still welcome to contibute to the new WIP branch. Once the usable versions have been merged, the CHANGELOG.md will start with the number of `v2.0.0.0`.
 <br>
+**If you want to view the last stable `V1` series, use the following git clone command which will come from the ras2fim `main (V1)` branch.**
+```
+git clone https://github.com/NOAA-OWP/ras2fim.git -b V1
+```
 
 ### (5) Building and Testing ras2fim
 
