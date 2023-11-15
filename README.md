@@ -101,7 +101,7 @@ The install package can be downloaded from [the USACE website](https://github.co
 <br><br>
 
 ### (4) Clone the Git-hub repository
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/Git_logo.png" align="right" alt="git logo" height="80"> Install [git](https://git-scm.com/downloads) onto your Windows machine. Next, clone this ras2fim reporitory on to your Windows machine. Path to the windows folder of your choice, then type:
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/Git_logo.png" align="right" alt="git logo" height="80"> Install [git](https://git-scm.com/downloads) onto your Windows machine. Next, clone this ras2fim reporitory on to your Windows machine (see note below). Path to the windows folder of your choice, then type:
 ```
 git clone https://github.com/NOAA-OWP/ras2fim.git***
 ```
