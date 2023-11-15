@@ -976,3 +976,56 @@ if __name__ == "__main__":
 
     except Exception:
         RLOG.critical(traceback.format_exc())
+
+
+# TODO: Finish changing this script to be testable by one unit folder dir_reformat_ras_rc function
+"""
+    parser = argparse.ArgumentParser(
+        description="========== Process calibration for a single unit =========="
+    )
+
+    parser.add_argument(
+        "-o",
+        dest="output_folder_path",
+        help="REQUIRED: full path to the output unit folder",
+        required=True,
+        metavar="",
+        type=str,
+    )
+
+    args = vars(parser.parse_args())
+    output_folder_path = args["output_folder_path"]
+
+    
+    log_file_folder = os.path.join(args["output_folder_path"], "test_reformat_rc_logs")
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
+
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
+
+        # call main program
+        dir_reformat_ras_rc(
+            output_folder_path,
+            sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
+            sv.R2F_OUTPUT_FILE_RAS2CAL_CSV,
+            sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG,
+            sv.R2F_OUTPUT_FILE_RAS2CAL_LOG,
+            "",
+            "",
+            False,
+            sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF,
+            sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS,
+            sv.R2F_OUTPUT_DIR_METRIC,
+            )
+
+    except Exception:
+        RLOG.critical(traceback.format_exc())
+
+"""
