@@ -1,8 +1,24 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.x - 2023-11-15 - [PR#208](https://github.com/NOAA-OWP/ras2fim/pull/208)
 
-## v1.30.1 - 2023-11-2 - [PR#166](https://github.com/NOAA-OWP/ras2fim/pull/198)
+During a recent other merge, ras_unit_to_s3 began failing to upload. Now fixed.
+
+### Changes  
+- `src`/`shared_validators.py`: corrected text.
+- `tools`
+    - `ras_unit_to_s3.py`: Fix upload bug which was based in the `skip_files` system which exempts some files from  uploading to S3. Also added color to console as questions are asked of the user (live input). 
+    - `s3_shared_functions.py`:  Removed progress bars which don't work well now with RLOG. . Fixed the `skip_files` system. Added color in key screen outputs for readability. Added throttling on max number of CPU's for multi-thread.
+
+<br/><br/>
+
+## ================================================
+## Note: Below is the end of the V1 Series. Moving forward will be towards the new V2 ras2fim series.
+
+<br/><br/>
+
+## v1.30.1 - 2023-11-2 - [PR#198](https://github.com/NOAA-OWP/ras2fim/pull/198)
 
 This PR fixes a small bug for making polygons for model domains that results in reporting all models to be not-conflated to NWM reaches. This PR closes #195.
 
