@@ -4,28 +4,16 @@ We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 ## v2.0.beta.x - 2023-11-16 - [PR#207](https://github.com/NOAA-OWP/ras2fim/pull/207)
 
-This PR is the first ras2fim V2 which is merged to the main branch. Step 2, conflate_hecras_to_nwm.py and Step 5, worker_fim_rasters.py of ras2fim V1 were significantly changed. conflate_hecras_to_nwm.py V2 now conflates HECRAS model streams to the NWM streams and finds the matched streams. worker_fim_rasters.py V2 computes boundary conditions for conflated streams, creates RAS flow and plan files and generates the inundation depth grids using the HECRAS Controller.
+The goal of this PR is to merge the first ras2fim V2.01 to the main branch. Step 2, `conflate_hecras_to_nwm.py` and Step 5, `worker_fim_rasters.py` of ras2fim V1 were significantly changed.  `conflate_hecras_to_nwm.py` V2.01 now conflates HECRAS model streams to the NWM streams and finds the matched streams. `worker_fim_rasters.py` V2.01 computes boundary conditions for conflated streams, creates RAS flow and plan files and generates the inundation depth grids using the HECRAS Controller. 
 
-Additions include:
-1. Additions to conflate_hecras_to_nwm.py: cut_streams_in_two function was added.
-2. Additions to worker_fim_rasters.py: fn_get_flow_dataframe, create_list_of_paths_flow_geometry_files_4each_BCs, create_list_of_paths_flow_geometry_files_4each_BCs, compute_boundray_condition_wse, compute_boundray_condition_nd, create_ras_flow_file_nd, create_ras_flow_file_wse functions were added.
+**Conflate_hecras_to_nwm.py works from the command line. ras2fim.py does not work. Neither worker_fim_rasters.py**
 
-Changes includes
-1. Changes in conflate_hecras_to_nwm.py: conflate_hecras_to_nwm function was significantly changed. The function
-reads "nwm_flows.gpkg", "nwm_wbd_lookup.nc" and "WBD_National.gpkg" from NWM datasets and get data in the given HUC8. it reads HECRAS model streams and clips them to the HUC8. It makes a buffer around NWM streams. It cuts the end of the HECRAS model streams and makes a buffer around them. Then, it overlays hec-ras model streams polygons and NWM streams polygons and finds the path to the conflated HECRAS models. It removes the duplicated paths and exports the final HECRAS model paths to a CSV file. It creates a shape file of the conflated HECRAS streams and saves it.
-2. Changes in worker_fim_rasters.py: This script was significantly changed and the following functions were added. This script only works on the models whose paths were published in Step 2.
-create_list_of_paths_flow_geometry_files_4each_BCs: Reads the name of all conflated parent HECRAS models and determines the boundary condition (BC) types for each model. Then, it creates lists of paths of flow and geometry files separately for water surface elevation (WSE) BC and normal depth (ND) BC separately.
-compute_boundray_condition_wse: computes BC for the conflated RAS models with WSE BC.
-compute_boundray_condition_nd: computes BC for the conflated RAS models with ND BC.
-create_ras_flow_file_nd: creates flow files for the conflated RAS models with ND BC.
-create_ras_flow_file_wse: creates flow files for the conflated RAS models with WSE BC.
-
-Removals include:
-1. Removals from conflate_hecras_to_nwm.py V1: mp_snap_point and mp_create_gdf_of_points functions were not used in and removed from conflate_hecras_to_nwm.py V2.
-2. Removals from worker_fim_rasters.py V1: fn_create_rating_curve, fn_create_flow_file_second_pass, and fn_create_hecras_files functions were not used in and removed from worker_fim_rasters.py V2.
-
-Testing:
-This branch was tested by running the V2 of conflate_hecras_to_nwm.py and worker_fim_rasters.py on all models of multiple HUC8s, including 12090301, 12030202, and 12040101.
+### Changes
+- `src`
+   -  `conflate_hecras_to_nwm.py`: 
+      - `cut_streams_in_two` function was added. 
+      -  `conflate_hecras_to_nwm` function had a major upgrade for ras2fim V2.
+   - `worker_fim_rasters.py`: a major upgrade for ras2fim V2.
 
 <br/><br/>
 
