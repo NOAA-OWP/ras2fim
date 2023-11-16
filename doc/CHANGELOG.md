@@ -2,7 +2,7 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
-## v2.0.beta.0 - 2023-11-16 - [PR#207](https://github.com/NOAA-OWP/ras2fim/pull/207)
+## v2.0.beta.x - 2023-11-16 - [PR#207](https://github.com/NOAA-OWP/ras2fim/pull/207)
 
 This PR is the first ras2fim V2 which is merged to the main branch. Step 2, conflate_hecras_to_nwm.py and Step 5, worker_fim_rasters.py of ras2fim V1 were significantly changed. conflate_hecras_to_nwm.py V2 now conflates HECRAS model streams to the NWM streams and finds the matched streams. worker_fim_rasters.py V2 computes boundary conditions for conflated streams, creates RAS flow and plan files and generates the inundation depth grids using the HECRAS Controller.
 
