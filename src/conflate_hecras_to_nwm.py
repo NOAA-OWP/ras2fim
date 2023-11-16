@@ -3,11 +3,11 @@
 
 import argparse
 import datetime as dt
-import os
 import os.path
 import traceback
 
-from time import sleep
+import time
+import warnings
 
 import geopandas as gpd
 import numpy as np
@@ -18,26 +18,13 @@ from shapely.geometry import LineString, Point
 
 import ras2fim_logger
 import shared_functions as sf
-import shared_variables as sv
-
 
 # Global Variables
 RLOG = ras2fim_logger.R2F_LOG  # the non mp version
 
 
 # -------------------------------------------------
-def fn_wkt_loads(x):
-    try:
-        return wkt.loads(x)
-    except Exception as ex:
-        RLOG.error("fn_wkt_loads errored out")
-        RLOG.error(x)
-        RLOG.error(f"Details: {ex}")
-        return None
-
-
-# -------------------------------------------------
-def cut_streams_in_two(line, distance):
+def fn_cut_streams_in_two(line, distance):
     # Cuts a line in two at a distance from its starting point
     # Cut end of the ble streams to avoid conflation with downstream nwm streams
     if distance <= 0.0 or distance >= line.length:
@@ -52,36 +39,45 @@ def cut_streams_in_two(line, distance):
             return [LineString(coords[:i2] + [(cpl.x, cpl.y)]), LineString([(cpl.x, cpl.y)] + coords[i2:])]
 
 
-# -------------------------------------------------
-def conflate_hecras_to_nwm(str_huc8, shapes_from_hecras_dir, path_csv_from_conflation, path_national_dataset):
+# # -------------------------------------------------
+# str_huc8 = "12090301"
+# str_shp_in_arg = "C:/ras2fim_data/OWP_ras_models/ras2fimv2.0/step1_v2_output_12090301"
+# str_shp_out_arg = "C:/ras2fim_data/OWP_ras_models/ras2fimv2.0/step2_v2_output_conflate_12090301"
+# str_nation_arg = "C:/ras2fim_data/inputs/X-National_Datasets"
 
+# -------------------------------------------------
+def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg):
+    
     # TODO: Oct 2023: Review and remove this surpression
     # supress all warnings
     # warnings.filterwarnings("ignore", category=UserWarning)
 
-    # ~~~~~~~~~~~~~~~~~~~~~~~~
+    # -------------------------------------------------
     # INPUT
     start_dt = dt.datetime.utcnow()
 
-    RLOG.lprint("")
+    RLOG.lprint(" ")
     RLOG.lprint("+=================================================================+")
     RLOG.lprint("|        CONFLATE HEC-RAS TO NATIONAL WATER MODEL STREAMS         |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     RLOG.lprint("  ---(w) HUC-8: " + str_huc8)
-     
-    RLOG.lprint("  ---(i) HEC-RAS INPUT SHP DIRECTORY: " + shapes_from_hecras_dir)
+
+    str_ble_shp_dir = str_shp_in_arg
+    RLOG.lprint("  ---(i) HEC-RAS INPUT SHP DIRECTORY: " + str_ble_shp_dir)
 
     # note the files names are hardcoded
-    path_ras_models_streams = shapes_from_hecras_dir + "\\" + "stream_LN_from_ras.shp"
+    str_ble_stream_ln = str_ble_shp_dir + "\\" + "stream_LN_from_ras.shp"
 
-    RLOG.lprint("  ---(o) OUTPUT DIRECTORY: " + path_csv_from_conflation)
-    RLOG.lprint("  ---(n) NATIONAL DATASET LOCATION: " + path_national_dataset)
-    RLOG.lprint(f"  --- Module Started: {sf.get_stnd_date()}")
+    STR_OUT_PATH = str_shp_out_arg
+    RLOG.lprint("  ---(o) OUTPUT DIRECTORY: " + STR_OUT_PATH)
+
+    str_national_dataset_path = str_nation_arg
+    RLOG.lprint("  ---(n) NATIONAL DATASET LOCATION: " + str_national_dataset_path)
 
     # Input - projection of the base level engineering (BLE) models
     # Get this string from the input csv of the stream
-    gdf_stream = gpd.read_file(path_ras_models_streams)
+    gdf_stream = gpd.read_file(str_ble_stream_ln)
     ble_prj = str(gdf_stream.crs)
 
     # Note that this routine requires three (3) national datasets.
@@ -93,28 +89,25 @@ def conflate_hecras_to_nwm(str_huc8, shapes_from_hecras_dir, path_csv_from_confl
     INPUT_NWM_WBD_LOOKUP_FILE = "nwm_wbd_lookup.nc"
     INPUT_WBD_NATIONAL_FILE = "WBD_National.gpkg"
     # Input - Watershed boundary data geopackage
-    str_wbd_geopkg_path = path_national_dataset + "\\" + INPUT_WBD_NATIONAL_FILE
+    str_wbd_geopkg_path = str_national_dataset_path + "\\" + INPUT_WBD_NATIONAL_FILE
 
     # Input - National Water Model stream lines geopackage
-    str_nwm_flowline_geopkg_path = path_national_dataset + "\\" + INPUT_NWM_FLOWS_FILE
+    str_nwm_flowline_geopkg_path = str_national_dataset_path + "\\" + INPUT_NWM_FLOWS_FILE
 
     # Input - Recurrance Intervals netCDF
-    str_netcdf_path = path_national_dataset + "\\" + INPUT_NWM_WBD_LOOKUP_FILE
+    str_netcdf_path = str_national_dataset_path + "\\" + INPUT_NWM_WBD_LOOKUP_FILE
 
     # Geospatial projections
     nwm_prj = "ESRI:102039"
-
-    # -------------------------------------------------
-    # option to turn off the SettingWithCopyWarning
-    # pd.set_option("mode.chained_assignment", None)
-    # -------------------------------------------------
 
     # Load the geopackage into geodataframe - 1 minute +/-
     RLOG.lprint("+-----------------------------------------------------------------+")
     RLOG.lprint("Loading Watershed Boundary Dataset ~ 20 sec")
 
+    INPUT_WBD_HUC8_DIR = "WBD_HUC8"  # Pattern for huc files are 'HUC8_{huc number}.gpkg'
+
     # Use the HUC8 small vector to mask the large full WBD_Nation.gpkg.
-    wdb_huc8_file = os.path.join(path_national_dataset, sv.INPUT_WBD_HUC8_DIR, f"HUC8_{str_huc8}.gpkg")
+    wdb_huc8_file = os.path.join(str_nation_arg, INPUT_WBD_HUC8_DIR, f"HUC8_{str_huc8}.gpkg")
     huc8_wbd_db = gpd.read_file(wdb_huc8_file)
     gdf_ndgplusv21_wbd = gpd.read_file(str_wbd_geopkg_path, mask=huc8_wbd_db)
 
@@ -128,20 +121,20 @@ def conflate_hecras_to_nwm(str_huc8, shapes_from_hecras_dir, path_csv_from_confl
 
     gdf_huc8_only_ble_prj = gdf_huc8_only.to_crs(ble_prj)
 
-    # path of the shapefile to write
-    str_huc8_filepath = os.path.join(path_csv_from_conflation, f"{str_huc8}_huc_12_ar.shp")
+    # Path of the shapefile to write
+    str_huc8_filepath = os.path.join(STR_OUT_PATH, f"{str_huc8}_huc_12_ar.shp")
 
     # -------------------------------------------------
     # Overlay the BLE streams (from the HEC-RAS models) to the HUC_12 shapefile
 
     # read the ble streams
-    gdf_ble_streams = gpd.read_file(path_ras_models_streams)
+    gdf_ble_streams = gpd.read_file(str_ble_stream_ln)
 
     # clip the BLE streams to the watersheds (HUC-12)
     gdf_ble_streams_intersect = gpd.overlay(gdf_ble_streams, gdf_huc8_only_ble_prj, how="intersection")
 
     # path of the shapefile to write
-    str_filepath_ble_stream = os.path.join(path_csv_from_conflation, f"{str_huc8}_ble_streams_ln.shp")
+    str_filepath_ble_stream = os.path.join(STR_OUT_PATH, f"{str_huc8}_ble_streams_ln.shp")
 
     # write the shapefile
     gdf_ble_streams_intersect.to_file(str_filepath_ble_stream)
@@ -180,6 +173,7 @@ def conflate_hecras_to_nwm(str_huc8, shapes_from_hecras_dir, path_csv_from_confl
     # Load the netCDF file to pandas dataframe - 15 seconds
     RLOG.lprint("+-----------------------------------------------------------------+")
     RLOG.lprint("Loading the National Water Model Recurrence Flows ~ 15 sec")
+
     ds = xr.open_dataset(str_netcdf_path)
     df_all_nwm_streams = ds.to_dataframe()
 
@@ -237,20 +231,23 @@ def conflate_hecras_to_nwm(str_huc8, shapes_from_hecras_dir, path_csv_from_confl
     # Generate the equidistant points
     distances = [np.arange(0, length, distance_delta) for length in gdf_ble_streams_intersect_ldd.length]
 
+    gdf_ble_streams_intersect_ldd_geo = gdf_ble_streams_intersect_ldd.geometry
+
     list_ble_streams_cut_geo = []
-    for dc in range(len(distances)):
-        ligne = gdf_ble_streams_intersect_ldd.iloc[dc].geometry
+    for dc in range(len(distances)): # ~ 120 s
+        #ligne = gdf_ble_streams_intersect_ldd.iloc[dc].geometry
+        ligne = gdf_ble_streams_intersect_ldd_geo[dc]
 
         # Cut end of the ble streams to avoid conflation with downstream nwm streams
         # geometry collection format
         if len(distances[dc]) >= 4:
-            ligne_cut = cut_streams_in_two(ligne, distances[dc][-3])
+            ligne_cut = fn_cut_streams_in_two(ligne, distances[dc][-3])
 
         if len(distances[dc]) == 3:
-            ligne_cut = cut_streams_in_two(ligne, distances[dc][-2])
+            ligne_cut = fn_cut_streams_in_two(ligne, distances[dc][-2])
 
         if len(distances[dc]) == 2:
-            ligne_cut = cut_streams_in_two(ligne, distances[dc][-1])
+            ligne_cut = fn_cut_streams_in_two(ligne, distances[dc][-1])
 
         list_ble_streams_cut_geo.append(ligne_cut[0])
 
@@ -264,6 +261,7 @@ def conflate_hecras_to_nwm(str_huc8, shapes_from_hecras_dir, path_csv_from_confl
     gdf_ble_streams_intersect_buf = gdf_ble_streams_intersect_ldd_cut.copy()
     gdf_ble_streams_intersect_buf.geometry = ble_streams_intersect_buf_geom
 
+   
     # -------------------------------------------------
     # Conflate ble streams to nwm streams
     RLOG.lprint("Determining conflated stream centerlines")
@@ -278,35 +276,42 @@ def conflate_hecras_to_nwm(str_huc8, shapes_from_hecras_dir, path_csv_from_confl
     ).drop_duplicates(subset=['ras_path'])
     gdf_conflate_streams_ble_to_nwm_filter1.index = range(len(gdf_conflate_streams_ble_to_nwm_filter1))
 
-    # Removing duplicate ras models from rrassler
-    ras_path_split = gdf_conflate_streams_ble_to_nwm_filter1['ras_path'].str.split("\\")
+    gdf_conflate_streams_ble_to_nwm = gdf_conflate_streams_ble_to_nwm_filter1.copy()
 
-    list_model_names_split = []
-    for splt in range(len(ras_path_split)):
-        model_name = [
-            ras_path_split[splt],
-            ras_path_split[splt][0],
-            ras_path_split[splt][1][0:-11],
-            ras_path_split[splt][2],
-        ]
-        list_model_names_split.append(model_name)
+    # -------------------------------------------------
+    # # TODO: Removing duplicate ras models from rrassler
+    # # Finding duplicate based on subset= ['river','feature_id'] does not work.
+    # ras_path_split = gdf_conflate_streams_ble_to_nwm_filter1['ras_path'].str.split(os.path.sep)[-2]
 
-    df_ras_path_split_dup = pd.DataFrame(list_model_names_split)
-    df_ras_path_split_dup.columns = ['A', 'B', 'C', 'D']
+    # list_model_names_split = []
+    # for splt in range(len(ras_path_split)):
+    #     model_name = [
+    #         ras_path_split[splt],
+    #         ras_path_split[splt][0],
+    #         ras_path_split[splt][1][0:-11],
+    #         ras_path_split[splt][2],
+    #     ]
+    #     list_model_names_split.append(model_name)
 
-    gdf_conflate_streams_ble_to_nwm_filter2 = gdf_conflate_streams_ble_to_nwm_filter1.assign(
-        duplic_finder=df_ras_path_split_dup['C']
-    )
+    # df_ras_path_split_dup = pd.DataFrame(list_model_names_split)
+    # df_ras_path_split_dup.columns = ['A', 'B', 'C', 'D']
 
-    gdf_conflate_streams_ble_to_nwm = gdf_conflate_streams_ble_to_nwm_filter2.drop_duplicates(
-        subset='duplic_finder'
-    )
-    gdf_conflate_streams_ble_to_nwm.index = range(len(gdf_conflate_streams_ble_to_nwm))
+    # gdf_conflate_streams_ble_to_nwm_filter2 = gdf_conflate_streams_ble_to_nwm_filter1.assign(
+    #     duplic_finder=df_ras_path_split_dup['C']
+    # )
+
+    # gdf_conflate_streams_ble_to_nwm = gdf_conflate_streams_ble_to_nwm_filter2.drop_duplicates(
+    #     subset='duplic_finder'
+    # )
+    # gdf_conflate_streams_ble_to_nwm.index = range(len(gdf_conflate_streams_ble_to_nwm))
+    
+    # gdf_conflate_streams_ble_to_nwm.to_file(
+    #     str_shp_out_arg + "//" + "gdf_conflate_streams_ble_to_nwm.shp")
 
     # -------------------------------------------------
     # Exporting the final ras models to a csv file
     path_to_ras_models_4step5 = gdf_conflate_streams_ble_to_nwm['ras_path']
-    path_to_ras_models_4step5.to_csv(path_csv_from_conflation + "//" + "path_to_ras_models_4step5.csv")
+    path_to_ras_models_4step5.to_csv(str_shp_out_arg + "//" + "path_to_ras_models_4step5.csv")
 
     # -------------------------------------------------
     # Finding streams that work with these final ras models
@@ -347,20 +352,19 @@ def conflate_hecras_to_nwm(str_huc8, shapes_from_hecras_dir, path_csv_from_confl
     gdf_ble_streams_conflated.crs = ble_prj
     gdf_ble_streams_conflated_bleprj = gdf_ble_streams_conflated.to_crs(ble_prj)
 
-    gdf_ble_streams_conflated_bleprj.to_csv(path_csv_from_conflation + "//" + "gdf_ble_streams_conflated_bleprj.csv")
-    gdf_ble_streams_conflated_bleprj.to_file(path_csv_from_conflation + "//" + "gdf_ble_streams_conflated_bleprj.shp")
+    gdf_ble_streams_conflated_bleprj.to_csv(str_shp_out_arg + "//" + "gdf_ble_streams_conflated_bleprj.csv")
+    gdf_ble_streams_conflated_bleprj.to_file(str_shp_out_arg + "//" + "gdf_ble_streams_conflated_bleprj.shp")
 
     # TODO: Add a column to model_catelog to state the reason of excluding a ras model
     # TODO: Make sure that we create an output folder for this step "02_csv_from_conflation"
-    # TODO: Discus about outputs of this step
+    # TODO: discus about outputs of this step
 
-    RLOG.lprint()
+    RLOG.lprint("")
     RLOG.lprint("COMPLETE")
 
     dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
     RLOG.lprint("+=================================================================+")
-
 
 
 if __name__ == "__main__":
@@ -385,7 +389,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-i",
-        dest="shapes_from_hecras_dir",
+        dest="str_shp_in_arg",
         help=r"REQUIRED: Directory containing stream and cross section shapefiles:  Example: D:\ras_shapes",
         required=True,
         metavar="DIR",
@@ -394,7 +398,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-o",
-        dest="path_csv_from_conflation",
+        dest="str_shp_out_arg",
         help=r"REQUIRED: path to write output files: Example: D:\conflation_output",
         required=True,
         metavar="DIR",
@@ -403,7 +407,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-n",
-        dest="path_national_dataset",
+        dest="str_nation_arg",
         help=r"REQUIRED: path to national datasets: Example: E:\X-NWS\X-National_Datasets",
         required=True,
         metavar="DIR",
@@ -412,10 +416,10 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    str_huc8 = args["str_huc8"]
-    shapes_from_hecras_dir = args["shapes_from_hecras_dir"]
-    path_csv_from_conflation = args["path_csv_from_conflation"]
-    path_national_dataset = args["path_national_dataset"]
+    str_huc8_arg = args["str_huc8"]
+    str_shp_in_arg = args["str_shp_in_arg"]
+    str_shp_out_arg = args["str_shp_out_arg"]
+    str_nation_arg = args["str_nation_arg"]
 
     log_file_folder = args["str_shp_out_arg"]
     try:
@@ -431,7 +435,7 @@ if __name__ == "__main__":
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
-        conflate_hecras_to_nwm(str_huc8, shapes_from_hecras_dir, path_csv_from_conflation, path_national_dataset)
+        fn_conflate_hecras_to_nwm(str_huc8_arg, str_shp_in_arg, str_shp_out_arg, str_nation_arg)
 
     except Exception:
         RLOG.critical(traceback.format_exc())
