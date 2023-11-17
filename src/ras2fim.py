@@ -421,7 +421,6 @@ def fn_run_ras2fim(
             sv.R2F_OUTPUT_FILE_RAS2CAL_CSV,
             sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG,
             sv.R2F_OUTPUT_FILE_RAS2CAL_LOG,
-            "ras2fim",
             "",
             "",
             False,
