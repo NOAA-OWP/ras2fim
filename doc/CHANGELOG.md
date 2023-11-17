@@ -2,7 +2,24 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
-## v1.30.1 - 2023-11-2 - [PR#166](https://github.com/NOAA-OWP/ras2fim/pull/198)
+## v2.0.beta.1 - 2023-11-16 - [PR#207](https://github.com/NOAA-OWP/ras2fim/pull/207)
+
+The goal of this PR is to merge the first ras2fim V2.01 to the main branch. Step 2, `conflate_hecras_to_nwm.py` and Step 5, `worker_fim_rasters.py` of ras2fim V1 were significantly changed.  `conflate_hecras_to_nwm.py` V2.01 now conflates HECRAS model streams to the NWM streams and finds the matched streams. `worker_fim_rasters.py` V2.01 computes boundary conditions for conflated streams, creates RAS flow and plan files and generates the inundation depth grids using the HECRAS Controller. 
+
+**Conflate_hecras_to_nwm.py works from the command line. ras2fim.py does not work. Neither worker_fim_rasters.py**
+
+### Changes
+- `src`
+   -  `conflate_hecras_to_nwm.py`: 
+      - `cut_streams_in_two` function was added. 
+      -  `conflate_hecras_to_nwm` function had a major upgrade for ras2fim V2.
+   - `worker_fim_rasters.py`: a major upgrade for ras2fim V2.
+
+<br/><br/>
+
+
+
+## v1.30.1 - 2023-11-2 - [PR#198](https://github.com/NOAA-OWP/ras2fim/pull/198)
 
 This PR fixes a small bug for making polygons for model domains that results in reporting all models to be not-conflated to NWM reaches. This PR closes #195.
 
