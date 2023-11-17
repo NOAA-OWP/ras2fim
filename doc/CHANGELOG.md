@@ -28,14 +28,6 @@ The goal of this PR is to merge the first ras2fim V2.01 to the main branch. Step
 
 <br/><br/>
 
-## RAS2FIM V1 - Code Freeze
-
-Nov 8, 2023
-
-At this point, there are no more projected updates required to the V1 code base. The "dev" branch will now continue on as ras2fim V2. This branch exists in case we need an emergency or critical fix based on V1 code.
-
-<br/><br/>
-
 ## v1.30.1 - 2023-11-2 - [PR#166](https://github.com/NOAA-OWP/ras2fim/pull/198)
 
 This PR fixes a small bug for making polygons for model domains that results in reporting all models to be not-conflated to NWM reaches. This PR closes #195.
