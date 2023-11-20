@@ -4,7 +4,32 @@ We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 ## v2.0.beta.x - 2023-11-20 - [PR#209](https://github.com/NOAA-OWP/ras2fim/pull/209)
 
-Content Coming
+Added a new tool that can so wildcard searching s3 for files and folders including recursively. It uses a simple * (asterisks) to represent zero to many characters. It is not case-sensitive.
+
+Upon finding file and folder matches, an output csv is created.
+
+Searching is not done on each individual file or folder name but the full path of both:
+e.g. 1260391_EAST FORK TRINITY RIVER_g01_1690618796/EAST FORK TRINITY RIVER.f01 :  note the forward slash. Why the full path instead of both segments individual? e.g ['1260391_EAST FORK TRINITY RIVER_g01_1690618796', 'EAST FORK TRINITY RIVER.f01'] ?  Because a user might want to use different combinations such as '1260391*.f01`
+
+While this is designed to work against model folders, it can be used against any s3 bucket anywhere (assuming valid credentials)
+
+### Additions  
+
+- `tools`
+    - `s3_search_tools.py`: New tool as described above.
+
+### Changes  
+
+- `src`
+   - `shared_functions.py`: Added option to include random number suffice to "get_date_with_milli".
+   - `shared_validators.py`: text fix.
+   - `shared_variables.py`: added new default pathing used by new search tool.
+
+- `tools`
+    - `get_models_by_catalog.py`: Simply and adjust some import statements, text adjustments.
+    - `ras_unit_by_s3.py`: Simply and adjust some import statements, text adjustments, update a few variable names, add a bit more color to outputs.
+    - `s3_shared_functions.py`: Adjusted how color tags are used, updated a few variable names, fixed job count error for multi-threading, added new `get_records` for getting a list of file/folder names matching the wildcard search as per s3_search_tool.py.
+
 
 <br/><br/>
 
