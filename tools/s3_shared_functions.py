@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import fnmatch
 import os
 import sys
 import traceback
@@ -98,9 +99,9 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
     RLOG.lprint("===================================================================")
     print("")
     RLOG.lprint(
-        f"{cl.fore.LIGHT_YELLOW}"
+        f"{cl.fg('light_yellow')}"
         f"Uploading folder from {src_path}  to  {s3_full_target_path}"
-        f"{cl.style.RESET}"
+        f"{cl.attr(0)}"
     )
     print()
 
@@ -146,9 +147,9 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
 
         if len(s3_files) == 0:
             RLOG.lprint(
-                f"{cl.fore.RED_1}"
+                f"{cl.fg('red_1')}"
                 f"No files in source folder of {src_path}. Upload invalid."
-                f"{cl.style.RESET}"
+                f"{cl.attr(0)}"
             )
             return
 
@@ -222,9 +223,7 @@ def delete_s3_folder(bucket_name, s3_folder_path):
     RLOG.lprint("===================================================================")
     print("")
     RLOG.lprint(
-        f"{cl.fore.LIGHT_YELLOW}"
-        f"Deleting the files and folders at {s3_full_target_path}"
-        f"{cl.style.RESET}"
+        f"{cl.fg('light_yellow')}" f"Deleting the files and folders at {s3_full_target_path}" f"{cl.attr(0)}"
     )
     print()
 
@@ -254,9 +253,9 @@ def delete_s3_folder(bucket_name, s3_folder_path):
 
         if len(s3_files) == 0:
             RLOG.lprint(
-                f"{cl.fore.RED_1}"
+                f"{cl.fg('red_1')}"
                 f"No files in s3 folder of {s3_full_target_path} to be deleted."
-                f"{cl.style.RESET}"
+                f"{cl.attr(0)}"
             )
             return
 
@@ -329,15 +328,15 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         RLOG.lprint("===================================================================")
         print("")
         RLOG.lprint(
-            f"{cl.fore.LIGHT_YELLOW}"
+            f"{cl.fg('light_yellow')}"
             f"Moving folder from {s3_src_folder_path}  to  {s3_target_folder_path}"
-            f"{cl.style.RESET}"
+            f"{cl.attr(0)}"
         )
         print()
         print(
-            f"{cl.fore.DODGER_BLUE_1}"
+            f"{cl.fg('dodger_blue_1')}"
             "***  NOTE: s3 can not move files, it can only copy the files then delete them."
-            f"{cl.style.RESET}"
+            f"{cl.attr(0)}"
         )
         print()
 
@@ -372,9 +371,9 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
 
         if len(s3_files) == 0:
             RLOG.lprint(
-                f"{cl.fore.RED_1}"
+                f"{cl.fg('red_1')}"
                 f"No files in source folder of {s3_src_folder_path}. Move invalid."
-                f"{cl.style.RESET}"
+                f"{cl.attr(0)}"
             )
             return
 
@@ -422,11 +421,97 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
 
 
 ####################################################################
+def get_records(bucket_name, s3_src_folder_path, search_key):
+    """
+    Process:
+        - uses a S3 paginator to recursively look for matches (non case-sensitive)
+    Inputs:
+        - bucket_name: e.g mys3bucket_name
+        - s3_src_folder_path: e.g. OWP_ras_models/models
+        - search_key: phrase (str) to be searched: e.g *Trinity River*
+    Output
+        - A list of dictionary items matching records.
+            - first value is the match key:
+                    ie) 1262811_UNT 213 in Village Cr Washd_g01_1689773310/UNT 213 in Village Cr Washd.r01
+            - The second value is the full URL of it
+                ie) s3://ras2fim-dev/OWP_ras_models/models-12030105-full/1262811_UNT...r01
+    """
+
+    try:
+        print("")
+        RLOG.lprint(
+            f"{cl.fg('light_yellow')}"
+            f"Searching files and folders in s3://{bucket_name}/{s3_src_folder_path}"
+            f" based on search key of '{search_key}'.\n"
+            " This may take a few minutes depending on seach folder size."
+            f"{cl.attr(0)}"
+        )
+        print("")
+
+        if not s3_src_folder_path.endswith("/"):
+            s3_src_folder_path += "/"
+
+        s3_client = boto3.client("s3")
+        s3_items = []  # a list of dictionaries
+
+        default_kwargs = {"Bucket": bucket_name, "Prefix": s3_src_folder_path}
+
+        # Examples:
+        # search_key = "TRINITY*"  (none... only work if no chars in front of Trinity)
+        # search_key = "*TRINITY*"
+        # search_key = "*trinity river*"
+        # search_key = "*caney*.prj"
+        # search_key = "*caney*.g01"
+        # search_key = "*caney*.g01*"
+        # search_key = "*.g01*"
+        # search_key = "*.g01"
+        # search_key = "1262811*"
+
+        next_token = ""
+
+        while next_token is not None:
+            # will limit to 1000 objects
+            updated_kwargs = default_kwargs.copy()
+            if next_token != "":
+                updated_kwargs["ContinuationToken"] = next_token
+
+            response = s3_client.list_objects_v2(**updated_kwargs)
+            contents = response.get("Contents")
+
+            for result in contents:
+                key = result.get("Key")
+                key_adj = key.replace(s3_src_folder_path, "")
+                if fnmatch.fnmatch(key_adj, search_key):
+                    item = {"key": key_adj, "url": f"s3://{bucket_name}/{s3_src_folder_path}{key_adj}"}
+                    s3_items.append(item)
+
+            next_token = response.get("NextContinuationToken")
+
+        return s3_items
+
+    except botocore.exceptions.NoCredentialsError:
+        RLOG.critical("-----------------")
+        RLOG.critical(
+            "** Credentials not available for the submitted bucket. Try aws configure or review AWS "
+            "permissions options."
+        )
+        sys.exit(1)
+
+    except Exception as ex:
+        RLOG.critical("-----------------")
+        RLOG.critical("** Error finding files or folders in S3:")
+        RLOG.critical(traceback.format_exc())
+        raise ex
+
+
+####################################################################
 def is_valid_s3_folder(s3_bucket_and_folder):
     """
     Process:  This will throw exceptions for all errors
     Input:
         - s3_bucket_and_folder: eg. s3://ras2fim/OWP_ras_models
+    Output:
+        bucket_name, s3_folder_path
     """
 
     if s3_bucket_and_folder.endswith("/"):
@@ -442,6 +527,9 @@ def is_valid_s3_folder(s3_bucket_and_folder):
     client = boto3.client("s3")
 
     try:
+        if does_s3_bucket_exist(bucket_name) is False:
+            raise ValueError(f"s3 bucket of {bucket_name} does not appear to exist")
+
         # If the bucket is incorrect, it will throw an exception that already makes sense
         s3_objs = client.list_objects_v2(Bucket=bucket_name, Prefix=s3_folder_path, MaxKeys=2, Delimiter="/")
 

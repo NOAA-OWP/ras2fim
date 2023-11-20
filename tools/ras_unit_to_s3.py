@@ -9,14 +9,14 @@ import traceback
 import boto3
 import colored as cl
 import pandas as pd
+import s3_shared_functions as s3_sf
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
-import s3_shared_functions as s3_sf
 
 import ras2fim_logger
-import shared_functions as sf
 import shared_variables as sv
+from shared_functions import get_stnd_date
 
 
 # Global Variables
@@ -597,7 +597,7 @@ def __adjust_folder_name_for_archive(folder_name):
     if folder_name.endswith("/"):
         folder_name = folder_name[:-1]
 
-    cur_date = sf.get_stnd_date(False)  # eg. 230825  (in UTC)
+    cur_date = get_stnd_date(False)  # eg. 230825  (in UTC)
     cur_time = dt.datetime.utcnow().strftime("%H%M")  # eg  2315  (11:15 pm) (in UTC)
     new_s3_folder_name = f"{folder_name}_BK_{cur_date}_{cur_time}"
 
@@ -877,9 +877,8 @@ def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
 
     # --------------------
     # check ras2fim output bucket exists
-
     print()
-    msg = f"    Validating that the s3 bucket of {s3_bucket_name} exists"
+    msg = f"    Validating that the s3 bucket of {s3_bucket_name}"
     if s3_sf.does_s3_bucket_exist(s3_bucket_name) is False:
         raise ValueError(f"{msg} ... does not exist")
     else:
@@ -955,7 +954,7 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    log_file_folder = args["src_unit_dir_path"]  # don't put in logs dir
+    log_file_folder = args["src_unit_dir_path"]  # don't put in logs dir in value
     try:
         # Catch all exceptions through the script if it came
         # from command line.

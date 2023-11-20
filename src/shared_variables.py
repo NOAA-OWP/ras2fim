@@ -56,10 +56,16 @@ R2F_OUTPUT_FILE_RAS2CAL_CSV = "ras2calibration_output_table.csv"
 R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_output_geopackage.gpkg"
 R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt"
 
-# S3 PATHS (FOLDERS)
+# S3 PATHS
 S3_OUTPUT_RAS2FIM_FOLDER = "output_ras2fim"
+S3_DEFAULT_BUCKET_PATH = "s3://ras2fim/"
+S3_OUTPUT_MODELS_FOLDER = S3_DEFAULT_BUCKET_PATH + "/OWP_ras_models/models"
+S3_DEFAULT_MODELS_CATALOG_PATH = S3_DEFAULT_BUCKET_PATH + "/OWP_ras_models/OWP_ras_models_catalog.csv"
 S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER = "output_ras2fim_archive"
 S3_OUTPUT_TRACKER_FILE = "ras_output_tracker.csv"
+
+# TOOLS varibles
+LOCAL_TOOLS_OUTPUT_PATH = os.path.join(DEFAULT_BASE_DIR, "tool_outputs")
 
 # NODATA VALUE
 DEFAULT_NODATA_VAL = 0 - 9999

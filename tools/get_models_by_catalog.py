@@ -10,16 +10,15 @@ import time
 import traceback
 
 import pandas as pd
+import s3_shared_functions as s3_sf
 import s3fs
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
-import s3_shared_functions as s3_sf
-
 import ras2fim_logger
-import shared_functions as sf
 import shared_validators as val
 import shared_variables as sv
+from shared_functions import get_stnd_date, print_date_time_duration
 
 
 # Global Variables
@@ -159,7 +158,7 @@ class Get_Models_By_Catalog:
 
         RLOG.lprint("****************************************")
         RLOG.lprint("Get ras models folders from s3")
-        RLOG.lprint(f" Started (UTC): {sf.get_stnd_date()}")
+        RLOG.lprint(f" Started (UTC): {get_stnd_date()}")
         RLOG.lprint(f" -- HUC: {huc_number}")
         RLOG.lprint(f" -- CRS: {projection}")
         RLOG.lprint("")
@@ -244,12 +243,13 @@ class Get_Models_By_Catalog:
 
             # we will save it initially but update it and save it again as it goes
             self.df_filtered.to_csv(self.target_filtered_csv_path, index=False)
+
             RLOG.lprint(f"Filtered model catalog saved to : {self.target_filtered_csv_path}")
-            if self.list_only is False:
-                print(
-                    "Note: This csv represents all filtered models folders that are pending to be"
-                    " downloaded.\nThe csv will be updated with statuses after downloads are complete."
-                )
+            print("")
+            print(
+                "Note: The csv represents all filtered models folders that are pending to be"
+                " downloaded.\nThe csv will be updated with statuses after downloads are complete."
+            )
 
             # make list from the models_catalog.final_name_key which should be the list of folder
             # names to be downloaded
@@ -295,9 +295,10 @@ class Get_Models_By_Catalog:
             self.df_filtered.to_csv(self.target_filtered_csv_path, index=False)
 
         RLOG.lprint("--------------------------------------")
-        RLOG.success(f"Get ras models completed: {sf.get_stnd_date()}")
+        RLOG.success(f"Get ras models completed: {get_stnd_date()}")
+        RLOG.success(f"Filtered model catalog saved to : {self.target_filtered_csv_path}")
 
-        dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
+        dur_msg = print_date_time_duration(start_dt, dt.datetime.utcnow())
         RLOG.lprint(dur_msg)
         print()
 
