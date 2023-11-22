@@ -304,8 +304,12 @@ def fn_run_ras2fim(
             )
         else:
             # user has supplied the terrain file
+            str_cross_sections_path = str_shapes_from_hecras_dir + "cross_section_LN_from_ras.shp"
+            str_input_path = str_nation_arg + "\\" + sv.INPUT_WBD_NATIONAL_FILE
+
             fn_cut_dems_from_shapes(
                 str_input_path,
+                str_cross_sections_path,
                 str_terrain_override,
                 str_terrain_from_usgs_dir,
                 int_buffer,

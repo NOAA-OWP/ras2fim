@@ -25,6 +25,7 @@ import pyproj
 import rasterio
 import rioxarray
 import tqdm
+from geopandas.tools import sjoin
 
 import shared_functions as sf
 
@@ -47,7 +48,13 @@ def fn_is_valid_file(parser, arg):
 
 # -------------------------------------------------
 def fn_cut_dems_from_shapes(
-    str_input_shp_path, str_input_terrain_path, str_output_dir, int_buffer, model_unit, str_field_name
+    str_input_shp_path,
+    str_cross_sections_path,
+    str_input_terrain_path,
+    str_output_dir,
+    int_buffer,
+    model_unit,
+    str_field_name
 ):
     flt_start_run = time.time()
 
@@ -57,6 +64,7 @@ def fn_cut_dems_from_shapes(
     print("+-----------------------------------------------------------------+")
 
     print("  ---(i) SHAPEFILE INPUT PATH: " + str_input_shp_path)
+    print("  ---(x) XS SHAPEFILE INPUT PATH: " + str_cross_sections_path)
     print("  ---(t) TERRAIN INPUT PATH: " + str_input_terrain_path)
     print("  ---(o) DEM OUTPUT PATH: " + str_output_dir)
     print("  ---[b]   Optional: BUFFER: " + str(int_buffer))
@@ -71,8 +79,22 @@ def fn_cut_dems_from_shapes(
     with rasterio.open(str_input_terrain_path) as raster_vrt:
         str_raster_prj = str(raster_vrt.crs)
 
-    # read in the shapefile to geoDataframe
     gdf_boundary_prj = gpd.read_file(str_input_shp_path)
+
+    # intersect with model cross sections
+    gdf_xs_lines = gpd.read_file(str_cross_sections_path)
+    # spatial join cross sections with HUC12s, keeping HUC12 geometry
+    gdf_intersection = sjoin(gdf_xs_lines, gdf_boundary_prj.to_crs(gdf_xs_lines.crs), how="right")
+    # drop all rows that don't have a cross section with a ras_path (no xs in that huc12)
+    gdf_boundary_prj = gdf_intersection.dropna(subset=["ras_path"])
+    # keep largest area (arbitrary) of HUC12 that overlaps cross sections so we have unique huc12 entries
+    gdf_boundary_prj = gdf_boundary_prj.sort_values(by="Shape_Area").drop_duplicates(subset=["HUC_12"])
+
+    # dissolve all huc12s together (cross sections -should- have same parent path in ras2fim v2,
+    #  but this ensures dissolving)
+    gdf_boundary_prj['dissolve_index'] = 1
+    # in case ras_path isn't just one value, just dissolve everything that's still there
+    gdf_boundary_prj = gdf_boundary_prj.dissolve(by="dissolve_index").reset_index()
 
     # string of the shapefiles coordinate ref system.
     str_shape_crs = gdf_boundary_prj.crs
@@ -96,6 +118,7 @@ def fn_cut_dems_from_shapes(
 
             # convert the dataframe to a series
             df_just_req_field_series = gdf_just_req_field.squeeze()
+            df_just_req_field_series = df_just_req_field_series.drop_duplicates()
 
             # determine if the naming field is unique
             if df_just_req_field_series.is_unique:
@@ -117,29 +140,34 @@ def fn_cut_dems_from_shapes(
         # convert the geoPandas geometry to json
         json_boundary = sf.get_geometry_from_gdf(gdf_boundary_raster_prj, index)
 
-        with rioxarray.open_rasterio(str_input_terrain_path, masked=True).rio.clip(
-            json_boundary, from_disk=True
-        ) as xds_clipped:
-            # reproject the DEM to the shp CRS
-            xds_clipped_reproject = xds_clipped.rio.reproject(str_shape_crs)
+        try:
+            with rioxarray.open_rasterio(str_input_terrain_path, masked=True).rio.clip(
+                json_boundary, from_disk=True
+            ) as xds_clipped:
+                # reproject the DEM to the shp CRS
+                xds_clipped_reproject = xds_clipped.rio.reproject(str_shape_crs)
 
-            # convert vertical meters to feet
-            if model_unit == "feet":
-                xds_clipped_reproject = xds_clipped_reproject * 3.28084
+                # convert vertical meters to feet
+                if model_unit == "feet":
+                    xds_clipped_reproject = xds_clipped_reproject * 3.28084
 
-            # set the null data values
-            xds_clipped_reproject = xds_clipped_reproject.fillna(INT_NO_DATA_VAL)
-            xds_clipped_reproject = xds_clipped_reproject.rio.set_nodata(INT_NO_DATA_VAL)
+                # set the null data values
+                xds_clipped_reproject = xds_clipped_reproject.fillna(INT_NO_DATA_VAL)
+                xds_clipped_reproject = xds_clipped_reproject.rio.set_nodata(INT_NO_DATA_VAL)
 
-            # set the name from input field if available
-            if b_have_valid_label_field:
-                str_dem_out = str_output_dir + "\\" + str(gdf_boundary_prj[str_field_name][index]) + ".tif"
-            else:
-                str_unique_tag = sf.fn_get_random_string(2, 4)
-                str_dem_out = str_output_dir + "\\" + str_unique_tag + ".tif"
+                # set the name from input field if available
+                if b_have_valid_label_field:
+                    str_dem_out = f"{str_output_dir}\\{gdf_boundary_prj[str_field_name][index]}.tif"
+                else:
+                    str_unique_tag = sf.fn_get_random_string(2, 4)
+                    str_dem_out = str_output_dir + "\\" + str_unique_tag + ".tif"
 
-            # compress and write out data
-            xds_clipped_reproject.rio.to_raster(str_dem_out, compress="lzw", dtype="float32")
+                str_dem_out = str_dem_out.replace(".tif", f"_{gdf_boundary_prj['river'][index]}.tif")
+                # compress and write out data
+                xds_clipped_reproject.rio.to_raster(str_dem_out, compress="lzw", dtype="float32")
+        except Exception as e:
+            print(e)
+            print("No overlap.. skipping")
 
     print("COMPLETE")
     flt_end_run = time.time()
@@ -160,6 +188,15 @@ if __name__ == "__main__":
         "-i",
         dest="str_input_shp_path",
         help=r"REQUIRED: path to the input shapefile (polygons) Example: C:\shapefiles\area.shp",
+        required=True,
+        metavar="FILE",
+        type=lambda x: fn_is_valid_file(parser, x),
+    )
+
+    parser.add_argument(
+        "-x",
+        dest="str_cross_sections_path",
+        help=r"REQUIRED: path to the input cross sections shapefile (lines) Example: C:\shapefiles\xs.shp",
         required=True,
         metavar="FILE",
         type=lambda x: fn_is_valid_file(parser, x),
@@ -206,20 +243,32 @@ if __name__ == "__main__":
     args = vars(parser.parse_args())
 
     str_input_shp_path = args["str_input_shp_path"]
+    str_cross_sections_path = args["str_cross_sections_path"]
     str_input_terrain_path = args["str_input_terrain_path"]
     str_output_dir = args["str_output_dir"]
     int_buffer = args["int_buffer"]
     str_field_name = args["str_field_name"]
 
     # find model unit using the given shapefile
-    gis_prj_path = str_input_shp_path[0:-3] + "prj"
-    with open(gis_prj_path, "r") as prj_file:
-        prj_text = prj_file.read()
+    try:
+        gis_prj_path = str_input_shp_path[0:-3] + "prj"
+        with open(gis_prj_path, "r") as prj_file:
+            prj_text = prj_file.read()
+    except Exception:
+        prj_text = gpd.read_file(str_input_shp_path).crs
+
     proj_crs = pyproj.CRS(prj_text)
+
     model_unit = sf.model_unit_from_crs(proj_crs)
 
     fn_cut_dems_from_shapes(
-        str_input_shp_path, str_input_terrain_path, str_output_dir, int_buffer, model_unit, str_field_name
+        str_input_shp_path,
+        str_cross_sections_path,
+        str_input_terrain_path,
+        str_output_dir,
+        int_buffer,
+        model_unit,
+        str_field_name
     )
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
