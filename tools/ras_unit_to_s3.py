@@ -74,7 +74,7 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name, is_verbose):
 
     RLOG.lprint("")
     RLOG.lprint("=================================================================")
-    RLOG.lprint("          RUN ras_unit_to_s3 ")
+    RLOG.notice("          RUN ras_unit_to_s3 ")
     RLOG.lprint(f"  (-s): Source unit folder {src_unit_dir_path} ")
     RLOG.lprint(f"  (-b): s3 bucket name {s3_bucket_name}")
     RLOG.lprint("")

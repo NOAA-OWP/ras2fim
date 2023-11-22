@@ -363,6 +363,15 @@ class RAS2FIM_logger:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
 
     # -------------------------------------------------
+    def notice(self, msg):
+        # goes to console and log file
+        level = "NOTICE   "  # keeps spacing the same
+        print(f"{cl.fore.DARK_TURQUOISE}{msg}{cl.style.RESET}")
+
+        with open(self.LOG_FILE_PATH, "a") as f_log:
+            f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
+
+    # -------------------------------------------------
     def success(self, msg):
         # goes to console and log file
         level = "SUCCESS "  # keeps spacing the same

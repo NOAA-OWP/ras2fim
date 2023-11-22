@@ -10,11 +10,12 @@ import time
 import traceback
 
 import pandas as pd
-import s3_shared_functions as s3_sf
 import s3fs
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+import s3_shared_functions as s3_sf
+
 import ras2fim_logger
 import shared_validators as val
 import shared_variables as sv
@@ -22,8 +23,6 @@ from shared_functions import get_stnd_date, print_date_time_duration
 
 
 # Global Variables
-MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS = "download_success"
-MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON = "download_fail_reason"
 RLOG = ras2fim_logger.R2F_LOG
 
 
@@ -157,7 +156,7 @@ class Get_Models_By_Catalog:
         start_dt = dt.datetime.utcnow()
 
         RLOG.lprint("****************************************")
-        RLOG.lprint("Get ras models folders from s3")
+        RLOG.notice(" Get ras models folders from s3")
         RLOG.lprint(f" Started (UTC): {get_stnd_date()}")
         RLOG.lprint(f" -- HUC: {huc_number}")
         RLOG.lprint(f" -- CRS: {projection}")
@@ -197,6 +196,7 @@ class Get_Models_By_Catalog:
                 " 3_ means invalid conflation and needs review in pre-processing."
             )
 
+            # ***** FILTERS  ******
             # look for records that are ready, contains the huc number and does not start with 1_, 2_ or 3_
             # NOTE: for some reason if you change the lines below, now that the pattern of:
             # df_all["final_name_key"].str.startswith("1_") is False).. it fails (not sure why)
@@ -223,9 +223,12 @@ class Get_Models_By_Catalog:
                 )
                 return
 
-            self.df_filtered.reset_index(inplace=True)
+            RLOG.notice(f"Number of model records after filtering is {len(self.df_filtered)} (pre-download).")
 
-            RLOG.lprint(f"Number of model records after filtering is {len(self.df_filtered)} (pre-download).")
+            # Adding a model_id column starting at number 1000 and incrementing by one
+            # Adding new column
+            self.df_filtered.sort_values(by=[sv.COL_NAME_FINAL_NAME_KEY])
+            self.df_filtered.insert(0, sv.COL_NAME_MODEL_ID, range(1000, 1000 + len(self.df_filtered)))
 
             if self.is_verbose is True:
                 # to see the huc list without column trucations (careful as this could be a huge output)
@@ -238,51 +241,48 @@ class Get_Models_By_Catalog:
             # first add two columns, one to say if download succesful (T/F), the other to say
             # download fail reason
             pd.options.mode.chained_assignment = None
-            self.df_filtered.loc[:, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = ""
-            self.df_filtered.loc[:, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = ""
+            # self.df_filtered.loc[:, COL_NAME_DOWNLOAD_SUCCESS] = ""
+            # self.df_filtered.loc[:, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = ""
 
             # we will save it initially but update it and save it again as it goes
             self.df_filtered.to_csv(self.target_filtered_csv_path, index=False)
 
-            RLOG.lprint(f"Filtered model catalog saved to : {self.target_filtered_csv_path}")
-            print("")
-            print(
-                "Note: The csv represents all filtered models folders that are pending to be"
-                " downloaded.\nThe csv will be updated with statuses after downloads are complete."
-            )
-
-            # make list from the models_catalog.final_name_key which should be the list of folder
-            # names to be downloaded
-            folders_to_download = self.df_filtered["final_name_key"].tolist()
-            folders_to_download.sort()
+            # RLOG.lprint(f"Filtered model catalog saved to : {self.target_filtered_csv_path}")
+            # print("")
+            # print(
+            #    "Note: The csv represents all filtered models folders that are pending to be"
+            #    " downloaded.\nThe csv will be updated with statuses after downloads are complete."
+            # )
 
             # ----------
             # If inc_download_folders, otherwise we just stop.  Sometimes a list is wanted but
             # not the downloads
-            if self.list_only is False:
-                self.download_files(folders_to_download)
-
-            # self.lprint("")
             print()
             if self.list_only is True:
-                RLOG.lprint("List only as per (-f) flag - no downloads attempted")
-                RLOG.lprint(
-                    "Number of model folders which would have been attempted to downloaded is"
-                    f" {len(self.df_filtered)}"
-                )
-
+                RLOG.notice("List only as per (-f) flag - no downloads attempted")
             else:
-                RLOG.success(
-                    f"Number of models folders successfully downloaded: {self.num_success_downloads}"
-                )
-                print()
-                num_skips = self.num_pending_downloads - self.num_success_downloads
+                self.download_files()
 
-                if num_skips > 0:
-                    RLOG.warning(f"Number of models folders skipped / errored during download: {num_skips}")
-                    RLOG.warning("Please review the output logs or the filtered csv for skip/error details.")
+                cnt = self.df_filtered[sv.COL_NAME_DOWNLOAD_SUCCESS].value_counts()[True]
+                self.num_success_downloads = cnt
+
+                if self.num_success_downloads == 0:
+                    RLOG.error(
+                        "All model download attempts have failed."
+                        " Please review the output logs or the filtered csv for skip/error details."
+                    )
                 else:
-                    RLOG.lprint(f"Number of models folders skipped / errored during download: {num_skips}")
+                    num_skips = len(self.df_filtered) - self.num_success_downloads
+                    RLOG.success(
+                        f"Number of models folders successfully downloaded: {self.num_success_downloads}"
+                    )
+                    if num_skips > 0:
+                        RLOG.warning(
+                            f"Number of models folders skipped / errored during download: {num_skips}"
+                        )
+                        RLOG.warning(
+                            "Please review the output logs or the filtered csv for skip/error details."
+                        )
 
         except Exception:
             errMsg = "--------------------------------------\n An error has occurred"
@@ -291,8 +291,7 @@ class Get_Models_By_Catalog:
             sys.exit(1)
 
         # resaved with the updates to the download columns
-        if (self.df_filtered.empty is False) and (self.list_only is False):
-            self.df_filtered.to_csv(self.target_filtered_csv_path, index=False)
+        self.df_filtered.to_csv(self.target_filtered_csv_path, index=False)
 
         RLOG.lprint("--------------------------------------")
         RLOG.success(f"Get ras models completed: {get_stnd_date()}")
@@ -386,10 +385,11 @@ class Get_Models_By_Catalog:
             raise ValueError(f"S3 output folder of {self.src_owp_model_folder_path} ... does not exist")
 
     # -------------------------------------------------
-    def download_files(self, folder_list):
+    def download_files(self):
         print()
         RLOG.lprint("......................................")
 
+        """
         s3 = s3fs.S3FileSystem()
 
         # not all will be found for download. Print the ones now found, count the rest
@@ -399,7 +399,7 @@ class Get_Models_By_Catalog:
         self.num_success_downloads = 0
 
         # Yes.. we are going to use CLI and not boto3
-        root_cmd = "aws s3 cp --recursive "
+        root_cmd = "aws s3 sync "
         for folder_name in folder_list:
             num_processed += 1
 
@@ -427,7 +427,7 @@ class Get_Models_By_Catalog:
                 RLOG.lprint(progress_msg)
 
                 # update the df (csv) to show it failed and why
-                self.df_filtered.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = "False"
+                self.df_filtered.loc[rowIndex, COL_NAME_DOWNLOAD_SUCCESS] = "False"
                 self.df_filtered.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = msg
                 continue
 
@@ -458,20 +458,26 @@ class Get_Models_By_Catalog:
                 msg = msg.replace(",", " ")
 
                 # update the df (csv) to show it failed and why
-                self.df_filtered.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = "False"
+                self.df_filtered.loc[rowIndex, COL_NAME_DOWNLOAD_SUCCESS] = "False"
                 self.df_filtered.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = msg
                 continue
 
             RLOG.success(" ----- download model successful")
-            self.df_filtered.at[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_SUCCESS] = "True"
+            self.df_filtered.at[rowIndex, COL_NAME_DOWNLOAD_SUCCESS] = "True"
 
             # self.df_row[rowIndex] = df_row
             self.num_success_downloads += 1
 
             progress_msg = f">>> {num_processed} of {self.num_pending_downloads} processed"
             RLOG.lprint(progress_msg)
+        """
 
-        return
+        self.df_filtered = s3_sf.download_folders(
+            self.src_owp_model_folder_path,
+            self.target_owp_ras_models_path,
+            self.df_filtered,
+            "final_name_key",
+        )
 
     # -------------------------------------------------
     def __setup_logs(self):
