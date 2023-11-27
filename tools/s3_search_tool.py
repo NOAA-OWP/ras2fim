@@ -191,22 +191,22 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "-key",
+        "--search_key",
+        help="REQUIRED: Value is the file / folder name and optional pattern"
+        " (not case-sensitive)\n"
+        "ie) *Trinity River*  (note: wildcard before and after phrase, position matters)",
+        required=True,
+        metavar="",
+    )
+
+    parser.add_argument(
         "-s3",
         "--s3_path",
         help="OPTIONAL: This value starting s3 folder (full s3 path) where searching will be done.\n"
         "ie) s3://ras2fim-dev/OWP_ras_models/my_models.\n"
         f"Defaults to {sv.S3_OUTPUT_MODELS_FOLDER}",
         default=sv.S3_OUTPUT_MODELS_FOLDER,
-        required=False,
-        metavar="",
-    )
-
-    parser.add_argument(
-        "-key",
-        "--search_key",
-        help="OPTIONAL: Value is the file / folder name and optional pattern"
-        " (not case-sensitive)\n"
-        "ie) *Trinity River*  (note: wildcard before and after phrase, position matters)",
         required=False,
         metavar="",
     )
