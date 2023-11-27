@@ -4,13 +4,11 @@ import argparse
 import datetime as dt
 import os
 import shutil
-import subprocess
 import sys
 import time
 import traceback
 
 import pandas as pd
-import s3fs
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
@@ -71,6 +69,7 @@ Features for this tool include:
 
 # -------------------------------------------------
 class Get_Models_By_Catalog:
+
     # -------------------------------------------------
     # default values listed in "__main__"  but also here in case code calls direct..
     # aka. not through "__main__"
@@ -150,6 +149,9 @@ class Get_Models_By_Catalog:
             list_only,
         )
 
+        # NOTICE... logger setup after validation? might get logger errors
+        # as the logger needs key values
+        # We really don't need to log validation errors
         self.__setup_logs()
 
         print()
@@ -223,12 +225,10 @@ class Get_Models_By_Catalog:
                 )
                 return
 
-            RLOG.notice(f"Number of model records after filtering is {len(self.df_filtered)} (pre-download).")
-
-            # Adding a model_id column starting at number 1000 and incrementing by one
+            # Adding a model_id column starting at number 10000 and incrementing by one
             # Adding new column
-            self.df_filtered.sort_values(by=[sv.COL_NAME_FINAL_NAME_KEY])
-            self.df_filtered.insert(0, sv.COL_NAME_MODEL_ID, range(1000, 1000 + len(self.df_filtered)))
+            self.df_filtered.sort_values(by=[sv.COL_NAME_FINAL_NAME_KEY], inplace=True)            
+            self.df_filtered.insert(0, sv.COL_NAME_MODEL_ID, range(10000, 10000 + len(self.df_filtered)))
 
             if self.is_verbose is True:
                 # to see the huc list without column trucations (careful as this could be a huge output)
@@ -257,12 +257,21 @@ class Get_Models_By_Catalog:
             # ----------
             # If inc_download_folders, otherwise we just stop.  Sometimes a list is wanted but
             # not the downloads
-            print()
             if self.list_only is True:
+                print()
                 RLOG.notice("List only as per (-f) flag - no downloads attempted")
+                RLOG.notice(f"... {len(self.df_filtered)} valid filtered model records")
             else:
-                self.download_files()
+                RLOG.lprint("--------------------------------------")
+                # Perform the actual download
+                self.df_filtered = s3_sf.download_folders(
+                    self.src_owp_model_folder_path,
+                    self.target_owp_ras_models_path,
+                    self.df_filtered,
+                    "final_name_key",
+                )
 
+                RLOG.lprint("--------------------------------------")
                 cnt = self.df_filtered[sv.COL_NAME_DOWNLOAD_SUCCESS].value_counts()[True]
                 self.num_success_downloads = cnt
 
@@ -278,9 +287,7 @@ class Get_Models_By_Catalog:
                     )
                     if num_skips > 0:
                         RLOG.warning(
-                            f"Number of models folders skipped / errored during download: {num_skips}"
-                        )
-                        RLOG.warning(
+                            f"Number of models folders skipped / errored during download: {num_skips}."
                             "Please review the output logs or the filtered csv for skip/error details."
                         )
 
@@ -383,101 +390,6 @@ class Get_Models_By_Catalog:
         # validate that the bucket and folders (prefixes exist)
         if s3_sf.is_valid_s3_folder(self.src_owp_model_folder_path) is False:
             raise ValueError(f"S3 output folder of {self.src_owp_model_folder_path} ... does not exist")
-
-    # -------------------------------------------------
-    def download_files(self):
-        print()
-        RLOG.lprint("......................................")
-
-        """
-        s3 = s3fs.S3FileSystem()
-
-        # not all will be found for download. Print the ones now found, count the rest
-        num_processed = 0
-
-        self.num_pending_downloads = len(folder_list)
-        self.num_success_downloads = 0
-
-        # Yes.. we are going to use CLI and not boto3
-        root_cmd = "aws s3 sync "
-        for folder_name in folder_list:
-            num_processed += 1
-
-            print()
-
-            src_path = f"{self.src_owp_model_folder_path}/{folder_name}/"
-            RLOG.lprint(f"Downloading {folder_name}")
-
-            # Get row so we can can update it
-            rowIndexes = self.df_filtered.index[self.df_filtered["final_name_key"] == folder_name].tolist()
-            if len(rowIndexes) != 1:
-                msg = "Sorry, something went wrong looking the specific record with a"
-                f"final_name_key of {folder_name}"
-                RLOG.error(f"== {msg}")
-                break
-
-            rowIndex = rowIndexes[0]
-
-            if s3.exists(src_path) is False:
-                msg = f"skipped - s3 folder of {src_path} doesn't exist"
-                RLOG.error(f"== {folder_name}")
-                RLOG.error(f".... {msg}")
-
-                progress_msg = f">>> {num_processed} of {self.num_pending_downloads} processed"
-                RLOG.lprint(progress_msg)
-
-                # update the df (csv) to show it failed and why
-                self.df_filtered.loc[rowIndex, COL_NAME_DOWNLOAD_SUCCESS] = "False"
-                self.df_filtered.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = msg
-                continue
-
-            target_path = os.path.join(self.target_owp_ras_models_path, folder_name)
-
-            # cmd = root_cmd + f"{src_path} {target_path} --dryrun"
-            # NOTE: we are using subprocesses for now as boto3 can not download folders, only files.
-            # Granted you can get a list of files matching the prefix and iterate through them but
-            # it is ugly. For now, we will use
-
-            # TODO: what if the target folder already exists. ie) duplicate entry in the final_name_key
-            # column of the master models catalog csv.
-            # We need to pre-search the csv and record duplicates
-
-            cmd = root_cmd + f'"{src_path}" "{target_path}"'
-            if self.is_verbose:
-                RLOG.debug(f"    {cmd}")
-
-            process_s3 = subprocess.run(cmd, capture_output=True, text=True)
-            if process_s3.returncode != 0:
-                msg = f"*** an error occurred while downloading {folder_name}\n"
-                msg += process_s3.stderr
-                RLOG.error(msg)
-                progress_msg = f">>> {num_processed} of {self.num_pending_downloads} processed"
-                RLOG.lprint(progress_msg)
-
-                # so it doesn't interfer with the delimiter
-                msg = msg.replace(",", " ")
-
-                # update the df (csv) to show it failed and why
-                self.df_filtered.loc[rowIndex, COL_NAME_DOWNLOAD_SUCCESS] = "False"
-                self.df_filtered.loc[rowIndex, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = msg
-                continue
-
-            RLOG.success(" ----- download model successful")
-            self.df_filtered.at[rowIndex, COL_NAME_DOWNLOAD_SUCCESS] = "True"
-
-            # self.df_row[rowIndex] = df_row
-            self.num_success_downloads += 1
-
-            progress_msg = f">>> {num_processed} of {self.num_pending_downloads} processed"
-            RLOG.lprint(progress_msg)
-        """
-
-        self.df_filtered = s3_sf.download_folders(
-            self.src_owp_model_folder_path,
-            self.target_owp_ras_models_path,
-            self.df_filtered,
-            "final_name_key",
-        )
 
     # -------------------------------------------------
     def __setup_logs(self):
@@ -622,4 +534,8 @@ if __name__ == "__main__":
         obj.get_models(**args)
 
     except Exception:
+
+        # The logger does not get setup until after validation, so you may get
+        # log system errors potentially when erroring in validation
         RLOG.critical(traceback.format_exc())
+

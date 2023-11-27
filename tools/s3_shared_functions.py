@@ -4,9 +4,7 @@ import fnmatch
 import os
 import sys
 import traceback
-
-# from concurrent import futures
-from concurrent.futures import ThreadPoolExecutor
+from concurrent import futures
 from datetime import datetime
 
 import boto3
@@ -70,7 +68,7 @@ def upload_file_to_s3(bucket_name, src_path, s3_folder_path, file_name="", show_
         RLOG.critical("-----------------")
         RLOG.critical(
             "** Credentials not available for the submitted bucket. Try aws configure or review AWS "
-            "permissions options."
+            "permissions options"
         )
         sys.exit(1)
 
@@ -148,9 +146,7 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
 
         if len(s3_files) == 0:
             RLOG.lprint(
-                f"{cl.fg('red_1')}"
-                f"No files in source folder of {src_path}. Upload invalid."
-                f"{cl.attr(0)}"
+                f"{cl.fg('red_1')}" f"No files in source folder of {src_path}. Upload invalid" f"{cl.attr(0)}"
             )
             return
 
@@ -161,11 +157,11 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
         if total_cpus_available < num_workers:
             num_workers = total_cpus_available
 
-        RLOG.lprint(f"Number of files to be uploaded is {len(s3_files)}.")
-        print(" ... This may take a few minutes, stand by.")
-        RLOG.lprint(f" ... Uploading files with {num_workers} workers")
+        RLOG.lprint(f"Number of files to be uploaded is {len(s3_files)}")
+        print(" ... This may take a few minutes, stand by")
+        RLOG.lprint(f" ... Uploading with {num_workers} workers")
 
-        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+        with futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
             executor_dict = {}
 
             for upload_file_args in s3_files:
@@ -195,7 +191,7 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
         print("-----------------")
         RLOG.critical(
             "** Credentials not available for the submitted bucket. Try aws configure or review AWS "
-            "permissions options."
+            "permissions options"
         )
         sys.exit(1)
 
@@ -255,7 +251,7 @@ def delete_s3_folder(bucket_name, s3_folder_path):
         if len(s3_files) == 0:
             RLOG.lprint(
                 f"{cl.fg('red_1')}"
-                f"No files in s3 folder of {s3_full_target_path} to be deleted."
+                f"No files in s3 folder of {s3_full_target_path} to be deleted"
                 f"{cl.attr(0)}"
             )
             return
@@ -268,10 +264,10 @@ def delete_s3_folder(bucket_name, s3_folder_path):
             num_workers = total_cpus_available
 
         RLOG.lprint(f"Number of files to be deleted in s3 is {len(s3_files)}")
-        print(" ... This may take a few minutes, stand by.")
-        RLOG.lprint(f" ... Deleting files with {num_workers} workers")
+        print(" ... This may take a few minutes, stand by")
+        RLOG.lprint(f" ... Deleting with {num_workers} workers")
 
-        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+        with futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
             executor_dict = {}
 
             for del_file_args in s3_files:
@@ -290,7 +286,7 @@ def delete_s3_folder(bucket_name, s3_folder_path):
 
     except botocore.exceptions.NoCredentialsError:
         RLOG.critical("-----------------")
-        RLOG.critical("** Credentials not available. Try aws configure or review AWS permissions options.")
+        RLOG.critical("** Credentials not available. Try aws configure or review AWS permissions options")
         sys.exit(1)
 
     except Exception as ex:
@@ -336,7 +332,7 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         print()
         print(
             f"{cl.fg('dodger_blue_1')}"
-            "***  NOTE: s3 can not move files, it can only copy the files then delete them."
+            "***  NOTE: s3 can not move files, it can only copy the files then delete them"
             f"{cl.attr(0)}"
         )
         print()
@@ -373,7 +369,7 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         if len(s3_files) == 0:
             RLOG.lprint(
                 f"{cl.fg('red_1')}"
-                f"No files in source folder of {s3_src_folder_path}. Move invalid."
+                f"No files in source folder of {s3_src_folder_path}. Move invalid"
                 f"{cl.attr(0)}"
             )
             return
@@ -386,10 +382,10 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
             num_workers = total_cpus_available
 
         RLOG.lprint(f"Number of files to be copied is {len(s3_files)}")
-        print(" ... This may take a few minutes, stand by.")
-        RLOG.lprint(f" ... Copying files with {num_workers} workers")
+        print(" ... This may take a few minutes, stand by")
+        RLOG.lprint(f" ... Copying with {num_workers} workers")
 
-        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+        with futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
             executor_dict = {}
 
             for copy_file_args in s3_files:
@@ -410,7 +406,7 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         RLOG.critical("-----------------")
         RLOG.critical(
             "** Credentials not available for the submitted bucket. Try aws configure or review AWS "
-            "permissions options."
+            "permissions options"
         )
         sys.exit(1)
 
@@ -445,7 +441,7 @@ def get_records(bucket_name, s3_src_folder_path, search_key, is_verbose=True):
                 f"{cl.fg('light_yellow')}"
                 f"Searching files and folders in s3://{bucket_name}/{s3_src_folder_path}"
                 f" based on search key of '{search_key}'.\n"
-                " This may take a few minutes depending on seach folder size."
+                " This may take a few minutes depending on seach folder size"
                 f"{cl.attr(0)}"
             )
             print("")
@@ -504,7 +500,7 @@ def get_records(bucket_name, s3_src_folder_path, search_key, is_verbose=True):
         RLOG.critical("-----------------")
         RLOG.critical(
             "** Credentials not available for the submitted bucket. Try aws configure or review AWS "
-            "permissions options."
+            "permissions options"
         )
         sys.exit(1)
 
@@ -555,28 +551,43 @@ def download_folders(
 
     """
 
-    def __validate_inputs(s3_src_parent_path, local_parent_folder, df_folder_list, df_download_column_name):
-        # Validation:  Never assume calling function has validated all inputs correctly
-        if s3_src_parent_path is None or s3_src_parent_path == "":
-            raise ValueError(f"s3_src_parent_path of {s3_src_parent_path} can not be null or empty")
+    # nested function
+    def __download_folder(bucket_name, folder_id, s3_src_folder, target_local_folder):
+        # send in blank search key
+        s3_items = get_records(bucket_name, s3_src_folder, "", False)
 
-        if local_parent_folder is None or local_parent_folder == "":
-            raise ValueError(f"local_parent_folder of {local_parent_folder} can not be null or empty")
+        if len(s3_items) == 0:
+            result = {"folder_id": folder_id, "is_success": False, "err_msg": "no s3 files found"}
+            RLOG.warning(f"{folder_id} -- downloaded failure -- reason: no s3 files found")
+            return result
 
-        if not os.path.exists(local_parent_folder):
-            raise ValueError(
-                f"local_parent_folder of {local_parent_folder} does not exist."
-                " Please create the folder before continuing."
-            )
+        try:
+            s3_client = boto3.client('s3')
 
-        if df_folder_list is None or len(df_folder_list) == 0:
-            raise ValueError(f"folder list dataframe is either null or empty")
+            for s3_item in s3_items:
+                # need to make the src file to be the full url minus the s:// and bucket name
+                src_file = f"{s3_src_folder}/{s3_item['key']}"
+                trg_file = os.path.join(target_local_folder, s3_item["key"])
 
-        if not df_download_column_name in df_folder_list.columns:
-            raise ValueError(f"Column name of {df_download_column_name} does not exist in the dataframe")
+                # Why extract the directory name? the key might have subfolder
+                # names right in the key
+                trg_path = os.path.dirname(trg_file)
 
-    # call to validate args
-    __validate_inputs(s3_src_parent_path, local_parent_folder, df_folder_list, df_download_column_name)
+                # folders may not yet exist
+                if not os.path.exists(trg_path):
+                    os.makedirs(trg_path)
+
+                with open(trg_file, 'wb') as f:
+                    s3_client.download_fileobj(Bucket=bucket_name, Key=src_file, Fileobj=f)
+
+            result = {"folder_id": folder_id, "is_success": True, "err_msg": ""}
+            RLOG.lprint(f"{folder_id} -- downloaded success")
+
+        except Exception as ex:
+            result = {"folder_id": folder_id, "is_success": False, "err_msg": ex}
+            RLOG.error(f"{folder_id} -- downloaded failure -- reason: {ex}")
+
+        return result
 
     # strip off last forwward slash if it is there
     if s3_src_parent_path.endswith("/"):
@@ -589,10 +600,10 @@ def download_folders(
 
     # See if the df already has the two download colums and add them if required.
     # We will update the values later.
-    if not sv.COL_NAME_DOWNLOAD_SUCCESS in df_folder_list.columns:
-        df_folder_list[sv.COL_NAME_DOWNLOAD_SUCCESS] = "False"  # default
+    if sv.COL_NAME_DOWNLOAD_SUCCESS not in df_folder_list.columns:
+        df_folder_list[sv.COL_NAME_DOWNLOAD_SUCCESS] = False  # default
 
-    if not sv.COL_NAME_ERROR_DETAILS in df_folder_list.columns:
+    if sv.COL_NAME_ERROR_DETAILS not in df_folder_list.columns:
         df_folder_list[sv.COL_NAME_ERROR_DETAILS] = ""
 
     # With each valid record found, we will add a dictionary record that can be passed
@@ -600,44 +611,92 @@ def download_folders(
     list_folders = []
 
     for ind, row in df_folder_list.iterrows():
+        folder_name = row[df_download_column_name]
+        # ensure the value does not already exist in the list.
+        if folder_name in list_folders:
+            raise Exception(
+                f"The value of {folder_name} exists at least twice"
+                f" in the {df_download_column_name} column"
+            )
+
         # Ensure the error column does not already have an error msg in it.
         # Unlikely but possible. (pre-tests of model records?)
         err_val = row[sv.COL_NAME_ERROR_DETAILS]
         if err_val is not None and err_val.strip() != "":
-            row[sv.COL_NAME_ERROR_DETAILS] = f"{err_val};; -- error already existed,"
-            " skipped download"
+            msg = f"{folder_name} -- skipped download:  error already existed in the"
+            f"{sv.COL_NAME_ERROR_DETAILS} column"
+            RLOG.warning(msg)
+            row[sv.COL_NAME_ERROR_DETAILS] = msg
             continue
-        else:
-            folder_name = row[df_download_column_name]
-            # ensure the value does not already exist in the list.
-            if folder_name in list_folders:
-                raise Exception(
-                    f"The value of {folder_name} exists at least twice"
-                    f" in the {df_download_column_name} column"
-                )
 
-            s3_src_child_full_path = f"{s3_folder_path}/{folder_name}"
-            local_child_full_path = os.path.join(local_parent_folder, folder_name)
+        s3_src_child_full_path = f"{s3_folder_path}/{folder_name}"
+        local_child_full_path = os.path.join(local_parent_folder, folder_name)
 
-            # yes.. use the folder name as the ID
-            item = {
-                "bucket_name": bucket_name,
-                "folder_id": folder_name,
-                "s3_src_folder": s3_src_child_full_path,
-                "target_local_folder": local_child_full_path,
-            }
+        # yes.. use the folder name as the ID
+        item = {
+            "bucket_name": bucket_name,
+            "folder_id": folder_name,
+            "s3_src_folder": s3_src_child_full_path,
+            "target_local_folder": local_child_full_path,
+        }
 
-            list_folders.append(item)
+        list_folders.append(item)
 
-    if len(list_folders) > 0:
-        # TODO: temp run non multi-thread to see how it performs
-        for item in list_folders:
-            result = download_folder(**item)
-            folder_id = result['folder_id']
-            print(f"{result['folder_id']} - downloaded: {result['is_success']} - err: {result['err_msg']}")
-            mask = df_folder_list.final_name_key == folder_id
-            df_folder_list.loc[mask, sv.COL_NAME_DOWNLOAD_SUCCESS] = result['is_success']
-            df_folder_list.loc[mask, sv.COL_NAME_ERROR_DETAILS] = result['err_msg']  # might be empty
+    if len(list_folders) == 0:
+        msg = f"No models in src folder of {s3_src_parent_path} were downloaded."
+        " This might be that the folders did not exist, or they were ineligible."
+        raise Exception(msg)
+
+    rtn_threads = []
+
+    try:
+        # As we are threading, we can add more than one thread per proc, but for calc purposes
+        # and to not overload the systems or internet pipe, so it is hardcoded at max of 20 for now.
+        num_workers = 20
+        total_cpus_available = os.cpu_count()  # yes.. it is MT, so you don't need a -2 margin
+        if total_cpus_available < num_workers:
+            num_workers = total_cpus_available
+
+        RLOG.notice(f"Number of folders to be downloaded is {len(list_folders)}")
+        print(" ... This may take a few minutes, stand by")
+        RLOG.lprint(f" ... downloading with {num_workers} workers")
+
+        with futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+            futures_dict = []
+
+            for download_args in list_folders:
+                futures_dict.append(executor.submit(__download_folder, **download_args))
+
+            for future_result in futures.as_completed(futures_dict):
+                result = future_result.result()
+                future_exception = future_result.exception()
+
+                if not future_exception:
+                    rtn_threads.append(result)
+                else:
+                    RLOG.critical(f"Error occurred with {futures_dict}")
+                    raise future_exception
+
+    except botocore.exceptions.NoCredentialsError:
+        print("-----------------")
+        RLOG.critical(
+            "** Credentials not available for the submitted bucket. Try aws configure or review AWS "
+            "permissions options"
+        )
+        sys.exit(1)
+
+    except Exception as ex:
+        print("-----------------")
+        RLOG.critical("** Error downloading folders from S3:")
+        RLOG.critical(traceback.format_exc())
+        raise ex
+
+    for result in rtn_threads:
+        folder_id = result['folder_id']
+        # print(f"{result['folder_id']} - downloaded: {result['is_success']} - err: {result['err_msg']}")
+        mask = df_folder_list.final_name_key == folder_id
+        df_folder_list.loc[mask, sv.COL_NAME_DOWNLOAD_SUCCESS] = result['is_success']
+        df_folder_list.loc[mask, sv.COL_NAME_ERROR_DETAILS] = result['err_msg']  # might be empty
 
     return df_folder_list
 
@@ -645,9 +704,6 @@ def download_folders(
 ####################################################################
 def download_folder(bucket_name, folder_id, s3_src_folder, target_local_folder):
     # TODO (Nov 22, 2023 - add arg validation)
-
-    # TODO: Nov 22, 2023 - add log messages ?? (multi-thread versus multi-proc?)
-
     """
     Process:
         - Using the incoming s3 src folder, call get_records to get a list of child folders and files
@@ -735,7 +791,7 @@ def is_valid_s3_folder(s3_bucket_and_folder):
         raise
 
     except botocore.exceptions.NoCredentialsError:
-        RLOG.critical("** Credentials not available. Try aws configure.")
+        RLOG.critical("** Credentials not available. Try aws configure")
     except Exception:
         RLOG.critical("An error has occurred with talking with S3")
         RLOG.critical(traceback.format_exc())
@@ -755,7 +811,7 @@ def does_s3_bucket_exist(bucket_name):
         return True  # no exception?  means it exist
 
     except botocore.exceptions.NoCredentialsError:
-        RLOG.critical("** Credentials not available for submitted bucket. Try aws configure.")
+        RLOG.critical("** Credentials not available for submitted bucket. Try aws configure")
         sys.exit(1)
 
     except client.exceptions.NoSuchBucket:
@@ -818,14 +874,14 @@ def parse_unit_folder_name(unit_folder_name):
     # see the first chars are an 8 digit number and that it has two underscores (3 segs)
     # and will split it to a list of tuples
     if "_" not in unit_folder_name or len(unit_folder_name) < 9:
-        rtn_varibles_dict["error"] = "Does not contain any underscore or folder name to short."
+        rtn_varibles_dict["error"] = "Does not contain any underscore or folder name to short"
         return rtn_varibles_dict
 
     segs = unit_folder_name.split("_")
     if len(segs) != 3:
-        rtn_varibles_dict["error"] = (
-            "Expected three segments split by two underscores." "e.g . 12090301_2277_230811"
-        )
+        rtn_varibles_dict[
+            "error"
+        ] = "Expected three segments split by two underscores e.g. 12090301_2277_230811"
         return rtn_varibles_dict
 
     key_huc = segs[0]
@@ -833,21 +889,21 @@ def parse_unit_folder_name(unit_folder_name):
     key_date = segs[2]
 
     if (not key_huc.isnumeric()) or (not key_crs.isnumeric()) or (not key_date.isnumeric()):
-        rtn_varibles_dict["error"] = "All three segments are expected to be numeric."
+        rtn_varibles_dict["error"] = "All three segments are expected to be numeric"
         return rtn_varibles_dict
 
     if len(key_huc) != 8:
-        rtn_varibles_dict["error"] = "First part of the three segments (huc) is not 8 digits long."
+        rtn_varibles_dict["error"] = "First part of the three segments (huc) is not 8 digits long"
         return rtn_varibles_dict
 
     if (len(key_crs) < 4) or (len(key_crs) > 6):
         rtn_varibles_dict["error"] = (
-            "Second part of the three segments (crs) is not" " between 4 and 6 digits long."
+            "Second part of the three segments (crs) is not" " between 4 and 6 digits long"
         )
         return rtn_varibles_dict
 
     if len(key_date) != 6:
-        rtn_varibles_dict["error"] = "Last part of the three segments (date) is not 6 digits long."
+        rtn_varibles_dict["error"] = "Last part of the three segments (date) is not 6 digits long"
         return rtn_varibles_dict
 
     # test date format
