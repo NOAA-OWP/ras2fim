@@ -174,8 +174,10 @@ def manage_geo_rating_curves_production(
         output_folder (str): The path to the output folder where geo rating curves will be written.
     """
 
-    #get the version
-    changelog_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir,'doc','CHANGELOG.md'))
+    # get the version
+    changelog_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), os.pardir, 'doc', 'CHANGELOG.md')
+    )
     version = sf.get_changelog_version(changelog_path)
     RLOG.lprint("Version found: " + version)
 

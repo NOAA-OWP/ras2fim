@@ -1,6 +1,12 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.x - 2023-11-27 - [PR#213](https://github.com/NOAA-OWP/ras2fim/pull/213)
+
+This PR addresses issue #180 and adds ras2fim version number, which is now automatically derived from `doc/CHANGELOG.md` file,  into the outputs of `src/create_model_domain_polygons.py` and `src/create_geocurves.py` scripts. 
+
+In the earlier version of `src/create_geocurves.py` file, -v has been an argument that required asking the user to provide the `doc/CHANGELOG.md` file path. This argument has been removed and the `doc/CHANGELOG.md` path is now inferred by the code. Now, by default, ras2fim version number is always added to outputs of above two scripts. 
+
 ## v2.0.beta.2 - 2023-11-17 - [PR#205](https://github.com/NOAA-OWP/ras2fim/pull/205)
 
 This PR updates `reformat_ras_rating_curve.py` to assign the ras2fim version to the `source` column using the get_changelog_version shared function. It also changes the output filenames to be named ras2calibration_rating_curve_points.gpkg and ras2calibration_rating_curve_table.csv, which are more descriptive than the previous names.

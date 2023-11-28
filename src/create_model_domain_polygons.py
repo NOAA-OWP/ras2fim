@@ -57,8 +57,10 @@ def fn_make_domain_polygons(
 
     """
 
-    #get the version
-    changelog_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir,'doc','CHANGELOG.md'))
+    # get the version
+    changelog_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), os.pardir, 'doc', 'CHANGELOG.md')
+    )
     version = sf.get_changelog_version(changelog_path)
     RLOG.lprint("Version found: " + version)
 
@@ -169,10 +171,9 @@ if __name__ == "__main__":
     #  -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\
     #       01_shapes_from_hecras\cross_section_LN_from_ras.shp
     #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\final\models_domain\models_domain.gpkg
-    #  -name ras_path 
+    #  -name ras_path
     #  -catalog c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_12030105.csv
     #  -conflate c:\ras2fim_data\....\02_shapes_from_conflation\12030105_stream_qc.csv
-
 
     parser = argparse.ArgumentParser(description="==== Make polygons for HEC-RAS models domains ===")
 
