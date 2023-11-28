@@ -52,8 +52,8 @@ R2F_OUTPUT_DIR_DOMAIN_POLYGONS = "models_domain"
 R2F_OUTPUT_DIR_RELEASES = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
 
 # OUTPUT FILES
-R2F_OUTPUT_FILE_RAS2CAL_CSV = "ras2calibration_output_table.csv"
-R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_output_geopackage.gpkg"
+R2F_OUTPUT_FILE_RAS2CAL_CSV = "ras2calibration_rating_curve_table.csv"
+R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_rating_curve_points.gpkg"
 R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt"
 
 # S3 PATHS (FOLDERS)
@@ -67,6 +67,9 @@ DEFAULT_NODATA_VAL = 0 - 9999
 # VERTICAL DATUM
 OUTPUT_VERTICAL_DATUM = "NAVD88"
 
-# DEFAULT VALUES
+# DEFAULT MISC VALUES
 DEFAULT_RASTER_OUTPUT_CRS = "EPSG:5070"
 DEFAULT_CONFIG_FILE_PATH = "config\\r2f_config.env"
+
+# DEFAULT LOGGING VALUES
+DEFAULT_LOG_FOLDER = "Logs"
