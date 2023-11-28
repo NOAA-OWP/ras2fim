@@ -11,6 +11,7 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.validation import make_valid
 
 import ras2fim_logger
+import shared_functions as sf
 
 
 # Global Variables
@@ -56,6 +57,11 @@ def fn_make_domain_polygons(
 
     """
 
+    #get the version
+    changelog_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir,'doc','CHANGELOG.md'))
+    version = sf.get_changelog_version(changelog_path)
+    RLOG.lprint("Version found: " + version)
+
     RLOG.lprint("")
     RLOG.lprint("+++++++ Create polygons for HEC-RAS models domains +++++++")
 
@@ -70,6 +76,7 @@ def fn_make_domain_polygons(
     )
     RLOG.lprint("  --- (-catalog) path to the model catalog: " + str(model_huc_catalog_path))
     RLOG.lprint("  --- (-conflate) path to the conflation qc file: " + str(conflation_qc_path))
+    RLOG.lprint("  --- ras2fim version: " + str(version))
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     flt_start_domain = time.time()
@@ -145,6 +152,7 @@ def fn_make_domain_polygons(
         # also add HUC8 number
         models_polygons_gdf["HUC8"] = os.path.basename(conflation_qc_path).split("_stream_qc.csv")[0]
 
+    models_polygons_gdf["version"] = version
     models_polygons_gdf.crs = Xsections.crs
     models_polygons_gdf.to_file(polygons_output_file_path, driver="GPKG")
 
@@ -161,14 +169,10 @@ if __name__ == "__main__":
     #  -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\
     #       01_shapes_from_hecras\cross_section_LN_from_ras.shp
     #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\final\models_domain\models_domain.gpkg
-    #  -name ras_path -catalog c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_12030105.csv
+    #  -name ras_path 
+    #  -catalog c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_12030105.csv
     #  -conflate c:\ras2fim_data\....\02_shapes_from_conflation\12030105_stream_qc.csv
 
-    # Note: Command line of this tool does not work. An adjustment is required.
-    # TODO: Nov 3, 2023: The creation of the output_polygon_dir and polygons_output_file_path
-    # has to be done inside ras2fim. This needs to be moved to inside the fn_make_domain_polygons
-    # method so it can be run from command line. But even after just manually adding that folder
-    # it still fails when run from command line.
 
     parser = argparse.ArgumentParser(description="==== Make polygons for HEC-RAS models domains ===")
 
@@ -231,8 +235,7 @@ if __name__ == "__main__":
     model_catalog_path = args["model_catalog_path"]
     conflation_qc_path = args["conflation_qc_path"]
 
-    polygons_output_file_path = args["polygons_output_file_path"]
-    log_file_folder = polygons_output_file_path
+    log_file_folder = os.path.dirname(polygons_output_file_path)
     try:
         # Catch all exceptions through the script if it came
         # from command line.
