@@ -7,8 +7,10 @@ The DEM clipping script has been updated to find all the appropriate HUC12s that
 
 
 ### Changes
-- `src/clip_dem_from_shape.py`: the cross sections shapefile from Step 1 is now a required input to the script
-- `src/clip_dem_from_shape.py`: the input shapefile argument is now the full WBD shapefile instead of the HUC12 shapefile from Steps 1&2.
+- `src/clip_dem_from_shape.py`
+   - the cross sections shapefile from Step 1 is now a required input to the script
+   - the input shapefile argument is now the full WBD shapefile instead of the HUC12 shapefile from Steps 1&2
+   - the intersection / spatial join algorithm to find the relevant HUC12s has been modified to incorporate cross sections
 - `src/ras2fim.py`: the function call to clip DEMs has been modified to reflect the additional cross section shapefile input.
 
 <br/><br/>
