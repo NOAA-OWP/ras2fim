@@ -1,6 +1,18 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.x - 2023-11-29 - [PR#215](https://github.com/NOAA-OWP/ras2fim/pull/215)
+
+The DEM clipping script has been updated to find all the appropriate HUC12s that cover an input model area, which should be "parent" models in ras2fim v2. The relevant HUC12s are then dissolved together and saved under the name <HUC12>_<river name from RAS data>.tif. The river name variable can be changed to incorporate a unique model_id at a later time.
+
+
+### Changes
+- `src/clip_dem_from_shape.py`: the cross sections shapefile from Step 1 is now a required input to the script
+- `src/clip_dem_from_shape.py`: the input shapefile argument is now the full WBD shapefile instead of the HUC12 shapefile from Steps 1&2.
+- `src/ras2fim.py`: the function call to clip DEMs has been modified to reflect the additional cross section shapefile input.
+
+<br/><br/>
+
 ## v2.0.beta.2 - 2023-11-17 - [PR#205](https://github.com/NOAA-OWP/ras2fim/pull/205)
 
 This PR updates `reformat_ras_rating_curve.py` to assign the ras2fim version to the `source` column using the get_changelog_version shared function. It also changes the output filenames to be named ras2calibration_rating_curve_points.gpkg and ras2calibration_rating_curve_table.csv, which are more descriptive than the previous names.
