@@ -3,6 +3,7 @@ import argparse
 import glob
 import geopandas as gpd
 import pandas as pd
+import numpy as np
 
 from timeit import default_timer as timer
 
@@ -25,7 +26,6 @@ def reformat_usgs_fims_to_geocurves(usgs_map_dir, output_dir, catchments, usgs_r
 
     # Subset usgs_rc_df to only gage of interest
     subset_usgs_rc_df = usgs_rc_df.loc[usgs_rc_df.location_id==int(gage)]
-    print(subset_usgs_rc_df)
 
     # List shapefiles to reformat
     shapefile_path = os.path.join(usgs_map_dir, "*.shp")
@@ -38,12 +38,17 @@ def reformat_usgs_fims_to_geocurves(usgs_map_dir, output_dir, catchments, usgs_r
 
         # Dissolve all geometries?
         fim_gdf['dissolve'] = 1
-        fim_gdf = fim_gdf.dissolve(by="dissolve")   
+        fim_gdf = fim_gdf.dissolve(by="dissolve")
 
         # Cut dissolved geometry to align with NWM catchment breakpoints and associate feature_ids(union)
         union = gpd.overlay(fim_gdf, nwm_catchments_gdf)
 
-        # Use rating curve to interpolate discharge from stage
+        # Parse stage from filename
+        parsed_stage = os.path  # TODO
+
+        # Use subset_usgs_rc_df to interpolate discharge from stage
+        return np.interp([xval], subset_usgs_rc_df['stage'], df['flow'])
+
 
         # Save as geopackage (temp)
         output_geopackage = os.path.join(output_dir, os.path.split(shapefile)[1].replace('.shp', '.gpkg'))
