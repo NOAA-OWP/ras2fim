@@ -418,13 +418,13 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
 
 
 ####################################################################
-def get_records(bucket_name, s3_src_folder_path, search_key, is_verbose=True):
+def get_records_list(bucket_name, s3_src_folder_path, search_key, is_verbose=True):
     """
     Process:
         - uses a S3 paginator to recursively look for matches (non case-sensitive)
     Inputs:
         - bucket_name: e.g mys3bucket_name
-        - s3_src_folder_path: e.g. OWP_ras_models/models
+        - s3_src_folder_path: e.g. OWP_ras_models/models (case-sensitive)
         - search_key: phrase (str) to be searched: e.g *Trinity River*
     Output
         - A list of dictionary items matching records.
@@ -441,7 +441,7 @@ def get_records(bucket_name, s3_src_folder_path, search_key, is_verbose=True):
                 f"{cl.fg('light_yellow')}"
                 f"Searching files and folders in s3://{bucket_name}/{s3_src_folder_path}"
                 f" based on search key of '{search_key}'.\n"
-                " This may take a few minutes depending on seach folder size"
+                " This may take a few minutes depending on size of the search folder"
                 f"{cl.attr(0)}"
             )
             print("")
@@ -468,11 +468,11 @@ def get_records(bucket_name, s3_src_folder_path, search_key, is_verbose=True):
         next_token = ""
 
         while next_token is not None:
-            # will limit to 1000 objects
             updated_kwargs = default_kwargs.copy()
             if next_token != "":
                 updated_kwargs["ContinuationToken"] = next_token
 
+            # will limit to 1000 objects - hence tokens
             response = s3_client.list_objects_v2(**updated_kwargs)
             if response.get("KeyCount") == 0:
                 return s3_items
@@ -491,6 +491,84 @@ def get_records(bucket_name, s3_src_folder_path, search_key, is_verbose=True):
                     item = {"key": key_adj, "url": f"s3://{bucket_name}/{s3_src_folder_path}{key_adj}"}
                     s3_items.append(item)
                 # no else needed
+
+            next_token = response.get("NextContinuationToken")
+
+        return s3_items
+
+    except botocore.exceptions.NoCredentialsError:
+        RLOG.critical("-----------------")
+        RLOG.critical(
+            "** Credentials not available for the submitted bucket. Try aws configure or review AWS "
+            "permissions options"
+        )
+        sys.exit(1)
+
+    except Exception as ex:
+        RLOG.critical("-----------------")
+        RLOG.critical("** Error finding files or folders in S3:")
+        RLOG.critical(traceback.format_exc())
+        raise ex
+
+
+####################################################################
+def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
+    """
+    Process:
+        - uses a S3 paginator to recursively look for matching folder names
+    Inputs:
+        - bucket_name: e.g mys3bucket_name
+        - s3_src_folder_path: e.g. OWP_ras_models/models (case-sensitive)
+    Output
+        - A list of dictionary items matching records.
+            - first value is the match "key" (as in folder name)
+                    ie) 1262811_UNT 213 in Village Cr Washd_g01_1689773310
+            - The second value is the full "url" of it
+                ie) s3://ras2fim-dev/OWP_ras_models/models-12030105-full/1262811_UNT...
+    """
+
+    try:
+        if is_verbose is True:
+            print("")
+            RLOG.lprint(
+                f"{cl.fg('light_yellow')}"
+                f"Searching for folder names in s3://{bucket_name}/{s3_src_folder_path} (non-recursive)\n"
+                "This may take a few minutes depending on number of folders in the search folder"
+                f"{cl.attr(0)}"
+            )
+            print("")
+
+            s3_src_folder_path += "/"
+
+        s3_client = boto3.client("s3")
+        s3_items = []  # a list of dictionaries
+
+        default_kwargs = {"Bucket": bucket_name, "Prefix": s3_src_folder_path, "Delimiter": "/"}
+
+        next_token = ""
+
+        while next_token is not None:
+            updated_kwargs = default_kwargs.copy()
+            if next_token != "":
+                updated_kwargs["ContinuationToken"] = next_token
+
+            # will limit to 1000 objects - hence tokens
+            response = s3_client.list_objects_v2(**updated_kwargs)
+            # print(response)
+            if response.get("KeyCount") == 0:
+                return s3_items
+
+            prefix_recs = response.get("CommonPrefixes")
+            if prefix_recs is None:
+                raise Exception("s3 not did not load folders names correctly")
+
+            for result in prefix_recs:
+                prefix = result.get("Prefix")
+                prefix_adj = prefix.replace(s3_src_folder_path, "")
+                if prefix_adj.endswith("/"):
+                    prefix_adj = prefix_adj[:-1]
+                item = {"key": prefix_adj, "url": f"s3://{bucket_name}/{s3_src_folder_path}{prefix_adj}"}
+                s3_items.append(item)
 
             next_token = response.get("NextContinuationToken")
 
@@ -554,7 +632,7 @@ def download_folders(
     # nested function
     def __download_folder(bucket_name, folder_id, s3_src_folder, target_local_folder):
         # send in blank search key
-        s3_items = get_records(bucket_name, s3_src_folder, "", False)
+        s3_items = get_records_list(bucket_name, s3_src_folder, "", False)
 
         if len(s3_items) == 0:
             result = {"folder_id": folder_id, "is_success": False, "err_msg": "no s3 files found"}
@@ -716,7 +794,7 @@ def download_folder(bucket_name, folder_id, s3_src_folder, target_local_folder):
     """
 
     # send in blank search key
-    s3_items = get_records(bucket_name, s3_src_folder, "", False)
+    s3_items = get_records_list(bucket_name, s3_src_folder, "", False)
 
     if len(s3_items) == 0:
         result = {"folder_id": folder_id, "is_success": False, "err_msg": "no s3 files found"}
@@ -750,7 +828,7 @@ def download_folder(bucket_name, folder_id, s3_src_folder, target_local_folder):
 
 
 ####################################################################
-def is_valid_s3_folder(s3_bucket_and_folder):
+def is_valid_s3_folder(s3_full_folder_path):
     """
     Process:  This will throw exceptions for all errors
     Input:
@@ -759,11 +837,11 @@ def is_valid_s3_folder(s3_bucket_and_folder):
         bucket_name, s3_folder_path
     """
 
-    if s3_bucket_and_folder.endswith("/"):
-        s3_bucket_and_folder = s3_bucket_and_folder[:-1]
+    if s3_full_folder_path.endswith("/"):
+        s3_full_folder_path = s3_full_folder_path[:-1]
 
     # we need the "s3 part stripped off for now" (if it is even there)
-    adj_s3_path = s3_bucket_and_folder.replace("s3://", "")
+    adj_s3_path = s3_full_folder_path.replace("s3://", "")
     path_segs = adj_s3_path.split("/")
     bucket_name = path_segs[0]
     s3_folder_path = adj_s3_path.replace(bucket_name, "", 1)
@@ -776,6 +854,7 @@ def is_valid_s3_folder(s3_bucket_and_folder):
             raise ValueError(f"s3 bucket of {bucket_name} does not appear to exist")
 
         # If the bucket is incorrect, it will throw an exception that already makes sense
+        # Don't need pagination as MaxKeys = 2 as prefix will likely won't trigger more than 1000 rec
         s3_objs = client.list_objects_v2(Bucket=bucket_name, Prefix=s3_folder_path, MaxKeys=2, Delimiter="/")
 
         # assumes the folder exists and has values ??
@@ -797,6 +876,23 @@ def is_valid_s3_folder(s3_bucket_and_folder):
         RLOG.critical(traceback.format_exc())
 
     return bucket_name, s3_folder_path
+
+
+####################################################################
+def is_valid_s3_file(s3_full_file_path):
+    """
+    Process:  This will throw exceptions for all errors
+    Input:
+        - s3_full_file_path: eg. s3://ras2fim-dev/OWP_ras_models/my_models_catalog.csv
+    Output:
+        True/False (exists)
+    """
+
+    file_exists = True
+
+    # TODO: Finish this
+
+    return file_exists
 
 
 ####################################################################

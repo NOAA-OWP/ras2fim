@@ -16,7 +16,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src'
 
 import ras2fim_logger
 import shared_variables as sv
-from shared_functions import get_stnd_date
+from shared_functions import get_date_with_milli, get_stnd_date
 
 
 # Global Variables
@@ -965,7 +965,8 @@ if __name__ == "__main__":
         # Creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
+        log_file_name = f"{script_file_name}_{get_date_with_milli(False)}.log"
+        RLOG.setup(os.path.join(log_file_folder, log_file_name))
 
         # call main program
         unit_to_s3(**args)
