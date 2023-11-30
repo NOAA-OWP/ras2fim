@@ -2,11 +2,12 @@ import os
 import argparse
 import glob
 import geopandas as gpd
+import pandas as pd
 
 from timeit import default_timer as timer
 
 
-def reformat_usgs_fims_to_geocurves(usgs_map_dir, output_dir, catchments):
+def reformat_usgs_fims_to_geocurves(usgs_map_dir, output_dir, catchments, usgs_rating_curves):
     # Create output_dir if necessary
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -15,6 +16,16 @@ def reformat_usgs_fims_to_geocurves(usgs_map_dir, output_dir, catchments):
     print("Loading NWM catchments...")
     nwm_catchments_gdf = gpd.read_file(catchments)
     nwm_catchments_crs = nwm_catchments_gdf.crs
+
+    # Load USGS rating curves
+    print("Loading USGS rating curves...")
+    usgs_rc_df = pd.read_csv(usgs_rating_curves)
+
+    gage = '02207120'
+
+    # Subset usgs_rc_df to only gage of interest
+    subset_usgs_rc_df = usgs_rc_df.loc[usgs_rc_df.location_id==int(gage)]
+    print(subset_usgs_rc_df)
 
     # List shapefiles to reformat
     shapefile_path = os.path.join(usgs_map_dir, "*.shp")
@@ -29,10 +40,8 @@ def reformat_usgs_fims_to_geocurves(usgs_map_dir, output_dir, catchments):
         fim_gdf['dissolve'] = 1
         fim_gdf = fim_gdf.dissolve(by="dissolve")   
 
-        # Cut dissolved geometry to align with NWM catchment breakpoints (spatial join)
+        # Cut dissolved geometry to align with NWM catchment breakpoints and associate feature_ids(union)
         union = gpd.overlay(fim_gdf, nwm_catchments_gdf)
-
-        print(union)
 
         # Use rating curve to interpolate discharge from stage
 
@@ -40,7 +49,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_dir, output_dir, catchments):
         output_geopackage = os.path.join(output_dir, os.path.split(shapefile)[1].replace('.shp', '.gpkg'))
         union.to_file(output_geopackage, driver="GPKG")
 
-        # Save as CSV
+        # Save as CSV (move to very end later, after combining all geopackages)
         output_csv = os.path.join(output_dir, os.path.split(shapefile)[1].replace('.shp', '.csv'))
         union.to_csv(output_csv)
 
@@ -71,6 +80,15 @@ if __name__ == '__main__':
         "-c",
         "--catchments",
         help="Path to catchments layer that will be used to cut and crosswalk FIM polygons (using NWM for now).",
+        required=True,
+        default=None,
+        type=str,
+    )
+
+    parser.add_argument(
+        "-rc",
+        "--usgs_rating_curves",
+        help="Path to rating curves CSV (available from inundation-mapping data).",
         required=True,
         default=None,
         type=str,
