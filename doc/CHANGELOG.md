@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.6 - 2023-12-01 - [PR#212](https://github.com/NOAA-OWP/ras2fim/pull/212)
+## v2.0.beta.6 - 2023-12-04 - [PR#212](https://github.com/NOAA-OWP/ras2fim/pull/212)
 
 This PR covers a couple of fixes all based around the `get_models_by_catalog.py`. They include:
 
@@ -31,7 +31,7 @@ This PR covers a couple of fixes all based around the `get_models_by_catalog.py`
 
 <br/><br/>
 
-## v2.0.beta.5 - 2023-12-01 - [PR#209](https://github.com/NOAA-OWP/ras2fim/pull/209)
+## v2.0.beta.5 - 2023-12-04 - [PR#209](https://github.com/NOAA-OWP/ras2fim/pull/209)
 
 Added a new tool that can so wildcard searching s3 for files and folders including recursively. It uses a simple * (asterisks) to represent zero to many characters. It is not case-sensitive.
 
