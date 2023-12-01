@@ -390,13 +390,13 @@ def dir_reformat_ras_rc(
         # ------------------------------------------------------------------------------------------------
         # Get ras2fim version and assign to 'source' variable
 
-        changelog_path = '../doc/CHANGELOG.md' ## TODO: replace with shared variable?
+        changelog_path = '../doc/CHANGELOG.md'  ## TODO: replace with shared variable?
 
         ras2fim_version = sf.get_changelog_version(changelog_path)
 
         source = "ras2fim_" + ras2fim_version
 
-        print(f'Source: {source}') ## debug 
+        print(f'Source: {source}')  ## debug
 
         # ------------------------------------------------------------------------------------------------
         # Build output table
