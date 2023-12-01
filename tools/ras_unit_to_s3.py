@@ -878,7 +878,7 @@ def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
     # --------------------
     # check ras2fim output bucket exists
     print()
-    msg = f"    Validating that the s3 bucket of {s3_bucket_name}"
+    msg = f"    Validating the s3 bucket of {s3_bucket_name}"
     if s3_sf.does_s3_bucket_exist(s3_bucket_name) is False:
         raise ValueError(f"{msg} ... does not exist")
     else:
