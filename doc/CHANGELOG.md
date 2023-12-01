@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.x - 2023-11-15 - [PR#208](https://github.com/NOAA-OWP/ras2fim/pull/208)
+## v2.0.beta.4 - 2023-12-01 - [PR#208](https://github.com/NOAA-OWP/ras2fim/pull/208)
 
 During a recent other merge, ras_unit_to_s3 began failing to upload. Now fixed.
 
@@ -13,8 +13,46 @@ During a recent other merge, ras_unit_to_s3 began failing to upload. Now fixed.
 
 <br/><br/>
 
-## ================================================
-## Note: Below is the end of the V1 Series. Moving forward will be towards the new V2 ras2fim series.
+## v2.0.beta.3 - 2023-12-01 - [PR#213](https://github.com/NOAA-OWP/ras2fim/pull/213)
+
+This PR addresses issue #180 and adds ras2fim version number, which is now automatically derived from `doc/CHANGELOG.md` file,  into the outputs of `src/create_model_domain_polygons.py` and `src/create_geocurves.py` scripts. 
+
+In the earlier version of `src/create_geocurves.py` file, -v has been an argument that required asking the user to provide the `doc/CHANGELOG.md` file path. This argument has been removed and the `doc/CHANGELOG.md` path is now inferred by the code. Now, by default, ras2fim version number is always added to outputs of above two scripts. 
+
+<br/><br/>
+
+## v2.0.beta.2 - 2023-11-17 - [PR#205](https://github.com/NOAA-OWP/ras2fim/pull/205)
+
+This PR updates `reformat_ras_rating_curve.py` to assign the ras2fim version to the `source` column using the get_changelog_version shared function. It also changes the output filenames to be named ras2calibration_rating_curve_points.gpkg and ras2calibration_rating_curve_table.csv, which are more descriptive than the previous names.
+
+
+### Changes  
+- `src/ras2fim.py`: Removes the 'ras2fim' argument from the line that runs `dir_reformat_ras_rc`. 
+- `src/reformat_ras_rating_curve.py`: Added functinoality to automatically get the ras2fim version from `CHANGELOG.md`. Removed hardcoded `source` variables and vestigial references to the previously-removed `-so` flag.
+- `src/shared_variables.py`: Changed the `R2F_OUTPUT_FILE_RAS2CAL_CSV` and `R2F_OUTPUT_FILE_RAS2CAL_GPKG` variable names to be more descriptive. 
+
+<br/><br/>
+
+## v2.0.beta.1 - 2023-11-16 - [PR#207](https://github.com/NOAA-OWP/ras2fim/pull/207)
+
+The goal of this PR is to merge the first ras2fim V2.01 to the main branch. Step 2, `conflate_hecras_to_nwm.py` and Step 5, `worker_fim_rasters.py` of ras2fim V1 were significantly changed.  `conflate_hecras_to_nwm.py` V2.01 now conflates HECRAS model streams to the NWM streams and finds the matched streams. `worker_fim_rasters.py` V2.01 computes boundary conditions for conflated streams, creates RAS flow and plan files and generates the inundation depth grids using the HECRAS Controller. 
+
+**Conflate_hecras_to_nwm.py works from the command line. ras2fim.py does not work. Neither worker_fim_rasters.py**
+
+### Changes
+- `src`
+   -  `conflate_hecras_to_nwm.py`: 
+      - `cut_streams_in_two` function was added. 
+      -  `conflate_hecras_to_nwm` function had a major upgrade for ras2fim V2.
+   - `worker_fim_rasters.py`: a major upgrade for ras2fim V2.
+
+<br/><br/>
+
+## RAS2FIM V1 - Code Freeze
+
+Nov 8, 2023
+
+At this point, there are no more projected updates required to the V1 code base. The "dev" branch will now continue on as ras2fim V2. This branch exists in case we need an emergency or critical fix based on V1 code.
 
 <br/><br/>
 

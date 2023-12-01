@@ -52,8 +52,8 @@ R2F_OUTPUT_DIR_DOMAIN_POLYGONS = "models_domain"
 R2F_OUTPUT_DIR_RELEASES = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
 
 # OUTPUT FILES
-R2F_OUTPUT_FILE_RAS2CAL_CSV = "ras2calibration_output_table.csv"
-R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_output_geopackage.gpkg"
+R2F_OUTPUT_FILE_RAS2CAL_CSV = "ras2calibration_rating_curve_table.csv"
+R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_rating_curve_points.gpkg"
 R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt"
 
 # S3 PATHS (FOLDERS)
