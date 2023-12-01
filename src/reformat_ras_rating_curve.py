@@ -390,13 +390,9 @@ def dir_reformat_ras_rc(
         # ------------------------------------------------------------------------------------------------
         # Get ras2fim version and assign to 'source' variable
 
-        changelog_path = '../doc/CHANGELOG.md' ## TODO: replace with shared variable?
-
+        changelog_path = '../doc/CHANGELOG.md'  # TODO: replace with shared variable?
         ras2fim_version = sf.get_changelog_version(changelog_path)
-
         source = "ras2fim_" + ras2fim_version
-
-        print(f'Source: {source}') ## debug 
 
         # ------------------------------------------------------------------------------------------------
         # Build output table
@@ -405,6 +401,7 @@ def dir_reformat_ras_rc(
         timestamp = dt.datetime.utcnow()
 
         # Assemble output table
+        # Ensure the "source" column always has the phrase 'ras2fim' in it somewhere (fim needs it)
         dir_output_table = pd.DataFrame(
             {
                 "fid_xs": rc_geospatial_df["fid_xs"],

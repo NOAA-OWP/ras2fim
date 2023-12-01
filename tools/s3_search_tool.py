@@ -79,7 +79,7 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
 
     RLOG.lprint("")
     RLOG.lprint("=================================================================")
-    RLOG.lprint("          RUN s3 search tool ")
+    RLOG.notice("          RUN s3 search tool ")
     RLOG.lprint(f"  (-s3): s3_path {s3_path} ")
     RLOG.lprint(f"  (-key): s3 bucket name {search_key}")
     RLOG.lprint(f"  (-p): output results folder {output_folder_path}")

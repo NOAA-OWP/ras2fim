@@ -1,6 +1,35 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.6 - 2023-12-01 - [PR#212](https://github.com/NOAA-OWP/ras2fim/pull/212)
+
+This PR covers a couple of fixes all based around the `get_models_by_catalog.py`. They include:
+
+1) Issue [201](https://github.com/NOAA-OWP/ras2fim/issues/201):  Add ID number column to filtered unit models catalog
+2) Issue [114](https://github.com/NOAA-OWP/ras2fim/issues/114): get model catalog tool - check if dup final_name_key
+3) Issue [174](https://github.com/NOAA-OWP/ras2fim/issues/174): Add multi-threading to get_models_by_catalog.py
+4) Logger file system exception: Some py files do not setup the RLOG system until after input args have been validated. This was throwing an exception saying that it could not write to the file system. Updated the logger so it just prints the log message to console but skips attempting to write to the log file and adds a print console message saying log to file system not set up.
+5) Logger add new `notice` type: Found a need to log and display a new type which is more of an "info" type message that didn't fit in other types, but needed it's own color.
+
+### Changes  
+- `src`
+    - `ras2fim_logger.py`: Fixed the logger file system exception issue and added new level type of `notice`.
+    - `reformat_ras_rating_curve.py`: Added critical comment to help keep it in sync with FIM and small cleanup.
+    - `shared_variables.py`: New variables to manage new named columns in the filtered models catalog saved locally.
+- `tools`
+    - `get_models_by_catalog.py`: 
+         - Added new `model_id` catalog which starts at the number 10,000.
+         - Removed actual downloading of s3 folders from this file and into `s3_shared_functions.py`.
+         - Updated some output and log lines.
+         - Updated how the existing `downloaded (successful` and `download error` columns are named and are populated.
+    - `ras_unit_to_s3.py`: Change a log output line from `lprint` to `notice` for easier readability.
+    - `s3_search_tools.py`: Change a log output line from `lprint` to `notice` for easier readability.
+    - `s3_shared_functions.py: 
+        - Various small comment and output text changes.
+        - Added new function to allow for `download_folders` (from S3) which previously in `get_models_by_catalog.py`. This is expected to be used by other tools in the near future such as ras2release.  It also includes multi-threading (notice.. not multi proc). Multi proc would not use system resources very well for this type of serialization. Also notice is it folders plural.
+        - Add new function to allow for `download_folder` (from S3) for a single folder. Also expected to be used in the near future.
+
+<br/><br/>
 
 ## v2.0.beta.x - 2023-11-20 - [PR#209](https://github.com/NOAA-OWP/ras2fim/pull/209)
 
