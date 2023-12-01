@@ -31,7 +31,7 @@ This PR covers a couple of fixes all based around the `get_models_by_catalog.py`
 
 <br/><br/>
 
-## v2.0.beta.x - 2023-11-20 - [PR#209](https://github.com/NOAA-OWP/ras2fim/pull/209)
+## v2.0.beta.5 - 2023-12-01 - [PR#209](https://github.com/NOAA-OWP/ras2fim/pull/209)
 
 Added a new tool that can so wildcard searching s3 for files and folders including recursively. It uses a simple * (asterisks) to represent zero to many characters. It is not case-sensitive.
 
@@ -62,6 +62,26 @@ While this is designed to work against model folders, it can be used against any
 
 <br/><br/>
 
+## v2.0.beta.4 - 2023-12-01 - [PR#208](https://github.com/NOAA-OWP/ras2fim/pull/208)
+
+During a recent other merge, ras_unit_to_s3 began failing to upload. Now fixed.
+
+### Changes  
+- `src`/`shared_validators.py`: corrected text.
+- `tools`
+    - `ras_unit_to_s3.py`: Fix upload bug which was based in the `skip_files` system which exempts some files from  uploading to S3. Also added color to console as questions are asked of the user (live input). 
+    - `s3_shared_functions.py`:  Removed progress bars which don't work well now with RLOG. . Fixed the `skip_files` system. Added color in key screen outputs for readability. Added throttling on max number of CPU's for multi-thread.
+
+<br/><br/>
+
+## v2.0.beta.3 - 2023-12-01 - [PR#213](https://github.com/NOAA-OWP/ras2fim/pull/213)
+
+This PR addresses issue #180 and adds ras2fim version number, which is now automatically derived from `doc/CHANGELOG.md` file,  into the outputs of `src/create_model_domain_polygons.py` and `src/create_geocurves.py` scripts. 
+
+In the earlier version of `src/create_geocurves.py` file, -v has been an argument that required asking the user to provide the `doc/CHANGELOG.md` file path. This argument has been removed and the `doc/CHANGELOG.md` path is now inferred by the code. Now, by default, ras2fim version number is always added to outputs of above two scripts. 
+
+<br/><br/>
+
 ## v2.0.beta.2 - 2023-11-17 - [PR#205](https://github.com/NOAA-OWP/ras2fim/pull/205)
 
 This PR updates `reformat_ras_rating_curve.py` to assign the ras2fim version to the `source` column using the get_changelog_version shared function. It also changes the output filenames to be named ras2calibration_rating_curve_points.gpkg and ras2calibration_rating_curve_table.csv, which are more descriptive than the previous names.
@@ -86,6 +106,14 @@ The goal of this PR is to merge the first ras2fim V2.01 to the main branch. Step
       - `cut_streams_in_two` function was added. 
       -  `conflate_hecras_to_nwm` function had a major upgrade for ras2fim V2.
    - `worker_fim_rasters.py`: a major upgrade for ras2fim V2.
+
+<br/><br/>
+
+## RAS2FIM V1 - Code Freeze
+
+Nov 8, 2023
+
+At this point, there are no more projected updates required to the V1 code base. The "dev" branch will now continue on as ras2fim V2. This branch exists in case we need an emergency or critical fix based on V1 code.
 
 <br/><br/>
 
