@@ -7,6 +7,7 @@ import shutil
 import sys
 import traceback
 
+import numpy as np
 import pandas as pd
 
 
@@ -99,50 +100,49 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
             return
 
         num_raw_csv_rows = len(df_raw_csv_recs)
-        RLOG.notice(f"Original row count as loaded is {num_raw_csv_rows}")
-
-        # df_raw_csv_recs["nhdplus_comid"] = df_raw_csv_recs["nhdplus_comid"].astype(str)
-
-        # To cut some volume down, lets get rid of all records where the nhdplus_comid is empty
-        # df_filtered_csv_recs = df_raw_csv_recs[df_raw_csv_recs["nhdplus_comid"] != ""]
-
-        # df_raw_csv_recs["nhdplus_comid"].astype(int)
 
         # Our end report will not have all data, but only remaining error files,
         # so we can drop some records as we go.
-        df_filtered_csv_recs = df_raw_csv_recs.dropna(subset=["nhdplus_comid"])
+        df_csv_report = df_raw_csv_recs.dropna(subset=["nhdplus_comid"])
 
-        if df_filtered_csv_recs.empty:
+        if df_csv_report.empty:
             RLOG.error("No valid records return for after removing recs with an empty ndhplus_comid")
             return
 
-        num_raw_csv_rows_w_comid = len(df_filtered_csv_recs)
+        num_raw_csv_rows_w_comid = len(df_csv_report)
+        df_csv_report = df_csv_report.astype({"nhdplus_comid": int})
 
-        RLOG.notice(
-            f"Count of filtered rows with nhdplus_comid not being blank is {num_raw_csv_rows_w_comid}"
+        print("-----------------")
+        RLOG.notice("S3 catalog csv stats:")
+        RLOG.lprint(f"  -- Original row count as loaded = {num_raw_csv_rows}")
+        RLOG.lprint(
+            f"  -- Count of filtered rows with nhdplus_comid not being blank = {num_raw_csv_rows_w_comid}"
         )
-
-        df_filtered_csv_recs = df_filtered_csv_recs.astype({"nhdplus_comid": int})
-        # ----------
-        # Final csv output (deep copy), we will be adding recs and columns
-        df_csv_report = df_filtered_csv_recs.copy()
 
         # ----------
         # Load the s3 folder list (list of dictionaries)
         # Yes.. I know they technically are not "folders"
         raw_s3_folder_list = s3_sf.get_folder_list(bucket_name, s3_folder_path, True)
-
-        df_raw_s3_folder_list = pd.DataFrame.from_dict(raw_s3_folder_list)
-
-        # remove the "_unprocessed" s3 folder.
-        df_raw_s3_folder_list = df_raw_s3_folder_list.drop(
-            df_raw_s3_folder_list[df_raw_s3_folder_list["key"] == "_unprocessed"].index
-        )
-
-        raw_s3_model_folder_count = len(df_raw_s3_folder_list)
+        raw_s3_model_folder_count = len(raw_s3_folder_list)
 
         if raw_s3_model_folder_count == 0:
             raise Exception("No s3 model folders found. Check pathing or configuration.")
+
+        df_s3_folder_list = pd.DataFrame.from_dict(raw_s3_folder_list)
+
+        # remove the "_unprocessed" s3 folder.
+        df_s3_folder_list = df_s3_folder_list.drop(
+            df_s3_folder_list[df_s3_folder_list["key"] == "_unprocessed"].index
+        )
+        s3_model_folder_count_filtered = len(df_s3_folder_list)
+
+        if s3_model_folder_count_filtered == 0:
+            raise Exception("No s3 model folders found after removing _unprocessed")
+
+        print("-----------------")
+        RLOG.notice("S3 model folder stats:")        
+        RLOG.lprint("  - Raw number of S3 models folders excluding _unprocessed"
+                   f" = {s3_model_folder_count_filtered}")
 
         # -----------------
         # Step 1:
@@ -153,6 +153,7 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
         # Step 2:
         # Look for extra records in the master csv that do not have a matching model folder and
         # vice-a-versa.
+        df_csv_report = mismatch_rec(df_csv_report, df_s3_folder_list)
 
         # -----------------
         # Step 3:
@@ -171,9 +172,8 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
         # Cleanup
         # We want the final report to only include records that had issues and drop the rest
 
-        RLOG.lprint(f"len of df_csv_report is {len(df_csv_report)}")
+
         df_csv_report.to_csv(target_report_path, index=False)
-        RLOG.notice(f"Raw number of S3 models folders (excluding _unprocessed) = {raw_s3_model_folder_count}")
 
     except Exception:
         errMsg = "--------------------------------------\n An error has occurred"
@@ -183,9 +183,9 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
 
     print()
     RLOG.lprint("--------------------------------------")
-    RLOG.success(f"Process completed: {get_stnd_date()}")
-    RLOG.success(f"Report csv saved to: {target_report_path}")
-
+    RLOG.success(f"Process completed: {get_stnd_date()}")    
+    RLOG.success(f"  - Report csv saved to: {target_report_path}")
+    print()
     dur_msg = print_date_time_duration(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
     print()
@@ -195,7 +195,8 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
 def final_name_key_dup_check(df_csv_report):
     """
     Process:
-        Add records to the df_csv_report of full rows where there are duplicates in the final_name_key column
+        Update records to the df_csv_report where there are duplicates in the final_name_key column.
+        A new column of "has_dup_final_name_key" (True/False) will be added.
     Output:
         An updated df_csv_report
     """
@@ -204,34 +205,73 @@ def final_name_key_dup_check(df_csv_report):
     df_csv_report["has_dup_final_name_key"] = False
 
     # df_csv_report.sort_values(by=['nhdplus_comid'], inplace=True)
-    dups = df_csv_report.groupby(by=["final_name_key"], as_index=False).size()
-    dup_list = dups.loc[(dups["size"] > 1)]["final_name_key"].tolist()
-
-    # print(len(dups_purged))
-    # print()
-    # print(dups_purged)
+    dups = df_csv_report.groupby(by=[sv.COL_NAME_FINAL_NAME_KEY], as_index=False).size()
+    dup_list = dups.loc[(dups["size"] > 1)][sv.COL_NAME_FINAL_NAME_KEY].tolist()
 
     if len(dup_list) == 0:
         return df_csv_report
 
-    # print(dups['nhdplus_comid'])
+    df_csv_report = df_csv_report.assign(has_dup_final_name_key=
+                                         lambda x: x[sv.COL_NAME_FINAL_NAME_KEY].isin(dup_list))
 
-    # Look to see if that row already exists in the df_csv_report.
-    # If it does exist, just update the has_dup_final_name_key to True
-    # else, add the row, then update it to true.
-    # We need to iterate both df's manually as we are possible adding rows
-    # that may not yet exist and are not final_name_key dups.
+    return df_csv_report
 
-    # for ind in dup_comid_list:
-    # df_csv_report.loc[df_csv_report["nhdplus_comid"] == ind]["has_dup_final_name_key"] = True
-    # if len(df_csv_report.loc[df_csv_report["nhdplus_comid"] == ind]) > 0:
-    #    df_csv_report._set_value(ind, "has_dup_final_name_key", True)
 
-    # df_csv_report['has_dup_final_name_key'] = df_csv_report['nhdplus_comid'].apply(
-    #   lambda x: 0 if x.isin(dup_comid_list) else x)
+####################################################################
+def mismatch_rec(df_csv_report, df_raw_s3_folder_list):
+    """
+    Process:
+        - Look for matchs of recs to model folders.
+        - Records where the final_name_key is empty will be skipped.
+        - A new column of "has_model_folder_match" ("true", "csv_only", "skipped", "model_only")
+          will be added.
+             - "true" means final_name_key and model folder match found.
+             - "csv_only" means in the final_name_key but no model folder found.
+             - "skipped" means final_name_key is empty.
+             - "model_only" means no matching final_name_key found. We will add a partial new row
+               to the csv with 
+        - If a model folder exists but not a csv rec, then a new rec will be added
+          to the csv, with a new column named "s3_model_folder_name" (blank if matched)
+    Output:
+        An updated df_csv_report
+    """
 
-    # df2 = df_csv_report(lambda x: True if x.nhdplus_comid in dup_comid_list else False)
-    df_csv_report = df_csv_report.assign(has_dup_final_name_key=lambda x: x["final_name_key"].isin(dup_list))
+    # add two new columns to the dv_csv_report
+    df_csv_report["has_model_folder_match"] = ""
+    df_csv_report["s3_model_folder_name"] = ""
+
+    df_csv_report["has_model_folder_match"] = np.where(
+        df_csv_report[sv.COL_NAME_FINAL_NAME_KEY].isnull(), "skipped", "")
+
+    # Merge outer which means there could be extra rows for either df's. The 'indictator=True'
+    # flag helps us figure out who matches and who is extra from either dataframe.
+    # A new column is added to the df_merged named '_merge' which has one of these values
+    # "both", "left_only" or "right_only".
+    df_merged = pd.merge(df_csv_report, df_raw_s3_folder_list, left_on=sv.COL_NAME_FINAL_NAME_KEY,
+                         right_on="key", how="outer", indicator=True)
+    
+    # Updating the has_model_folder_match to "true" when there is a match. Remember, some rows might
+    # already have the value of "skipped" if there was no value in the final_name_key column
+    df_matched_rows = df_merged[((df_merged["_merge"] == "both") & (df_merged["has_model_folder_match"] == ""))]
+    #matched_rows = merged[merged["_merge"] == "both"]
+    if len(df_matched_rows) > 1:
+        df_csv_report.loc[df_csv_report[sv.COL_NAME_FINAL_NAME_KEY].isin(
+            df_matched_rows[sv.COL_NAME_FINAL_NAME_KEY]), "has_model_folder_match"] = "true"
+
+    # Record has no matching model folder, so we put "csv_only" in it
+    df_matched_rows = df_merged[((df_merged["_merge"] == "left_only") & (
+        df_merged["has_model_folder_match"] == ""))]    
+    if len(df_matched_rows) > 1:
+        df_csv_report.loc[df_csv_report["final_name_key"].isin(df_matched_rows["final_name_key"]),
+        "has_model_folder_match"] = "csv_only"
+
+    # Record has a model folder but now csv record, so we have to add new rows to the csv
+    # which show only the two columns listed below.
+    df_matched_rows = df_merged[df_merged["_merge"] == "right_only"]    
+    if len(df_matched_rows) > 1:
+        for ind, row in df_matched_rows.iterrows():
+            new_row = {"has_model_folder_match": "model_only", "s3_model_folder_name": row["key"]}
+            df_csv_report = pd.concat([df_csv_report, pd.DataFrame([new_row])], ignore_index=True)
 
     return df_csv_report
 

@@ -591,7 +591,7 @@ def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
 
 ####################################################################
 def download_folders(
-    s3_src_parent_path: str, local_parent_folder: str, df_folder_list, df_download_column_name: str
+    s3_src_parent_path, local_parent_folder, df_folder_list, df_download_column_name: str
 ):
     """
     Process:
@@ -781,7 +781,6 @@ def download_folders(
 
 ####################################################################
 def download_folder(bucket_name, folder_id, s3_src_folder, target_local_folder):
-    # TODO (Nov 22, 2023 - add arg validation)
     """
     Process:
         - Using the incoming s3 src folder, call get_records to get a list of child folders and files
@@ -832,7 +831,7 @@ def is_valid_s3_folder(s3_full_folder_path):
     """
     Process:  This will throw exceptions for all errors
     Input:
-        - s3_bucket_and_folder: eg. s3://ras2fim/OWP_ras_models
+        - s3_full_folder_path: eg. s3://ras2fim/OWP_ras_models
     Output:
         bucket_name, s3_folder_path
     """
@@ -847,11 +846,11 @@ def is_valid_s3_folder(s3_full_folder_path):
     s3_folder_path = adj_s3_path.replace(bucket_name, "", 1)
     s3_folder_path = s3_folder_path.lstrip("/")
 
-    client = boto3.client("s3")
-
     try:
         if does_s3_bucket_exist(bucket_name) is False:
             raise ValueError(f"s3 bucket of {bucket_name} does not appear to exist")
+
+        client = boto3.client("s3")
 
         # If the bucket is incorrect, it will throw an exception that already makes sense
         # Don't need pagination as MaxKeys = 2 as prefix will likely won't trigger more than 1000 rec
@@ -888,9 +887,35 @@ def is_valid_s3_file(s3_full_file_path):
         True/False (exists)
     """
 
-    file_exists = True
+    file_exists = False
 
-    # TODO: Finish this
+    if s3_full_file_path.endswith("/"):
+        raise Exception("s3 file path is invalid as it ends with as forward slash")
+
+    RLOG.lprint(f"Validating s3 file of {s3_full_file_path}")
+
+    # we need the "s3 part stripped off for now" (if it is even there)
+    adj_s3_path = s3_full_file_path.replace("s3://", "")
+    path_segs = adj_s3_path.split("/")
+    bucket_name = path_segs[0]
+    s3_file_path = adj_s3_path.replace(bucket_name + "/", "", 1)
+
+    try:
+        if does_s3_bucket_exist(bucket_name) is False:
+            raise ValueError(f"s3 bucket of {bucket_name} does not appear to exist")
+
+        client = boto3.client("s3")
+
+        result = client.list_objects_v2(Bucket=bucket_name, Prefix=s3_file_path )
+
+        if 'Contents' in result:
+            file_exists = True
+
+    except botocore.exceptions.NoCredentialsError:
+        RLOG.critical("** Credentials not available. Try aws configure")
+    except Exception:
+        RLOG.critical("An error has occurred with talking with S3")
+        RLOG.critical(traceback.format_exc())
 
     return file_exists
 
