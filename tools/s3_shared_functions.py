@@ -10,12 +10,12 @@ from datetime import datetime
 
 import boto3
 import botocore.exceptions
+import colored as cl
 from botocore.client import ClientError
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import ras2fim_logger
-import shared_functions as sf
 
 
 # Global Variables
@@ -80,14 +80,14 @@ def upload_file_to_s3(bucket_name, src_path, s3_folder_path, file_name="", show_
 
 
 ###################################################################
-def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name, upload_skip_files=[]):
+def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name, skip_files=[]):
     """
     Input
         - src_path: e.g c:\ras2fim_data\output_ras2fim\12030202_102739_230810
         - bucket_name: e.g mys3bucket_name
         - s3_folder_path: e.g.  output_ras2fim or output_ras2fim_archive
         - unit_folder_name:  12030105_2276_230810 (slash stripped off the end)
-        - upload_skip_files: files we don't want uploaded. (fully pathed)
+        - skip_files: files we don't want uploaded. (fully pathed)
 
     Notes:
         - if the file names starts with three underscores, it will not be uploaded to S3.
@@ -97,7 +97,11 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
 
     RLOG.lprint("===================================================================")
     print("")
-    RLOG.lprint(f"Uploading folder from {src_path}  to  {s3_full_target_path}")
+    RLOG.lprint(
+        f"{cl.fore.LIGHT_YELLOW}"
+        f"Uploading folder from {src_path}  to  {s3_full_target_path}"
+        f"{cl.style.RESET}"
+    )
     print()
 
     # nested function
@@ -113,13 +117,13 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
 
         for subdir, dirs, files in os.walk(src_path, followlinks=False):
             for file in files:
-                if file in upload_skip_files:
-                    RLOG.trace(f"skipped: {file}")
-                    continue
-
                 src_file_path = os.path.join(src_path, subdir, file)
 
                 RLOG.trace(f".. src_file_path = {src_file_path}")
+
+                if src_file_path in skip_files:
+                    RLOG.trace(f"skipped: {file}")
+                    continue
 
                 src_folder = os.path.dirname(src_file_path)
                 src_file_name = os.path.basename(src_file_path)
@@ -134,21 +138,30 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
                 item = {
                     's3_client': client,
                     'bucket_name': bucket_name,
-                    'src_file_path': file,
+                    'src_file_path': src_file_path,
                     'target_file_path': s3_key_path,
                 }
                 # adds a dict to the list
                 s3_files.append(item)
 
         if len(s3_files) == 0:
-            RLOG.lprint(f"No files in source folder of {src_path}. Upload invalid.")
+            RLOG.lprint(
+                f"{cl.fore.RED_1}"
+                f"No files in source folder of {src_path}. Upload invalid."
+                f"{cl.style.RESET}"
+            )
             return
 
-        RLOG.lprint(f"Number of files to be uploaded is {len(s3_files)}")
-
         # As we are threading, we can add more than one thread per proc, but for calc purposes
-        # and to not overload the systems or internet pipe, so it is hardcoded at 20 for now
+        # and to not overload the systems or internet pipe, so it is hardcoded at max of 20 for now.
         num_workers = 20
+        total_cpus_available = os.cpu_count() - 2
+        if total_cpus_available < num_workers:
+            num_workers = total_cpus_available
+
+        RLOG.lprint(f"Number of files to be uploaded is {len(s3_files)}.")
+        print(" ... This may take a few minutes, stand by.")
+        RLOG.lprint(f" ... Uploading files with {num_workers} workers")
 
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
             executor_dict = {}
@@ -159,7 +172,7 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
                     executor_dict[future] = upload_file_args['src_file_path']
 
                 except Exception:
-                    RLOG.critical(f"Critical error whild uploading {upload_file_args['src_file_path']}")
+                    RLOG.critical(f"Critical error while uploading {upload_file_args['src_file_path']}")
                     RLOG.critical(traceback.format_exc())
                     sys.exit(1)
 
@@ -173,8 +186,8 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
             else:
                 yield key, exception
         """
-
-        # sf.progress_bar_handler(executor_dict, True, f"Uploading files with {num_workers} workers")
+        RLOG.lprint(" ... Uploading complete")
+        print()
 
     except botocore.exceptions.NoCredentialsError:
         print("-----------------")
@@ -208,7 +221,11 @@ def delete_s3_folder(bucket_name, s3_folder_path):
 
     RLOG.lprint("===================================================================")
     print("")
-    RLOG.lprint(f"Deleting the files and folders at {s3_full_target_path}")
+    RLOG.lprint(
+        f"{cl.fore.LIGHT_YELLOW}"
+        f"Deleting the files and folders at {s3_full_target_path}"
+        f"{cl.style.RESET}"
+    )
     print()
 
     # nested function
@@ -236,14 +253,23 @@ def delete_s3_folder(bucket_name, s3_folder_path):
                     s3_files.append(item)
 
         if len(s3_files) == 0:
-            RLOG.lprint(f"No files in s3 folder of {s3_full_target_path} to be deleted.")
+            RLOG.lprint(
+                f"{cl.fore.RED_1}"
+                f"No files in s3 folder of {s3_full_target_path} to be deleted."
+                f"{cl.style.RESET}"
+            )
             return
 
-        RLOG.lprint(f"Number of files to be deleted in s3 is {len(s3_files)}")
-
         # As we are threading, we can add more than one thread per proc, but for calc purposes
-        # and to not overload the systems or internet pipe, so it is hardcoded at 20
+        # and to not overload the systems or internet pipe, so it is hardcoded at max of 20 for now.
         num_workers = 20
+        total_cpus_available = os.cpu_count() - 2
+        if total_cpus_available < num_workers:
+            num_workers = total_cpus_available
+
+        RLOG.lprint(f"Number of files to be deleted in s3 is {len(s3_files)}")
+        print(" ... This may take a few minutes, stand by.")
+        RLOG.lprint(f" ... Deleting files with {num_workers} workers")
 
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
             executor_dict = {}
@@ -257,10 +283,10 @@ def delete_s3_folder(bucket_name, s3_folder_path):
                     RLOG.critical(traceback.format_exc())
                     sys.exit(1)
 
-            sf.progress_bar_handler(executor_dict, True, f"Deleting files with {num_workers} workers")
-
         # remove the folder that is left over (Did we check it if existed?)
         client.delete_object(Bucket=bucket_name, Key=s3_folder_path + "/")  # slash added
+        RLOG.lprint(" ... Deleting complete")
+        print()
 
     except botocore.exceptions.NoCredentialsError:
         RLOG.critical("-----------------")
@@ -302,9 +328,17 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
     try:
         RLOG.lprint("===================================================================")
         print("")
-        RLOG.lprint(f"Moving folder from {s3_src_folder_path}  to  {s3_target_folder_path}")
+        RLOG.lprint(
+            f"{cl.fore.LIGHT_YELLOW}"
+            f"Moving folder from {s3_src_folder_path}  to  {s3_target_folder_path}"
+            f"{cl.style.RESET}"
+        )
         print()
-        print("***  NOTE: s3 can not move files, it can only copy then delete them.")
+        print(
+            f"{cl.fore.DODGER_BLUE_1}"
+            "***  NOTE: s3 can not move files, it can only copy the files then delete them."
+            f"{cl.style.RESET}"
+        )
         print()
 
         client = boto3.client("s3")
@@ -337,17 +371,24 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         # If the bucket is incorrect, it will throw an exception that already makes sense
 
         if len(s3_files) == 0:
-            RLOG.lprint(f"No files in source folder of {s3_src_folder_path}. Move invalid.")
+            RLOG.lprint(
+                f"{cl.fore.RED_1}"
+                f"No files in source folder of {s3_src_folder_path}. Move invalid."
+                f"{cl.style.RESET}"
+            )
             return
 
-        RLOG.lprint(f"Number of files to be copied is {len(s3_files)}")
-
         # As we are threading, we can add more than one thread per proc, but for calc purposes
-        # and to not overload the systems or internet pipe, so it is hardcoded at 20
+        # and to not overload the systems or internet pipe, so it is hardcoded at max of 20 for now.
         num_workers = 20
+        total_cpus_available = os.cpu_count() - 2
+        if total_cpus_available < num_workers:
+            num_workers = total_cpus_available
 
-        # copy the files first
-        # session = boto3.client("s3")
+        RLOG.lprint(f"Number of files to be copied is {len(s3_files)}")
+        print(" ... This may take a few minutes, stand by.")
+        RLOG.lprint(f" ... Copying files with {num_workers} workers")
+
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
             executor_dict = {}
 
@@ -360,7 +401,7 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
                     RLOG.critical(traceback.format_exc())
                     sys.exit(1)
 
-            sf.progress_bar_handler(executor_dict, True, f"Copying files with {num_workers} workers")
+        RLOG.lprint(" ... Copying complete")
 
         # now delete the original ones
         delete_s3_folder(bucket_name, s3_src_folder_path)
