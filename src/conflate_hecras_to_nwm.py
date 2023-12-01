@@ -4,9 +4,8 @@
 import argparse
 import datetime as dt
 import os.path
-import traceback
-
 import time
+import traceback
 import warnings
 
 import geopandas as gpd
@@ -18,6 +17,7 @@ from shapely.geometry import LineString, Point
 
 import ras2fim_logger
 import shared_functions as sf
+
 
 # Global Variables
 RLOG = ras2fim_logger.R2F_LOG  # the non mp version
@@ -45,9 +45,9 @@ def fn_cut_streams_in_two(line, distance):
 # str_shp_out_arg = "C:/ras2fim_data/OWP_ras_models/ras2fimv2.0/step2_v2_output_conflate_12090301"
 # str_nation_arg = "C:/ras2fim_data/inputs/X-National_Datasets"
 
+
 # -------------------------------------------------
 def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg):
-    
     # TODO: Oct 2023: Review and remove this surpression
     # supress all warnings
     # warnings.filterwarnings("ignore", category=UserWarning)
@@ -234,8 +234,8 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     gdf_ble_streams_intersect_ldd_geo = gdf_ble_streams_intersect_ldd.geometry
 
     list_ble_streams_cut_geo = []
-    for dc in range(len(distances)): # ~ 120 s
-        #ligne = gdf_ble_streams_intersect_ldd.iloc[dc].geometry
+    for dc in range(len(distances)):  # ~ 120 s
+        # ligne = gdf_ble_streams_intersect_ldd.iloc[dc].geometry
         ligne = gdf_ble_streams_intersect_ldd_geo[dc]
 
         # Cut end of the ble streams to avoid conflation with downstream nwm streams
@@ -261,7 +261,6 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     gdf_ble_streams_intersect_buf = gdf_ble_streams_intersect_ldd_cut.copy()
     gdf_ble_streams_intersect_buf.geometry = ble_streams_intersect_buf_geom
 
-   
     # -------------------------------------------------
     # Conflate ble streams to nwm streams
     RLOG.lprint("Determining conflated stream centerlines")
@@ -304,7 +303,7 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     #     subset='duplic_finder'
     # )
     # gdf_conflate_streams_ble_to_nwm.index = range(len(gdf_conflate_streams_ble_to_nwm))
-    
+
     # gdf_conflate_streams_ble_to_nwm.to_file(
     #     str_shp_out_arg + "//" + "gdf_conflate_streams_ble_to_nwm.shp")
 
