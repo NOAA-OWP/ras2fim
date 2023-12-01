@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.x - 2023-11-27 - [PR#212](https://github.com/NOAA-OWP/ras2fim/pull/212)
+## v2.0.beta.6 - 2023-12-01 - [PR#212](https://github.com/NOAA-OWP/ras2fim/pull/212)
 
 This PR covers a couple of fixes all based around the `get_models_by_catalog.py`. They include:
 
