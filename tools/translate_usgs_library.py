@@ -44,19 +44,31 @@ def reformat_usgs_fims_to_geocurves(usgs_map_dir, output_dir, catchments, usgs_r
         union = gpd.overlay(fim_gdf, nwm_catchments_gdf)
 
         # Parse stage from filename
-        parsed_stage = os.path  # TODO
+        parsed_stage = int(os.path.split(shapefile)[1].split('.')[0][-2:])  # TODO
 
         # Use subset_usgs_rc_df to interpolate discharge from stage
-        return np.interp([xval], subset_usgs_rc_df['stage'], df['flow'])
+        interpolated_q = np.interp([parsed_stage], subset_usgs_rc_df['stage'], subset_usgs_rc_df['flow'])
 
+        fim_gdf['discharge'] = interpolated_q
+        fim_gdf['stage'] = parsed_stage
 
         # Save as geopackage (temp)
         output_geopackage = os.path.join(output_dir, os.path.split(shapefile)[1].replace('.shp', '.gpkg'))
         union.to_file(output_geopackage, driver="GPKG")
 
-        # Save as CSV (move to very end later, after combining all geopackages)
-        output_csv = os.path.join(output_dir, os.path.split(shapefile)[1].replace('.shp', '.csv'))
-        union.to_csv(output_csv)
+    # List all recently written geopackages
+    gpkg_path = os.path.join(output_dir, "*.gpkg")
+    gpkg_list = glob.glob(gpkg_path)
+
+    final_gdf = gpd.read_file(gpkg_list[0])
+    for gpkg in gpkg_list:
+        gdf = gpd.read_file(gpkg)
+
+        final_gdf = pd.concat([final_gdf, gdf])
+
+    # Save as CSV (move to very end later, after combining all geopackages)
+    output_csv = os.path.join(output_dir, os.path.split(shapefile)[1][:-2]+ '.csv')
+    final_gdf.to_csv(output_csv)
 
 
 if __name__ == '__main__':
