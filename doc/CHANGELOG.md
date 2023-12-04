@@ -1,6 +1,67 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.6 - 2023-12-04 - [PR#212](https://github.com/NOAA-OWP/ras2fim/pull/212)
+
+This PR covers a couple of fixes all based around the `get_models_by_catalog.py`. They include:
+
+1) Issue [201](https://github.com/NOAA-OWP/ras2fim/issues/201):  Add ID number column to filtered unit models catalog
+2) Issue [114](https://github.com/NOAA-OWP/ras2fim/issues/114): get model catalog tool - check if dup final_name_key
+3) Issue [174](https://github.com/NOAA-OWP/ras2fim/issues/174): Add multi-threading to get_models_by_catalog.py
+4) Logger file system exception: Some py files do not setup the RLOG system until after input args have been validated. This was throwing an exception saying that it could not write to the file system. Updated the logger so it just prints the log message to console but skips attempting to write to the log file and adds a print console message saying log to file system not set up.
+5) Logger add new `notice` type: Found a need to log and display a new type which is more of an "info" type message that didn't fit in other types, but needed it's own color.
+
+### Changes  
+- `src`
+    - `ras2fim_logger.py`: Fixed the logger file system exception issue and added new level type of `notice`.
+    - `reformat_ras_rating_curve.py`: Added critical comment to help keep it in sync with FIM and small cleanup.
+    - `shared_variables.py`: New variables to manage new named columns in the filtered models catalog saved locally.
+- `tools`
+    - `get_models_by_catalog.py`: 
+         - Added new `model_id` catalog which starts at the number 10,000.
+         - Removed actual downloading of s3 folders from this file and into `s3_shared_functions.py`.
+         - Updated some output and log lines.
+         - Updated how the existing `downloaded (successful` and `download error` columns are named and are populated.
+    - `ras_unit_to_s3.py`: Change a log output line from `lprint` to `notice` for easier readability.
+    - `s3_search_tools.py`: Change a log output line from `lprint` to `notice` for easier readability.
+    - `s3_shared_functions.py: 
+        - Various small comment and output text changes.
+        - Added new function to allow for `download_folders` (from S3) which previously in `get_models_by_catalog.py`. This is expected to be used by other tools in the near future such as ras2release.  It also includes multi-threading (notice.. not multi proc). Multi proc would not use system resources very well for this type of serialization. Also notice is it folders plural.
+        - Add new function to allow for `download_folder` (from S3) for a single folder. Also expected to be used in the near future.
+
+<br/><br/>
+
+## v2.0.beta.5 - 2023-12-04 - [PR#209](https://github.com/NOAA-OWP/ras2fim/pull/209)
+
+Added a new tool that can so wildcard searching s3 for files and folders including recursively. It uses a simple * (asterisks) to represent zero to many characters. It is not case-sensitive.
+
+Upon finding file and folder matches, an output csv is created.
+
+Searching is not done on each individual file or folder name but the full path of both:
+e.g. 1260391_EAST FORK TRINITY RIVER_g01_1690618796/EAST FORK TRINITY RIVER.f01 :  note the forward slash. Why the full path instead of both segments individual? e.g ['1260391_EAST FORK TRINITY RIVER_g01_1690618796', 'EAST FORK TRINITY RIVER.f01'] ?  Because a user might want to use different combinations such as '1260391*.f01`
+
+While this is designed to work against model folders, it can be used against any s3 bucket anywhere (assuming valid credentials)
+
+### Additions  
+
+- `tools`
+    - `s3_search_tools.py`: New tool as described above.
+
+### Changes  
+
+- `src`
+   - `shared_functions.py`: Added option to include random number suffice to "get_date_with_milli".
+   - `shared_validators.py`: text fix.
+   - `shared_variables.py`: added new default pathing used by new search tool.
+
+- `tools`
+    - `get_models_by_catalog.py`: Simply and adjust some import statements, text adjustments.
+    - `ras_unit_by_s3.py`: Simply and adjust some import statements, text adjustments, update a few variable names, add a bit more color to outputs.
+    - `s3_shared_functions.py`: Adjusted how color tags are used, updated a few variable names, fixed job count error for multi-threading, added new `get_records` for getting a list of file/folder names matching the wildcard search as per s3_search_tool.py.
+
+
+<br/><br/>
+
 ## v2.0.beta.4 - 2023-12-01 - [PR#208](https://github.com/NOAA-OWP/ras2fim/pull/208)
 
 During a recent other merge, ras_unit_to_s3 began failing to upload. Now fixed.

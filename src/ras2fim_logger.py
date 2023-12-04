@@ -339,6 +339,11 @@ class RAS2FIM_logger:
     def trace(self, msg):
         # goes to file only, not console
         level = "TRACE   "  # keeps spacing the same
+        if self.LOG_FILE_PATH == "":
+            print("******  Logging to the file system not yet setup.\n"
+                  "******  Sometimes this is not setup until after initial validation.")
+            return
+
         with open(self.LOG_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
 
@@ -348,6 +353,11 @@ class RAS2FIM_logger:
         level = "LPRINT  "  # keeps spacing the same
         print(f"{msg} ")
 
+        if self.LOG_FILE_PATH == "":
+            print("******  Logging to the file system not yet setup.\n"
+                  "******  Sometimes this is not setup until after initial validation.")
+            return
+        
         with open(self.LOG_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
 
@@ -358,6 +368,25 @@ class RAS2FIM_logger:
 
         c_msg_type = f"{cl.fore.DODGER_BLUE_1}<{level}>{cl.style.RESET}"
         print(f"{self.__get_clog_dt()} {c_msg_type} : {msg}")
+
+        if self.LOG_FILE_PATH == "":
+            print("******  Logging to the file system not yet setup.\n"
+                  "******  Sometimes this is not setup until after initial validation.")
+            return
+
+        with open(self.LOG_FILE_PATH, "a") as f_log:
+            f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
+
+    # -------------------------------------------------
+    def notice(self, msg):
+        # goes to console and log file
+        level = "NOTICE   "  # keeps spacing the same
+        print(f"{cl.fore.DARK_TURQUOISE}{msg}{cl.style.RESET}")
+
+        if self.LOG_FILE_PATH == "":
+            print("******  Logging to the file system not yet setup.\n"
+                  "******  Sometimes this is not setup until after initial validation.")
+            return
 
         with open(self.LOG_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
@@ -370,6 +399,11 @@ class RAS2FIM_logger:
         c_msg_type = f"{cl.fore.SPRING_GREEN_2B}<{level}>{cl.style.RESET}"
         print(f"{self.__get_clog_dt()} {c_msg_type} : {msg}")
 
+        if self.LOG_FILE_PATH == "":
+            print("******  Logging to the file system not yet setup.\n"
+                  "******  Sometimes this is not setup until after initial validation.")
+            return
+        
         with open(self.LOG_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
 
@@ -380,6 +414,11 @@ class RAS2FIM_logger:
 
         c_msg_type = f"{cl.fore.LIGHT_YELLOW}<{level}>{cl.style.RESET}"
         print(f"{self.__get_clog_dt()} {c_msg_type} : {msg}")
+
+        if self.LOG_FILE_PATH == "":
+            print("******  Logging to the file system not yet setup.\n"
+                  "******  Sometimes this is not setup until after initial validation.")
+            return
 
         with open(self.LOG_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
@@ -396,6 +435,11 @@ class RAS2FIM_logger:
         c_msg_type = f"{cl.fore.RED_1}<{level}>{cl.style.RESET}"
         print(f"{self.__get_clog_dt()} {c_msg_type} : {msg}")
 
+        if self.LOG_FILE_PATH == "":
+            print("******  Logging to the file system not yet setup.\n"
+                  "******  Sometimes this is not setup until after initial validation.")
+            return
+
         with open(self.LOG_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
 
@@ -410,6 +454,11 @@ class RAS2FIM_logger:
         c_msg_type = f"{cl.style.BOLD}{cl.fore.RED_3A}{cl.back.WHITE}{self.__get_dt()}"
         c_msg_type += f" <{level}>"
         print(f" {c_msg_type} : {msg} {cl.style.RESET}")
+
+        if self.LOG_FILE_PATH == "":
+            print("******  Logging to the file system not yet setup.\n"
+                  "******  Sometimes this is not setup until after initial validation.")
+            return
 
         with open(self.LOG_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
