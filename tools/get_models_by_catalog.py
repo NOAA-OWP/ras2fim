@@ -69,7 +69,6 @@ Features for this tool include:
 
 # -------------------------------------------------
 class Get_Models_By_Catalog:
-
     # -------------------------------------------------
     # default values listed in "__main__"  but also here in case code calls direct..
     # aka. not through "__main__"
@@ -537,4 +536,3 @@ if __name__ == "__main__":
         # The logger does not get setup until after validation, so you may get
         # log system errors potentially when erroring in validation
         RLOG.critical(traceback.format_exc())
-
