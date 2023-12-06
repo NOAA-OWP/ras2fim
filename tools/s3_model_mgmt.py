@@ -3,7 +3,6 @@
 import argparse
 import datetime as dt
 import os
-import shutil
 import sys
 import traceback
 
@@ -27,17 +26,15 @@ This tool does some reconsilation and validation of both the master s3 models ca
 related models folders.
 
 Tests performed:
-    1. Look for duplicate "final_name_key" in the master csv. (exact match at this time)
+    1. Show a count of raw model folders. (on screen only)
 
-    2. Look for extra records in the master csv that do not have a matching model folder and
-    vice-a-versa.
+    2. Look for duplicate "final_name_key" in the master csv. (exact match at this time)
 
     3. Look for dups for the "initial_scrape_name" column, but only where the ndhplus_comid is not
-    empty.
+    empty. (but those would be dropped earlier on)
 
-    4. Show a count of raw model folders. (on screen only)
-
-    5. Get the total size of the "model" (s3_models_path) folder (on screen only).
+    4. Look for extra records in the master csv that do not have a matching model folder and
+    vice-a-versa.
 """
 
 
@@ -81,13 +78,15 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
     RLOG.lprint(f"  (-o): output results folder {output_folder_path}")
     RLOG.lprint(f" --- Start: {dt_string} (UTC time) ")
     RLOG.lprint("=================================================================")
+    print()
 
     # --------------------
     # It will throw it's own exceptions if required
     rtn_varibles_dict = __validate_input(s3_master_csv_path, s3_models_path, output_folder_path)
     bucket_name = rtn_varibles_dict["bucket_name"]
     s3_folder_path = rtn_varibles_dict["s3_folder_path"]
-    target_report_path = os.path.join(output_folder_path, "s3_model_mgmt_report.csv")
+    csv_file_name = f"s3_model_mgmt_report_{get_date_with_milli(False)}.csv"
+    target_report_path = os.path.join(output_folder_path, csv_file_name)
 
     try:
         # ----------
@@ -114,9 +113,10 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
 
         print("-----------------")
         RLOG.notice("S3 catalog csv stats:")
-        RLOG.lprint(f"  -- Original row count as loaded = {num_raw_csv_rows}")
+        RLOG.lprint("  -- Original row count as loaded = " + "{:,}".format(num_raw_csv_rows))
         RLOG.lprint(
-            f"  -- Count of filtered rows with nhdplus_comid not being blank = {num_raw_csv_rows_w_comid}"
+            "  -- Count of filtered rows with nhdplus_comid not being blank"
+            " = " + "{:,}".format(num_raw_csv_rows_w_comid)
         )
 
         # ----------
@@ -130,6 +130,7 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
 
         df_s3_folder_list = pd.DataFrame.from_dict(raw_s3_folder_list)
 
+        # ----------
         # remove the "_unprocessed" s3 folder.
         df_s3_folder_list = df_s3_folder_list.drop(
             df_s3_folder_list[df_s3_folder_list["key"] == "_unprocessed"].index
@@ -140,40 +141,56 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
             raise Exception("No s3 model folders found after removing _unprocessed")
 
         print("-----------------")
-        RLOG.notice("S3 model folder stats:")        
-        RLOG.lprint("  - Raw number of S3 models folders excluding _unprocessed"
-                   f" = {s3_model_folder_count_filtered}")
+        RLOG.notice("S3 model folder stats:")
+        RLOG.lprint(
+            "  -- Raw number of S3 models folders excluding _unprocessed"
+            " = " + "{:,}".format(s3_model_folder_count_filtered)
+        )
 
         # -----------------
-        # Step 1:
-        # Look for duplicate "final_name_key" in the df. (exact match at this time)
-        df_csv_report = final_name_key_dup_check(df_csv_report)
+        # Step 5:
+        # Get the total size (in bytes) of the "models" (s3_models_path) folder (on screen only).
+        # in MB rounded up
+        total_folder_size = s3_sf.get_folder_size(bucket_name, s3_folder_path)
+        if total_folder_size > 1000:
+            gb_size = total_folder_size / 1028
+            disp_size = '{:,.1f}'.format(gb_size) + " gb"
+        else:
+            disp_size = '{:,.1f}'.format(total_folder_size) + " mb"
+
+        RLOG.lprint(f"  -- Total folder size (inc _unprocessed) = {disp_size}")
+
+        print("")
+        print("-----------------")
 
         # -----------------
         # Step 2:
-        # Look for extra records in the master csv that do not have a matching model folder and
-        # vice-a-versa.
-        df_csv_report = mismatch_rec(df_csv_report, df_s3_folder_list)
+        # Look for duplicate "final_name_key" in the df. (exact match at this time)
+        df_csv_report = dup_check_final_name_key(df_csv_report)
 
         # -----------------
         # Step 3:
         # Look for dups for the "initial_scrape_name" column, but only where the ndhplus_comid is not
         # empty.  (Note. we already dropped all empty comid's)
+        df_csv_report = dup_check_initial_scrape_name(df_csv_report)
 
         # -----------------
         # Step 4:
-        # Show a count of raw model folders (on screen only).
-
-        # -----------------
-        # Step 5:
-        # Get the total size of the "model" (s3_models_path) folder (on screen only).
+        # Look for extra records in the master csv that do not have a matching model folder and
+        # vice-a-versa.
+        df_csv_report = mismatch_recs(df_csv_report, df_s3_folder_list)
 
         # -----------------
         # Cleanup
         # We want the final report to only include records that had issues and drop the rest
+        df_errors = df_csv_report.loc[
+            (df_csv_report["has_dup_final_name_key"] != "False")
+            | (df_csv_report["has_dup_initial_scrape_name"] == "True")
+            | (df_csv_report["has_model_folder_match"] != "True")
+        ]
+        # & (df_csv_report["final_name_key"].str.startswith("3_") == False)
 
-
-        df_csv_report.to_csv(target_report_path, index=False)
+        df_errors.to_csv(target_report_path, index=False)
 
     except Exception:
         errMsg = "--------------------------------------\n An error has occurred"
@@ -183,7 +200,7 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
 
     print()
     RLOG.lprint("--------------------------------------")
-    RLOG.success(f"Process completed: {get_stnd_date()}")    
+    RLOG.success(f"Process completed: {get_stnd_date()}")
     RLOG.success(f"  - Report csv saved to: {target_report_path}")
     print()
     dur_msg = print_date_time_duration(start_dt, dt.datetime.utcnow())
@@ -192,7 +209,7 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
 
 
 ####################################################################
-def final_name_key_dup_check(df_csv_report):
+def dup_check_final_name_key(df_csv_report):
     """
     Process:
         Update records to the df_csv_report where there are duplicates in the final_name_key column.
@@ -201,24 +218,33 @@ def final_name_key_dup_check(df_csv_report):
         An updated df_csv_report
     """
 
+    RLOG.lprint("Checking for duplicates in the final_name_key column")
+
     # add columns to the dv_csv_report for duplicate final name key
-    df_csv_report["has_dup_final_name_key"] = False
+    df_csv_report["has_dup_final_name_key"] = "False"
+    df_csv_report["has_dup_final_name_key"] = df_csv_report["has_dup_final_name_key"].astype(str)
 
-    # df_csv_report.sort_values(by=['nhdplus_comid'], inplace=True)
-    dups = df_csv_report.groupby(by=[sv.COL_NAME_FINAL_NAME_KEY], as_index=False).size()
-    dup_list = dups.loc[(dups["size"] > 1)][sv.COL_NAME_FINAL_NAME_KEY].tolist()
+    # we need to drop the empty final_name_key records first before doing a groupby
+    df_dup_adj = df_csv_report.dropna(subset=["final_name_key"])
 
-    if len(dup_list) == 0:
-        return df_csv_report
+    dups = df_dup_adj.groupby(by=["final_name_key"], as_index=False).size()
+    dup_list = dups.loc[(dups["size"] > 1)]["final_name_key"].tolist()
 
-    df_csv_report = df_csv_report.assign(has_dup_final_name_key=
-                                         lambda x: x[sv.COL_NAME_FINAL_NAME_KEY].isin(dup_list))
+    def _calc_dup(row):
+        if (pd.isnull(row["final_name_key"])) or (row["final_name_key"] == ""):
+            return "skipped"
+        elif row["final_name_key"] in dup_list:
+            return "True"
+        else:
+            return "False"
+
+    df_csv_report["has_dup_final_name_key"] = df_csv_report.apply(_calc_dup, axis=1)
 
     return df_csv_report
 
 
 ####################################################################
-def mismatch_rec(df_csv_report, df_raw_s3_folder_list):
+def mismatch_recs(df_csv_report, df_raw_s3_folder_list):
     """
     Process:
         - Look for matchs of recs to model folders.
@@ -229,49 +255,98 @@ def mismatch_rec(df_csv_report, df_raw_s3_folder_list):
              - "csv_only" means in the final_name_key but no model folder found.
              - "skipped" means final_name_key is empty.
              - "model_only" means no matching final_name_key found. We will add a partial new row
-               to the csv with 
+               to the csv with
         - If a model folder exists but not a csv rec, then a new rec will be added
           to the csv, with a new column named "s3_model_folder_name" (blank if matched)
     Output:
         An updated df_csv_report
     """
 
+    RLOG.lprint("Looking for mismatches between the csv and the model folders")
+
     # add two new columns to the dv_csv_report
     df_csv_report["has_model_folder_match"] = ""
-    df_csv_report["s3_model_folder_name"] = ""
+    df_csv_report["unmatched_s3_model_folder_name"] = ""
 
+    # If the final_name_key is the value of "skipped", the the has_model_folder_match
+    # value should be skipped as well and not attempt to do the merge tests
     df_csv_report["has_model_folder_match"] = np.where(
-        df_csv_report[sv.COL_NAME_FINAL_NAME_KEY].isnull(), "skipped", "")
+        df_csv_report["has_dup_final_name_key"] == "skipped", "skipped", ""
+    )
 
     # Merge outer which means there could be extra rows for either df's. The 'indictator=True'
     # flag helps us figure out who matches and who is extra from either dataframe.
     # A new column is added to the df_merged named '_merge' which has one of these values
     # "both", "left_only" or "right_only".
-    df_merged = pd.merge(df_csv_report, df_raw_s3_folder_list, left_on=sv.COL_NAME_FINAL_NAME_KEY,
-                         right_on="key", how="outer", indicator=True)
-    
+    df_merged = pd.merge(
+        df_csv_report,
+        df_raw_s3_folder_list,
+        left_on="final_name_key",
+        right_on="key",
+        how="outer",
+        indicator=True,
+    )
+
+    # drop rows from df_merged that already have the word "skipped" in the has_model_folder_match column
+    df_merged = df_merged.drop(df_merged[df_merged["has_model_folder_match"] == "skipped"].index)
+
     # Updating the has_model_folder_match to "true" when there is a match. Remember, some rows might
     # already have the value of "skipped" if there was no value in the final_name_key column
-    df_matched_rows = df_merged[((df_merged["_merge"] == "both") & (df_merged["has_model_folder_match"] == ""))]
-    #matched_rows = merged[merged["_merge"] == "both"]
-    if len(df_matched_rows) > 1:
-        df_csv_report.loc[df_csv_report[sv.COL_NAME_FINAL_NAME_KEY].isin(
-            df_matched_rows[sv.COL_NAME_FINAL_NAME_KEY]), "has_model_folder_match"] = "true"
+    df_matched_rows = df_merged[
+        ((df_merged["_merge"] == "both") & (df_merged["has_model_folder_match"] == ""))
+    ]
+    # matched_rows = merged[merged["_merge"] == "both"]
+    if len(df_matched_rows) > 0:
+        df_csv_report.loc[
+            df_csv_report["final_name_key"].isin(df_matched_rows["final_name_key"]), "has_model_folder_match"
+        ] = "True"
 
     # Record has no matching model folder, so we put "csv_only" in it
-    df_matched_rows = df_merged[((df_merged["_merge"] == "left_only") & (
-        df_merged["has_model_folder_match"] == ""))]    
-    if len(df_matched_rows) > 1:
-        df_csv_report.loc[df_csv_report["final_name_key"].isin(df_matched_rows["final_name_key"]),
-        "has_model_folder_match"] = "csv_only"
+    df_matched_rows = df_merged[
+        ((df_merged["_merge"] == "left_only") & (df_merged["has_model_folder_match"] == ""))
+    ]
+    if len(df_matched_rows) > 0:
+        df_csv_report.loc[
+            df_csv_report["final_name_key"].isin(df_matched_rows["final_name_key"]), "has_model_folder_match"
+        ] = "csv_only"
 
     # Record has a model folder but now csv record, so we have to add new rows to the csv
     # which show only the two columns listed below.
-    df_matched_rows = df_merged[df_merged["_merge"] == "right_only"]    
-    if len(df_matched_rows) > 1:
+    df_matched_rows = df_merged[df_merged["_merge"] == "right_only"]
+    if len(df_matched_rows) > 0:
         for ind, row in df_matched_rows.iterrows():
-            new_row = {"has_model_folder_match": "model_only", "s3_model_folder_name": row["key"]}
+            new_row = {"has_model_folder_match": "model_only", "unmatched_s3_model_folder_name": row["key"]}
             df_csv_report = pd.concat([df_csv_report, pd.DataFrame([new_row])], ignore_index=True)
+
+    return df_csv_report
+
+
+####################################################################
+def dup_check_initial_scrape_name(df_csv_report):
+    """
+    Process:
+        Update records to the df_csv_report where there are duplicates in the initial_scrape_name column.
+        A new column of "has_dup_initial_scrape_name" (True/False) will be added.
+    Output:
+        An updated df_csv_report
+    """
+
+    RLOG.lprint("Checking for duplicates in the initial_scrape_name column")
+
+    # add columns to the dv_csv_report for duplicate final name key
+    df_csv_report["has_dup_initial_scrape_name"] = "False"
+
+    dups = df_csv_report.groupby(by=["initial_scrape_name"], as_index=False).size()
+    dup_list = dups.loc[(dups["size"] > 1)]["initial_scrape_name"].tolist()
+
+    if len(dup_list) == 0:
+        return df_csv_report
+
+    df_csv_report = df_csv_report.assign(
+        has_dup_initial_scrape_name=lambda x: x["initial_scrape_name"].isin(dup_list)
+    )
+
+    df_csv_report["has_dup_initial_scrape_name"] = df_csv_report["has_dup_initial_scrape_name"].astype(str)
 
     return df_csv_report
 
@@ -289,27 +364,8 @@ def __validate_input(s3_master_csv_path, s3_models_path, output_folder_path):
     if output_folder_path == "":
         raise ValueError("Output folder path parameter value can not be empty")
 
-    if not os.path.exists(output_folder_path):  # whole path exists
-        # Ensure the output_folder_path does not have a file name on the end.
-        if os.path.exists(output_folder_path):
-            raise ValueError("Output folder path parameter can not include a file name")
-
-        split_dirs = output_folder_path.split("/")
-
-        print(split_dirs)
-
-        parent_folder = split_dirs[0:-1]
-        print(f"parent_folder is {parent_folder}")
-
-        # The parent folder must exist, but we will create the child folder if required.
-        if not os.path.exists(parent_folder):
-            raise ValueError(
-                f"The output folder path submitted is {output_folder_path}."
-                " The child folder need not pre-exist, but the parent folder"
-                f" of {parent_folder} must pre-exist"
-            )
-        else:  # then we need to make the child directory
-            shutil.mkdir(output_folder_path)
+    # Skip tests for folder output path because logging for this script
+    # already added it (same path as logs)
 
     # will raise it's own exceptions if needed
     bucket_name, s3_folder_path = s3_sf.is_valid_s3_folder(s3_models_path)
@@ -330,7 +386,12 @@ def __validate_input(s3_master_csv_path, s3_models_path, output_folder_path):
 if __name__ == "__main__":
     # ---- Samples Inputs
     # All arguments are defaulted, so this is the minimum
-    # python s3_model_mgmt.py
+    #   python s3_model_mgmt.py
+    # All args used
+    #   python s3_model_mgmt.py
+    #       -csv s3://ras2fim-dev/OWP_ras_models/rob_test_small_model_catalog.csv
+    #       -mp s3://ras2fim-dev/OWP_ras_models/models/
+    #       -o C:\ras2fim_data\temp
 
     parser = argparse.ArgumentParser(
         description="A tool to help manage the S3 master model csv and model folders",
@@ -338,7 +399,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-csv",
+        "-mp",
         "--s3_models_path",
         help="OPTIONAL: The full S3 path to the OWP_ras_models folder.\n"
         "ie) s3://ras2fim-dev/OWP_ras_models/my_models\n"
@@ -350,7 +411,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-mp",
+        "-csv",
         "--s3_master_csv_path",
         help="OPTIONAL: The full S3 path to the OWP_ras_models folder.\n"
         "ie) s3://ras2fim-dev/OWP_ras_models/my_models_catalog.csv\n"

@@ -532,8 +532,8 @@ def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
             print("")
             RLOG.lprint(
                 f"{cl.fg('light_yellow')}"
-                f"Searching for folder names in s3://{bucket_name}/{s3_src_folder_path} (non-recursive)\n"
-                "This may take a few minutes depending on number of folders in the search folder"
+                f" Searching for folder names in s3://{bucket_name}/{s3_src_folder_path} (non-recursive)\n"
+                " This may take a few minutes depending on number of folders in the search folder"
                 f"{cl.attr(0)}"
             )
             print("")
@@ -590,9 +590,72 @@ def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
 
 
 ####################################################################
-def download_folders(
-    s3_src_parent_path, local_parent_folder, df_folder_list, df_download_column_name: str
-):
+def get_folder_size(bucket_name, s3_src_folder_path):
+    """
+    Granted.. there is no such thing as folders in S3, only keys, but we want the size of
+    a folder and its recursive size
+
+    Process:
+        - uses a S3 paginator to recursively look for matching folder names
+    Inputs:
+        - bucket_name: e.g mys3bucket_name
+        - s3_src_folder_path: e.g. OWP_ras_models/models (case-sensitive)
+    Output
+        - total size in MB to one decimal
+    """
+
+    try:
+        if not s3_src_folder_path.endswith("/"):
+            s3_src_folder_path += "/"
+
+        s3_client = boto3.client("s3")
+        total_size = 0  # in bytes
+
+        default_kwargs = {"Bucket": bucket_name, "Prefix": s3_src_folder_path}
+
+        next_token = ""
+
+        while next_token is not None:
+            updated_kwargs = default_kwargs.copy()
+            if next_token != "":
+                updated_kwargs["ContinuationToken"] = next_token
+
+            # will limit to 1000 objects - hence tokens
+            response = s3_client.list_objects_v2(**updated_kwargs)
+            if response.get("KeyCount") > 0:
+                contents = response.get("Contents")
+                if contents is None:
+                    raise Exception("s3 contents not did not load correctly")
+
+                for result in contents:
+                    total_size += result.get("Size")
+
+            next_token = response.get("NextContinuationToken")
+
+        if total_size > 0:
+            # bytes to kb to mb rounded up nearest mb
+            size_in_mg = total_size / 1028 / 1028
+            total_size = round(size_in_mg, 1)
+
+        return total_size
+
+    except botocore.exceptions.NoCredentialsError:
+        RLOG.critical("-----------------")
+        RLOG.critical(
+            "** Credentials not available for the submitted bucket. Try aws configure or review AWS "
+            "permissions options"
+        )
+        sys.exit(1)
+
+    except Exception as ex:
+        RLOG.critical("-----------------")
+        RLOG.critical("** Error finding files or folders in S3:")
+        RLOG.critical(traceback.format_exc())
+        raise ex
+
+
+####################################################################
+def download_folders(s3_src_parent_path, local_parent_folder, df_folder_list, df_download_column_name: str):
     """
     Process:
         - Use the incoming list of S3 folder names, just simple s3 non-pathed folder names and
@@ -906,7 +969,7 @@ def is_valid_s3_file(s3_full_file_path):
 
         client = boto3.client("s3")
 
-        result = client.list_objects_v2(Bucket=bucket_name, Prefix=s3_file_path )
+        result = client.list_objects_v2(Bucket=bucket_name, Prefix=s3_file_path)
 
         if 'Contents' in result:
             file_exists = True
