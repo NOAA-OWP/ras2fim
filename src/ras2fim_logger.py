@@ -356,10 +356,8 @@ class RAS2FIM_logger:
         print(f"{msg} ")
 
         if self.LOG_FILE_PATH == "":
-            print(
-                "******  Logging to the file system not yet setup.\n"
-                "******  Sometimes this is not setup until after initial validation."
-            )
+            print("******  Logging to the file system not yet setup.\n"
+                  "******  Sometimes this is not setup until after initial validation.")
             return
 
         with open(self.LOG_FILE_PATH, "a") as f_log:
@@ -374,10 +372,8 @@ class RAS2FIM_logger:
         print(f"{self.__get_clog_dt()} {c_msg_type} : {msg}")
 
         if self.LOG_FILE_PATH == "":
-            print(
-                "******  Logging to the file system not yet setup.\n"
-                "******  Sometimes this is not setup until after initial validation."
-            )
+            print("******  Logging to the file system not yet setup.\n"
+                  "******  Sometimes this is not setup until after initial validation.")
             return
 
         with open(self.LOG_FILE_PATH, "a") as f_log:
@@ -390,10 +386,8 @@ class RAS2FIM_logger:
         print(f"{cl.fore.DARK_TURQUOISE}{msg}{cl.style.RESET}")
 
         if self.LOG_FILE_PATH == "":
-            print(
-                "******  Logging to the file system not yet setup.\n"
-                "******  Sometimes this is not setup until after initial validation."
-            )
+            print("******  Logging to the file system not yet setup.\n"
+                  "******  Sometimes this is not setup until after initial validation.")
             return
 
         with open(self.LOG_FILE_PATH, "a") as f_log:
@@ -408,12 +402,10 @@ class RAS2FIM_logger:
         print(f"{self.__get_clog_dt()} {c_msg_type} : {msg}")
 
         if self.LOG_FILE_PATH == "":
-            print(
-                "******  Logging to the file system not yet setup.\n"
-                "******  Sometimes this is not setup until after initial validation."
-            )
+            print("******  Logging to the file system not yet setup.\n"
+                  "******  Sometimes this is not setup until after initial validation.")
             return
-
+        
         with open(self.LOG_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
 
@@ -426,10 +418,8 @@ class RAS2FIM_logger:
         print(f"{self.__get_clog_dt()} {c_msg_type} : {msg}")
 
         if self.LOG_FILE_PATH == "":
-            print(
-                "******  Logging to the file system not yet setup.\n"
-                "******  Sometimes this is not setup until after initial validation."
-            )
+            print("******  Logging to the file system not yet setup.\n"
+                  "******  Sometimes this is not setup until after initial validation.")
             return
 
         with open(self.LOG_FILE_PATH, "a") as f_log:
@@ -448,10 +438,8 @@ class RAS2FIM_logger:
         print(f"{self.__get_clog_dt()} {c_msg_type} : {msg}")
 
         if self.LOG_FILE_PATH == "":
-            print(
-                "******  Logging to the file system not yet setup.\n"
-                "******  Sometimes this is not setup until after initial validation."
-            )
+            print("******  Logging to the file system not yet setup.\n"
+                  "******  Sometimes this is not setup until after initial validation.")
             return
 
         with open(self.LOG_FILE_PATH, "a") as f_log:
@@ -470,10 +458,8 @@ class RAS2FIM_logger:
         print(f" {c_msg_type} : {msg} {cl.style.RESET}")
 
         if self.LOG_FILE_PATH == "":
-            print(
-                "******  Logging to the file system not yet setup.\n"
-                "******  Sometimes this is not setup until after initial validation."
-            )
+            print("******  Logging to the file system not yet setup.\n"
+                  "******  Sometimes this is not setup until after initial validation.")
             return
 
         with open(self.LOG_FILE_PATH, "a") as f_log:

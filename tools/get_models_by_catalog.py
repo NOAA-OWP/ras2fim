@@ -69,6 +69,7 @@ Features for this tool include:
 
 # -------------------------------------------------
 class Get_Models_By_Catalog:
+
     # -------------------------------------------------
     # default values listed in "__main__"  but also here in case code calls direct..
     # aka. not through "__main__"
@@ -190,11 +191,13 @@ class Get_Models_By_Catalog:
             # ----------
 
             filter_msg = (
-                "Note: some may have been filtered out. Current filters are: status is ready;"
-                " final_name_key does not start with 1_, 2_ or 3_; huc number exists in the huc column;"
-                " and matching crs column values.\n"
-                " 1_ and 2_ means errors or needs review in pre-processing.\n"
-                " 3_ means invalid conflation and needs review in pre-processing."
+                "After filtering, there are no valid remaining models to process.\n\n"
+                "  Filtering is done via the following rules:\n"
+                "    - The submitted huc must be found in catalog 'hucs' field with a matching"
+                " crs value (case-sensitive)\n"
+                "    - Status has to be 'ready'\n"
+                "    - The final_name_key column must not start with the values of 1__, 2__ or 3__\n"
+                "  1__, 2__ and 3__ are filtered as required by the pre-processing team.\n"
             )
 
             # ***** FILTERS  ******
@@ -212,22 +215,20 @@ class Get_Models_By_Catalog:
             ]
 
             if df_huc.empty:
-                RLOG.error(f"No valid records return for {self.huc_number}. {filter_msg}")
+                RLOG.error(filter_msg)
                 return
 
             # ----------
             # Now filter based on CRS
             self.df_filtered = df_huc.loc[(df_huc["crs"] == self.projection)]
             if self.df_filtered.empty:
-                RLOG.error(
-                    f"No valid records return for {huc_number} and crs {self.projection}. {filter_msg}"
-                )
+                RLOG.error(filter_msg)
                 return
 
-            # Adding a model_id column starting at number 10000 and incrementing by one
+            # Adding a model_id column starting at number 10001 and incrementing by one
             # Adding new column
             self.df_filtered.sort_values(by=[sv.COL_NAME_FINAL_NAME_KEY], inplace=True)
-            self.df_filtered.insert(0, sv.COL_NAME_MODEL_ID, range(10000, 10000 + len(self.df_filtered)))
+            self.df_filtered.insert(0, sv.COL_NAME_MODEL_ID, range(10001, 10001 + len(self.df_filtered)))
 
             if self.is_verbose is True:
                 # to see the huc list without column trucations (careful as this could be a huge output)
@@ -536,3 +537,4 @@ if __name__ == "__main__":
         # The logger does not get setup until after validation, so you may get
         # log system errors potentially when erroring in validation
         RLOG.critical(traceback.format_exc())
+

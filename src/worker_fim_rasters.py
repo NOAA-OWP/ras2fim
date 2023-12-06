@@ -6,6 +6,7 @@ import errno
 import os
 import re
 import shutil
+from datetime import date
 
 # import matplotlib.pyplot as plt
 # import matplotlib.ticker as tick
@@ -15,10 +16,9 @@ import pandas as pd
 import ras2fim_logger
 import shared_functions as sf
 
+
 # import win32com.client
 # from scipy.interpolate import interp1d
-
-from datetime import date
 
 
 # Global Variables
@@ -84,6 +84,7 @@ def fn_format_flow_values(list_flow):
     str_all_flows += str_flow_last_row
 
     return str_all_flows
+
 
 # -------------------------------------------------
 # def fn_append_error(str_f_id_fn, str_geom_path_fn, str_huc12_fn, str_directory_fn, exception_msg):
