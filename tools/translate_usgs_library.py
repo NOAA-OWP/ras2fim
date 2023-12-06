@@ -8,53 +8,75 @@ import numpy as np
 from timeit import default_timer as timer
 
 
-def reformat_usgs_fims_to_geocurves(usgs_map_dir, output_dir, catchments, usgs_rating_curves):
+def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, catchments, usgs_rating_curves):
     # Create output_dir if necessary
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     # Load NWM catchment geopackage
     print("Loading NWM catchments...")
+    start = timer()
     nwm_catchments_gdf = gpd.read_file(catchments)
     nwm_catchments_crs = nwm_catchments_gdf.crs
+    print(f"Loaded NWM catchments in {round((timer() - start)/60, 2)} minutes.")
 
     # Load USGS rating curves
     print("Loading USGS rating curves...")
     usgs_rc_df = pd.read_csv(usgs_rating_curves)
 
-    gage = '02207120'
+    # Load USGS FIM Library geopackage
+    print("Loading USFS FIM library...")
+    usgs_fim_gdf = gpd.read_file(usgs_map_gpkg)
 
-    # Subset usgs_rc_df to only gage of interest
-    subset_usgs_rc_df = usgs_rc_df.loc[usgs_rc_df.location_id==int(gage)]
+    fim_sites = list(usgs_fim_gdf.USGSID.unique())
 
-    # List shapefiles to reformat
-    shapefile_path = os.path.join(usgs_map_dir, "*.shp")
-    shapefile_list = glob.glob(shapefile_path)
-    for shapefile in shapefile_list:
-        fim_gdf = gpd.read_file(shapefile)
+    # Loop through sites
+    for site in fim_sites:
+        print(site)
+        # Subset the entire usgs_fim_gdf library to only one site at a time
+        subset_fim_gdf = usgs_fim_gdf.loc[usgs_fim_gdf.USGSID==site]
 
-        # Reproject fim_gdf to match NWM catchments
-        fim_gdf = fim_gdf.to_crs(nwm_catchments_crs)
+        print(len(subset_fim_gdf))
+        subset_fim_gdf = subset_fim_gdf.loc[subset_fim_gdf.geometry!=None]
+        print(len(subset_fim_gdf))
 
-        # Dissolve all geometries?
-        fim_gdf['dissolve'] = 1
-        fim_gdf = fim_gdf.dissolve(by="dissolve")
+        # Get list of unique stage values
+        site_stages = list(subset_fim_gdf.STAGE.unique())
 
-        # Cut dissolved geometry to align with NWM catchment breakpoints and associate feature_ids(union)
-        union = gpd.overlay(fim_gdf, nwm_catchments_gdf)
+        for site_stage in site_stages:
+            try:
 
-        # Parse stage from filename
-        parsed_stage = int(os.path.split(shapefile)[1].split('.')[0][-2:])  # TODO
+                # Subset usgs_rc_df to only gage of interest
+                subset_usgs_rc_df = usgs_rc_df.loc[usgs_rc_df.location_id==int(site)]
 
-        # Use subset_usgs_rc_df to interpolate discharge from stage
-        interpolated_q = np.interp([parsed_stage], subset_usgs_rc_df['stage'], subset_usgs_rc_df['flow'])
+                # Subset subset_fim_gdf to only stage of interes
+                stage_subset_fim_gdf = subset_fim_gdf.loc[subset_fim_gdf.STAGE==site_stage]
 
-        fim_gdf['discharge'] = interpolated_q
-        fim_gdf['stage'] = parsed_stage
+                # Reproject fim_gdf to match NWM catchments
+                stage_subset_fim_gdf = stage_subset_fim_gdf.to_crs(nwm_catchments_crs)
 
-        # Save as geopackage (temp)
-        output_geopackage = os.path.join(output_dir, os.path.split(shapefile)[1].replace('.shp', '.gpkg'))
-        union.to_file(output_geopackage, driver="GPKG")
+                # Dissolve all geometries?
+                stage_subset_fim_gdf['dissolve'] = 1
+                stage_subset_fim_gdf = stage_subset_fim_gdf.dissolve(by="dissolve")
+
+                # Cut dissolved geometry to align with NWM catchment breakpoints and associate feature_ids(union)
+                print("Unioning...")
+                union = gpd.overlay(stage_subset_fim_gdf, nwm_catchments_gdf)
+
+                print(union)
+
+                # Use subset_usgs_rc_df to interpolate discharge from stage
+                interpolated_q = np.interp([site_stage], subset_usgs_rc_df['stage'], subset_usgs_rc_df['flow'])
+
+                stage_subset_fim_gdf['discharge'] = interpolated_q
+                stage_subset_fim_gdf['stage'] = site_stage
+
+                # Save as geopackage (temp)
+                output_geopackage = os.path.join(output_dir, str(site) + '_' + str(int(site_stage)) + '.gpkg')
+                if not union.empty():
+                    union.to_file(output_geopackage, driver="GPKG")
+            except Exception as e:
+                print(e)
 
     # List all recently written geopackages
     gpkg_path = os.path.join(output_dir, "*.gpkg")
@@ -67,20 +89,19 @@ def reformat_usgs_fims_to_geocurves(usgs_map_dir, output_dir, catchments, usgs_r
         final_gdf = pd.concat([final_gdf, gdf])
 
     # Save as CSV (move to very end later, after combining all geopackages)
-    output_csv = os.path.join(output_dir, os.path.split(shapefile)[1][:-2]+ '.csv')
+    output_csv = os.path.join(output_dir, 'final.csv')
     final_gdf.to_csv(output_csv)
 
 
 if __name__ == '__main__':
-
     # Parse arguments
     parser = argparse.ArgumentParser(
         description="Prototype capability to reformat USGS inundation maps to geocurves."
     )
     parser.add_argument(
         "-d",
-        "--usgs_map_dir",
-        help="Directory path to USGS FIMs are stored.",
+        "--usgs_map_gpkg",
+        help="Path to USGS FIMs Geopackage (original source is Esri GDB).",
         required=True,
         type=str,
     )
