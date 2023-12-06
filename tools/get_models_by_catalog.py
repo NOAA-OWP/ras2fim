@@ -287,7 +287,7 @@ class Get_Models_By_Catalog:
                     if num_skips > 0:
                         RLOG.warning(
                             f"Number of models folders skipped / errored during download: {num_skips}."
-                            "Please review the output logs or the filtered csv for skip/error details."
+                            " Please review the output logs or the filtered csv for skip/error details."
                         )
 
         except Exception:

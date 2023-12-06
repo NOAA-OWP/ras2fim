@@ -608,8 +608,7 @@ def download_folders(
 
 
 ####################################################################
-def download_folder(bucket_name, folder_id, s3_src_folder, target_local_folder):
-    # TODO (Nov 22, 2023 - add arg validation)
+def download_single_folder(bucket_name, folder_id, s3_src_folder, target_local_folder):
     """
     Process:
         - Using the incoming s3 src folder, call get_records to get a list of child folders and files

@@ -903,6 +903,7 @@ def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
     else:
         RLOG.lprint(f"{msg} ... found")
     rtn_varibles_dict["s3_full_archive_path"] = s3_full_archive_path
+    print()
 
     return rtn_varibles_dict
 

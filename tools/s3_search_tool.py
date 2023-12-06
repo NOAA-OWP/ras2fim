@@ -78,7 +78,7 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
     RLOG.lprint("")
-    RLOG.lprint("===============================s3_path==================================")
+    RLOG.lprint("=================================================================")
     RLOG.notice("          RUN s3 search tool ")
     RLOG.lprint(f"  (-s3): s3_path {s3_path} ")
     RLOG.lprint(f"  (-key): s3 bucket name {search_key}")
@@ -192,23 +192,23 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-s3",
-        "--s3_path",
-        help="OPTIONAL: This value starting s3 folder (full s3 path) where searching will be done.\n"
-        "ie) s3://ras2fim-dev/OWP_ras_models/my_models.\n"
-        "Note: it is a case-sensitive value\n"
-        f"Defaults to {sv.S3_OUTPUT_MODELS_FOLDER}",
-        default=sv.S3_OUTPUT_MODELS_FOLDER,
-        required=False,
+        "-key",
+        "--search_key",
+        help="REQUIRED: Value is the file / folder name and optional pattern"
+        " (NOT case-sensitive)\n"
+        "ie) *Trinity River*  (note: wildcard before and after phrase, position matters)",
+        required=True,
         metavar="",
     )
 
     parser.add_argument(
-        "-key",
-        "--search_key",
-        help="OPTIONAL: Value is the file / folder name and optional pattern"
-        " (NOT case-sensitive)\n"
-        "ie) *Trinity River*  (note: wildcard before and after phrase, position matters)",
+        "-s3",
+        "--s3_path",
+        help="OPTIONAL: This value starting s3 folder (full s3 path) where searching will be done.\n"
+        "ie) s3://ras2fim-dev/OWP_ras_models/my_models.\n"
+        "Note: This value IS case-sensitive\n"
+        f"Defaults to {sv.S3_OUTPUT_MODELS_FOLDER}",
+        default=sv.S3_OUTPUT_MODELS_FOLDER,
         required=False,
         metavar="",
     )
