@@ -30,9 +30,13 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, catchments, usgs_
 
     fim_sites = list(usgs_fim_gdf.USGSID.unique())
 
+    # Subset by HUC8 for faster unioning.
+
     # Loop through sites
     for site in fim_sites:
-        print(site)
+        if site != "04189260":
+            continue
+
         # Subset the entire usgs_fim_gdf library to only one site at a time
         subset_fim_gdf = usgs_fim_gdf.loc[usgs_fim_gdf.USGSID==site]
 
@@ -60,21 +64,35 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, catchments, usgs_
                 stage_subset_fim_gdf = stage_subset_fim_gdf.dissolve(by="dissolve")
 
                 # Cut dissolved geometry to align with NWM catchment breakpoints and associate feature_ids(union)
+                start = timer()
                 print("Unioning...")
                 union = gpd.overlay(stage_subset_fim_gdf, nwm_catchments_gdf)
+                print(f"Unioned in {round((timer() - start)/60, 2)} minutes.")
+
+                # Use subset_usgs_rc_df to interpolate discharge from stage
+                print("Interpolating...")
+                print(site)
+                print(site_stage)
+                print(subset_usgs_rc_df['stage'])
+                print(subset_usgs_rc_df['flow'])
+                print()
+                interpolated_q = np.interp([site_stage], subset_usgs_rc_df['stage'], subset_usgs_rc_df['flow'])
+                print(interpolated_q)
+                print("Adding fields...")
+                stage_subset_fim_gdf['discharge'] = interpolated_q
+                stage_subset_fim_gdf['stage'] = site_stage
+                print()
 
                 print(union)
 
-                # Use subset_usgs_rc_df to interpolate discharge from stage
-                interpolated_q = np.interp([site_stage], subset_usgs_rc_df['stage'], subset_usgs_rc_df['flow'])
-
-                stage_subset_fim_gdf['discharge'] = interpolated_q
-                stage_subset_fim_gdf['stage'] = site_stage
-
                 # Save as geopackage (temp)
-                output_geopackage = os.path.join(output_dir, str(site) + '_' + str(int(site_stage)) + '.gpkg')
-                if not union.empty():
-                    union.to_file(output_geopackage, driver="GPKG")
+                output_shapefile = os.path.join(output_dir, str(site) + '_' + str(int(site_stage)) + '.shp')
+                print("Checking if empty...")
+                print(union.empty)
+                if union.empty == False:
+                    union.to_file(output_shapefile)
+                else:
+                    print("empty!")
             except Exception as e:
                 print(e)
 
