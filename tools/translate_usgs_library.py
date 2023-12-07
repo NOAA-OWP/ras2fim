@@ -14,12 +14,11 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, catchments, usgs_
         os.makedirs(output_dir)
 
     # Load NWM catchment geopackage
-    print("Loading catchments...")
+    print("Loading datasets...")
     start = timer()
-    nwm_catchments_gdf = gpd.read_file(catchments)
-    nwm_catchments_crs = nwm_catchments_gdf.crs
-    print(f"Loaded catchments in {round((timer() - start)/60, 2)} minutes.")
-
+    catchments_gdf = gpd.read_file(catchments)
+    catchments_crs = catchments_gdf.crs
+    
     # Load USGS rating curves
     print("Loading USGS rating curves...")
     usgs_rc_df = pd.read_csv(usgs_rating_curves)
@@ -28,7 +27,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, catchments, usgs_
     print("Loading USFS FIM library...")
     usgs_fim_gdf = gpd.read_file(usgs_map_gpkg)
 
-    print("Datasets loaded.")
+    print(f"Datasets loaded in {round((timer() - start)/60, 2)} minutes.")
 
     # Get list of all candidate FIM sites to process
     fim_sites = list(usgs_fim_gdf.USGSID.unique())
@@ -60,14 +59,14 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, catchments, usgs_
                 stage_subset_fim_gdf = subset_fim_gdf.loc[subset_fim_gdf.STAGE==site_stage]
 
                 # Reproject fim_gdf to match NWM catchments
-                stage_subset_fim_gdf = stage_subset_fim_gdf.to_crs(nwm_catchments_crs)
+                stage_subset_fim_gdf = stage_subset_fim_gdf.to_crs(catchments_crs)
 
                 # Dissolve all geometries?
                 stage_subset_fim_gdf['dissolve'] = 1
                 stage_subset_fim_gdf = stage_subset_fim_gdf.dissolve(by="dissolve")
 
                 # Cut dissolved geometry to align with catchment breakpoints and associate feature_ids (union)
-                union = gpd.overlay(stage_subset_fim_gdf, nwm_catchments_gdf)
+                union = gpd.overlay(stage_subset_fim_gdf, catchments_gdf)
 
                 # Exit if site-specific rating curve doesn't exist in provided file
                 if subset_usgs_rc_df.empty:
