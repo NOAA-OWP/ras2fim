@@ -34,8 +34,6 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, catchments, usgs_
 
     # Loop through sites
     for site in fim_sites:
-        if site != "04189260":
-            continue
 
         # Subset the entire usgs_fim_gdf library to only one site at a time
         subset_fim_gdf = usgs_fim_gdf.loc[usgs_fim_gdf.USGSID==site]
@@ -96,19 +94,19 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, catchments, usgs_
             except Exception as e:
                 print(e)
 
-    # List all recently written geopackages
-    gpkg_path = os.path.join(output_dir, "*.gpkg")
-    gpkg_list = glob.glob(gpkg_path)
+        # List all recently written geopackages
+        shape_path = os.path.join(output_dir, "*.shp")
+        shp_list = glob.glob(shape_path)
 
-    final_gdf = gpd.read_file(gpkg_list[0])
-    for gpkg in gpkg_list:
-        gdf = gpd.read_file(gpkg)
+        final_gdf = gpd.read_file(shp_list[0])
+        for shp in shp_list:
+            gdf = gpd.read_file(shp)
 
-        final_gdf = pd.concat([final_gdf, gdf])
+            final_gdf = pd.concat([final_gdf, gdf])
 
-    # Save as CSV (move to very end later, after combining all geopackages)
-    output_csv = os.path.join(output_dir, 'final.csv')
-    final_gdf.to_csv(output_csv)
+        # Save as CSV (move to very end later, after combining all geopackages)
+        output_csv = os.path.join(output_dir, str(site) + '.csv')
+        final_gdf.to_csv(output_csv)
 
 
 if __name__ == '__main__':
@@ -149,6 +147,8 @@ if __name__ == '__main__':
         default=None,
         type=str,
     )
+
+    #TODO need to find the right branch catchments layer for cutting for each site. Go with biggest?
 
     start = timer()
 
