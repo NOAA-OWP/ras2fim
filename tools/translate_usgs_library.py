@@ -8,23 +8,44 @@ import numpy as np
 from timeit import default_timer as timer
 
 
-def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, catchments, usgs_rating_curves):
+def identify_best_branch_catchments(huc8_outputs_dir, subset_fim_gdf):
+
+    # Open branch_polygons and check for overlap with subset_fim_gdf
+    branch_polygons = os.path.join(huc8_outputs_dir, 'branch_polygons.gpkg')
+    branch_polygons_gdf = gpd.read_file(branch_polygons).to_crs(subset_fim_gdf.crs)
+
+    joined_gdf = branch_polygons_gdf.sjoin(subset_fim_gdf,how='left')
+    not_null_rows = joined_gdf['USGSID'].notnull()
+    subset_joined_gdf = joined_gdf[not_null_rows]
+    branches_of_interest = list(subset_joined_gdf.levpa_id.unique())
+
+    # Get path to branches directory and create paths to all branch catchment in list
+    branch_path_list = []
+    branches_dir = os.path.join(huc8_outputs_dir, 'branches')
+    for branch in branches_of_interest:
+        branch_catchments = os.path.join(branches_dir, branch, f'gw_catchments_reaches_filtered_addedAttributes_crosswalked_{branch}.gpkg')
+        branch_path_list.append(branch_catchments)
+
+    return branch_path_list
+
+
+def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent_dir, usgs_rating_curves, usgs_gages_gpkg):
     # Create output_dir if necessary
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-
-    # Load NWM catchment geopackage
-    print("Loading datasets...")
-    start = timer()
-    catchments_gdf = gpd.read_file(catchments)
-    catchments_crs = catchments_gdf.crs
     
+    start = timer()
+
     # Load USGS rating curves
     print("Loading USGS rating curves...")
     usgs_rc_df = pd.read_csv(usgs_rating_curves)
 
+    # Load USGS gages for metadata lookup
+    print("Loading USGS gages...")
+    usgs_gages_gdf = gpd.read_file(usgs_gages_gpkg)
+
     # Load USGS FIM Library geopackage
-    print("Loading USFS FIM library...")
+    print("Loading USGS FIM library...")
     usgs_fim_gdf = gpd.read_file(usgs_map_gpkg)
 
     print(f"Datasets loaded in {round((timer() - start)/60, 2)} minutes.")
@@ -34,17 +55,38 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, catchments, usgs_
 
     # Loop through sites
     for site in fim_sites:
-
-        # Create output directory site
-        site_dir = os.path.join(output_dir, site)
-        if not os.path.exists(site_dir):
-            os.mkdir(site_dir)
+        print("SITE")
+        print(site)
+        # Determine HUC8  TODO would be faster if FIM library had HUC8 attribute
+        huc8 = usgs_gages_gdf.loc[usgs_gages_gdf.location_id == site].HUC8.values[0]
 
         # Subset the entire usgs_fim_gdf library to only one site at a time
         subset_fim_gdf = usgs_fim_gdf.loc[usgs_fim_gdf.USGSID==site]
 
         # Remove rows with missing geometry  TODO LOG
         subset_fim_gdf = subset_fim_gdf.loc[subset_fim_gdf.geometry!=None]
+
+        # Identify which level path is best for the site
+        huc8_outputs_dir = os.path.join(level_path_parent_dir, huc8)
+        if os.path.exists(huc8_outputs_dir):
+            branch_path_list = identify_best_branch_catchments(huc8_outputs_dir, subset_fim_gdf)
+        else:
+            continue
+
+        print(branch_path_list)
+
+        # Loop through different catchments, do the below processing, then check for best geometrical match
+
+        # Load catchment geopackage
+        print("Loading datasets...")
+        start = timer()
+        catchments_gdf = gpd.read_file(catchments)
+        catchments_crs = catchments_gdf.crs
+
+        # Create output directory site
+        site_dir = os.path.join(output_dir, site)
+        if not os.path.exists(site_dir):
+            os.mkdir(site_dir)
 
         # Get list of unique stage values
         site_stages = list(subset_fim_gdf.STAGE.unique())
@@ -85,7 +127,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, catchments, usgs_
                 print("Exception")
                 print(e)
 
-        # List all recently written geopackages
+        # List all recently written shapefiles
         shape_path = os.path.join(site_dir, "*.shp")
         shp_list = glob.glob(shape_path)
 
@@ -119,7 +161,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         "-o",
-        "--output-dir",
+        "--output_dir",
         help="Directory path for output geocurves.",
         required=True,
         default=None,
@@ -128,8 +170,8 @@ if __name__ == '__main__':
 
     parser.add_argument(
         "-c",
-        "--catchments",
-        help="Path to catchments layer that will be used to cut and crosswalk FIM polygons (using NWM for now).",
+        "--level_path_parent_dir",
+        help="Path to HAND FIM4 parent dictory, e.g. 4.X.X.X.",
         required=True,
         default=None,
         type=str,
@@ -139,6 +181,15 @@ if __name__ == '__main__':
         "-rc",
         "--usgs_rating_curves",
         help="Path to rating curves CSV (available from inundation-mapping data).",
+        required=True,
+        default=None,
+        type=str,
+    )
+
+    parser.add_argument(
+        "-g",
+        "--usgs_gages_gpkg",
+        help="Path to usgs_gages.gpkg (available from inundation-mapping data).",
         required=True,
         default=None,
         type=str,
