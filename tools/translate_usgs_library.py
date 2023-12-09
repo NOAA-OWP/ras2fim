@@ -28,60 +28,40 @@ def identify_best_branch_catchments(huc8_outputs_dir, subset_fim_gdf):
         branch_catchments = os.path.join(branches_dir, branch, f'gw_catchments_reaches_filtered_addedAttributes_crosswalked_{branch}.gpkg')
         branch_path_list.append(branch_catchments)
 
+    del branch_polygons_gdf, joined_gdf, not_null_rows, subset_joined_gdf, branches_of_interest
+
     return branch_path_list
 
 
 def select_best_union(subset_fim_gdf, candidate_geocurves):
 
-    candidate_dict = {}
-
     max_real_stage = subset_fim_gdf.STAGE.max()
 
-    print("max_real_stage")
-    print(max_real_stage)
-
     # Loop through candidate branches
+    winner_count = 0  # Initialize feature_number to 0
     for candidate in candidate_geocurves:
+
         # Get branch_id
         branch_id = os.path.split(candidate)[1].split('_')[1]
+
+        # Open branch candidate
         candidate_gdf = gpd.read_file(candidate).to_crs(subset_fim_gdf.crs)
 
         # Subset candidate_gdf to be only the max extent
         max_subset_candidate_gdf = candidate_gdf.loc[candidate_gdf.STAGE == max_real_stage]
         del candidate_gdf
 
-        # Subset the official subset_fim_gdf to be only the max extent
-        max_subset_fim_gdf = subset_fim_gdf.loc[subset_fim_gdf.STAGE == max_real_stage]
+        # RULES
+        # Select the layer with more features
+        # Could consider layer area as well (bigger area is better?)
+        candidate_feature_count = len(max_subset_candidate_gdf)
+        if candidate_feature_count > winner_count:
+            winner_count = candidate_feature_count
+            winner_path = candidate
+        del candidate_gdf, max_subset_candidate_gdf
+    del subset_fim_gdf, max_real_stage
 
-        del subset_fim_gdf
-
-        max_subset_candidate_gdf['diss'] = 1
-
-        # Is it better to just do an overlay?
-
-        print("Branch")
-        print(branch_id)
-        print("original number of features in max extent")
-        print(len(max_subset_candidate_gdf))
-
-        dissolved = max_subset_candidate_gdf.dissolve('diss')
-
-        del max_subset_candidate_gdf
-
-        print("area of official max extent")
-        print(max_subset_fim_gdf.area)
-        print("area of candidate max extent (dissolved)")
-        print(dissolved.area)
-
-        print()
-    print()
-
-
-        # Prioritize the one with the same area as the original and the most features of the candidates
-
-
-
-
+    return winner_path 
 
 
 def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent_dir, usgs_rating_curves, usgs_gages_gpkg):
@@ -120,6 +100,10 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
         if not os.path.exists(site_dir):
             os.mkdir(site_dir) 
 
+        branch_parent_dir = os.path.join(site_dir, 'branches')
+        if not os.path.exists(branch_parent_dir):
+            os.mkdir(branch_parent_dir)
+
         # Determine HUC8  TODO would be faster if FIM library had HUC8 attribute
         try:
             huc8 = usgs_gages_gdf.loc[usgs_gages_gdf.location_id == site].HUC8.values[0]
@@ -147,7 +131,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
             
             branch_id = os.path.split(catchments)[1].split('_')[-1].replace('.gpkg','')
             branch_id_list.append(branch_id)
-            branch_output_dir = os.path.join(site_dir, branch_id)
+            branch_output_dir = os.path.join(branch_parent_dir, branch_id)
             if not os.path.exists(branch_output_dir):
                 os.mkdir(branch_output_dir)
 
@@ -188,11 +172,14 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
                     output_shapefile = os.path.join(branch_output_dir, str(site) + '_' + branch_id + '_' + str(int(site_stage)) + '.shp')
                     if union.empty == False:
                         union.to_file(output_shapefile)
+                        del union
                     else:
                         continue
                 except Exception as e:
                     print("Exception")
                     print(e)
+
+            del catchments_gdf
 
             # List all recently written shapefiles
             shape_path = os.path.join(branch_output_dir, "*.shp")
@@ -211,15 +198,18 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
 
             output_shape = os.path.join(branch_output_dir, site + '_' + branch_id + '_' + 'merged.shp')
             final_gdf.to_file(output_shape)
+            del final_gdf
             candidate_geocurves.append(output_shape)
 
         # Select best match of all the generated FIM/branch unions
         print("NEW SITE" + site)
-        best_match = select_best_union(subset_fim_gdf, candidate_geocurves)
-
+        best_match_path = select_best_union(subset_fim_gdf, candidate_geocurves)
+        # Read best_match_path into best_match_gdf
+        best_match_gdf = gpd.read_file(best_match_path)
+        
         # Save as CSV (move to very end later, after combining all geopackages)
-        output_csv = os.path.join(site_dir, site + '.csv')
-        final_gdf.to_csv(output_csv)
+        output_csv = os.path.join(site_dir, huc8 + "_" + site + '_geocurves.csv')
+        best_match_gdf.to_csv(output_csv)
 
 
 if __name__ == '__main__':
