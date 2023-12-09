@@ -5,6 +5,7 @@ import geopandas as gpd
 import pandas as pd
 import numpy as np
 import warnings
+import shutil
 
 from timeit import default_timer as timer
 
@@ -58,7 +59,8 @@ def select_best_union(subset_fim_gdf, candidate_geocurves):
         if candidate_feature_count > winner_count:
             winner_count = candidate_feature_count
             winner_path = candidate
-        del candidate_gdf, max_subset_candidate_gdf
+
+        del max_subset_candidate_gdf
     del subset_fim_gdf, max_real_stage
 
     return winner_path 
@@ -97,6 +99,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
 
     # Loop through sites
     for site in fim_sites:
+
         try: 
             int(site)
         except ValueError: 
@@ -128,7 +131,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
         if os.path.exists(huc8_outputs_dir):
             branch_path_list = identify_best_branch_catchments(huc8_outputs_dir, subset_fim_gdf)
         else:
-            os.rmdir(site_dir)
+            shutil.rmtree(site_dir)
             continue
 
         # Loop through different catchments, do the below processing, then check for best geometrical match
@@ -157,7 +160,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
 
                     # Subset subset_fim_gdf to only stage of interes
                     stage_subset_fim_gdf = subset_fim_gdf.loc[subset_fim_gdf.STAGE==site_stage]
-
+                    
                     # Reproject fim_gdf to match NWM catchments
                     stage_subset_fim_gdf = stage_subset_fim_gdf.to_crs(catchments_crs)
 
@@ -176,9 +179,9 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
                     interpolated_q = np.interp([site_stage], subset_usgs_rc_df['stage'], subset_usgs_rc_df['flow'])
 
                     # Save as geopackage (temp)
-                    output_shapefile = os.path.join(branch_output_dir, str(site) + '_' + branch_id + '_' + str(int(site_stage)) + '.shp')
+                    output_shapefile = os.path.join(branch_output_dir, str(site) + '_' + branch_id + '_' + str(site_stage).replace(".","_") + '.gpkg')
                     if union.empty == False:
-                        union.to_file(output_shapefile)
+                        union.to_file(output_shapefile, driver='GPKG')
                         del union
                     else:
                         continue
@@ -189,7 +192,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
             del catchments_gdf
 
             # List all recently written shapefiles
-            shape_path = os.path.join(branch_output_dir, "*.shp")
+            shape_path = os.path.join(branch_output_dir, "*.gpkg")
             shp_list = glob.glob(shape_path)
 
             # Exit loop and delete site_dir if no shapefiles were produced
@@ -203,12 +206,13 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
                 gdf = gpd.read_file(shp)
                 final_gdf = pd.concat([final_gdf, gdf])
 
-            output_shape = os.path.join(branch_output_dir, site + '_' + branch_id + '_' + 'merged.shp')
-            final_gdf.to_file(output_shape)
+            output_shape = os.path.join(branch_output_dir, site + '_' + branch_id + '_' + 'merged.gkpg')
+            final_gdf.to_file(output_shape, driver='GPKG')
             del final_gdf
             candidate_layers.append(output_shape)
 
         # Select best match of all the generated FIM/branch unions
+        print("Selecting best union for " + site)
         best_match_path = select_best_union(subset_fim_gdf, candidate_layers)
         
         # TODO Need function here to reformat best_match_path data to match HydroVIS format
