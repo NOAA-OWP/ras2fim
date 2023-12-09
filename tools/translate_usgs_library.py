@@ -4,8 +4,11 @@ import glob
 import geopandas as gpd
 import pandas as pd
 import numpy as np
+import warnings
 
 from timeit import default_timer as timer
+
+warnings.filterwarnings('ignore')
 
 
 def identify_best_branch_catchments(huc8_outputs_dir, subset_fim_gdf):
@@ -13,7 +16,6 @@ def identify_best_branch_catchments(huc8_outputs_dir, subset_fim_gdf):
     # Open branch_polygons and check for overlap with subset_fim_gdf
     branch_polygons = os.path.join(huc8_outputs_dir, 'branch_polygons.gpkg')
     branch_polygons_gdf = gpd.read_file(branch_polygons).to_crs(subset_fim_gdf.crs)
-
     joined_gdf = branch_polygons_gdf.sjoin(subset_fim_gdf,how='left')
     not_null_rows = joined_gdf['USGSID'].notnull()
     subset_joined_gdf = joined_gdf[not_null_rows]
@@ -55,10 +57,23 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
 
     # Loop through sites
     for site in fim_sites:
+        try: 
+            int(site)
+        except ValueError: 
+            continue
         print("SITE")
         print(site)
+
+        # Create output directory site
+        site_dir = os.path.join(output_dir, site)
+        if not os.path.exists(site_dir):
+            os.mkdir(site_dir) 
+
         # Determine HUC8  TODO would be faster if FIM library had HUC8 attribute
-        huc8 = usgs_gages_gdf.loc[usgs_gages_gdf.location_id == site].HUC8.values[0]
+        try:
+            huc8 = usgs_gages_gdf.loc[usgs_gages_gdf.location_id == site].HUC8.values[0]
+        except IndexError:
+            continue  # TODO log, why?
 
         # Subset the entire usgs_fim_gdf library to only one site at a time
         subset_fim_gdf = usgs_fim_gdf.loc[usgs_fim_gdf.USGSID==site]
@@ -71,69 +86,74 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
         if os.path.exists(huc8_outputs_dir):
             branch_path_list = identify_best_branch_catchments(huc8_outputs_dir, subset_fim_gdf)
         else:
+            os.rmdir(site_dir)
             continue
 
-        print(branch_path_list)
-
         # Loop through different catchments, do the below processing, then check for best geometrical match
+        branch_id_list = []
+        for catchments in branch_path_list:
+            
+            branch_id = os.path.split(catchments)[1].split('_')[-1].replace('.gpkg','')
+            branch_id_list.append(branch_id)
+            branch_output_dir = os.path.join(site_dir, branch_id)
+            if not os.path.exists(branch_output_dir):
+                os.mkdir(branch_output_dir)
 
-        # Load catchment geopackage
-        print("Loading datasets...")
-        start = timer()
-        catchments_gdf = gpd.read_file(catchments)
-        catchments_crs = catchments_gdf.crs
+            # Load catchment geopackage
+            print("Loading datasets...")
+            start = timer()
+            catchments_gdf = gpd.read_file(catchments)
+            catchments_crs = catchments_gdf.crs
 
-        # Create output directory site
-        site_dir = os.path.join(output_dir, site)
-        if not os.path.exists(site_dir):
-            os.mkdir(site_dir)
+            # Get list of unique stage values
+            site_stages = list(subset_fim_gdf.STAGE.unique())
 
-        # Get list of unique stage values
-        site_stages = list(subset_fim_gdf.STAGE.unique())
+            # Process each stage
+            for site_stage in site_stages:
+                try:
+                    # Subset usgs_rc_df to only gage of interest
+                    subset_usgs_rc_df = usgs_rc_df.loc[usgs_rc_df.location_id==int(site)]
 
-        # Process each stage
-        for site_stage in site_stages:
-            try:
-                # Subset usgs_rc_df to only gage of interest
-                subset_usgs_rc_df = usgs_rc_df.loc[usgs_rc_df.location_id==int(site)]
+                    # Subset subset_fim_gdf to only stage of interes
+                    stage_subset_fim_gdf = subset_fim_gdf.loc[subset_fim_gdf.STAGE==site_stage]
 
-                # Subset subset_fim_gdf to only stage of interes
-                stage_subset_fim_gdf = subset_fim_gdf.loc[subset_fim_gdf.STAGE==site_stage]
+                    # Reproject fim_gdf to match NWM catchments
+                    stage_subset_fim_gdf = stage_subset_fim_gdf.to_crs(catchments_crs)
 
-                # Reproject fim_gdf to match NWM catchments
-                stage_subset_fim_gdf = stage_subset_fim_gdf.to_crs(catchments_crs)
+                    # Dissolve all geometries?
+                    stage_subset_fim_gdf['dissolve'] = 1
+                    stage_subset_fim_gdf = stage_subset_fim_gdf.dissolve(by="dissolve")
 
-                # Dissolve all geometries?
-                stage_subset_fim_gdf['dissolve'] = 1
-                stage_subset_fim_gdf = stage_subset_fim_gdf.dissolve(by="dissolve")
+                    # Cut dissolved geometry to align with catchment breakpoints and associate feature_ids (union)
+                    union = gpd.overlay(stage_subset_fim_gdf, catchments_gdf)
 
-                # Cut dissolved geometry to align with catchment breakpoints and associate feature_ids (union)
-                union = gpd.overlay(stage_subset_fim_gdf, catchments_gdf)
+                    # Exit if site-specific rating curve doesn't exist in provided file
+                    if subset_usgs_rc_df.empty:
+                        continue
 
-                # Exit if site-specific rating curve doesn't exist in provided file
-                if subset_usgs_rc_df.empty:
-                    continue
+                    # Use subset_usgs_rc_df to interpolate discharge from stage
+                    interpolated_q = np.interp([site_stage], subset_usgs_rc_df['stage'], subset_usgs_rc_df['flow'])
 
-                # Use subset_usgs_rc_df to interpolate discharge from stage
-                interpolated_q = np.interp([site_stage], subset_usgs_rc_df['stage'], subset_usgs_rc_df['flow'])
+                    # Save as geopackage (temp)
+                    output_shapefile = os.path.join(branch_output_dir, str(site) + '_' + branch_id + '_' + str(int(site_stage)) + '.shp')
+                    if union.empty == False:
+                        union.to_file(output_shapefile)
+                    else:
+                        continue
+                except Exception as e:
+                    print("Exception")
+                    print(e)
 
-                # Save as geopackage (temp)
-                output_shapefile = os.path.join(site_dir, str(site) + '_' + str(int(site_stage)) + '.shp')
-                if union.empty == False:
-                    union.to_file(output_shapefile)
-                else:
-                    continue
-            except Exception as e:
-                print("Exception")
-                print(e)
+        if len(os.listdir(site_dir)) == 0:
+            os.rmdir(site_dir)
 
         # List all recently written shapefiles
-        shape_path = os.path.join(site_dir, "*.shp")
+        shape_path = os.path.join(branch_output_dir, "*.shp")
         shp_list = glob.glob(shape_path)
 
         # Exit loop and delete site_dir if no shapefiles were produced
         if shp_list == []:
-            os.rmdir(site_dir)
+            os.rmdir(branch_output_dir)
             continue
         
         # Merge all site-specific layers
@@ -141,6 +161,9 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
         for shp in shp_list:
             gdf = gpd.read_file(shp)
             final_gdf = pd.concat([final_gdf, gdf])
+
+        output_shape = os.path.join(site_dir, site + '_' + branch_id + '.shp')
+        final_gdf.to_file(output_shape)
 
         # Save as CSV (move to very end later, after combining all geopackages)
         output_csv = os.path.join(site_dir, site + '.csv')
