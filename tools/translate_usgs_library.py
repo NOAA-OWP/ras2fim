@@ -64,6 +64,13 @@ def select_best_union(subset_fim_gdf, candidate_geocurves):
     return winner_path 
 
 
+def reformat_to_hydrovis_geocurves(site, best_match_path, usgs_gages_gdf):
+    pass
+    # For each feature_id, write a CSV with
+    # discharge_cfs, stage_ft, wse_ft, discharge_cms, stage_m, stage_mm, wse_m, geometry, version
+    # You also to include the HUC12 in the filename, e.g. 5793592_HUC_120903010404_rating_curve_geo.csv
+
+
 def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent_dir, usgs_rating_curves, usgs_gages_gpkg):
     # Create output_dir if necessary
     if not os.path.exists(output_dir):
@@ -126,7 +133,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
 
         # Loop through different catchments, do the below processing, then check for best geometrical match
         branch_id_list = []
-        candidate_geocurves = []
+        candidate_layers = []
         for catchments in branch_path_list:
             
             branch_id = os.path.split(catchments)[1].split('_')[-1].replace('.gpkg','')
@@ -199,17 +206,17 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
             output_shape = os.path.join(branch_output_dir, site + '_' + branch_id + '_' + 'merged.shp')
             final_gdf.to_file(output_shape)
             del final_gdf
-            candidate_geocurves.append(output_shape)
+            candidate_layers.append(output_shape)
 
         # Select best match of all the generated FIM/branch unions
-        print("NEW SITE" + site)
-        best_match_path = select_best_union(subset_fim_gdf, candidate_geocurves)
-        # Read best_match_path into best_match_gdf
-        best_match_gdf = gpd.read_file(best_match_path)
+        best_match_path = select_best_union(subset_fim_gdf, candidate_layers)
+        
+        # TODO Need function here to reformat best_match_path data to match HydroVIS format
+        reformat_to_hydrovis_geocurves(site, best_match_path, usgs_gages_gdf)
         
         # Save as CSV (move to very end later, after combining all geopackages)
-        output_csv = os.path.join(site_dir, huc8 + "_" + site + '_geocurves.csv')
-        best_match_gdf.to_csv(output_csv)
+        # output_csv = os.path.join(site_dir, huc8 + "_" + site + '_geocurves.csv')
+        # best_match_gdf.to_csv(output_csv)
 
 
 if __name__ == '__main__':
