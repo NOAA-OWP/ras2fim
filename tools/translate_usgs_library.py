@@ -31,6 +31,16 @@ def identify_best_branch_catchments(huc8_outputs_dir, subset_fim_gdf):
     return branch_path_list
 
 
+def select_best_union(subset_fim_gdf, site_dir):
+
+    branch_dirs = os.listdir(site_dir)
+    for branch in branch_dirs:
+        pass
+
+
+
+
+
 def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent_dir, usgs_rating_curves, usgs_gages_gpkg):
     # Create output_dir if necessary
     if not os.path.exists(output_dir):
@@ -144,30 +154,30 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
                     print("Exception")
                     print(e)
 
-        if len(os.listdir(site_dir)) == 0:
-            os.rmdir(site_dir)
+            # List all recently written shapefiles
+            shape_path = os.path.join(branch_output_dir, "*.shp")
+            shp_list = glob.glob(shape_path)
 
-        # List all recently written shapefiles
-        shape_path = os.path.join(branch_output_dir, "*.shp")
-        shp_list = glob.glob(shape_path)
+            # Exit loop and delete site_dir if no shapefiles were produced
+            if shp_list == []:
+                os.rmdir(branch_output_dir)
+                continue
+            
+            # Merge all site-specific layers
+            final_gdf = gpd.read_file(shp_list[0])
+            for shp in shp_list:
+                gdf = gpd.read_file(shp)
+                final_gdf = pd.concat([final_gdf, gdf])
 
-        # Exit loop and delete site_dir if no shapefiles were produced
-        if shp_list == []:
-            os.rmdir(branch_output_dir)
-            continue
-        
-        # Merge all site-specific layers
-        final_gdf = gpd.read_file(shp_list[0])
-        for shp in shp_list:
-            gdf = gpd.read_file(shp)
-            final_gdf = pd.concat([final_gdf, gdf])
+            output_shape = os.path.join(branch_output_dir, site + '_' + branch_id + '_' + 'merged.shp')
+            final_gdf.to_file(output_shape)
 
-        output_shape = os.path.join(site_dir, site + '_' + branch_id + '.shp')
-        final_gdf.to_file(output_shape)
+            # Save as CSV (move to very end later, after combining all geopackages)
+            output_csv = os.path.join(site_dir, site + '.csv')
+            final_gdf.to_csv(output_csv)
 
-        # Save as CSV (move to very end later, after combining all geopackages)
-        output_csv = os.path.join(site_dir, site + '.csv')
-        final_gdf.to_csv(output_csv)
+        # Select best match of all the generated FIM/branch unions
+        select_best_union(subset_fim_gdf, site_dir)
 
 
 if __name__ == '__main__':
