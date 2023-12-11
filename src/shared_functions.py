@@ -25,12 +25,6 @@ from r2f_errors import ModelUnitError
 
 
 # -------------------------------------------------
-# Note (Dec 11, 2023): Can now use the logger in here as it creates cirular reference to many imports
-# of other files. There might be a way to get around that as it would be nice if a bunch of the try
-# excepts in here to go to logging but it doesn't seem to work
-
-
-# -------------------------------------------------
 def confirm_models_unit(proj_crs, input_models_path):
     """
     - calls two other functions to infer units from ras models and -p projection.
