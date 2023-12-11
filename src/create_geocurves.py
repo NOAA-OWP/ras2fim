@@ -69,7 +69,7 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
 
                 # if the array only has values of zero, then skip it (aka.. no heights above surface)
                 if np.min(reclass_inundation_array) == 0 and np.max(reclass_inundation_array) == 0:
-                    RLOG.warning(f"depth_grid of {depth_grid} does not have any heights above surfase.")
+                    RLOG.warning(f"depth_grid of {depth_grid} does not have any heights above surface.")
                     continue
 
                 # Aggregate shapes
@@ -162,7 +162,7 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
 
 # -------------------------------------------------
 def manage_geo_rating_curves_production(
-    ras2fim_output_dir, version, job_number, output_folder, overwrite, produce_polys
+    ras2fim_output_dir, job_number, output_folder, overwrite, produce_polys
 ):
     """
     This function sets up the multiprocessed generation of geo version of feature_id-specific rating curves.
@@ -174,13 +174,20 @@ def manage_geo_rating_curves_production(
         output_folder (str): The path to the output folder where geo rating curves will be written.
     """
 
+    # get the version
+    changelog_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), os.pardir, 'doc', 'CHANGELOG.md')
+    )
+    version = sf.get_changelog_version(changelog_path)
+    RLOG.lprint("Version found: " + version)
+
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
     RLOG.lprint("|                   Create GeoCurves                              |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     RLOG.lprint(f"  ---(f) ras2fim_output_dir: {ras2fim_output_dir}")
-    RLOG.lprint(f"  ---(v) version: {version}")
+    RLOG.lprint(f"  ---(v) ras2fim version: {version}")
     RLOG.lprint(f"  ---(j) job_number: {job_number}")
     RLOG.lprint(f"  ---(t) output_folder: {output_folder}")
     RLOG.lprint(f"  ---(o) overwrite: {overwrite}")
@@ -236,11 +243,6 @@ def manage_geo_rating_curves_production(
         os.makedirs(polys_dir)
     else:
         polys_dir = None
-
-    # Check version arg input.
-    if os.path.isfile(version):
-        version = sf.get_changelog_version(version)
-        RLOG.lprint("Version found: " + version)
 
     # Define paths outputs
     simplified_depth_grid_parent_dir = os.path.join(
@@ -322,7 +324,6 @@ def manage_geo_rating_curves_production(
 if __name__ == "__main__":
     # Sample command (all args)
     # python create_geocurves.py -f 'c:\ras2fim_data\output_ras2fim\12090301_2277_230923'
-    #  -v 'doc\CHANGELOG.md'
     #  -j 6
     #  -t 'c:\ras2fim_data\output_ras2fim\12090301_2277_230923\final'
     #  -o
@@ -335,13 +336,6 @@ if __name__ == "__main__":
         "--ras2fim_output_dir",
         help="REQUIRED: Path to directory containing RAS2FIM outputs",
         required=True,
-    )
-    parser.add_argument(
-        "-v",
-        "--version",
-        help="RAS2FIM Version number, or supply path to repo Changelog",
-        required=False,
-        default="Unspecified",
     )
     parser.add_argument(
         "-j", "--job_number", help="Number of processes to use", required=False, default=1, type=int
