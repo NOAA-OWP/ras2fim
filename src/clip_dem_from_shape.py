@@ -77,7 +77,7 @@ def fn_cut_dems_from_shapes(
     # read HUC12s
     gdf_huc12s = gpd.read_file(str_huc12_path)
 
-    #important to reproject to model crs especially if the inputs
+    # important to reproject to model crs especially if the inputs
     # HUC12s are for the entire US with geographic crs
     gdf_huc12s.to_crs(gdf_xs_lines.crs, inplace=True)
 
@@ -127,11 +127,10 @@ def fn_cut_dems_from_shapes(
         # xr.where operation above may remove the attributes (nodata, crs) so always reassign them as below
         clipped_dem = clipped_dem.assign_attrs({'_FillValue': INT_NO_DATA_VAL})
         if clipped_dem.rio.crs is None:
-            clipped_dem.rio.write_crs(gdf_huc12s.crs,inplace=True)
+            clipped_dem.rio.write_crs(gdf_huc12s.crs, inplace=True)
 
         str_dem_out = str_output_dir + "\\" + str(model_id) + ".tif"
         clipped_dem.rio.to_raster(str_dem_out, compress="lzw", dtype="float32")
-
 
     RLOG.success("COMPLETE")
     flt_end_run = time.time()
@@ -160,7 +159,7 @@ if __name__ == "__main__":
         "-x",
         dest="str_cross_sections_path",
         help=r"REQUIRED: path to the HEC-RAS models cross sections shapefile (lines) "
-             r"Example: cross_section_LN_from_ras.shp",
+        r"Example: cross_section_LN_from_ras.shp",
         required=True,
         metavar="FILE",
         type=lambda x: fn_is_valid_file(parser, x),
@@ -169,8 +168,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-i",
         dest="str_huc12_path",
-        help=r"REQUIRED: path to the HUC12 polygons shapefile "
-             r"Example: C:\ras2fim_data\inputs\X-National_Datasets\WBD_National.gpkg",
+        help=r"REQUIRED: path to the HUC12 polygons shapefile/gpkg file"
+        r"Example: C:\ras2fim_data\inputs\X-National_Datasets\WBD_National.gpkg",
         required=True,
         metavar="FILE",
         type=lambda x: fn_is_valid_file(parser, x),
