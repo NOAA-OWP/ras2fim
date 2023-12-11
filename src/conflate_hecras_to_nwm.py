@@ -15,12 +15,12 @@ import xarray as xr
 from shapely import wkt
 from shapely.geometry import LineString, Point
 
-import ras2fim_logger
 import shared_functions as sf
+import shared_variables as sv
 
 
 # Global Variables
-RLOG = ras2fim_logger.R2F_LOG  # the non mp version
+RLOG = sv.R2F_LOG
 
 
 # -------------------------------------------------
@@ -47,7 +47,9 @@ def fn_cut_streams_in_two(line, distance):
 
 
 # -------------------------------------------------
-def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg):
+def fn_conflate_hecras_to_nwm(
+    str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg=sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR
+):
     # TODO: Oct 2023: Review and remove this surpression
     # supress all warnings
     # warnings.filterwarnings("ignore", category=UserWarning)
@@ -371,7 +373,6 @@ if __name__ == "__main__":
     # python conflate_hecras_to_nwm -w 12090301
     # -i 'c:\\ras2fim_data\\output_ras2fim\\12090301_2277_230821\\01_shapes_from_hecras'
     # -o 'c:\\ras2fim_data\\output_ras2fim\\12090301_2277_230821\\02_csv_from_conflation'
-    # -n 'c:\\ras2fim_data\\inputs\\X-National_Datasets'
 
     parser = argparse.ArgumentParser(
         description="===== CONFLATE HEC-RAS TO NATIONAL WATER MODEL STREAMS ====="
@@ -407,8 +408,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "-n",
         dest="str_nation_arg",
-        help=r"REQUIRED: path to national datasets: Example: E:\X-NWS\X-National_Datasets",
-        required=True,
+        help=r"Optional: path to national datasets: Example: E:\X-NWS\X-National_Datasets",
+        required=False,
+        default=sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
         metavar="DIR",
         type=str,
     )

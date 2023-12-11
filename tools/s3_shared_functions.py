@@ -14,12 +14,11 @@ from botocore.client import ClientError
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
-import ras2fim_logger
 import shared_variables as sv
 
 
 # Global Variables
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG
 
 
 ####################################################################
@@ -97,11 +96,7 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
 
     RLOG.lprint("===================================================================")
     print("")
-    RLOG.lprint(
-        f"{cl.fg('light_yellow')}"
-        f"Uploading folder from {src_path}  to  {s3_full_target_path}"
-        f"{cl.attr(0)}"
-    )
+    RLOG.notice(f"Uploading folder from {src_path}  to  {s3_full_target_path}")
     print()
 
     # nested function
@@ -145,9 +140,7 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
                 s3_files.append(item)
 
         if len(s3_files) == 0:
-            RLOG.lprint(
-                f"{cl.fg('red_1')}" f"No files in source folder of {src_path}. Upload invalid" f"{cl.attr(0)}"
-            )
+            RLOG.error(f"No files in source folder of {src_path}. Upload invalid")
             return
 
         # As we are threading, we can add more than one thread per proc, but for calc purposes
@@ -219,9 +212,7 @@ def delete_s3_folder(bucket_name, s3_folder_path):
 
     RLOG.lprint("===================================================================")
     print("")
-    RLOG.lprint(
-        f"{cl.fg('light_yellow')}" f"Deleting the files and folders at {s3_full_target_path}" f"{cl.attr(0)}"
-    )
+    RLOG.notice(f"Deleting the files and folders at {s3_full_target_path}")
     print()
 
     # nested function
@@ -249,11 +240,7 @@ def delete_s3_folder(bucket_name, s3_folder_path):
                     s3_files.append(item)
 
         if len(s3_files) == 0:
-            RLOG.lprint(
-                f"{cl.fg('red_1')}"
-                f"No files in s3 folder of {s3_full_target_path} to be deleted"
-                f"{cl.attr(0)}"
-            )
+            RLOG.error(f"No files in s3 folder of {s3_full_target_path} to be deleted")
             return
 
         # As we are threading, we can add more than one thread per proc, but for calc purposes
@@ -324,11 +311,7 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
     try:
         RLOG.lprint("===================================================================")
         print("")
-        RLOG.lprint(
-            f"{cl.fg('light_yellow')}"
-            f"Moving folder from {s3_src_folder_path}  to  {s3_target_folder_path}"
-            f"{cl.attr(0)}"
-        )
+        RLOG.notice(f"Moving folder from {s3_src_folder_path}  to  {s3_target_folder_path}")
         print()
         print(
             f"{cl.fg('dodger_blue_1')}"
@@ -367,11 +350,7 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         # If the bucket is incorrect, it will throw an exception that already makes sense
 
         if len(s3_files) == 0:
-            RLOG.lprint(
-                f"{cl.fg('red_1')}"
-                f"No files in source folder of {s3_src_folder_path}. Move invalid"
-                f"{cl.attr(0)}"
-            )
+            RLOG.error(f"No files in source folder of {s3_src_folder_path}. Move invalid")
             return
 
         # As we are threading, we can add more than one thread per proc, but for calc purposes
@@ -437,12 +416,9 @@ def get_records(bucket_name, s3_src_folder_path, search_key, is_verbose=True):
     try:
         if is_verbose is True:
             print("")
-            RLOG.lprint(
-                f"{cl.fg('light_yellow')}"
+            RLOG.notice(
                 f"Searching files and folders in s3://{bucket_name}/{s3_src_folder_path}"
                 f" based on search key of '{search_key}'.\n"
-                " This may take a few minutes depending on seach folder size"
-                f"{cl.attr(0)}"
             )
             print("")
 

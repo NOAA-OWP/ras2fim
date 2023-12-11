@@ -1,11 +1,17 @@
 import os
 
+import ras2fim_logger as rl
+
 
 """
 This is a collection of variables that help manage, centralize and standarize some values,
    such as pathing, or common valuse
 Common pathing, and mostly defaults. Most can be changed or overwritten at this point.
 """
+
+# global RLOG
+R2F_LOG = rl.RAS2FIM_logger()
+
 
 # BASIC ROOT FOLDERS
 DEFAULT_BASE_DIR = r"c:\ras2fim_data"

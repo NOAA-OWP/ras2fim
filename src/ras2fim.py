@@ -25,7 +25,6 @@ import traceback
 
 import pyproj
 
-import ras2fim_logger
 import shared_functions as sf
 import shared_validators as val
 import shared_variables as sv
@@ -45,7 +44,7 @@ from simplify_fim_rasters import fn_simplify_fim_rasters
 # Global Variables
 B_TERRAIN_CHECK_ONLY = False
 ARG_LOG_FILE_NAME = "run_arguments.txt"
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG
 
 
 # -------------------------------------------------
@@ -368,9 +367,6 @@ def fn_run_ras2fim(
     RLOG.lprint("+++++++ Processing: STEP 5 (create fim rasters) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
-    # path to standard input (PlanStandardText01.txt, PlanStandardText02.txt, ProjectStandardText01.txt )
-    str_std_input_path = os.getcwd()  # assumed as in directory executing script
-
     # *** variables set - raster terrain harvesting ***
     # ==============================================
     if model_unit == "feet":
@@ -386,7 +382,6 @@ def fn_run_ras2fim(
             str_hecras_out_dir,
             str_projection_path,
             str_hecras_terrain_dir,
-            str_std_input_path,
             flt_interval,
             B_TERRAIN_CHECK_ONLY,
         )
@@ -573,7 +568,7 @@ if __name__ == "__main__":
     #
     #    But any and all optional arguments can be overridden, so let's try this version:
     #    ie) python ras2fim.py -w 12090301 -i C:\HEC\input_folder
-    #                          -o c:/users/my_user/desktop/ras2fim_outputs-p EPSG:2277
+    #                          -o c:/users/my_user/desktop/ras2fim_outputs -p EPSG:2277
     #                          -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif
     #                          -n E:\X-NWS\X-National_Datasets
     #

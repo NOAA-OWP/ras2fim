@@ -6,20 +6,16 @@ import shutil
 import sys
 import traceback
 
-import colored as cl
 import pandas as pd
-
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import s3_shared_functions as s3_sf
-
-import ras2fim_logger
 import shared_variables as sv
 from shared_functions import get_date_with_milli
 
 
 # Global Variables
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG
 
 
 """
@@ -96,11 +92,9 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
     # Call S3 for wildcard search (get list of keys and urls back)
     s3_items = s3_sf.get_records(bucket_name, s3_folder_path, search_key)
     if len(s3_items) == 0:
-        RLOG.lprint(
-            f"{cl.fg('red')}" f"No files or folders found in source folder of {s3_path}" f"{cl.attr(0)}"
-        )
+        RLOG.error(f"No files or folders found in source folder of {s3_path}")
     else:
-        RLOG.lprint(f"{cl.fg('spring_green_2b')}" f"Number of matches found: {len(s3_items)}" f"{cl.attr(0)}")
+        RLOG.notice(f"Number of matches found: {len(s3_items)}")
 
         # ----------
         # iterate through results to build csv
@@ -111,12 +105,12 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
         df = pd.DataFrame(s3_items)
         df.to_csv(output_file_path, index=False)
 
-        RLOG.lprint(f"{cl.fg('spring_green_2b')}" f"Output file as {output_file_path}" f"{cl.attr(0)}")
+        RLOG.notice(f"Output file as {output_file_path}")
 
     # --------------------
     RLOG.lprint("")
     RLOG.lprint("===================================================================")
-    RLOG.lprint(f"{cl.fg('spring_green_2b')}Search Complete{cl.attr(0)}")
+    RLOG.success("Search Complete")
     end_time = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
     RLOG.lprint(f"Ended (UTC): {dt_string}")

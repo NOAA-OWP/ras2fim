@@ -1,11 +1,8 @@
-import sys
+# import sys
 
-import ras2fim_logger
-
-
-# Global Variables
-# RLOG = ras2fim_logger.RAS2FIM_logger()
-RLOG = ras2fim_logger.R2F_LOG
+# These define exception type only but can not be used to actually catch exception
+# as it creates circular refernces. But.. custom exceptions types have alot of value
+# and we can expand on it later.
 
 
 class ModelUnitError(Exception):
@@ -27,19 +24,3 @@ class NoConflatedModelError(Exception):
     the code reads this file to start making sub HEC-RAS models. So, the file  "***_stream_qc.csv" is the
     best file to check for this issue.
     """
-
-
-def check_conflated_models_count(conflated_number):
-    try:
-        if conflated_number == 0:
-            raise NoConflatedModelError(
-                "No HEC-RAS model was conflated into National Water Model (NWM) reaches in "
-                "the given HUC8. Please check your HEC RAS models and HUC8 number (-w flag) "
-                "and make sure there is at least one HEC-RAS model that intersects with one "
-                "of the NWM reaches in the given HUC8."
-            )
-        else:
-            return True
-    except NoConflatedModelError as e:
-        RLOG.critical(e)
-        sys.exit(1)

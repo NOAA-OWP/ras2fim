@@ -27,8 +27,11 @@ import rasterio
 import rioxarray
 import tqdm
 
-import ras2fim_logger
 import shared_functions as sf
+import shared_variables as sv
+
+
+RLOG = sv.R2F_LOG
 
 
 # ************************************************************
@@ -36,8 +39,6 @@ import shared_functions as sf
 # Global Variables
 # null value in the exported DEMs
 INT_NO_DATA_VAL = -9999
-# RLOG = ras2fim_logger.RAS2FIM_logger()
-RLOG = ras2fim_logger.R2F_LOG
 
 
 # -------------------------------------------------

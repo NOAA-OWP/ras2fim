@@ -13,14 +13,12 @@ import s3_shared_functions as s3_sf
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
-
-import ras2fim_logger
 import shared_variables as sv
 from shared_functions import get_stnd_date
 
 
 # Global Variables
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG
 TRACKER_ACTIONS = ["uploaded", "moved_to_arch", "overwriting_prev", "straight_to_arch"]
 TRACKER_SRC_LOCAL_PATH = ""
 
@@ -807,7 +805,7 @@ def __add_record_to_tracker(
             " of files and folders in S3."
         )
 
-        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+        if RLOG.LOG_SYSTEM_IS_SETUP is True:
             print("-----------------")
             RLOG.critical(errMsg)
             RLOG.critical(traceback.format_exc())

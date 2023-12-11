@@ -28,14 +28,13 @@ import pandas as pd
 import rioxarray as rxr
 import tqdm
 
-import ras2fim_logger
 import shared_functions as sf
 import shared_variables as sv
 
 
 # -------------------------------------------------
 # Global Variables
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG
 # MP_LOG = None # the mp version
 #    While this code does use multi processing, the function be used inside the MP
 #    is not in this script, so MP_LOG system is not required.
