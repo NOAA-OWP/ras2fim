@@ -44,7 +44,7 @@ def fn_is_valid_file(parser, arg):
 
 # -------------------------------------------------
 def fn_cut_dems_from_shapes(
-    str_input_shp_path,
+    str_huc12_path,
     str_cross_sections_path,
     str_conflated_models_path,
     str_input_terrain_path,
@@ -59,7 +59,7 @@ def fn_cut_dems_from_shapes(
     RLOG.lprint("|         CUT DEMs FROM LARGER DEM PER POLYGON SHAPEFILE          |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
-    RLOG.lprint("  ---(i) HUC12s SHAPEFILE PATH: " + str_input_shp_path)
+    RLOG.lprint("  ---(i) HUC12s SHAPEFILE PATH: " + str_huc12_path)
     RLOG.lprint("  ---(x) XS SHAPEFILE PATH: " + str_cross_sections_path)
     RLOG.lprint("  ---(x) CONFLATED MODELS LIST PATH: " + str_conflated_models_path)
     RLOG.lprint("  ---(t) TERRAIN INPUT PATH: " + str_input_terrain_path)
@@ -71,11 +71,15 @@ def fn_cut_dems_from_shapes(
     if not os.path.exists(str_output_dir):
         os.mkdir(str_output_dir)
 
-    # read HUC12s
-    gdf_huc12s = gpd.read_file(str_input_shp_path)
-
     # read models xsections
     gdf_xs_lines = gpd.read_file(str_cross_sections_path)
+
+    # read HUC12s
+    gdf_huc12s = gpd.read_file(str_huc12_path)
+
+    #important to reproject to model crs especially if the inputs
+    # HUC12s are for the entire US with geographic crs
+    gdf_huc12s.to_crs(gdf_xs_lines.crs, inplace=True)
 
     # filter xsections only for the conflated models
     conflated_models = pd.read_csv(str_conflated_models_path)
@@ -90,7 +94,6 @@ def fn_cut_dems_from_shapes(
     dem = dem.rio.reproject(gdf_huc12s.crs)
 
     # note that because of the large size of the input DEM, there is no benefit in using multiprocessing here
-
     for model_id in tqdm.tqdm(
         conflated_mode_ids,
         total=len(conflated_mode_ids),
@@ -121,11 +124,14 @@ def fn_cut_dems_from_shapes(
                 clipped_dem == clipped_dem.rio.nodata, INT_NO_DATA_VAL, clipped_dem * 3.28084
             )
 
-        # xr.where operation above may remove the attributes (e.g. nodata) so always reassign nodata as below
+        # xr.where operation above may remove the attributes (nodata, crs) so always reassign them as below
         clipped_dem = clipped_dem.assign_attrs({'_FillValue': INT_NO_DATA_VAL})
+        if clipped_dem.rio.crs is None:
+            clipped_dem.rio.write_crs(gdf_huc12s.crs,inplace=True)
 
         str_dem_out = str_output_dir + "\\" + str(model_id) + ".tif"
         clipped_dem.rio.to_raster(str_dem_out, compress="lzw", dtype="float32")
+
 
     RLOG.success("COMPLETE")
     flt_end_run = time.time()
@@ -162,9 +168,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-i",
-        dest="str_input_shp_path",
+        dest="str_huc12_path",
         help=r"REQUIRED: path to the HUC12 polygons shapefile "
-             r"Example: '02_shapes_from_conflation\***_huc_12_ar.shp'",
+             r"Example: C:\ras2fim_data\inputs\X-National_Datasets\WBD_National.gpkg",
         required=True,
         metavar="FILE",
         type=lambda x: fn_is_valid_file(parser, x),
@@ -209,7 +215,7 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    str_input_shp_path = args["str_input_shp_path"]
+    str_huc12_path = args["str_huc12_path"]
     str_cross_sections_path = args["str_cross_sections_path"]
     str_conflated_models_path = args["str_conflated_models_path"]
     str_input_terrain_path = args["str_input_terrain_path"]
@@ -218,11 +224,11 @@ if __name__ == "__main__":
 
     # find model unit using the given shapefile
     try:
-        gis_prj_path = str_input_shp_path[0:-3] + "prj"
+        gis_prj_path = str_cross_sections_path[0:-3] + "prj"
         with open(gis_prj_path, "r") as prj_file:
             prj_text = prj_file.read()
     except Exception:
-        prj_text = gpd.read_file(str_input_shp_path).crs
+        prj_text = gpd.read_file(str_cross_sections_path).crs
 
     proj_crs = pyproj.CRS(prj_text)
 
@@ -243,7 +249,7 @@ if __name__ == "__main__":
 
         # call main program
         fn_cut_dems_from_shapes(
-            str_input_shp_path,
+            str_huc12_path,
             str_cross_sections_path,
             str_conflated_models_path,
             str_input_terrain_path,
