@@ -88,17 +88,17 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
     print("Loading USGS gages...")
     usgs_gages_gdf = gpd.read_file(usgs_gages_gpkg)
 
-    # Load USGS FIM Library geopackage
-    print("Loading USGS FIM library...")
-    usgs_fim_gdf = gpd.read_file(usgs_map_gpkg)
+    fim_domain_gdf = gpd.read_file(usgs_map_gpkg, layer='fim_model_extent')
 
     print(f"Datasets loaded in {round((timer() - start)/60, 2)} minutes.")
 
-    # Get list of all candidate FIM sites to process
-    fim_sites = list(usgs_fim_gdf.USGSID.unique())
-
     # Loop through sites
-    for site in fim_sites:
+    for index, row in fim_domain_gdf.iterrows():
+        site = row['USGSID']
+        geometry = row['geometry']
+
+        # if site != "05540500":
+        #     continue
 
         try: 
             int(site)
@@ -114,23 +114,33 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
         if not os.path.exists(branch_parent_dir):
             os.mkdir(branch_parent_dir)
 
+        # Load USGS FIM Library geopackage
+        print("Loading USGS FIM library for site " + site + "...")
+        start = timer()
+        usgs_fim_gdf = gpd.read_file(usgs_map_gpkg,layer='fim_flood_extents', mask=geometry)
+        print(site + f" loaded in {round((timer() - start)/60, 2)} minutes.")
+
         # Determine HUC8  TODO would be faster if FIM library had HUC8 attribute
         try:
             huc8 = usgs_gages_gdf.loc[usgs_gages_gdf.location_id == site].HUC8.values[0]
-        except IndexError:
+        except IndexError as e:
+            print(e)
             continue  # TODO log, why?
 
         # Subset the entire usgs_fim_gdf library to only one site at a time
         subset_fim_gdf = usgs_fim_gdf.loc[usgs_fim_gdf.USGSID==site]
 
         # Remove rows with missing geometry  TODO LOG
+        print("Before removing empty geometry: " + str(len(subset_fim_gdf)))
         subset_fim_gdf = subset_fim_gdf.loc[subset_fim_gdf.geometry!=None]
-
+        print("After removing empty geometry: " + str(len(subset_fim_gdf)))
+        print()
         # Identify which level path is best for the site
         huc8_outputs_dir = os.path.join(level_path_parent_dir, huc8)
         if os.path.exists(huc8_outputs_dir):
             branch_path_list = identify_best_branch_catchments(huc8_outputs_dir, subset_fim_gdf)
         else:
+            print("Missing branch data, expected: " + huc8_outputs_dir)
             shutil.rmtree(site_dir)
             continue
 
@@ -173,6 +183,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
 
                     # Exit if site-specific rating curve doesn't exist in provided file
                     if subset_usgs_rc_df.empty:
+                        print("Missing RC for " + site)
                         continue
 
                     # Use subset_usgs_rc_df to interpolate discharge from stage
@@ -231,7 +242,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "-d",
         "--usgs_map_gpkg",
-        help="Path to USGS FIMs Geopackage (original source is Esri GDB).",
+        help="Path to USGS FIMs GDB (original source is Esri GDB).",
         required=True,
         type=str,
     )
