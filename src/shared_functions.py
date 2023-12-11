@@ -21,7 +21,7 @@ from tqdm import tqdm
 
 import shared_validators as val
 import shared_variables as sv
-from r2f_errors import ModelUnitError, NoConflatedModelError
+from r2f_errors import ModelUnitError
 
 
 # -------------------------------------------------
@@ -61,24 +61,6 @@ def confirm_models_unit(proj_crs, input_models_path):
         # print(e)
         sys.exit(1)
     return unit
-
-
-# -------------------------------------------------
-def check_conflated_models_count(conflated_number):
-    try:
-        if conflated_number == 0:
-            raise NoConflatedModelError(
-                "No HEC-RAS model was conflated into National Water Model (NWM) reaches in "
-                "the given HUC8. Please check your HEC RAS models and HUC8 number (-w flag) "
-                "and make sure there is at least one HEC-RAS model that intersects with one "
-                "of the NWM reaches in the given HUC8."
-            )
-        else:
-            return True
-    except NoConflatedModelError as e:
-        sv.R2F_LOG.critical(e)
-        # print(e)
-        sys.exit(1)
 
 
 # -------------------------------------------------
