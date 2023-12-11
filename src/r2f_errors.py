@@ -2,12 +2,6 @@ import sys
 
 import shared_variables as sv
 
-
-# These define exception type only but can not be used to actually catch exception
-# as it creates circular refernces. But.. custom exceptions types have alot of value
-# and we can expand on it later.
-
-
 # Global Variables
 RLOG = sv.R2F_LOG
 
