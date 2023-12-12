@@ -146,7 +146,7 @@ if __name__ == "__main__":
     # Sample:
     # python .\clip_dem_from_shape.py
     # -x "c:\ras2fim_data\output_ras2fim\***\01_shapes_from_hecras\cross_section_LN_from_ras.shp"
-    # -i "c:\ras2fim_data\output_ras2fim\***\02_shapes_from_conflation\12090301_huc_12_ar.shp"
+    # -i 'C:\ras2fim_data\inputs\X-National_Datasets\WBD_National.gpkg'
     # -t "C:\ras2fim_data\inputs\HUC8_12090301_dem.tif"
     # -o desired_output_dir
     # -conflate "c:\ras2fim_data\output_ras2fim\***\02_shapes_from_conflation\***_stream_qc.csv"
