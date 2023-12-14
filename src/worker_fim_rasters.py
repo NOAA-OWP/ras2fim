@@ -1385,7 +1385,6 @@ if __name__ == "__main__":
     # -o 'C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301'
     # -r 'C:\\Users\\rdp-user\\Projects\\dev-v2-new'
     # -u 'feet'
-    # -mc 'C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301'
 
     parser = argparse.ArgumentParser(
         description="===== CONFLATE HEC-RAS TO NATIONAL WATER MODEL STREAMS ====="
@@ -1409,6 +1408,8 @@ if __name__ == "__main__":
         type=str,
     )
 
+    # TODO: Dec 14, 2023. New code coming on merge coming soon that removes this argument as it will
+    # no longer be needed.
     parser.add_argument(
         "-r",
         dest="str_path_to_ras2fim",
