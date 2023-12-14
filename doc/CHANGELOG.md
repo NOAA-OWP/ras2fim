@@ -7,6 +7,8 @@ This PR is to complete the step 5 `worker_fim_raster.py` of ras2fim v2 and apply
 
 1) Issue [210](https://github.com/NOAA-OWP/ras2fim/issues/210):  Developing ras2fim V2 depth grids
 
+Note: Running steps 1 to 4 appear to work correctly but fail on step 5. More changes are coming soon.
+
 ### Changes  
 - `src`
     - `worker_fim_raster.py` Multiple functions were added to former step 5 to complete it including: create_ras_plan_file, create_ras_project_file, create_ras_mapper_xml, create_hecras_files, fn_run_hecras, create_run_hecras_models.
