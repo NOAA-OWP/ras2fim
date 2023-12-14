@@ -112,7 +112,7 @@ def fn_cut_streams_in_two(line, distance):
 
 
 def fn_conflate_hecras_to_nwm(
-    str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg, path_model_catalog_folder
+    str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg, path_unit_folder
 ):
     # TODO: Oct 2023: Review and remove this surpression
     # supress all warnings
@@ -394,7 +394,7 @@ def fn_conflate_hecras_to_nwm(
         'feature_id', ascending=False
     ).drop_duplicates(subset=['ras_path'])["ras_path"]
 
-    path_model_catalog = path_model_catalog_folder + "\\" + "OWP_ras_models_catalog_" + str_huc8 + ".csv"
+    path_model_catalog = path_unit_folder + "\\" + "OWP_ras_models_catalog_" + str_huc8 + ".csv"
 
     model_catalog = pd.read_csv(path_model_catalog)
 
@@ -461,9 +461,9 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-mc",
-        dest="path_model_catalog_folder",
-        help=r"REQUIRED: Directory containing model catalog for HUC8:  Example: D:\model_catalog_folder",
+        "-p",
+        dest="path_unit_folder",
+        help=r"REQUIRED: Directory containing model catalog for HUC8:  Example: D:\12090301_2277_20231214",
         required=True,
         metavar="DIR",
         type=str,
@@ -491,7 +491,7 @@ if __name__ == "__main__":
 
     str_huc8 = args["str_huc8"]
     str_shp_in_arg = args["str_shp_in_arg"]
-    path_model_catalog_folder = args["path_model_catalog_folder"]
+    path_unit_folder = args["path_unit_folder"]
     str_shp_out_arg = args["str_shp_out_arg"]
     str_nation_arg = args["str_nation_arg"]
 
@@ -510,7 +510,7 @@ if __name__ == "__main__":
 
         # call main program
         fn_conflate_hecras_to_nwm(
-            str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg, path_model_catalog_folder
+            str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg, path_unit_folder
         )
 
     except Exception:

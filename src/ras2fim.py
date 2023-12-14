@@ -279,7 +279,11 @@ def fn_run_ras2fim(
     # run the second script (conflate_hecras_to_nwm)
     if int_step <= 2:
         fn_conflate_hecras_to_nwm(
-            str_huc8_arg, str_shapes_from_hecras_dir, str_shapes_from_conflation_dir, str_nation_arg
+            str_huc8_arg, 
+            str_shapes_from_hecras_dir, 
+            str_shapes_from_conflation_dir, 
+            str_nation_arg, 
+            output_folder_path
         )
     # -------------------------------------------
 

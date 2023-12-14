@@ -537,8 +537,7 @@ def create_ras_flow_file_nd(
     profile_names,
     list_str_slope_bc_nd,
     list_first_pass_flows_xs_nd,
-    str_output_filepath,
-    path_model_catalog_folder,
+    str_output_filepath
 ):
     # Reads the name of all folders in the
     # parent ras models directory which are conflated
@@ -553,7 +552,7 @@ def create_ras_flow_file_nd(
     path_conflated_models_splt = [path.split("\\") for path in path_conflated_models]
     conflated_model_names = [names[-2] for names in path_conflated_models_splt]
 
-    path_model_catalog = path_model_catalog_folder + "\\" + "OWP_ras_models_catalog_" + huc8_num + ".csv"
+    path_model_catalog = str_output_filepath + "\\" + "OWP_ras_models_catalog_" + huc8_num + ".csv"
 
     model_catalog = pd.read_csv(path_model_catalog)
     models_name_id = pd.concat([model_catalog["final_name_key"], model_catalog["model_id"]], axis=1)
@@ -693,8 +692,7 @@ def create_ras_flow_file_wse(
     str_path_to_flow_file_wse,
     profile_names,
     list_bc_target_xs_huc8,
-    str_output_filepath,
-    path_model_catalog_folder,
+    str_output_filepath
 ):
     # Reads the name of all folders in the
     # parent ras models directory which are conflated
@@ -709,7 +707,7 @@ def create_ras_flow_file_wse(
     path_conflated_models_splt = [path.split("\\") for path in path_conflated_models]
     conflated_model_names = [names[-2] for names in path_conflated_models_splt]
 
-    path_model_catalog = path_model_catalog_folder + "\\" + "OWP_ras_models_catalog_" + huc8_num + ".csv"
+    path_model_catalog = str_output_filepath + "\\" + "OWP_ras_models_catalog_" + huc8_num + ".csv"
 
     model_catalog = pd.read_csv(path_model_catalog)
     models_name_id = pd.concat([model_catalog["final_name_key"], model_catalog["model_id"]], axis=1)
@@ -1124,8 +1122,7 @@ def create_hecras_files(
     int_number_of_steps,
     str_output_filepath,
     str_path_to_ras2fim,
-    model_unit,
-    path_model_catalog_folder,
+    model_unit
 ):
     path_to_conflated_streams_csv = str_output_filepath + "//" + "02_csv_shapes_from_conflation"
 
@@ -1159,8 +1156,7 @@ def create_hecras_files(
         profile_names,
         list_str_slope_bc_nd,
         list_first_pass_flows_xs_nd,
-        str_output_filepath,
-        path_model_catalog_folder,
+        str_output_filepath
     )
 
     # Create the HEC-RAS Flow files for Water Surface Elevation BC ~ 10 s
@@ -1172,8 +1168,7 @@ def create_hecras_files(
         str_path_to_flow_file_wse,
         profile_names,
         list_bc_target_xs_huc8,
-        str_output_filepath,
-        path_model_catalog_folder,
+        str_output_filepath
     )
 
     # Create the HEC-RAS plan files ~ 5 s
@@ -1325,7 +1320,7 @@ def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
 # Creates depth grids for one HUC8 ~ 20 hours
 # -------------------------------------------------
 def create_run_hecras_models(
-    huc8_num, str_output_filepath, str_path_to_ras2fim, model_unit, path_model_catalog_folder
+    huc8_num, str_output_filepath, str_path_to_ras2fim, model_unit,
 ):
     int_fn_starting_flow = 1  # cfs
     int_number_of_steps = 76
@@ -1341,11 +1336,10 @@ def create_run_hecras_models(
         int_number_of_steps,
         str_output_filepath,
         str_path_to_ras2fim,
-        model_unit,
-        path_model_catalog_folder,
+        model_unit
     )
 
-    path_created_ras_models = str_output_filepath + "//" + "05_hecras_output"
+    path_created_ras_models = os.path.join(str_output_filepath, "05_hecras_output")
 
     names_created_ras_models = os.listdir(path_created_ras_models)
 
@@ -1376,13 +1370,12 @@ def create_run_hecras_models(
 # str_path_to_ras2fim = "C:/Users/rdp-user/Projects/dev-v2-step6"
 # huc8_num = "12090301"
 # model_unit = "feet"
-# path_model_catalog_folder = "C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301"
+# str_output_filepath = "C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301"
 # create_run_hecras_models(
 # huc8_num,
 # str_output_filepath,
 # str_path_to_ras2fim,
-# model_unit,
-# path_model_catalog_folder,
+# model_unit
 # )
 
 
@@ -1441,6 +1434,7 @@ if __name__ == "__main__":
     str_path_to_ras2fim = args["str_path_to_ras2fim"]
     model_unit = args["model_unit"]
     log_file_folder = args["str_output_filepath"]
+
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -1455,7 +1449,7 @@ if __name__ == "__main__":
 
         # call main program
         create_run_hecras_models(
-            str_huc8, str_output_filepath, str_path_to_ras2fim, model_unit, path_model_catalog_folder
+            str_huc8, str_output_filepath, str_path_to_ras2fim, model_unit
         )
 
     except Exception:
