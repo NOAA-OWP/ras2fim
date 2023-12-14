@@ -1434,23 +1434,12 @@ if __name__ == "__main__":
         type=str,
     )
 
-    parser.add_argument(
-        "-mc",
-        dest="path_model_catalog_folder",
-        help=r"REQUIRED: Path to model_catalog: Example: C:/ras2fimv2.0/ras2fim_v2_output_12090301",
-        required=True,
-        metavar="DIR",
-        type=str,
-    )
-
     args = vars(parser.parse_args())
 
     str_huc8 = args["str_huc8"]
     str_output_filepath = args["str_output_filepath"]
     str_path_to_ras2fim = args["str_path_to_ras2fim"]
     model_unit = args["model_unit"]
-    path_model_catalog_folder = args["path_model_catalog_folder"]
-
     log_file_folder = args["str_output_filepath"]
     try:
         # Catch all exceptions through the script if it came
