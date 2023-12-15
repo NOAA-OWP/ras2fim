@@ -1,11 +1,17 @@
 import os
 
+import ras2fim_logger as rl
+
 
 """
 This is a collection of variables that help manage, centralize and standarize some values,
    such as pathing, or common valuse
 Common pathing, and mostly defaults. Most can be changed or overwritten at this point.
 """
+
+# global RLOG
+R2F_LOG = rl.RAS2FIM_logger()
+
 
 # BASIC ROOT FOLDERS
 DEFAULT_BASE_DIR = r"c:\ras2fim_data"
@@ -58,7 +64,7 @@ R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt"
 
 # S3 PATHS
 S3_OUTPUT_RAS2FIM_FOLDER = "output_ras2fim"
-S3_DEFAULT_BUCKET_PATH = "s3://ras2fim/"
+S3_DEFAULT_BUCKET_PATH = "s3://ras2fim"
 S3_OUTPUT_MODELS_FOLDER = S3_DEFAULT_BUCKET_PATH + "/OWP_ras_models/models"
 S3_DEFAULT_MODELS_CATALOG_PATH = S3_DEFAULT_BUCKET_PATH + "/OWP_ras_models/OWP_ras_models_catalog.csv"
 S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER = "output_ras2fim_archive"

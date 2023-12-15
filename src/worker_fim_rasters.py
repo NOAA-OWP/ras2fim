@@ -15,10 +15,15 @@ import pandas as pd
 import win32com.client
 
 import ras2fim_logger
+import shared_functions as sf
+import shared_variables as sv
 
+
+# import win32com.client
+# from scipy.interpolate import interp1d
 
 # Global Variables
-RLOG = ras2fim_logger.R2F_LOG  # the non mp version
+RLOG = sv.R2F_LOG  # the non mp version
 MP_LOG = ras2fim_logger.RAS2FIM_logger()  # mp version
 
 # This routine uses RAS630.HECRASController (HEC-RAS v6.0.0 must be
