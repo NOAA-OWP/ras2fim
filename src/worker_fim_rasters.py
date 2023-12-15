@@ -86,7 +86,6 @@ def fn_format_flow_values(list_flow):
 
     return str_all_flows
 
-
 # -------------------------------------------------
 def fn_get_flow_dataframe(str_path_hecras_flow_fn):
     # Get pandas dataframe of the flows in the active plan's flow file
@@ -1320,6 +1319,7 @@ def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
     return all_x_sections_info
 
 
+
 # -------------------------------------------------
 # Main Function: Calls All defs and
 # Creates depth grids for one HUC8 ~ 20 hours
@@ -1439,7 +1439,7 @@ if __name__ == "__main__":
     str_output_filepath = args["str_output_filepath"]
     str_path_to_ras2fim = args["str_path_to_ras2fim"]
     model_unit = args["model_unit"]
-    log_file_folder = args["str_output_filepath"]
+    log_file_folder = os.path.join(str_output_filepath, "logs")
 
     try:
         # Catch all exceptions through the script if it came
@@ -1468,4 +1468,5 @@ if __name__ == "__main__":
 # TODO: Add ras2fime v1 error functions
 # TODO: Add new Rob's error functions
 # TODO: Write a better function for "profile_name"
+# TODO: look for places that should use os.path.join instead of some_var + "\\" + "some_folder_name"
 # -------------------------------------------------

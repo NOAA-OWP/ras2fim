@@ -16,12 +16,70 @@ import xarray as xr
 from shapely import wkt
 from shapely.geometry import LineString, Point
 
+import ras2fim_logger
 import shared_functions as sf
 import shared_variables as sv
 
 
 # Global Variables
 RLOG = sv.R2F_LOG
+MP_LOG = ras2fim_logger.RAS2FIM_logger()  # the mp version
+
+# -------------------------------------------------
+def mp_snap_point(shply_line, list_of_df_row):
+    # int_index, int_feature_id, str_huc12, shp_point = list_of_df_row
+    int_index, shp_point, int_feature_id, str_huc12 = list_of_df_row
+
+    point_project_wkt = shply_line.interpolate(shply_line.project(shp_point)).wkt
+
+    list_col_names = ["feature_id", "str_huc_12", "geometry_wkt"]
+    df = pd.DataFrame([[int_feature_id, str_huc12, point_project_wkt]], columns=list_col_names)
+
+    sleep(0.03)  # this allows the tqdm progress bar to update
+
+    return df
+
+# -------------------------------------------------
+def mp_create_gdf_of_points(rlog_file_path, rlog_file_prefix, tpl_request):
+    # function to create and return a geoDataframe from a list of shapely points
+
+    # This function is included as part of a multiproc so each process needs to have
+    # it's own instance of ras2fim logger.
+    # WHY? this stops file open concurrency as each proc has its own.
+    # We attempt to keep them somewhat sorted by using YYMMDD_HHMMSECMillecond)
+
+    # global MP
+    # MP_LOG = ras2fim_logger.RAS2FIM_logger()
+
+    try:
+        file_id = sf.get_date_with_milli()
+        log_file_name = f"{rlog_file_prefix}-{file_id}.log"
+        MP_LOG.setup(os.path.join(rlog_file_path, log_file_name))
+
+        feature_id = tpl_request[0]
+        str_huc_12 = tpl_request[1]
+        list_of_points = tpl_request[2]
+
+        MP_LOG.trace(f"feature_id is {feature_id} and huc_12 is {str_huc_12}")
+
+        # Create an empty dataframe
+        df_points_nwm = pd.DataFrame(list_of_points, columns=["geometry"])
+
+        # convert dataframe to geodataframeclear
+        gdf_points_nwm = gpd.GeoDataFrame(df_points_nwm, geometry="geometry")
+
+        gdf_points_nwm["feature_id"] = feature_id
+        gdf_points_nwm["huc_12"] = str_huc_12
+
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            MP_LOG.critical(traceback.format_exc())
+        else:
+            print(traceback.format_exc())
+
+        sys.exit(1)
+
+    return gdf_points_nwm
 
 
 # -------------------------------------------------
@@ -48,7 +106,8 @@ def fn_cut_streams_in_two(line, distance):
 
 
 # -------------------------------------------------
-def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg):
+def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg,
+                              str_nation_arg, path_unit_folder):
     # TODO: Oct 2023: Review and remove this surpression
     # supress all warnings
     # warnings.filterwarnings("ignore", category=UserWarning)
@@ -371,6 +430,7 @@ if __name__ == "__main__":
     # -i 'c:\\ras2fim_data\\output_ras2fim\\12090301_2277_230821\\01_shapes_from_hecras'
     # -o 'c:\\ras2fim_data\\output_ras2fim\\12090301_2277_230821\\02_csv_from_conflation'
     # -n 'c:\\ras2fim_data\\inputs\\X-National_Datasets'
+    # -mc 'C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301'
 
     parser = argparse.ArgumentParser(
         description="===== CONFLATE HEC-RAS TO NATIONAL WATER MODEL STREAMS ====="
@@ -430,7 +490,7 @@ if __name__ == "__main__":
     str_shp_out_arg = args["str_shp_out_arg"]
     str_nation_arg = args["str_nation_arg"]
 
-    log_file_folder = args["str_shp_out_arg"]
+    log_file_folder = os.path.join(path_unit_folder, "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
