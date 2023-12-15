@@ -1,6 +1,36 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.8 - 2023-12-15 - [PR#218](https://github.com/NOAA-OWP/ras2fim/pull/218)
+
+Created a new tool that can compare the S3 version of the `OWP_ras_models_catalog.csv` to the S3 models folder. This is to ensure that the master catalog and the model folders stay in sync. There are rules and tests that are applied and recorded in a new report csv showing errors. See PR for those rules.
+
+### Additions  
+- `tools`
+    - `s3_model_mgmt.py`:  As described above.
+
+### Changes  
+
+- `pyproject.toml`: added a new exception for the new file.
+- `src`
+    - `ras2fim.py`: Changed section headers to the new logging level of "notice" for better readability on screen.
+    - `ras2fim_logger.py`: Code layout changes.
+    - `reformat_ras_rating_curve.py`: Removed a debugging print line.
+    - `shared_variables.py`: Took a slash off the end of "S3_DEFAULT_BUCKET_PATH" variable.
+- `tools`
+    - `get_models_by_catalog.py` : Changed starting model id to be 10001 and not 10000 plus fix a few code layout issues.
+    - `ras_unit_to_s3.py`: Minor text changes and added a date to the log file being created.
+    - `s3_search_tool.py`: Changed a function name in s3_shared_functions which needed updating here; fixed a few code layout issues and added a date to the log file being created.
+    - `s3_shared_functions`:
+        - Small text and layout changes.,
+        - Moved a few functions to different places (on page).
+        - Renamed one function.
+        - Added a new function for "get_folder_list" (all folder names (well key names) at one S3 folder level only, recursively.
+        - Added a new function for "get_folder_size". 
+        - A few renamed variables.
+
+<br/><br/>
+
 ## v2.0.beta.7 - 2023-12-15 - [PR#215](https://github.com/NOAA-OWP/ras2fim/pull/215)
 
 The DEM clipping script has been updated to use full WBD gpkg file and find all the HUC12s (even in other HUC8s) that intersects with an RAS model domain. The relevant HUC12s are then dissolved together and used for clipping the DEM for the RAS model. One DEM is created for each RAS model and the tif file is saved under the name <model_id>.tif. 
