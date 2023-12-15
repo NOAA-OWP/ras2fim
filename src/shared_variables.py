@@ -41,7 +41,7 @@ DEFAULT_RSF_MODELS_CATALOG_FILE = os.path.join(
 # RAS2FIM OUTPUT FOLDERS
 R2F_DEFAULT_OUTPUT_MODELS = os.path.join(DEFAULT_BASE_DIR, "output_ras2fim")
 R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS = "01_shapes_from_hecras"
-R2F_OUTPUT_DIR_SHAPES_FROM_CONF = "02_shapes_from_conflation"
+R2F_OUTPUT_DIR_SHAPES_FROM_CONF = "02_csv_shapes_from_conflation"
 R2F_OUTPUT_DIR_TERRAIN = "03_terrain"
 R2F_OUTPUT_DIR_HECRAS_TERRAIN = "04_hecras_terrain"
 R2F_OUTPUT_DIR_HECRAS_OUTPUT = "05_hecras_output"

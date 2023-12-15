@@ -137,6 +137,13 @@ def init_and_run_ras2fim(
         else:
             int_step = int(str_step_override)
 
+    # ********************************
+    # -------------------
+    # make the folder only if all other valudation tests pass.
+    # pathing has already been validated and ensure the child folder does not pre-exist
+    os.mkdir(output_folder_path)
+
+
     # -------------------
     # adjust the model_catalog file name if applicable
     # for some reason, the argparser is sometimes making this an one element array (??)
@@ -146,12 +153,14 @@ def init_and_run_ras2fim(
         raise FileNotFoundError(
             f"The -mc models catalog ({model_huc_catalog_path}) does not exist. Please check your pathing."
         )
+    # We need to copy the catalog to the root of the output unit so steps can use it
+    # It may be adjsuted along the way and it wil be recopied to "final" folder at the end.
+    shutil.copy2(model_huc_catalog_path, output_folder_path)
+    # now change its path to be its new home in the output unit folder.
 
-    # ********************************
-    # -------------------
-    # make the folder only if all other valudation tests pass.
-    # pathing has already been validated and ensure the child folder does not pre-exist
-    os.mkdir(output_folder_path)
+    model_file_name = os.path.basename(model_huc_catalog_path)
+    model_huc_catalog_path = os.path.join(output_folder_path, model_file_name)
+
 
     # -------------------
     # setup the logging class (default unit folder path (HUC/CRS))
@@ -232,15 +241,14 @@ def fn_run_ras2fim(
     RLOG.lprint("     Created by Andy Carter, PE of the National Water Center")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
-    RLOG.lprint("  ---(r) HUC 8 WATERSHED: " + str(str_huc8_arg))
-    RLOG.lprint("  ---(i) PATH TO HEC-RAS: " + str(input_models_path))
-    RLOG.lprint("  ---(o) OUTPUT DIRECTORY: " + output_folder_path)
-    RLOG.lprint("  ---(p) PROJECTION OF HEC-RAS MODELS: " + str(str_crs_arg))
-    RLOG.lprint("  ---(n) PATH TO NATIONAL DATASETS: " + str(str_nation_arg))
-    RLOG.lprint("  ---(r) PATH TO HEC-RAS v6.3: " + str(str_hec_path))
-    RLOG.lprint("  ---[t] Optional: Terrain to Utilize " + str(str_terrain_override))
-    RLOG.lprint("  ---[mc] Optional: path to models catalog - " + str(model_huc_catalog_path))
-    RLOG.lprint("  ---[s] Optional: step to start at - " + str(int_step))
+    RLOG.lprint(f"  ---(r) HUC 8 WATERSHED: {str_huc8_arg}")
+    RLOG.lprint(f"  ---(i) PATH TO HEC-RAS: {input_models_path}")
+    RLOG.lprint(f"  ---(o) OUTPUT DIRECTORY: {output_folder_path}")
+    RLOG.lprint(f"  ---(p) PROJECTION OF HEC-RAS MODELS: {str_crs_arg}")
+    RLOG.lprint(f"  ---(n) PATH TO NATIONAL DATASETS: {str_nation_arg}")
+    RLOG.lprint(f"  ---(r) PATH TO HEC-RAS v6.3: {str_hec_path}")
+    RLOG.lprint(f"  ---[t] Terrain to Utilize {str_terrain_override}")
+    RLOG.lprint("  ---[s] Step to start at - " + str(int_step))
     RLOG.lprint(
         "  --- The Ras Models unit (extracted from RAS model prj file and given EPSG code): " + model_unit
     )
@@ -278,7 +286,11 @@ def fn_run_ras2fim(
     # run the second script (conflate_hecras_to_nwm)
     if int_step <= 2:
         fn_conflate_hecras_to_nwm(
-            str_huc8_arg, str_shapes_from_hecras_dir, str_shapes_from_conflation_dir, str_nation_arg
+            str_huc8_arg, 
+            str_shapes_from_hecras_dir, 
+            str_shapes_from_conflation_dir, 
+            str_nation_arg, 
+            output_folder_path
         )
     # -------------------------------------------
 
@@ -512,8 +524,6 @@ def fn_run_ras2fim(
     RLOG.lprint("")
     RLOG.notice("+++++++ Finalizing processing +++++++")
 
-    # TODO: use the models catalog to add columns for success/fail processing for each
-    #  model and why it failed if applicable.  (maybe?)
     # Copy it here in case it gets updated along the way
     shutil.copy2(model_huc_catalog_path, r2f_final_dir)
     run_arguments_filepath = os.path.join(output_folder_path, "run_arguments.txt")

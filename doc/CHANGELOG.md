@@ -1,6 +1,23 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.10 - 2023-12-15 - [PR#225](https://github.com/NOAA-OWP/ras2fim/pull/225)
+
+This PR is to complete the step 5 `worker_fim_raster.py` of ras2fim v2 and apply a couple of fixes to step 2 `conflate_hecras_to_nwm.py` results. They include:
+
+1) Issue [210](https://github.com/NOAA-OWP/ras2fim/issues/210):  Developing ras2fim V2 depth grids
+
+Note: Running steps 1 to 4 appear to work correctly but fail on step 5. More changes are coming soon.
+
+### Changes  
+- `src`
+    - `worker_fim_raster.py` Multiple functions were added to former step 5 to complete it including: create_ras_plan_file, create_ras_project_file, create_ras_mapper_xml, create_hecras_files, fn_run_hecras, create_run_hecras_models.
+    - `conflate_hecras_to_nwm.py`: Also, in step 2 the model-id column was added to the results.
+    - `ras2fim.py`: One small change in ras2fim.py related to conflate_hecras_nwm.py. Also moved the copy of the models catalog file to earlier in processing as some steps need it. At finalization, the model catalog will be again copied to the "final" folder. Why?  Steps might modify the catalog during processing.
+    - `shared_variables.py`: Changed folder location for Step 2 so steps 1 to 4 can work. 
+
+<br/><br/>
+
 
 ## v2.0.beta.9 - 2023-12-15 - [PR#222](https://github.com/NOAA-OWP/ras2fim/pull/222)
 
