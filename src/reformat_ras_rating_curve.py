@@ -394,8 +394,6 @@ def dir_reformat_ras_rc(
         ras2fim_version = sf.get_changelog_version(changelog_path)
         source = "ras2fim_" + ras2fim_version
 
-        print(f'Source: {source}') ## debug 
-
         # ------------------------------------------------------------------------------------------------
         # Build output table
 
