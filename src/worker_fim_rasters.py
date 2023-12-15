@@ -86,6 +86,7 @@ def fn_format_flow_values(list_flow):
 
     return str_all_flows
 
+
 # -------------------------------------------------
 def fn_get_flow_dataframe(str_path_hecras_flow_fn):
     # Get pandas dataframe of the flows in the active plan's flow file
@@ -541,7 +542,7 @@ def create_ras_flow_file_nd(
     profile_names,
     list_str_slope_bc_nd,
     list_first_pass_flows_xs_nd,
-    str_output_filepath
+    str_output_filepath,
 ):
     # Reads the name of all folders in the
     # parent ras models directory which are conflated
@@ -696,7 +697,7 @@ def create_ras_flow_file_wse(
     str_path_to_flow_file_wse,
     profile_names,
     list_bc_target_xs_huc8,
-    str_output_filepath
+    str_output_filepath,
 ):
     # Reads the name of all folders in the
     # parent ras models directory which are conflated
@@ -1121,12 +1122,7 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
 # For All RAS Models BC ~ 3 min
 # -------------------------------------------------
 def create_hecras_files(
-    huc8_num,
-    int_fn_starting_flow,
-    int_number_of_steps,
-    str_output_filepath,
-    str_path_to_ras2fim,
-    model_unit
+    huc8_num, int_fn_starting_flow, int_number_of_steps, str_output_filepath, str_path_to_ras2fim, model_unit
 ):
     path_to_conflated_streams_csv = str_output_filepath + "//" + "02_csv_shapes_from_conflation"
 
@@ -1160,7 +1156,7 @@ def create_hecras_files(
         profile_names,
         list_str_slope_bc_nd,
         list_first_pass_flows_xs_nd,
-        str_output_filepath
+        str_output_filepath,
     )
 
     # Create the HEC-RAS Flow files for Water Surface Elevation BC ~ 10 s
@@ -1172,7 +1168,7 @@ def create_hecras_files(
         str_path_to_flow_file_wse,
         profile_names,
         list_bc_target_xs_huc8,
-        str_output_filepath
+        str_output_filepath,
     )
 
     # Create the HEC-RAS plan files ~ 5 s
@@ -1319,14 +1315,11 @@ def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
     return all_x_sections_info
 
 
-
 # -------------------------------------------------
 # Main Function: Calls All defs and
 # Creates depth grids for one HUC8 ~ 20 hours
 # -------------------------------------------------
-def create_run_hecras_models(
-    huc8_num, str_output_filepath, str_path_to_ras2fim, model_unit,
-):
+def create_run_hecras_models(huc8_num, str_output_filepath, str_path_to_ras2fim, model_unit):
     int_fn_starting_flow = 1  # cfs
     int_number_of_steps = 76
 
@@ -1341,7 +1334,7 @@ def create_run_hecras_models(
         int_number_of_steps,
         str_output_filepath,
         str_path_to_ras2fim,
-        model_unit
+        model_unit,
     )
 
     path_created_ras_models = os.path.join(str_output_filepath, "05_hecras_output")
@@ -1454,9 +1447,7 @@ if __name__ == "__main__":
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
-        create_run_hecras_models(
-            str_huc8, str_output_filepath, str_path_to_ras2fim, model_unit
-        )
+        create_run_hecras_models(str_huc8, str_output_filepath, str_path_to_ras2fim, model_unit)
 
     except Exception:
         RLOG.critical(traceback.format_exc())

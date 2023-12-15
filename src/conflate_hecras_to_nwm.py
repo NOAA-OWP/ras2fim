@@ -25,6 +25,7 @@ import shared_variables as sv
 RLOG = sv.R2F_LOG
 MP_LOG = ras2fim_logger.RAS2FIM_logger()  # the mp version
 
+
 # -------------------------------------------------
 def mp_snap_point(shply_line, list_of_df_row):
     # int_index, int_feature_id, str_huc12, shp_point = list_of_df_row
@@ -38,6 +39,7 @@ def mp_snap_point(shply_line, list_of_df_row):
     sleep(0.03)  # this allows the tqdm progress bar to update
 
     return df
+
 
 # -------------------------------------------------
 def mp_create_gdf_of_points(rlog_file_path, rlog_file_prefix, tpl_request):
@@ -106,8 +108,7 @@ def fn_cut_streams_in_two(line, distance):
 
 
 # -------------------------------------------------
-def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg,
-                              str_nation_arg, path_unit_folder):
+def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg, path_unit_folder):
     # TODO: Oct 2023: Review and remove this surpression
     # supress all warnings
     # warnings.filterwarnings("ignore", category=UserWarning)
@@ -504,9 +505,7 @@ if __name__ == "__main__":
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
-        fn_conflate_hecras_to_nwm(
-            str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg, path_unit_folder
-        )
+        fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg, path_unit_folder)
 
     except Exception:
         RLOG.critical(traceback.format_exc())

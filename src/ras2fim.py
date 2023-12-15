@@ -143,7 +143,6 @@ def init_and_run_ras2fim(
     # pathing has already been validated and ensure the child folder does not pre-exist
     os.mkdir(output_folder_path)
 
-
     # -------------------
     # adjust the model_catalog file name if applicable
     # for some reason, the argparser is sometimes making this an one element array (??)
@@ -160,7 +159,6 @@ def init_and_run_ras2fim(
 
     model_file_name = os.path.basename(model_huc_catalog_path)
     model_huc_catalog_path = os.path.join(output_folder_path, model_file_name)
-
 
     # -------------------
     # setup the logging class (default unit folder path (HUC/CRS))
@@ -286,11 +284,11 @@ def fn_run_ras2fim(
     # run the second script (conflate_hecras_to_nwm)
     if int_step <= 2:
         fn_conflate_hecras_to_nwm(
-            str_huc8_arg, 
-            str_shapes_from_hecras_dir, 
-            str_shapes_from_conflation_dir, 
-            str_nation_arg, 
-            output_folder_path
+            str_huc8_arg,
+            str_shapes_from_hecras_dir,
+            str_shapes_from_conflation_dir,
+            str_nation_arg,
+            output_folder_path,
         )
     # -------------------------------------------
 
@@ -320,7 +318,7 @@ def fn_run_ras2fim(
     if int_step <= 3:
         # provide conflation qc file to mark the parent models that conflated to NWM reaches
         conflation_qc_path = os.path.join(str_shapes_from_conflation_dir, "%s_stream_qc.csv" % str_huc8_arg)
-        
+
         if str_terrain_override == "None Specified - using USGS WCS":
             # create terrain from the USGS WCS
             fn_get_usgs_dem_from_shape(
@@ -336,7 +334,6 @@ def fn_run_ras2fim(
             # user has supplied the terrain file
             str_cross_sections_path = str_shapes_from_hecras_dir + "\\cross_section_LN_from_ras.shp"
             str_huc12_path = str_nation_arg + "\\" + sv.INPUT_WBD_NATIONAL_FILE
-           
 
             fn_cut_dems_from_shapes(
                 str_huc12_path,
