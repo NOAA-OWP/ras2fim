@@ -108,7 +108,8 @@ def fn_cut_streams_in_two(line, distance):
 
 
 # -------------------------------------------------
-def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg, path_unit_folder):
+def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg,
+                             str_nation_arg, path_unit_folder):
     # TODO: Oct 2023: Review and remove this surpression
     # supress all warnings
     # warnings.filterwarnings("ignore", category=UserWarning)
@@ -134,10 +135,6 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     shp_out_path = str_shp_out_arg
     RLOG.lprint("  ---(o) OUTPUT DIRECTORY: " + shp_out_path)
     RLOG.lprint("  ---(n) NATIONAL DATASET LOCATION: " + str_nation_arg)
-    RLOG.lprint(f"  --- Module Started: {sf.get_stnd_date()}")
-
-    str_national_dataset_path = str_nation_arg
-    RLOG.lprint("  ---(n) NATIONAL DATASET LOCATION: " + str_national_dataset_path)
 
     # Input - projection of the base level engineering models
     # get this string from the input shapefiles of the stream
@@ -149,17 +146,17 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     # (2) the National water model flowlines geopackage
     # (3) the National water model recurrance flows
 
-    INPUT_NWM_FLOWS_FILE = "nwm_flows.gpkg"
-    INPUT_NWM_WBD_LOOKUP_FILE = "nwm_wbd_lookup.nc"
-    INPUT_WBD_NATIONAL_FILE = "WBD_National.gpkg"
+    #INPUT_NWM_FLOWS_FILE = "nwm_flows.gpkg"
+    #INPUT_NWM_WBD_LOOKUP_FILE = "nwm_wbd_lookup.nc"
+    #INPUT_WBD_NATIONAL_FILE = "WBD_National.gpkg"
     # Input - Watershed boundary data geopackage
-    str_wbd_geopkg_path = str_national_dataset_path + "\\" + INPUT_WBD_NATIONAL_FILE
+    str_wbd_geopkg_path = str_nation_arg + "\\" + sv.INPUT_WBD_NATIONAL_FILE
 
     # Input - National Water Model stream lines geopackage
-    str_nwm_flowline_geopkg_path = str_national_dataset_path + "\\" + INPUT_NWM_FLOWS_FILE
+    str_nwm_flowline_geopkg_path = str_nation_arg + "\\" + sv.INPUT_NWM_FLOWS_FILE
 
     # Input - Recurrance Intervals netCDF
-    str_netcdf_path = str_national_dataset_path + "\\" + INPUT_NWM_WBD_LOOKUP_FILE
+    str_netcdf_path = str_nation_arg + "\\" + sv.INPUT_NWM_WBD_LOOKUP_FILE
 
     # Geospatial projections
     nwm_prj = "ESRI:102039"

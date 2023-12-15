@@ -317,7 +317,7 @@ def fn_run_ras2fim(
     # run the third script
     if int_step <= 3:
         # provide conflation qc file to mark the parent models that conflated to NWM reaches
-        conflation_qc_path = os.path.join(str_shapes_from_conflation_dir, "%s_stream_qc.csv" % str_huc8_arg)
+        conflation_qc_path = os.path.join(str_shapes_from_conflation_dir, "conflated_ras_models.csv")
 
         if str_terrain_override == "None Specified - using USGS WCS":
             # create terrain from the USGS WCS

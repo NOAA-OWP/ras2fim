@@ -62,10 +62,10 @@ def fn_cut_dems_from_shapes(
 
     RLOG.lprint("  ---(i) HUC12s SHAPEFILE PATH: " + str_huc12_path)
     RLOG.lprint("  ---(x) XS SHAPEFILE PATH: " + str_cross_sections_path)
-    RLOG.lprint("  ---(x) CONFLATED MODELS LIST PATH: " + str_conflated_models_path)
+    RLOG.lprint("  ---(conflate) CONFLATED MODELS LIST PATH: " + str_conflated_models_path)
     RLOG.lprint("  ---(t) TERRAIN INPUT PATH: " + str_input_terrain_path)
     RLOG.lprint("  ---(o) DEM OUTPUT PATH: " + str_output_dir)
-    RLOG.lprint("  ---[b]   Optional: BUFFER: " + str(int_buffer))
+    RLOG.lprint("  ---[b] Optional: BUFFER: " + str(int_buffer))
     RLOG.lprint("  --- The Ras Models unit (extracted from given shapefile): " + model_unit)
     RLOG.lprint("+-----------------------------------------------------------------+")
 
@@ -150,7 +150,7 @@ if __name__ == "__main__":
     # -i 'C:\ras2fim_data\inputs\X-National_Datasets\WBD_National.gpkg'
     # -t "C:\ras2fim_data\inputs\HUC8_12090301_dem.tif"
     # -o desired_output_dir
-    # -conflate "c:\ras2fim_data\output_ras2fim\***\02_shapes_from_conflation\***_stream_qc.csv"
+    # -conflate "c:\ras2fim_data\output_ras2fim\***\02_csv_shapes_from_conflation\***_stream_qc.csv"
 
     parser = argparse.ArgumentParser(
         description="============== CUT DEMs FROM LARGER DEMS PER POLYGON SHAPEFILE  =============="
