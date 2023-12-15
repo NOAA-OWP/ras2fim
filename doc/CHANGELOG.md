@@ -1,6 +1,56 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.8 - 2023-12-15 - [PR#218](https://github.com/NOAA-OWP/ras2fim/pull/218)
+
+Created a new tool that can compare the S3 version of the `OWP_ras_models_catalog.csv` to the S3 models folder. This is to ensure that the master catalog and the model folders stay in sync. There are rules and tests that are applied and recorded in a new report csv showing errors. See PR for those rules.
+
+### Additions  
+- `tools`
+    - `s3_model_mgmt.py`:  As described above.
+
+### Changes  
+
+- `pyproject.toml`: added a new exception for the new file.
+- `src`
+    - `ras2fim.py`: Changed section headers to the new logging level of "notice" for better readability on screen.
+    - `ras2fim_logger.py`: Code layout changes.
+    - `reformat_ras_rating_curve.py`: Removed a debugging print line.
+    - `shared_variables.py`: Took a slash off the end of "S3_DEFAULT_BUCKET_PATH" variable.
+- `tools`
+    - `get_models_by_catalog.py` : Changed starting model id to be 10001 and not 10000 plus fix a few code layout issues.
+    - `ras_unit_to_s3.py`: Minor text changes and added a date to the log file being created.
+    - `s3_search_tool.py`: Changed a function name in s3_shared_functions which needed updating here; fixed a few code layout issues and added a date to the log file being created.
+    - `s3_shared_functions`:
+        - Small text and layout changes.,
+        - Moved a few functions to different places (on page).
+        - Renamed one function.
+        - Added a new function for "get_folder_list" (all folder names (well key names) at one S3 folder level only, recursively.
+        - Added a new function for "get_folder_size". 
+        - A few renamed variables.
+
+<br/><br/>
+
+## v2.0.beta.7 - 2023-12-15 - [PR#215](https://github.com/NOAA-OWP/ras2fim/pull/215)
+
+The DEM clipping script has been updated to use full WBD gpkg file and find all the HUC12s (even in other HUC8s) that intersects with an RAS model domain. The relevant HUC12s are then dissolved together and used for clipping the DEM for the RAS model. One DEM is created for each RAS model and the tif file is saved under the name <model_id>.tif. 
+Note that the new functionality also needs preparing DEMs that covers bigger domain than the studied HUC8 (probably by applying bigger buffers). Two additional inputs are now required for `src/clip_dem_from_shape.py`: 
+1. The cross sections shapefile (from Step 1 ) to select the HUC12s that intersect with each RAS model
+2. The csv file containing list of conflated models (from step2), so DEM clipping applies only for the conflated models.
+
+This PR closes #190.
+
+### Changes  
+
+- `src/clip_dem_from_shape.py`
+   - The input HUC12 shapefile argument can now be the full WBD shapefile (instead of the HUC12 shapefile from Steps 1&2 which are specific to the studied HUC8).  
+   - Two more input arguments are needed as described above. 
+   - Because the clipped DEM names must follow model_id from model catalog, there is no need to have the "str_field_name" argument anymore, and this argument has been removed. 
+   - The intersection / spatial join algorithm to find the relevant HUC12s has been modified to incorporate cross sections. These last 2 changes were necessary because there could be additional HUC8s that overlap the model, particularly at its headwaters and outlet.
+- `src/ras2fim.py`: the function call to clip DEMs has been modified to reflect the additional cross section shapefile, and csv file of conflated models, as well as removing the "str_field_name" argument, which is not needed anymore (because we must only use model_id derived from model catalog for tif file names). 
+
+<br/><br/>
+
 ## v2.0.beta.6 - 2023-12-04 - [PR#212](https://github.com/NOAA-OWP/ras2fim/pull/212)
 
 This PR covers a couple of fixes all based around the `get_models_by_catalog.py`. They include:
@@ -109,13 +159,7 @@ The goal of this PR is to merge the first ras2fim V2.01 to the main branch. Step
 
 <br/><br/>
 
-## RAS2FIM V1 - Code Freeze
 
-Nov 8, 2023
-
-At this point, there are no more projected updates required to the V1 code base. The "dev" branch will now continue on as ras2fim V2. This branch exists in case we need an emergency or critical fix based on V1 code.
-
-<br/><br/>
 
 ## v1.30.1 - 2023-11-2 - [PR#198](https://github.com/NOAA-OWP/ras2fim/pull/198)
 

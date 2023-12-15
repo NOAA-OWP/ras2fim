@@ -225,7 +225,7 @@ class Get_Models_By_Catalog:
                 RLOG.error(filter_msg)
                 return
 
-            # Adding a model_id column starting at number 10000 and incrementing by one
+            # Adding a model_id column starting at number 10001 and incrementing by one
             # Adding new column
             self.df_filtered.sort_values(by=[sv.COL_NAME_FINAL_NAME_KEY], inplace=True)
             self.df_filtered.insert(0, sv.COL_NAME_MODEL_ID, range(10001, 10001 + len(self.df_filtered)))
@@ -277,7 +277,7 @@ class Get_Models_By_Catalog:
                     if num_skips > 0:
                         RLOG.warning(
                             f"Number of models folders skipped / errored during download: {num_skips}."
-                            "Please review the output logs or the filtered csv for skip/error details."
+                            " Please review the output logs or the filtered csv for skip/error details."
                         )
 
         except Exception:

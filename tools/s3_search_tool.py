@@ -92,7 +92,7 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
 
     # ----------
     # Call S3 for wildcard search (get list of keys and urls back)
-    s3_items = s3_sf.get_records(bucket_name, s3_folder_path, search_key)
+    s3_items = s3_sf.get_records_list(bucket_name, s3_folder_path, search_key)
     if len(s3_items) == 0:
         RLOG.error(f"No files or folders found in source folder of {s3_path}")
     else:
@@ -152,8 +152,8 @@ def __validate_input(s3_path, search_key, output_folder_path):
         if not os.path.exists(parent_folder):
             raise ValueError(
                 f"The output folder path submitted is {output_folder_path}."
-                "The child folder need not pre-exist, but the parent folder"
-                f"of {parent_folder} must pre-exist"
+                " The child folder need not pre-exist, but the parent folder"
+                f" of {parent_folder} must pre-exist"
             )
         else:  # then we need to make the child directory
             shutil.mkdir(output_folder_path)
@@ -190,7 +190,7 @@ if __name__ == "__main__":
         "-key",
         "--search_key",
         help="REQUIRED: Value is the file / folder name and optional pattern"
-        " (not case-sensitive)\n"
+        " (NOT case-sensitive)\n"
         "ie) *Trinity River*  (note: wildcard before and after phrase, position matters)",
         required=True,
         metavar="",
@@ -201,6 +201,7 @@ if __name__ == "__main__":
         "--s3_path",
         help="OPTIONAL: This value starting s3 folder (full s3 path) where searching will be done.\n"
         "ie) s3://ras2fim-dev/OWP_ras_models/my_models.\n"
+        "Note: This value IS case-sensitive\n"
         f"Defaults to {sv.S3_OUTPUT_MODELS_FOLDER}",
         default=sv.S3_OUTPUT_MODELS_FOLDER,
         required=False,
@@ -231,7 +232,8 @@ if __name__ == "__main__":
         # Creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
+        log_file_name = f"{script_file_name}_{get_date_with_milli(False)}.log"
+        RLOG.setup(os.path.join(log_file_folder, log_file_name))
 
         s3_search(**args)
 

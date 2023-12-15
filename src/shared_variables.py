@@ -64,7 +64,7 @@ R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt"
 
 # S3 PATHS
 S3_OUTPUT_RAS2FIM_FOLDER = "output_ras2fim"
-S3_DEFAULT_BUCKET_PATH = "s3://ras2fim/"
+S3_DEFAULT_BUCKET_PATH = "s3://ras2fim"
 S3_OUTPUT_MODELS_FOLDER = S3_DEFAULT_BUCKET_PATH + "/OWP_ras_models/models"
 S3_DEFAULT_MODELS_CATALOG_PATH = S3_DEFAULT_BUCKET_PATH + "/OWP_ras_models/OWP_ras_models_catalog.csv"
 S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER = "output_ras2fim_archive"
