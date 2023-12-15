@@ -4,7 +4,8 @@ import os
 import shutil
 import sys
 import traceback
-import warnings
+
+# import warnings
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 
@@ -22,14 +23,16 @@ import shared_variables as sv
 
 
 # Global Variables
-# RLOG = ras2fim_logger.RAS2FIM_logger()
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG  # the non mp version
 
-warnings.simplefilter(action="ignore", category=FutureWarning)
+# warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
 # -------------------------------------------------
-def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, geocurves_dir, polys_dir):
+# This function is used in a Multi-Proc
+def mp_produce_geocurves(
+    feature_id, huc, rating_curve, depth_grid_list, version, geocurves_dir, polys_dir, rlog_folder_path
+):
     """
     For a single feature_id, the function produces a version of a RAS2FIM rating curve
     which includes the geometry of the extent for each stage/flow.
@@ -42,13 +45,19 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
         version (str): The version number.
         output_folder (str): Path to output folder where geo version of rating curve will be written.
         polys_dir (str or Nonetype): Can be a path to a folder where polygons will be written, or None.
-
+        rlog_folder_path (str): Current location of where logs are being produced
     """
     try:
-        depth_grid = ""
+        # setup the global multi-proc logs for this function and it's child functions.
+        mlog_file_prefix = "produce_geocurves"
+        MP_LOG = ras2fim_logger.RAS2FIM_logger()
+        MP_LOG.MP_Log_setup(mlog_file_prefix, rlog_folder_path)
+
+        # depth_grid = ""
         feature_id_rating_curve_geo = None
 
         # Read rating curve for feature_id
+        MP_LOG.debug(f"rating_curve is {rating_curve}")
         rating_curve_df = pd.read_csv(rating_curve)
 
         proj_crs = pyproj.CRS.from_string(sv.DEFAULT_RASTER_OUTPUT_CRS)
@@ -69,7 +78,7 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
 
                 # if the array only has values of zero, then skip it (aka.. no heights above surface)
                 if np.min(reclass_inundation_array) == 0 and np.max(reclass_inundation_array) == 0:
-                    RLOG.warning(f"depth_grid of {depth_grid} does not have any heights above surface.")
+                    MP_LOG.warning(f"depth_grid of {depth_grid} does not have any heights above surface.")
                     continue
 
                 # Aggregate shapes
@@ -99,12 +108,12 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
 
                 except AttributeError as ae:
                     # TODO why does this happen? I suspect bad geometry. Small extent?
-                    RLOG.lprint("^^^^^^^^^^^^^^^^^^")
+                    MP_LOG.lprint("^^^^^^^^^^^^^^^^^^")
                     msg = "Warning...\n"
                     msg += f"  huc is {huc}; feature_id = {feature_id}; depth_grid is {depth_grid}\n"
                     msg += f"  Details: {ae}"
-                    RLOG.warning(msg)
-                    RLOG.lprint("^^^^^^^^^^^^^^^^^^")
+                    MP_LOG.warning(msg)
+                    MP_LOG.lprint("^^^^^^^^^^^^^^^^^^")
                     continue
 
                 # -- Add more attributes -- #
@@ -152,11 +161,11 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
             )
 
     except Exception:
-        RLOG.lprint("*******************")
+        MP_LOG.lprint("*******************")
         errMsg = "Error:\n"
-        errMsg += f"  huc is {huc}; feature_id = {feature_id}; depth_grid is {depth_grid}\n"
+        errMsg += f"  huc is {huc}; feature_id = {feature_id}"
         errMsg += " \n   " + traceback.format_exc()
-        RLOG.critical(errMsg)
+        MP_LOG.critical(errMsg)
         sys.exit(1)
 
 
@@ -298,10 +307,11 @@ def manage_geo_rating_curves_production(
                 "version": version,
                 "geocurves_dir": geocurves_dir,
                 "polys_dir": polys_dir,
+                "rlog_folder_path": RLOG.LOG_DEFAULT_FOLDER,
             }
 
             try:
-                future = executor.submit(produce_geocurves, **produce_gc_args)
+                future = executor.submit(mp_produce_geocurves, **produce_gc_args)
                 executor_dict[future] = feature_id
             except Exception:
                 RLOG.critical(traceback.format_exc())
@@ -309,6 +319,9 @@ def manage_geo_rating_curves_production(
 
         # Send the executor to the progress bar and wait for all MS tasks to finish
         sf.progress_bar_handler(executor_dict, True, f"Creating geocurves with {job_number} workers")
+
+    # Now that multi-proc is done, lets merge all of the independent log file from each
+    RLOG.merge_log_files(RLOG.LOG_FILE_PATH, "produce_geocurves")
 
     # Calculate duration
     RLOG.success("Complete")
@@ -334,23 +347,23 @@ if __name__ == "__main__":
     parser.add_argument(
         "-f",
         "--ras2fim_output_dir",
-        help="REQUIRED: Path to directory containing RAS2FIM outputs",
+        help="REQUIRED: Path to directory containing RAS2FIM unit output (huc/crs)",
         required=True,
     )
     parser.add_argument(
         "-j", "--job_number", help="Number of processes to use", required=False, default=1, type=int
     )
     parser.add_argument(
-        "-t", "--output_folder", help="Target: Where the output folder will be", required=True
+        "-t", "--output_folder", help="Target: Where the geocurve output folder will be", required=True
     )
     parser.add_argument("-o", "--overwrite", help="Overwrite files", required=False, action="store_true")
     parser.add_argument(
         "-p",
         "--produce_polys",
-        help="Produce polygons in addition to geocurves.",
+        help="Skip creating the polygons in addition to geocurves.",
         required=False,
-        default=False,
-        action="store_true",
+        default=True,
+        action="store_false",
     )
 
     args = vars(parser.parse_args())

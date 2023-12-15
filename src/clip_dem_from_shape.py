@@ -17,8 +17,11 @@ import tqdm
 import xarray as xr
 from shapely.geometry import mapping
 
-import ras2fim_logger
 import shared_functions as sf
+import shared_variables as sv
+
+
+RLOG = sv.R2F_LOG
 
 
 pd.options.mode.chained_assignment = None
@@ -28,8 +31,6 @@ pd.options.mode.chained_assignment = None
 # Global Variables
 # null value in the exported DEMs
 INT_NO_DATA_VAL = -9999
-# RLOG = ras2fim_logger.RAS2FIM_logger()
-RLOG = ras2fim_logger.R2F_LOG
 
 
 # -------------------------------------------------

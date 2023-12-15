@@ -11,17 +11,18 @@ import traceback
 import pandas as pd
 
 
+# from tools import RLOG
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import s3_shared_functions as s3_sf
 
-import ras2fim_logger
 import shared_validators as val
 import shared_variables as sv
 from shared_functions import get_stnd_date, print_date_time_duration
 
 
 # Global Variables
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG
 
 
 """
@@ -237,21 +238,10 @@ class Get_Models_By_Catalog:
                     print(self.df_filtered)
                     # don't log this
 
-            # first add two columns, one to say if download succesful (T/F), the other to say
-            # download fail reason
             pd.options.mode.chained_assignment = None
-            # self.df_filtered.loc[:, COL_NAME_DOWNLOAD_SUCCESS] = ""
-            # self.df_filtered.loc[:, MODELS_CATALOG_COLUMN_DOWNLOAD_FAIL_REASON] = ""
 
             # we will save it initially but update it and save it again as it goes
             self.df_filtered.to_csv(self.target_filtered_csv_path, index=False)
-
-            # RLOG.lprint(f"Filtered model catalog saved to : {self.target_filtered_csv_path}")
-            # print("")
-            # print(
-            #    "Note: The csv represents all filtered models folders that are pending to be"
-            #    " downloaded.\nThe csv will be updated with statuses after downloads are complete."
-            # )
 
             # ----------
             # If inc_download_folders, otherwise we just stop.  Sometimes a list is wanted but
@@ -302,6 +292,7 @@ class Get_Models_By_Catalog:
         RLOG.lprint("--------------------------------------")
         RLOG.success(f"Get ras models completed: {get_stnd_date()}")
         RLOG.success(f"Filtered model catalog saved to : {self.target_filtered_csv_path}")
+        print(f"Log file saved to : {RLOG.LOG_FILE_PATH}")
 
         dur_msg = print_date_time_duration(start_dt, dt.datetime.utcnow())
         RLOG.lprint(dur_msg)
@@ -536,3 +527,4 @@ if __name__ == "__main__":
         # The logger does not get setup until after validation, so you may get
         # log system errors potentially when erroring in validation
         RLOG.critical(traceback.format_exc())
+        print(f"Log file saved to : {RLOG.LOG_FILE_PATH}")

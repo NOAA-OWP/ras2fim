@@ -13,14 +13,12 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 
-import ras2fim_logger
 import shared_functions as sf
 import shared_variables as sv
 
 
 # Global Variables
-# RLOG = ras2fim_logger.RAS2FIM_logger()
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG
 
 
 # -----------------------------------------------------------------
@@ -393,6 +391,8 @@ def dir_reformat_ras_rc(
         changelog_path = '../doc/CHANGELOG.md'  # TODO: replace with shared variable?
         ras2fim_version = sf.get_changelog_version(changelog_path)
         source = "ras2fim_" + ras2fim_version
+
+        # print(f'Source: {source}')  # debug
 
         # ------------------------------------------------------------------------------------------------
         # Build output table

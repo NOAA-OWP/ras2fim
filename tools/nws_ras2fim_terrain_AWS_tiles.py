@@ -26,8 +26,8 @@ from rasterio.merge import merge
 from shapely.geometry import Polygon
 
 
-sys.path.append("..")
-import ras2fim.src.shared_functions as sf
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+import shared_functions as sf
 
 
 #########

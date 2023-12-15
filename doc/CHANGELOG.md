@@ -1,6 +1,49 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+
+## v2.0.beta.9 - 2023-12-15 - [PR#222](https://github.com/NOAA-OWP/ras2fim/pull/222)
+
+`create_geocurves.py` was failing to merged up MP_logs (multi-proc logs) into the master log file. Upon review, MP_log was not setup correctly in that file and is now fixed. However, it exposed some required minor changes to how the logging system works as a whole. This triggered minor changes in imports for all file.
+
+Also fixed:
+- Closes Issue [# 70](https://github.com/NOAA-OWP/ras2fim/issues/70): Let ras2fim kick off from root ras2fim and not src directory: An super easy to fix, annoying enhancement. The  user is no longer forced to have to be in the "src" directory to run any scripts. They can not be in the "ras2fim" root. Now we can use commands like "python ./src/ras2fim.py" and "python ./tools/s3_search.py".  Easier to keep the focal point of the app at the root directory of ras2fim
+- `conflate_hecras_to_nwm.py`: had an input arg that was listed a Required but is now Optional.
+
+### Changes  
+- `src`
+    - `calculate_all_terrain_stats.py`: changed logging imports.
+    - `clip_dem_from_shape.py`: changed logging imports.
+    - `conflate_hecras_to_nwm.py`: changed logging imports, plus changed input arg for location of `X_National_datasets` to be optional and defaulted
+    - `convert_tif_to_ras_hdf5.py`: changed logging imports.
+    - `create_fim_rasters.py`: : changed logging imports, plus changed file location where to find the "PlanStandard". This now allows for command pathing to no longer be forced to start from the `src` directory. See note above (Issue 70). It also means the input arg for that path is no longer required.
+    - `create_geocurves.py`: changed logging imports, fixed MP_log issue, changed input arg for producing polygons to default to "true" and only require the `-p` argument if you DO NOT want the producing polygons. This is a follow-up to a different PR that changed the default to produce polygons but we didn't notice the missed change in the input args.
+    - `create_model_domain_polygons.py`: changed logging imports.
+    - `create_shapes_from_hecras.py`: changed logging imports.
+    - `get_usgs_dem_from_shape.py`: changed logging imports.
+    - `errors.py`: renamed to `r2f_errors.py` and changed logging imports. 
+    - `ras2fim.py`: changed logging imports, plus remove need to pass in input path to `create_fim_rasters.py`
+    - `ras2fim_logger.py`: Many changes to fix MP_log and enhance the logging system (stopping circular reference issue). Added an new `MP_log_setup` method for MP_logs and not regular RLogs. Also a bit of code cleanup.
+    - `ras2inundation.py`:  changed logging imports.
+    - `reformat_ras_rating_curve.py`: changed logging imports.
+    - `shared_functions.py`: changed logging imports and a little code cleanup.
+    - `shared_variables.py`: Added R2F_LOG (the instantiation of the logging system to here instead of at the bottom of `ras2fim_logger.py`: This solves some problems that started to occur with circular references.
+    - `simplify_fim_rasters.py`:  changed logging imports.
+    - `worker_fim_rasters.py`:  changed logging imports.
+- `tools`
+    - `get_models_by_catalog.py`:  changed logging imports and a bit of code cleanup.
+    - `nws_ras2fim_clip_dem_from_shape.py`:  changed logging imports (despite being largely deprecated)
+    - `nws_ras2fim_entwine.py`:  changed logging imports (despite being largely deprecated)
+    - `nws_ras2fim_terrain_AWS_tiles.py`:  changed logging imports (despite being largely deprecated)
+    - `nws_ras2fim_terrain_Texas.py`:  changed logging imports (despite being largely deprecated)
+    - `nws_ras2fim_terrain_USGS.py`:  changed logging imports (despite being largely deprecated)
+    - `ras_unit_to_s3.py`:  changed logging imports.
+    - `s3_search_tool.py`:  changed logging imports and a couple console output color code. Was correct to screen but was creating invalid values in the log file.
+    - `s3_shared_functions.py`:  changed logging imports and a couple console output color code. Was correct to screen but was creating invalid values in the log file.
+
+<br/><br/>
+
+
 ## v2.0.beta.8 - 2023-12-15 - [PR#218](https://github.com/NOAA-OWP/ras2fim/pull/218)
 
 Created a new tool that can compare the S3 version of the `OWP_ras_models_catalog.csv` to the S3 models folder. This is to ensure that the master catalog and the model folders stay in sync. There are rules and tests that are applied and recorded in a new report csv showing errors. See PR for those rules.

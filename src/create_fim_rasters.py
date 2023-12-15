@@ -23,13 +23,13 @@ from multiprocessing import Pool
 import geopandas as gpd
 import pandas as pd
 
-import ras2fim_logger
 import shared_functions as sf
+import shared_variables as sv
 import worker_fim_rasters
 
 
 # Global Variables
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG
 
 
 # -------------------------------------------------
@@ -66,7 +66,6 @@ def fn_create_fim_rasters(
     str_output_folder,
     str_projection_path,
     str_terrain_path,
-    str_std_input_path,
     flt_interval,
     b_terrain_check_only,
     is_verbose=False,
@@ -117,13 +116,11 @@ def fn_create_fim_rasters(
     STR_PATH_TO_TERRAIN = str_terrain_path
     RLOG.lprint("  ---(t) TERRAIN PATH: " + STR_PATH_TO_TERRAIN)
 
-    STR_PATH_TO_STANDARD_INPUT = str_std_input_path
-    RLOG.lprint("  ---[s]   Optional: Standard Input Path: " + STR_PATH_TO_STANDARD_INPUT)
-
     # Path to the standard plan file text
-    STR_PLAN_MIDDLE_PATH = STR_PATH_TO_STANDARD_INPUT + r"\PlanStandardText01.txt"
-    STR_PLAN_FOOTER_PATH = STR_PATH_TO_STANDARD_INPUT + r"\PlanStandardText02.txt"
-    STR_PROJECT_FOOTER_PATH = STR_PATH_TO_STANDARD_INPUT + r"\ProjectStandardText01.txt"
+    current_script_dir = os.path.dirname(__file__)
+    STR_PLAN_MIDDLE_PATH = os.path.join(current_script_dir, "\PlanStandardText01.txt")
+    STR_PLAN_FOOTER_PATH = os.path.join(current_script_dir, "\PlanStandardText02.txt")
+    STR_PROJECT_FOOTER_PATH = os.path.join(current_script_dir, "\ProjectStandardText01.txt")
 
     FLT_INTERVAL = flt_interval
     RLOG.lprint("  ---[z]   Optional: Output Elevation Step: " + str(FLT_INTERVAL))
@@ -328,17 +325,6 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-s",
-        dest="str_std_input_path",
-        help="  OPTIONAL: path the to the standard inputs:"
-        r" Example: C:\Users\civil\test1\ras2fim\src : Default: working directory",
-        required=False,
-        default=os.getcwd(),
-        metavar="FILE",
-        type=str,
-    )
-
-    parser.add_argument(
         "-z",
         dest="flt_interval",
         help=r"  OPTIONAL: elevation interval of output grids: Example: 0.2 : Default: 0.5",
@@ -375,7 +361,6 @@ if __name__ == "__main__":
     str_output_folder = args["str_output_folder"]
     str_projection_path = args["str_projection_path"]
     str_terrain_path = args["str_terrain_path"]
-    str_std_input_path = args["str_std_input_path"]
     flt_interval = args["flt_interval"]
     b_terrain_check_only = args["b_terrain_check_only"]
     is_verbose = args["is_verbose"]
@@ -400,7 +385,6 @@ if __name__ == "__main__":
             str_output_folder,
             str_projection_path,
             str_terrain_path,
-            str_std_input_path,
             flt_interval,
             b_terrain_check_only,
             is_verbose,
