@@ -307,6 +307,9 @@ def fn_run_ras2fim(
 
     # run the third script
     if int_step <= 3:
+        # provide conflation qc file to mark the parent models that conflated to NWM reaches
+        conflation_qc_path = os.path.join(str_shapes_from_conflation_dir, "%s_stream_qc.csv" % str_huc8_arg)
+        
         if str_terrain_override == "None Specified - using USGS WCS":
             # create terrain from the USGS WCS
             fn_get_usgs_dem_from_shape(
@@ -320,13 +323,18 @@ def fn_run_ras2fim(
             )
         else:
             # user has supplied the terrain file
+            str_cross_sections_path = str_shapes_from_hecras_dir + "\\cross_section_LN_from_ras.shp"
+            str_huc12_path = str_nation_arg + "\\" + sv.INPUT_WBD_NATIONAL_FILE
+           
+
             fn_cut_dems_from_shapes(
-                str_input_path,
+                str_huc12_path,
+                str_cross_sections_path,
+                conflation_qc_path,
                 str_terrain_override,
                 str_terrain_from_usgs_dir,
                 int_buffer,
                 model_unit,
-                str_field_name,
             )
     # -------------------------------------------
 
