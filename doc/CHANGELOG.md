@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.11 - 2023-12-15 - [PR#227](https://github.com/NOAA-OWP/ras2fim/pull/227)
+## v2.0.beta.11 - 2023-12-18 - [PR#227](https://github.com/NOAA-OWP/ras2fim/pull/227)
 
 In today's, Dec 15, 2023, merge from [PR 225](https://github.com/NOAA-OWP/ras2fim/pull/225) into Dev, there was some merge conflicts which were fixed on the fly.  During post merge testing, it appears some of the merging was not 100% successful and will be fixed as part of this card.
 
