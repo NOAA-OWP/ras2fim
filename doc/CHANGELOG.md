@@ -1,6 +1,24 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.11 - 2023-12-18 - [PR#227](https://github.com/NOAA-OWP/ras2fim/pull/227)
+
+In today's, Dec 15, 2023, merge from [PR 225](https://github.com/NOAA-OWP/ras2fim/pull/225) into Dev, there was some merge conflicts which were fixed on the fly.  During post merge testing, it appears some of the merging was not 100% successful and will be fixed as part of this card.
+
+Also noticed a few other minor pathing required fixes based on other modules in today's merge.
+
+Note: At this point in the current V2 rebuild, ras2fim.py should work up to the end of Step 4 and break on Step 5.
+
+### Changes  
+
+- `src`
+    - `clip_dem_from_shape.py`: a few minor text changes.
+    - `conflate_hecras_to_nwm.py`: Correct merge issues. Some of this was due to merge conflicts that needed to be fixed by hand such as some functions disappearing. Also added a few text fixes. Also fixed a small output pathing issue for folders for the 04_hecras_terrain folder.
+    - `ras2fim.py`: Minor linting fixes, plus changing a variable path value from Step 2 to Step 3.
+    - `worker_fim_rasters.py`: Minor linting fixes.
+
+<br/><br/>
+
 ## v2.0.beta.10 - 2023-12-15 - [PR#225](https://github.com/NOAA-OWP/ras2fim/pull/225)
 
 This PR is to complete the step 5 `worker_fim_raster.py` of ras2fim v2 and apply a couple of fixes to step 2 `conflate_hecras_to_nwm.py` results. They include:
