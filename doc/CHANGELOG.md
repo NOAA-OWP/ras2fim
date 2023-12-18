@@ -13,7 +13,7 @@ Note: At this point in the current V2 rebuild, ras2fim.py should work up to the 
 
 - `src`
     - `clip_dem_from_shape.py`: a few minor text changes.
-    - `conflate_hecras_to_nwm.py`: Correct merge issues. Some of this was due to merge conflicts that needed to be fixed by hand such as some functions disappearing. Also added a few text fixes.
+    - `conflate_hecras_to_nwm.py`: Correct merge issues. Some of this was due to merge conflicts that needed to be fixed by hand such as some functions disappearing. Also added a few text fixes. Also fixed a small output pathing issue for folders for the 04_hecras_terrain folder.
     - `ras2fim.py`: Minor linting fixes, plus changing a variable path value from Step 2 to Step 3.
     - `worker_fim_rasters.py`: Minor linting fixes.
 

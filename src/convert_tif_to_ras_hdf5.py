@@ -100,29 +100,29 @@ def fn_convert_tif_to_ras_hdf5(
     # path to the directory that contains RasProcess and associated dll
 
     STR_HEC_RAS_6_PATH = str_hec_path
-    RLOG.lprint("  ---(r) HEC-RAS PATH: " + str(STR_HEC_RAS_6_PATH))
+    RLOG.lprint(f"  ---(r) HEC-RAS PATH: {STR_HEC_RAS_6_PATH}")
 
     # STR_HEC_RAS_6_PATH = r'C:\Program Files (x86)\HEC\HEC-RAS\6.3'
     STR_HEC_RAS_6_PATH += r"\RasProcess.exe"
 
     # path to walk to file geotiffs
     STR_CONVERT_FILEPATH = str_geotiff_dir
-    RLOG.lprint("  ---(i) GEOTIFF INPUT PATH: " + str(STR_CONVERT_FILEPATH))
+    RLOG.lprint(f"  ---(i) GEOTIFF INPUT PATH: {STR_CONVERT_FILEPATH}")
 
     # path to walk to file geotiffs
     STR_RAS_TERRAIN_OUT = str_dir_to_write_hdf5
-    RLOG.lprint("  ---(o) DIRECTORY TO WRITE TERRAIN HDF5: " + str(STR_RAS_TERRAIN_OUT))
+    RLOG.lprint(f"  ---(o) DIRECTORY TO WRITE TERRAIN HDF5: {STR_RAS_TERRAIN_OUT}")
 
     # path to walk to file geotiffs
     STR_PRJ_FILE = str_projection
-    RLOG.lprint("  ---(p) PROJECTION TO WRITE DEMS: " + str(STR_PRJ_FILE))
+    RLOG.lprint(f"  ---(p) PROJECTION TO WRITE DEMS: {STR_PRJ_FILE}")
 
-    RLOG.lprint("  --- The Ras Models unit (extracted from given GIS prj file): " + model_unit)
+    RLOG.lprint(f"  --- The Ras Models unit (extracted from given GIS prj file): {model_unit}")
 
     RLOG.lprint("===================================================================")
 
-    list_processed_dem = fn_get_filepaths(STR_CONVERT_FILEPATH, "tif")
-    len_processed_dems = len(list_processed_dem)
+    list_processed_dems = fn_get_filepaths(STR_CONVERT_FILEPATH, "tif")
+    len_processed_dems = len(list_processed_dems)
 
     str_prefix = "Converting Terrains: "
     fn_print_progress_bar(0, len_processed_dems, prefix=str_prefix, suffix="Complete", length=29)
@@ -130,46 +130,42 @@ def fn_convert_tif_to_ras_hdf5(
     int_count = 0
     int_valid_count = 0
 
-    for i in list_processed_dem:
+    # Build a CLI call for RasProcess.exe CreateTerrain for each dem
+    cli_command_base = f"\"{STR_HEC_RAS_6_PATH}\" CreateTerrain"
+    cli_command_base += " units="
+    if model_unit == "feet":
+        cli_command_base += "Feet"
+    else:
+        cli_command_base += "Meter"
+    cli_command_base += " stitch=true"
+    cli_command_base += f" prj=\"{STR_PRJ_FILE}\""
+    # ie) '"C:\\Program Files (x86)\\HEC\\HEC-RAS\\6.3\\RasProcess.exe" CreateTerrain units=Feet stitch=true
+    #  prj="c:\\ras2fim_data\\output_ras2fim\\12030105_2276_231218
+    #      \\02_csv_shapes_from_conflation\\12030105_huc_12_ar.prj"
+
+    for dem_path in list_processed_dems:
         int_count += 1
 
         fn_print_progress_bar(int_count, len_processed_dems, prefix=str_prefix, suffix="Complete", length=29)
 
-        # Build a CLI call for RasProcess.exe CreateTerrain for each
-        # terarin tile (HUC-12) in the list
+        dem_file_name = os.path.basename(dem_path)
+        dem_file_name = dem_file_name.replace(".tif", ".hdf")
+        out_file_path = os.path.join(STR_RAS_TERRAIN_OUT, dem_file_name)
 
-        str_path_ras = '"' + STR_HEC_RAS_6_PATH + '"' + " CreateTerrain"
-        str_path_ras += " units="
+        cli_cmd = f"{cli_command_base} out=\"{out_file_path}\" \"{dem_path}\""
 
-        if model_unit == "feet":
-            str_path_ras += "Feet"
-        else:
-            str_path_ras += "Meter"
-
-        str_path_ras += " stitch=true prj="
-        str_path_ras += '"' + STR_PRJ_FILE + '"'
-        str_path_ras += " out="
-        str_path_ras += '"' + STR_RAS_TERRAIN_OUT + "\\"
-
-        str_path_ras += i[-16:-4] + ".hdf" + '"'
-        str_path_ras += " " + i
-
-        # print(str_path_ras)
-
-        int_return_code = subprocess.check_call(
-            str_path_ras, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT
-        )
+        int_return_code = subprocess.check_call(cli_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
         if int_return_code == 0:
             int_valid_count += 1
         else:
-            RLOG.error(f"Error on: {i} ({STR_CONVERT_FILEPATH})")
+            RLOG.error(f"Error on: {dem_path} ({STR_CONVERT_FILEPATH})")
 
         # A '0' error code will be given if the file already exists in the
         # output directory.  Terrain will not be over-written with this
         # routine.  It will be skipped.
 
     RLOG.lprint("+-----------------------------------------------------------------+")
-    if int_valid_count == len(list_processed_dem):
+    if int_valid_count == len(list_processed_dems):
         RLOG.success("All terrains processed successfully")
     else:
         RLOG.error(F"Errors when processing {STR_CONVERT_FILEPATH} - Check output or logs")
@@ -188,7 +184,7 @@ if __name__ == "__main__":
     # python convert_tif_to_ras_hdf5.py
     #  -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\03_terrain
     #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\04_hecras_terrain
-    #  -p c:\.....\12030105_2276_231024\02_shapes_from_conflation\12030105_huc_12_ar.prj
+    #  -p c:\......\12030105_2276_231024\02_csv_shapes_from_conflation\12030105_huc_12_ar.prj
 
     parser = argparse.ArgumentParser(
         description="==== CONVERT TERRAIN GeoTIFFS TO HEC-RAS TERRAINS (HDF5) ==="
