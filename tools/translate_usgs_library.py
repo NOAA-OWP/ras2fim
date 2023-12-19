@@ -211,7 +211,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
             union['discharge_cms'] = round((union['discharge_cfs'] * 0.0283168), 3)
             union['stage_m'] = round(union['stage_ft'] * 0.3048, 3)  # Convert feet to meters
             union['version'] = 'usgs_fim'  # Assuming a constant value
-            union['stage_mm'] = union['stage_m'] * 100
+            union['stage_mm'] = round(union['stage_m'] * 100, 3)
             union['wse_m'] = round(union['wse_ft'] * 0.3048, 3)
             union['valid'] = union.is_valid
             columns_to_keep = ['discharge_cms', 'discharge_cfs', 'stage_m', 'version', 'stage_ft', 'wse_ft', 'geometry', 'feature_id', 'stage_mm', 'wse_m', 'valid']
