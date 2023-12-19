@@ -44,8 +44,6 @@ def reformat_to_hydrovis_geocurves(site, best_match_path, usgs_gages_gdf):
 
 def get_union(catchments_gdf, subset_fim_gdf, site_stage):
 
-    print("Unioning stage: " + site_stage)
-
     # Subset subset_fim_gdf to only stage of interes
     stage_subset_fim_gdf = subset_fim_gdf.loc[subset_fim_gdf.STAGE==site_stage]
                 
@@ -57,6 +55,11 @@ def get_union(catchments_gdf, subset_fim_gdf, site_stage):
     stage_subset_fim_gdf = stage_subset_fim_gdf.dissolve(by="dissolve")
     # Cut dissolved geometry to align with catchment breakpoints and associate feature_ids (union)
     union = gpd.overlay(stage_subset_fim_gdf, catchments_gdf)
+
+    # # Drop unnecessary columns
+    # columns_to_keep = ['fid', 'STAGE', 'ELEV', 'QCFS', 'feature_id', 'order_', 'discharge']
+    # columns_to_drop = [col for col in union.columns if col not in columns_to_keep]
+    # union.drop(columns=columns_to_drop, inplace=True)
 
     return union
     
@@ -88,7 +91,6 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
         site_start = timer()
         site = row['usgs_id']
         geometry = row['geometry']
-        huc12 = row['huc12']
 
         # Subset usgs_rc_df to only gage of interest
         subset_usgs_rc_df = usgs_rc_df.loc[usgs_rc_df.location_id == int(site)]
@@ -115,6 +117,10 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
         if not os.path.exists(branch_parent_dir):
             os.mkdir(branch_parent_dir)
 
+        final_dir = os.path.join(site_dir, 'final')
+        if not os.path.exists(final_dir):
+            os.mkdir(final_dir)
+
         # Load USGS FIM Library geopackage
         print("Loading USGS FIM library for site " + site + "...")
         usgs_lib_start = timer()
@@ -123,7 +129,8 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
 
         # Determine HUC8  TODO would be faster if FIM library had HUC8 attribute
         try:
-            huc8 = usgs_gages_gdf.loc[usgs_gages_gdf.location_id == site].HUC8.values[0]
+            huc12 = usgs_gages_gdf.loc[usgs_gages_gdf.SITE_NO == site].huc12.values[0]
+            huc8 = huc12[:8]
         except IndexError as e:
             print(e)
             continue  # TODO log, why?
@@ -186,34 +193,43 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
         for site_stage in site_stages:
             if iteration == 1:
                 union = get_union(best_match_catchments_gdf, subset_fim_gdf, site_stage)
-                union['discharge'] = np.interp([site_stage], subset_usgs_rc_df['stage'], subset_usgs_rc_df['flow'])[0]
+                union['discharge_cfs'] = round((np.interp([site_stage], subset_usgs_rc_df['stage'], subset_usgs_rc_df['flow'])[0]), 3)
             else:
                 union_to_append = get_union(best_match_catchments_gdf, subset_fim_gdf, site_stage)
-                union_to_append['discarge'] = np.interp([site_stage], subset_usgs_rc_df['stage'], subset_usgs_rc_df['flow'])[0]
+                union_to_append['discharge_cfs'] = round((np.interp([site_stage], subset_usgs_rc_df['stage'], subset_usgs_rc_df['flow'])[0]), 3)
 
                 union = pd.concat([union, union_to_append])
 
             iteration += 1
-            # Use subset_usgs_rc_df to interpolate discharge from stage
+        # Save as geopackage (temp) 5793592_HUC_120903010404_rating_curve_geo.csv
+        # TODO write individual geopackages in the same format as RAS2FIM (Ask Carson for latest released data)
+        
+
+        if union.empty == False:
+            # Clean up geodataframe to match ras2fim schema
+            union.rename(columns={'STAGE': 'stage_ft', 'ELEV': 'wse_ft', 'QCFS': 'orig_cfs'}, inplace=True)
+            union['discharge_cms'] = round((union['discharge_cfs'] * 0.0283168), 3)
+            union['stage_m'] = round(union['stage_ft'] * 0.3048, 3)  # Convert feet to meters
+            union['version'] = 'usgs_fim'  # Assuming a constant value
+            union['stage_mm'] = union['stage_m'] * 100
+            union['wse_m'] = round(union['wse_ft'] * 0.3048, 3)
+            union['valid'] = union.is_valid
+            columns_to_keep = ['discharge_cms', 'discharge_cfs', 'stage_m', 'version', 'stage_ft', 'wse_ft', 'geometry', 'feature_id', 'stage_mm', 'wse_m', 'valid']
+            union_subset = union[columns_to_keep]
+
+            output_shapefile = os.path.join(final_dir, str(site) + '_' + branch_id + '.gpkg')
+            union_subset.to_file(output_shapefile, driver='GPKG')
             
+        # Subset to each feature_id
+        feature_id_list = list(union_subset.feature_id.unique())
+        for feature_id_item in feature_id_list:
+            feature_id_subset = union_subset.loc[union_subset.feature_id == feature_id_item]
+            feature_id_output_csv = os.path.join(final_dir, str(int(feature_id_item)) + '_HUC_' + huc12 + '_rating_curve_geo.csv')
+            feature_id_subset.to_csv(feature_id_output_csv)
 
-
-
-
-            # Save as geopackage (temp)
-            output_shapefile = os.path.join(branch_output_dir, str(site) + '_' + branch_id + '_' + str(site_stage).replace(".","_") + '.gpkg')
-            if union.empty == False:
-                union.to_file(output_shapefile, driver='GPKG')
-            del union
+        #del union
                 
         print(site + f" completed in {round((timer() - site_start)/60, 2)} minutes.")
-
-        # TODO Need function here to reformat best_match_path data to match HydroVIS format
-        #reformat_to_hydrovis_geocurves(site, best_match_path, usgs_gages_gdf)
-        
-        # Save as CSV (move to very end later, after combining all geopackages)
-        # output_csv = os.path.join(site_dir, huc8 + "_" + site + '_geocurves.csv')
-        # best_match_gdf.to_csv(output_csv)
         print()
         
 
