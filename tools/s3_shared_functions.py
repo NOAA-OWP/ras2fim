@@ -22,7 +22,7 @@ import shared_variables as sv
 RLOG = ras2fim_logger.R2F_LOG
 
 
-####################################################################
+# -------------------------------------------------
 def upload_file_to_s3(bucket_name, src_path, s3_folder_path, file_name="", show_upload_msg=True):
     """
     Overview:
@@ -79,7 +79,7 @@ def upload_file_to_s3(bucket_name, src_path, s3_folder_path, file_name="", show_
         raise ex
 
 
-###################################################################
+# -------------------------------------------------
 def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name, skip_files=[]):
     """
     Input
@@ -202,7 +202,7 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
         raise ex
 
 
-####################################################################
+# -------------------------------------------------
 def delete_s3_folder(bucket_name, s3_folder_path):
     """
     Overview:
@@ -296,7 +296,7 @@ def delete_s3_folder(bucket_name, s3_folder_path):
         raise ex
 
 
-####################################################################
+# -------------------------------------------------
 def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_path):
     """
     Overview:
@@ -417,7 +417,7 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         raise ex
 
 
-####################################################################
+# -------------------------------------------------
 def get_records(bucket_name, s3_src_folder_path, search_key, is_verbose=True):
     """
     Process:
@@ -511,7 +511,7 @@ def get_records(bucket_name, s3_src_folder_path, search_key, is_verbose=True):
         raise ex
 
 
-####################################################################
+# -------------------------------------------------
 def download_folders(
     s3_src_parent_path: str, local_parent_folder: str, df_folder_list, df_download_column_name: str
 ):
@@ -701,7 +701,7 @@ def download_folders(
     return df_folder_list
 
 
-####################################################################
+# -------------------------------------------------
 def download_folder(bucket_name, folder_id, s3_src_folder, target_local_folder):
     # TODO (Nov 22, 2023 - add arg validation)
     """
@@ -749,7 +749,7 @@ def download_folder(bucket_name, folder_id, s3_src_folder, target_local_folder):
     return result
 
 
-####################################################################
+# -------------------------------------------------
 def is_valid_s3_folder(s3_bucket_and_folder):
     """
     Process:  This will throw exceptions for all errors
@@ -799,7 +799,7 @@ def is_valid_s3_folder(s3_bucket_and_folder):
     return bucket_name, s3_folder_path
 
 
-####################################################################
+# -------------------------------------------------
 def does_s3_bucket_exist(bucket_name):
     client = boto3.client("s3")
 
@@ -823,7 +823,7 @@ def does_s3_bucket_exist(bucket_name):
     # other exceptions can be passed through
 
 
-####################################################################
+# -------------------------------------------------
 def parse_unit_folder_name(unit_folder_name):
     """
     Overview:

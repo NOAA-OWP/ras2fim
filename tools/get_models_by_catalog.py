@@ -69,7 +69,6 @@ Features for this tool include:
 
 # -------------------------------------------------
 class Get_Models_By_Catalog:
-
     # -------------------------------------------------
     # default values listed in "__main__"  but also here in case code calls direct..
     # aka. not through "__main__"
@@ -227,7 +226,7 @@ class Get_Models_By_Catalog:
 
             # Adding a model_id column starting at number 10000 and incrementing by one
             # Adding new column
-            self.df_filtered.sort_values(by=[sv.COL_NAME_FINAL_NAME_KEY], inplace=True)            
+            self.df_filtered.sort_values(by=[sv.COL_NAME_FINAL_NAME_KEY], inplace=True)
             self.df_filtered.insert(0, sv.COL_NAME_MODEL_ID, range(10001, 10001 + len(self.df_filtered)))
 
             if self.is_verbose is True:
@@ -534,8 +533,6 @@ if __name__ == "__main__":
         obj.get_models(**args)
 
     except Exception:
-
         # The logger does not get setup until after validation, so you may get
         # log system errors potentially when erroring in validation
         RLOG.critical(traceback.format_exc())
-
