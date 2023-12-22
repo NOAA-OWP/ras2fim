@@ -23,18 +23,14 @@ RLOG = ras2fim_logger.R2F_LOG
 
 
 # -------------------------------------------------
-def upload_file_to_s3(bucket_name, src_path, s3_folder_path, file_name="", show_upload_msg=True):
+def upload_file_to_s3(src_path, full_s3_path_and_file_name):
     """
     Overview:
         This file upload will overwrite an existing file it if already exists. Use caution
 
     Input
         - src_path: e.g c:\ras2fim_data\output_ras2fim\my_file.csv
-        - bucket_name: e.g mys3bucket_name
-        - s3_folder_path: e.g.  output_ras2fim or temp\robh
-        - file_name: If this is empty, then the file name from the source
-            will be used. Otherwise, this becomes the new files name in S3
-
+        - full_s3_path_and_file_name: e.g s3://mys3bucket_name/output_ras2fim/some_file.txt
     """
 
     # yes.. outside the try/except
@@ -42,27 +38,24 @@ def upload_file_to_s3(bucket_name, src_path, s3_folder_path, file_name="", show_
         raise FileNotFoundError(src_path)
 
     try:
-        if file_name == "":
-            # strip it out the source name
-            s3_file_name = os.path.basename(src_path)
-        else:
-            s3_file_name = file_name
+        if full_s3_path_and_file_name == "":
+            raise Exception(f"full s3 path and file name is not defined")
 
-        # safety feature in case we have more than one foreward slash as that can
-        # be a mess in S3 (it will honor all slashs)
-        s3_folder_path = s3_folder_path.replace("//", "/")
+        # we need the "s3 part stripped off for now" (if it is even there)
+        adj_s3_path = full_s3_path_and_file_name.replace("s3://", "")
+        path_segs = adj_s3_path.split("/")
+        bucket_name = path_segs[0]
+        # could have subfolders
+        s3_key_path = adj_s3_path.replace(bucket_name, "", 1) 
+        s3_key_path = s3_key_path.lstrip("/")
 
-        s3_full_target_path = f"s3://{bucket_name}/{s3_folder_path}"
-
-        s3_key_path = f"{s3_folder_path}/{s3_file_name}"
+        if len(s3_key_path) == 0:
+            raise Exception(f"full s3 path and file name of {full_s3_path_and_file_name} is invalid")
 
         client = boto3.client("s3")
 
         with open(src_path, "rb"):
             client.upload_file(src_path, bucket_name, s3_key_path)
-
-            if show_upload_msg is True:
-                RLOG.lprint(f".... File uploaded {src_path} as {s3_full_target_path}/{s3_file_name}")
 
     except botocore.exceptions.NoCredentialsError:
         RLOG.critical("-----------------")
@@ -817,8 +810,52 @@ def does_s3_bucket_exist(bucket_name):
     except client.exceptions.NoSuchBucket:
         return False
 
-    except ClientError:
+    except ClientError as ce:
+        RLOG.critical(f"** An error occurred while talking to S3. Details: {ce}")        
+        sys.exit(1)
+
+    # other exceptions can be passed through
+
+
+# -------------------------------------------------
+def does_s3_file_exist(full_s3_path_and_file_name):
+    """
+    Process:  This will throw exceptions for all errors
+    Input:
+        - full_s3_path_and_file_name: eg. s3://ras2fim/OWP_ras_models/myfile.txt
+    Output:
+        True (exists) or False
+    """
+
+    if full_s3_path_and_file_name.endswith("/"):
+        full_s3_path_and_file_name = full_s3_path_and_file_name[:-1]
+
+    # we need the "s3 part stripped off for now" (if it is even there)
+    adj_s3_path = full_s3_path_and_file_name.replace("s3://", "")
+    path_segs = adj_s3_path.split("/")
+    bucket_name = path_segs[0]
+    s3_file_path = adj_s3_path.replace(bucket_name, "", 1)
+    s3_file_path = s3_file_path.lstrip("/")
+
+    client = boto3.client("s3")
+
+    try:
+        resp = client.list_objects_v2(Bucket=bucket_name, Prefix=s3_file_path)
+        if 'Contents' in resp:
+            return True
+        else:
+            return False
+
+    except botocore.exceptions.NoCredentialsError:
+        RLOG.critical("** Credentials not available for submitted bucket. Try aws configure")
+        sys.exit(1)
+
+    except client.exceptions.NoSuchBucket:
         return False
+
+    except ClientError as ce:
+        RLOG.critical(f"** An error occurred while talking to S3. Details: {ce}")
+        sys.exit(1)
 
     # other exceptions can be passed through
 

@@ -93,11 +93,11 @@ def is_valid_huc(huc_number):
         return False, err_msg
 
     if len(str(huc_number)) != 8:
-        err_msg = "huc number is not eight characters in length"
+        err_msg = f"huc number of {huc_number} is not eight characters in length"
         return False, err_msg
 
     if huc_number.isnumeric() is False:
-        err_msg = "huc number is not a number"
+        err_msg = f"huc number of {huc_number} is not a number"
         return False, err_msg
 
     return True, ""

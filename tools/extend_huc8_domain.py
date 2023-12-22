@@ -6,10 +6,12 @@ import traceback
 
 import colored as cl
 import geopandas as gpd
+import pyproj
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import ras2fim_logger
+import shared_validators as val
 import shared_variables as sv
 from shared_functions import get_stnd_date, print_date_time_duration
 
@@ -19,10 +21,15 @@ RLOG = ras2fim_logger.R2F_LOG
 
 
 # -------------------------------------------------
-def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path, run_by_cmd=True):
+def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path,
+                          target_projection, run_by_cmd=True):
     '''
     TODO
     Overview, inputs, etc
+
+    Note: Default for projection is 5070, but when it comes in via acquire_and_preprocess_3dep,
+    it needs to change it's proj to 4269 (current USGS vrt proj), this will detect current gkpg
+    proj and adjust the output if required. Current WBD_national is in 3857.
 
     '''
     print()
@@ -30,27 +37,27 @@ def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path, run_by
 
     if run_by_cmd is True:
         RLOG.lprint("****************************************")
-        RLOG.lprint("==== Make a polygon for HUC8 extended domain ===")
+        RLOG.notice("==== Make a polygon for HUC8 extended domain ===")
+        RLOG.lprint(f"    Started (UTC): {get_stnd_date()}")        
         RLOG.lprint(f"  --- (-huc) Target HUC8 number: {target_huc8}")
         RLOG.lprint(f"  --- (-wbd) Path to WBD HUC12s gkpg: {path_wbd_huc12s_gpkg}")
+
+
+
+
         RLOG.lprint(f"  --- (-o) Path to output folder: {output_path}")
-        RLOG.lprint(f"    Started (UTC): {get_stnd_date()}")
         RLOG.lprint("+-----------------------------------------------------------------+")
     else:
-        RLOG.lprint(f"  -- Making extended domain file for {target_huc8}")
+        RLOG.notice(f" -- Making extended domain file for {target_huc8}")
         RLOG.lprint(f"    Started (UTC): {get_stnd_date()}")
 
     try:
         # ------------
         # Validation code (more applicable if it came in via command line)
-        if target_huc8 is None:  # Possible if not coming via the __main__ (also possible)
-            raise ValueError("huc number not set")
 
-        if len(str(target_huc8)) != 8:
-            raise ValueError("huc number is not eight characters in length")
-
-        if target_huc8.isnumeric() is False:
-            raise ValueError("huc number is not a number")
+        huc_valid, err_msg = val.is_valid_huc(target_huc8)
+        if huc_valid is False:
+            raise ValueError(err_msg)
 
         if os.path.exists(path_wbd_huc12s_gpkg) is False:
             raise ValueError(f"File path to {path_wbd_huc12s_gpkg} does not exist")
@@ -82,7 +89,7 @@ def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path, run_by
                 sys.exit(0)
 
             elif (resp) == "skip":
-                return
+                return output_file
             else:
                 if (resp) != "overwrite":
                     RLOG.lprint(f"\n.. You have entered an invalid response of {resp}. Program stopped.\n")
@@ -92,12 +99,15 @@ def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path, run_by
             os.makedirs(output_path, exist_ok=True)
 
         # ------------
-        print(" *** Be patient, this may take up to 10 mins depending on computer resources")
+        print(" *** Stand by, this may take up to 10 mins depending on computer resources")
         # read wbd huc12s
         wbd_huc12s = gpd.read_file(path_wbd_huc12s_gpkg)[['geometry', 'HUC_8', 'HUC_12']]
 
         # make sure the huc_8 values are read as string
         wbd_huc12s['HUC_8'] = wbd_huc12s['HUC_8'].astype(str)
+
+        # crs of the wbd (short form) ie) epsg:3857
+        wbd_crs = wbd_huc12s.crs.srs
 
         # make domain of the target huc8
         huc8_domain = wbd_huc12s[wbd_huc12s['HUC_8'] == str(target_huc8)]
@@ -108,14 +118,20 @@ def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path, run_by
         extended_huc12s.loc[:, 'dissolve_index'] = 1
         extended_domain = extended_huc12s.dissolve(by="dissolve_index").reset_index()
 
-        extended_domain.to_file(output_file, driver='GPKG')
+        # reproject the shapefile to the CRS of virtual raster (VRT)
+        # if it does not already match the target
+        if (target_projection.lower() != wbd_crs):
+            extended_domain.to_file(output_file, driver='GPKG', crs=target_projection)
+        else:
+            extended_domain.to_file(output_file, driver='GPKG')
 
         RLOG.lprint("--------------------------------------")
-        RLOG.success(f" HUC8 extended domain created: {get_stnd_date()}")
+        RLOG.success(f" - HUC8 extended domain created: {get_stnd_date()}")
         dur_msg = print_date_time_duration(start_dt, dt.datetime.utcnow())
         RLOG.lprint(dur_msg)
-
         print()
+
+        return output_file
 
     except ValueError as ve:
         RLOG.critical(ve)
@@ -171,6 +187,14 @@ if __name__ == "__main__":
         metavar="",
     )
 
+    parser.add_argument(
+        '-proj',
+        '--target_projection',
+        help=f'OPTIONAL: Desired output CRS. Defaults to {sv.DEFAULT_RASTER_OUTPUT_CRS}',
+        required=False,
+        default=sv.DEFAULT_RASTER_OUTPUT_CRS,
+    )
+
     args = vars(parser.parse_args())
 
     log_file_folder = args["output_path"]
@@ -188,6 +212,8 @@ if __name__ == "__main__":
 
         # call main program
         fn_extend_huc8_domain(**args)
+
+        print(f"log files saved to {RLOG.LOG_FILE_PATH}")
 
     except Exception:
         RLOG.critical(traceback.format_exc())

@@ -81,11 +81,10 @@ def init_and_run_ras2fim(
 
     # -------------------
     # -w   (ie 12090301)
-    if len(str_huc8_arg) != 8:
-        raise ValueError("the -w flag (HUC8) is not 8 characters long")
-    if str_huc8_arg.isnumeric() is False:  # can handle leading zeros
-        raise ValueError("the -w flag (HUC8) does not appear to be a HUC8")
-
+    huc_valid, err_msg = val.is_valid_huc(str_huc8_arg)
+    if huc_valid is False:
+        raise ValueError(err_msg)    
+    
     # -------------------
     # -i  (ie OWP_ras_models\models) (HECRAS models)
     if os.path.exists(input_models_path) is False:
