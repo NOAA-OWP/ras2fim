@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import argparse
 import errno
 import os
@@ -8,8 +7,10 @@ from timeit import default_timer as timer
 
 import geopandas as gpd
 import pandas as pd
+from shapely import wkt
 
 import ras2fim_logger
+import shared_variables as sv
 
 
 # Global Variables
@@ -54,11 +55,16 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
             available_feature_id_list.append(feature_id)
             geocurve_path_dictionary.update({feature_id: {"path": os.path.join(geocurves_dir, geocurve)}})
 
+    # get ras2fom version from just one of the geocurve files
+    for _, geocurve_file_path in geocurve_path_dictionary.items():
+        sample_geocurve_data = pd.read_csv(geocurve_file_path["path"])
+        ras2fim_version = sample_geocurve_data.loc[0, "version"]
+        break
+
     # Open flow_file to detemine feature_ids to process
     flow_file_df = pd.read_csv(flow_file)
 
     # Loop through feature_ids and concatenate into a single dataframe
-    iteration = 0
     feature_id_polygon_path_dict = {}
     for feature_id in flow_file_df["feature_id"]:
         if str(feature_id) not in available_feature_id_list:
@@ -78,30 +84,43 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         geocurve_df = pd.read_csv(geocurve_file_path)
         row_idx = geocurve_df["discharge_cms"].sub(discharge_cms).abs().idxmin()
         subset_geocurve = geocurve_df.iloc[row_idx]
-        polygon_filename = subset_geocurve["filename"]
-        polygon_path = os.path.join(os.path.split(geocurves_dir)[0], "polys", polygon_filename)
-        if os.path.exists(polygon_path):
-            feature_id_polygon_path_dict.update(
-                {feature_id: {"discharge_cms": discharge_cms, "path": polygon_path}}
-            )
+        polygon_geometry = wkt.loads(subset_geocurve["geometry"])
+        stage_m = subset_geocurve["stage_m"]
 
-        iteration += 1
+        feature_id_polygon_path_dict.update(
+            {
+                feature_id: {
+                    "discharge_cms": discharge_cms,
+                    "polygon_geometry": polygon_geometry,
+                    "stage_m": stage_m,
+                }
+            }
+        )
 
     # Concatenate entire list of desired polygons into one geodataframe
     iteration = 0
     for feature_id in feature_id_polygon_path_dict:
         if iteration == 0:
-            gdf = gpd.read_file(feature_id_polygon_path_dict[feature_id]["path"])
+            gdf = gpd.GeoDataFrame(geometry=[feature_id_polygon_path_dict[feature_id]["polygon_geometry"]])
+            gdf["feature_id"] = feature_id
             gdf["discharge_cms"] = feature_id_polygon_path_dict[feature_id]["discharge_cms"]
+            gdf["stage_m"] = feature_id_polygon_path_dict[feature_id]["stage_m"]
         else:
-            new_gdf = gpd.read_file(feature_id_polygon_path_dict[feature_id]["path"])
+            new_gdf = gpd.GeoDataFrame(
+                geometry=[feature_id_polygon_path_dict[feature_id]["polygon_geometry"]]
+            )
+            new_gdf["feature_id"] = feature_id
             new_gdf["discharge_cms"] = feature_id_polygon_path_dict[feature_id]["discharge_cms"]
+            new_gdf["stage_m"] = feature_id_polygon_path_dict[feature_id]["stage_m"]
             gdf = gpd.pd.concat([gdf, new_gdf])
 
         iteration += 1
 
     RLOG.lprint("Writing final output: " + output_inundation_poly)
     # Now you have the GeoDataFrame `gdf` with polygons, and you can write it to a GeoPackage
+
+    gdf['version'] = ras2fim_version
+    gdf.crs = sv.DEFAULT_RASTER_OUTPUT_CRS
     gdf.to_file(output_inundation_poly, driver="GPKG")
 
 
