@@ -6,7 +6,6 @@ import traceback
 
 import colored as cl
 import geopandas as gpd
-import pyproj
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
@@ -21,17 +20,14 @@ RLOG = ras2fim_logger.R2F_LOG
 
 
 # -------------------------------------------------
-def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path,
-                          target_projection, run_by_cmd=True):
+def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path, run_by_cmd=True):
     '''
-    TODO
-    Overview, inputs, etc
+    TODO  (more notes, input, outputs    )
 
-    Note: Default for projection is 5070, but when it comes in via acquire_and_preprocess_3dep,
-    it needs to change it's proj to 4269 (current USGS vrt proj), this will detect current gkpg
-    proj and adjust the output if required. Current WBD_national is in 3857.
-
+    Overview:
+        Note: WBD_National is at crs EPSG:4269, but this script does not attempt to reproject
     '''
+
     print()
     start_dt = dt.datetime.utcnow()
 
@@ -41,10 +37,6 @@ def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path,
         RLOG.lprint(f"    Started (UTC): {get_stnd_date()}")        
         RLOG.lprint(f"  --- (-huc) Target HUC8 number: {target_huc8}")
         RLOG.lprint(f"  --- (-wbd) Path to WBD HUC12s gkpg: {path_wbd_huc12s_gpkg}")
-
-
-
-
         RLOG.lprint(f"  --- (-o) Path to output folder: {output_path}")
         RLOG.lprint("+-----------------------------------------------------------------+")
     else:
@@ -54,7 +46,6 @@ def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path,
     try:
         # ------------
         # Validation code (more applicable if it came in via command line)
-
         huc_valid, err_msg = val.is_valid_huc(target_huc8)
         if huc_valid is False:
             raise ValueError(err_msg)
@@ -106,9 +97,6 @@ def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path,
         # make sure the huc_8 values are read as string
         wbd_huc12s['HUC_8'] = wbd_huc12s['HUC_8'].astype(str)
 
-        # crs of the wbd (short form) ie) epsg:3857
-        wbd_crs = wbd_huc12s.crs.srs
-
         # make domain of the target huc8
         huc8_domain = wbd_huc12s[wbd_huc12s['HUC_8'] == str(target_huc8)]
         huc8_domain = huc8_domain.dissolve(by="HUC_8").reset_index()
@@ -117,13 +105,7 @@ def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path,
         extended_huc12s = gpd.sjoin(wbd_huc12s, huc8_domain)
         extended_huc12s.loc[:, 'dissolve_index'] = 1
         extended_domain = extended_huc12s.dissolve(by="dissolve_index").reset_index()
-
-        # reproject the shapefile to the CRS of virtual raster (VRT)
-        # if it does not already match the target
-        if (target_projection.lower() != wbd_crs):
-            extended_domain.to_file(output_file, driver='GPKG', crs=target_projection)
-        else:
-            extended_domain.to_file(output_file, driver='GPKG')
+        extended_domain.to_file(output_file, driver='GPKG')
 
         RLOG.lprint("--------------------------------------")
         RLOG.success(f" - HUC8 extended domain created: {get_stnd_date()}")
@@ -185,14 +167,6 @@ if __name__ == "__main__":
         required=False,
         default=sv.INPUT_DEFAULT_WBD_NATIONAL_FILE_PATH,
         metavar="",
-    )
-
-    parser.add_argument(
-        '-proj',
-        '--target_projection',
-        help=f'OPTIONAL: Desired output CRS. Defaults to {sv.DEFAULT_RASTER_OUTPUT_CRS}',
-        required=False,
-        default=sv.DEFAULT_RASTER_OUTPUT_CRS,
     )
 
     args = vars(parser.parse_args())

@@ -3,11 +3,15 @@
 import argparse
 import datetime as dt
 import os
+import requests
 import subprocess
 import sys
 import traceback
+import urllib.request
 
 import colored as cl
+import geopandas as gpd
+import pyproj
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
@@ -32,7 +36,6 @@ __USGS_3DEP_10M_VRT_URL = (
     r'/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt'
 )
 
-__USGS_CRS = "EPSG:4269" # we will make all of our outputs in 4269
 
 # ++++++++++++++++++++++++
 
@@ -45,8 +48,7 @@ __USGS_CRS = "EPSG:4269" # we will make all of our outputs in 4269
 # -------------------------------------------------
 def acquire_and_preprocess_3dep_dems(
       huc8s, path_wbd_huc12s_gpkg, target_output_folder_path,
-      inc_upload_outputs_to_s3, s3_path
-):
+      inc_upload_outputs_to_s3, s3_path, target_projection):
     '''
     Overview
     ----------
@@ -93,23 +95,17 @@ def acquire_and_preprocess_3dep_dems(
             The local output folder name where the DEMs will be saved. Defaults to:
             C:\ras2fim_data\inputs\3dep_dems\HUC8_10m
 
-            
-
-
-        - target_projection (str)
-            Projection of the output DEMS and polygons (if included)
-            Defaults to EPSG:5070
-
-            
-
         - inc_upload_outputs_to_s3 (True / False)
             If true, the newly created DEM(s) will be uploaded to S3 if the path is valid from
             the s3_path variable.
 
         - s3_path (str)
-           URL path where the DEMs should be uploaded. Defaults to
-           s3://ras2fim/inputs/inputs/dems/ras_3dep_HUC8_10m
+            URL path where the DEMs should be uploaded. Defaults to
+            s3://ras2fim/inputs/inputs/dems/ras_3dep_HUC8_10m
 
+        - target_projection (str)
+            Projection of the output DEMS and polygons (if included)
+            Defaults to EPSG:5070
     '''
     print()
     start_dt = dt.datetime.utcnow()
@@ -120,10 +116,7 @@ def acquire_and_preprocess_3dep_dems(
     RLOG.lprint(f"  --- (-huc) HUC8(s): {huc8s}")
     RLOG.lprint(f"  --- (-wbd) Path to WBD HUC12s gkpg: {path_wbd_huc12s_gpkg}")
     RLOG.lprint(f"  --- (-t) Path to output folder: {target_output_folder_path}")
-
-
-
-    #RLOG.lprint(f"  --- (-proj) DEM downloaded target projection: {target_projection}")
+    RLOG.lprint(f"  --- (-proj) DEM downloaded target projection: {target_projection}")
     RLOG.lprint(f"  --- (-u) Upload to output to S3 ?: {inc_upload_outputs_to_s3}")
     if inc_upload_outputs_to_s3 is True:
         RLOG.lprint(f"  --- (-s3) Path to upload outputs to S3: {s3_path}")
@@ -131,44 +124,53 @@ def acquire_and_preprocess_3dep_dems(
 
     # ------------
     # Validation
+    def _validation(huc8s, path_wbd_huc12s_gpkg, target_projection,
+                     inc_upload_outputs_to_s3, s3_path):
+            
+        if os.path.exists(path_wbd_huc12s_gpkg) is False:
+            raise ValueError(f"File path to {path_wbd_huc12s_gpkg} does not exist")    
+        
+        # ------------
+        # split the incoming arg huc8s which might be a string or list
+        huc8s = huc8s.replace(' ', '')
+        if huc8s == "":
+            raise ValueError("huc8 list is empty")
+        if ',' in huc8s:
+            huc_list = huc8s.split(',')
+        else:
+            huc_list = [huc8s]
 
-    if os.path.exists(path_wbd_huc12s_gpkg) is False:
-        raise ValueError(f"File path to {path_wbd_huc12s_gpkg} does not exist")    
-    
-    # ------------
-    # split the incoming arg huc8s which might be a string or list
-    huc8s = huc8s.replace(' ', '')
-    if huc8s == "":
-        raise ValueError("huc8 list is empty")
-    if ',' in huc8s:
-        huc_list = huc8s.split(',')
-    else:
-        huc_list = [huc8s]
+        for huc in huc_list:
+            huc_valid, err_msg = val.is_valid_huc(huc)
+            if huc_valid is False:
+                raise ValueError(err_msg)
 
-    for huc in huc_list:
-        huc_valid, err_msg = val.is_valid_huc(huc)
-        if huc_valid is False:
+        # ------------
+        if os.path.isfile(path_wbd_huc12s_gpkg) is False:
+            raise ValueError("File to wbd huc12 gpkg does not exist")
+
+        # ---------------
+        is_valid, err_msg, crs_number = val.is_valid_crs(target_projection)
+        if is_valid is False:
             raise ValueError(err_msg)
 
-    # ------------
-    if os.path.isfile(path_wbd_huc12s_gpkg) is False:
-        raise ValueError("File to wbd huc12 gpkg does not exist")
+        # ------------
+        if inc_upload_outputs_to_s3 is True:
+            # check ras2fim output bucket exists
 
-    # ---------------
-    #is_valid, err_msg, crs_number = val.is_valid_crs(target_projection)
-    #if is_valid is False:
-    #    raise ValueError(err_msg)
+            adj_s3_path = s3_path.replace("s3://", "")
+            path_segs = adj_s3_path.split("/")
+            bucket_name = path_segs[0]
 
-    # ------------
-    if inc_upload_outputs_to_s3 is True:
-        # check ras2fim output bucket exists
+            if s3_sf.does_s3_bucket_exist(bucket_name) is False:
+                raise ValueError(f"s3 bucket of {bucket_name} ... does not exist")
+        
+        # Only param needs to be returned at this time so no multi return or return dictionary
+        return huc_list  
+        
 
-        adj_s3_path = s3_path.replace("s3://", "")
-        path_segs = adj_s3_path.split("/")
-        bucket_name = path_segs[0]
-
-        if s3_sf.does_s3_bucket_exist(bucket_name) is False:
-            raise ValueError(f"s3 bucket of {bucket_name} ... does not exist")
+    huc_list = _validation(huc8s, path_wbd_huc12s_gpkg, target_projection,
+                     inc_upload_outputs_to_s3, s3_path)
 
     os.makedirs(target_output_folder_path, exist_ok=True)
 
@@ -180,8 +182,7 @@ def acquire_and_preprocess_3dep_dems(
             # Create the HUC8 extent area and save the poly
             # logging done inside function
             domain_file_path = hd.fn_extend_huc8_domain(
-                huc, path_wbd_huc12s_gpkg, target_output_folder_path, __USGS_CRS, False
-            )
+                huc, path_wbd_huc12s_gpkg, target_output_folder_path, False)
             domain_file_name = os.path.basename(domain_file_path)
             item = {'huc': huc,
                     'domain_file_name': domain_file_name,
@@ -236,56 +237,6 @@ def acquire_and_preprocess_3dep_dems(
         print("An exception occurred. Details:")
         print(traceback.format_exc())
 
-# -------------------------------------------------
-def __upload_file_to_s3(s3_path, file_name, src_file_path):
-    """
-    Checks if the file is already uploaded.
-    """
-
-    start_dt = dt.datetime.utcnow()
-    s3_file_path = s3_path + "/" + file_name
-
-    print()
-    RLOG.lprint(f"-- Start uploading {src_file_path} to {s3_file_path}")
-
-    file_exists = s3_sf.does_s3_file_exist(s3_file_path)
-    if file_exists is True:
-        # Ask if they want to overwrite it
-        print()
-        msg = (
-            f"{cl.fore.SPRING_GREEN_2B}"
-            f"The file to be uploaded already exists at {s3_file_path}. \n"
-            "Do you want to overwrite it?\n\n"
-            f"{cl.style.RESET}"
-            f"   -- Type {cl.fore.SPRING_GREEN_2B}'overwrite'{cl.style.RESET}"
-            " if you want to overwrite the s3 file.\n"
-            f"   -- Type {cl.fore.SPRING_GREEN_2B}'skip'{cl.style.RESET}"
-            " if you want to skip overwriting the file but continue running the program.\n"
-            f"   -- Type {cl.fore.SPRING_GREEN_2B}'abort'{cl.style.RESET}"
-            " to stop the program.\n"
-            f"{cl.fore.LIGHT_YELLOW}  ?={cl.style.RESET}"
-        )
-        resp = input(msg).lower()
-
-        if (resp) == "abort":
-            RLOG.lprint(f"\n.. You have selected {resp}. Program stopped.\n")
-            sys.exit(0)
-
-        elif (resp) == "skip":
-            return
-        else:
-            if (resp) != "overwrite":
-                RLOG.lprint(f"\n.. You have entered an invalid response of {resp}. Program stopped.\n")
-                sys.exit(0)
-
-    print(" *** Stand by, this may take 20 seconds to 10 minutes depending on computer resources")
-    s3_sf.upload_file_to_s3(src_file_path, s3_file_path)
-    print()
-    RLOG.lprint(f"Upload to {s3_file_path} - Complete")
-    dur_msg = print_date_time_duration(start_dt, dt.datetime.utcnow())
-    RLOG.lprint(dur_msg)
-    print()
-
 
 # -------------------------------------------------
 def __download_usgs_dem(domain_file_path, output_dem_file_path):
@@ -295,9 +246,14 @@ def __download_usgs_dem(domain_file_path, output_dem_file_path):
     download the actual raw (non reprojected files) from the USGS
     based on stated embedded arguments
 
+    
+    TODO  REDO NOTES
+
     Notes
     ----------
         - pixel size set to 10 x 10 (m)
+
+        
         - block size (256) (sometimes we use 512)
         - cblend 6 add's a small buffer when pulling down the tif (ensuring seamless
           overlap at the borders.)
@@ -311,14 +267,83 @@ def __download_usgs_dem(domain_file_path, output_dem_file_path):
     print()
     start_dt = dt.datetime.utcnow()
 
-    cmd = f'gdalwarp {__USGS_3DEP_10M_VRT_URL} {output_dem_file_path}'
+    print("let's try Andy's code")
+    # pull down in EPSG:3857
+    default_crs = "epsg:3857" # and adjsut URL if necessary
+    default_crs_code = "3857"
+    usgs_url_header = (
+        r"https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?"
+    )
+
+    
+    #usgs_url_query_1 = (
+    #    r"SERVICE=WCS&VERSION=1.0.0&REQUEST=GetCoverage&coverage=DEP3Elevation"
+    #    r"&CRS=EPSG:3857&FORMAT=GeoTiff"
+    #)
+
+    # overlap of the requested tiles in units (meters)
+    # and other defaults
+    default_int_overlap = 10
+    default_int_res = 10 # resolution of the downloaded terrain (meters)
+    default_int_buffer = 300  # buffer distance for each watershed shp
+    default_int_tile = 1500  # tile size requested from USGS WCS
+    #default_gkpg_column_name
+
+    # read the "area of interest" file in to geopandas dataframe
+    gdf_aoi = gpd.read_file(domain_file_path)
+    aoi_prj_crs = gdf_aoi.crs.srs  # short form. ie) epsg:5070 (in lower)
+
+    # see if we need to reproject
+    gdf_aoi_reproj = None
+    if default_crs != aoi_prj_crs:
+        gdf_aoi_reproj = gdf_aoi.to_crs(pyproj.CRS.from_string(default_crs))
+    else:
+        gdf_aoi_reproj = gdf_aoi
+
+    # What if it is an ESRI code coming in?
+    epsg_code = gdf_aoi_reproj.crs.to_epsg()   
+
+    # buffer the domain for downloading from USGS, but we will clip the buffer out later
+    # gives us a safe download overlsap
+    #gdf_aoi_reproj["geometry"] = gdf_aoi_reproj.geometry.buffer(default_int_buffer)
+    gdf_bounds = gdf_aoi_reproj.bounds
+    minx = gdf_bounds.iloc[0]['minx']
+    maxx = gdf_bounds.iloc[0]['maxx']
+    miny = gdf_bounds.iloc[0]['miny']
+    maxy = gdf_bounds.iloc[0]['maxy']
+    bb_width = round(maxx - minx)
+    bb_height = round(maxy - miny)
+    # We want ints and rounded up. We will clip again in a min (again the domain)
+
+    #usgs_url_query_bb = f"&BBOX={minx},{miny},{maxx},{maxy}"
+    #usgs_url_query_wh = f"&WIDTH={bb_width}&HEIGHT{bb_height}"
+    #full_usgs_url = usgs_url_header + usgs_url_query_1 + usgs_url_query_bb + usgs_url_query_wh
+
+    usgs_url_params = {"f": "image",
+              "bbox": f"{minx},{maxx},{maxy},{miny}",
+              "bboxSR": epsg_code,
+              "imageSR": epsg_code,
+              "format": "tiff",
+              "pixelType": "F32",
+              "size": f"1000,1000",
+              "noDataInterpretation": "esriNoDataMatchAny",
+              "interpolation": "RSP_BilinearInterpolation"}
+
+
+    __download_file(usgs_url_header, usgs_url_params, output_dem_file_path)
+
+    print("all done for now)")
+    sys.exit()
+
+    
+    cmd =  f'gdalwarp {__USGS_3DEP_10M_VRT_URL} {output_dem_file_path}'
     cmd += f' -cutline {domain_file_path} -crop_to_cutline -ot Float32 -r bilinear'
-    cmd += ' -of "GTiff" -overwrite -co "BLOCKXSIZE=256" -co "BLOCKYSIZE=256"'
-    cmd += ' -co "TILED=YES" -co "COMPRESS=LZW" -co "BIGTIFF=YES" -cblend 6'
+    cmd +=  ' -of "GTiff" -overwrite -co "BLOCKXSIZE=256" -co "BLOCKYSIZE=256"'
+    cmd +=  ' -co "TILED=YES" -co "COMPRESS=LZW" -co "BIGTIFF=YES" -tr 10 10 -t_srs EPSG:4269 -cblend 6'
 
     """
     e.q. gdalwarp
-       /vs/icurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt
+       /vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt
        /data/inputs/usgs/3dep_dems/10m/HUC8_12090301_dem.tif
        -cutline /data/inputs/wbd/HUC8/HUC8_12090301.gpkg
        -co "BLOCKYSIZE=256"
@@ -327,6 +352,8 @@ def __download_usgs_dem(domain_file_path, output_dem_file_path):
     """
 
     try:
+
+        gdf_aoi = gpd.read_file(domain_file_path)
 
         # See if file exists and ask if they want to overwrite it.
         if os.path.exists(output_dem_file_path):  # file, not folder
@@ -391,6 +418,79 @@ def __download_usgs_dem(domain_file_path, output_dem_file_path):
         RLOG.critical(msg)
         RLOG.critical(traceback.format_exc())
         sys.exit(1)
+
+# -------------------------------------------------
+        usgs_url_header, usgs_url_params, output_dem_file_path
+def __download_file(url_address, url_params, output_dem_file_path):
+    """
+    Downloads a requested URL to a requested file directory
+    """
+    try:
+        #urllib.request.urlretrieve(url_address, output_dem_file_path)
+        response = requests.get(url=url_address, params=url_params, allow_redirects=True)
+        print(response)
+
+        with open(output_dem_file_path, mode='wb') as localfile:
+            localfile.write(response.content)
+
+    except:
+        RLOG.critical(" -- ALERT: Failure to download file")
+        RLOG.critical(f"url_address: {url_address}")
+        RLOG.critical(f"url_params: {url_params}")
+        RLOG.critical(f"writing to: {output_dem_file_path}")
+        RLOG.critical(traceback.format_exc())    
+        sys.exit(1)
+
+
+# -------------------------------------------------
+def __upload_file_to_s3(s3_path, file_name, src_file_path):
+    """
+    Checks if the file is already uploaded.
+    """
+
+    start_dt = dt.datetime.utcnow()
+    s3_file_path = s3_path + "/" + file_name
+
+    print()
+    RLOG.lprint(f"-- Start uploading {src_file_path} to {s3_file_path}")
+
+    file_exists = s3_sf.does_s3_file_exist(s3_file_path)
+    if file_exists is True:
+        # Ask if they want to overwrite it
+        print()
+        msg = (
+            f"{cl.fore.SPRING_GREEN_2B}"
+            f"The file to be uploaded already exists at {s3_file_path}. \n"
+            "Do you want to overwrite it?\n\n"
+            f"{cl.style.RESET}"
+            f"   -- Type {cl.fore.SPRING_GREEN_2B}'overwrite'{cl.style.RESET}"
+            " if you want to overwrite the s3 file.\n"
+            f"   -- Type {cl.fore.SPRING_GREEN_2B}'skip'{cl.style.RESET}"
+            " if you want to skip overwriting the file but continue running the program.\n"
+            f"   -- Type {cl.fore.SPRING_GREEN_2B}'abort'{cl.style.RESET}"
+            " to stop the program.\n"
+            f"{cl.fore.LIGHT_YELLOW}  ?={cl.style.RESET}"
+        )
+        resp = input(msg).lower()
+
+        if (resp) == "abort":
+            RLOG.lprint(f"\n.. You have selected {resp}. Program stopped.\n")
+            sys.exit(0)
+
+        elif (resp) == "skip":
+            return
+        else:
+            if (resp) != "overwrite":
+                RLOG.lprint(f"\n.. You have entered an invalid response of {resp}. Program stopped.\n")
+                sys.exit(0)
+
+    print(" *** Stand by, this may take 20 seconds to 10 minutes depending on computer resources")
+    s3_sf.upload_file_to_s3(src_file_path, s3_file_path)
+    print()
+    RLOG.lprint(f"Upload to {s3_file_path} - Complete")
+    dur_msg = print_date_time_duration(start_dt, dt.datetime.utcnow())
+    RLOG.lprint(dur_msg)
+    print()
 
 
 # -------------------------------------------------
@@ -479,6 +579,14 @@ if __name__ == '__main__':
         f' Defaults to {sv.S3_INPUTS_3DEP_DEMS}',
         required=False,
         default=sv.S3_INPUTS_3DEP_DEMS,
+    )
+
+    parser.add_argument(
+        '-proj',
+        '--target_projection',
+        help=f'OPTIONAL: Desired output CRS. Defaults to {sv.DEFAULT_RASTER_OUTPUT_CRS}',
+        required=False,
+        default=sv.DEFAULT_RASTER_OUTPUT_CRS,
     )
 
     # Extract to dictionary and assign to variables.
