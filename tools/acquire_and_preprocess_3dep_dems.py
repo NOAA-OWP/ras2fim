@@ -32,9 +32,9 @@ RLOG = ras2fim_logger.R2F_LOG
 # for more info see: "http://prd-tnm.s3.amazonaws.com/index.html?prefix=StagedProducts/Elevation/".
 # The odd folder numbering is a translation of arc seconds with 13m  being 1/3 arc second or 10 meters.
 # 10m = 13 (1/3 arc second)
-__USGS_3DEP_10M_VRT_URL = (
-    r'/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt'
-)
+#__USGS_3DEP_10M_VRT_URL = (
+#    r'/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt'
+#)
 
 
 # ++++++++++++++++++++++++
@@ -200,6 +200,7 @@ def acquire_and_preprocess_3dep_dems(
             dem_file_name = f"HUC8_{huc}_dem.tif"
             domain_file_path = item['domain_file_path']
             output_dem_file_path = os.path.join(target_output_folder_path, dem_file_name)
+
             # logging done inside function
             __download_usgs_dem(domain_file_path, output_dem_file_path)
             item = {'dem_file_name': dem_file_name,                    
@@ -247,17 +248,20 @@ def __download_usgs_dem(domain_file_path, output_dem_file_path):
     based on stated embedded arguments
 
     
-    TODO  REDO NOTES
+    TODO  REDO NOTES  (what is an example fof the output_dem_file_path and domain_file_path)
 
     Notes
     ----------
-        - pixel size set to 10 x 10 (m)
-
+        - pixel size set to 10,000 x 10,000 (m)
         
         - block size (256) (sometimes we use 512)
         - cblend 6 add's a small buffer when pulling down the tif (ensuring seamless
           overlap at the borders.)
-        - uses the domain file which is EPSG:4269 and the USGS vrt is 4269, so our
+        - uses the domain file which is EPSG:4269 and the USGS is 3857 (lambert), so our
+
+
+
+
           output will be 4269 (save problems discoverd with reprojecting in gdalwarp
           which has trouble inside conda for some strange reasons. It is not a problem
           running it in VSCode debugger but fails in anaconda powershell window unless
@@ -267,176 +271,260 @@ def __download_usgs_dem(domain_file_path, output_dem_file_path):
     print()
     start_dt = dt.datetime.utcnow()
 
-    print("let's try Andy's code")
-    # pull down in EPSG:3857
-    default_crs = "epsg:3857" # and adjsut URL if necessary
-    default_crs_code = "3857"
+    # pull down in EPSG:3857  (the URL below likes 3857 - lambert)
+    default_crs = "EPSG:3857" # and adjsut URL if necessary
     usgs_url_header = (
         r"https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?"
     )
-
     
-    #usgs_url_query_1 = (
-    #    r"SERVICE=WCS&VERSION=1.0.0&REQUEST=GetCoverage&coverage=DEP3Elevation"
-    #    r"&CRS=EPSG:3857&FORMAT=GeoTiff"
-    #)
+    # TODO: adjust dynamic crs in string
+    usgs_url_query_1 = ("SERVICE=WCS&VERSION=1.0.0&REQUEST=GetCoverage&coverage=DEP3Elevation"
+        "&CRS=EPSG:3857&FORMAT=GeoTiff")
 
     # overlap of the requested tiles in units (meters)
-    # and other defaults
+    # and other defaults. We will get extra sizes with overlap and buffers to mosaic and ensure no gaps
     default_int_overlap = 10
-    default_int_res = 10 # resolution of the downloaded terrain (meters)
-    default_int_buffer = 300  # buffer distance for each watershed shp
-    default_int_tile = 1500  # tile size requested from USGS WCS
-    #default_gkpg_column_name
-
-    # read the "area of interest" file in to geopandas dataframe
-    gdf_aoi = gpd.read_file(domain_file_path)
-    aoi_prj_crs = gdf_aoi.crs.srs  # short form. ie) epsg:5070 (in lower)
-
-    # see if we need to reproject
-    gdf_aoi_reproj = None
-    if default_crs != aoi_prj_crs:
-        gdf_aoi_reproj = gdf_aoi.to_crs(pyproj.CRS.from_string(default_crs))
-    else:
-        gdf_aoi_reproj = gdf_aoi
-
-    # What if it is an ESRI code coming in?
-    epsg_code = gdf_aoi_reproj.crs.to_epsg()   
-
-    # buffer the domain for downloading from USGS, but we will clip the buffer out later
-    # gives us a safe download overlsap
-    #gdf_aoi_reproj["geometry"] = gdf_aoi_reproj.geometry.buffer(default_int_buffer)
-    gdf_bounds = gdf_aoi_reproj.bounds
-    minx = gdf_bounds.iloc[0]['minx']
-    maxx = gdf_bounds.iloc[0]['maxx']
-    miny = gdf_bounds.iloc[0]['miny']
-    maxy = gdf_bounds.iloc[0]['maxy']
-    bb_width = round(maxx - minx)
-    bb_height = round(maxy - miny)
-    # We want ints and rounded up. We will clip again in a min (again the domain)
-
-    #usgs_url_query_bb = f"&BBOX={minx},{miny},{maxx},{maxy}"
-    #usgs_url_query_wh = f"&WIDTH={bb_width}&HEIGHT{bb_height}"
-    #full_usgs_url = usgs_url_header + usgs_url_query_1 + usgs_url_query_bb + usgs_url_query_wh
-
-    usgs_url_params = {"f": "image",
-              "bbox": f"{minx},{maxx},{maxy},{miny}",
-              "bboxSR": epsg_code,
-              "imageSR": epsg_code,
-              "format": "tiff",
-              "pixelType": "F32",
-              "size": f"1000,1000",
-              "noDataInterpretation": "esriNoDataMatchAny",
-              "interpolation": "RSP_BilinearInterpolation"}
+    #default_int_res = 10 # resolution of the downloaded terrain (meters)
+    default_int_buffer = 50  # buffer distance for each watershed shp (meters)
+    default_int_tile_size = 30000  # tile size requested from USGS WCS
 
 
-    __download_file(usgs_url_header, usgs_url_params, output_dem_file_path)
-
-    print("all done for now)")
-    sys.exit()
-
-    
-    cmd =  f'gdalwarp {__USGS_3DEP_10M_VRT_URL} {output_dem_file_path}'
-    cmd += f' -cutline {domain_file_path} -crop_to_cutline -ot Float32 -r bilinear'
-    cmd +=  ' -of "GTiff" -overwrite -co "BLOCKXSIZE=256" -co "BLOCKYSIZE=256"'
-    cmd +=  ' -co "TILED=YES" -co "COMPRESS=LZW" -co "BIGTIFF=YES" -tr 10 10 -t_srs EPSG:4269 -cblend 6'
-
+    # See if file exists and ask if they want to overwrite it.
     """
-    e.q. gdalwarp
-       /vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt
-       /data/inputs/usgs/3dep_dems/10m/HUC8_12090301_dem.tif
-       -cutline /data/inputs/wbd/HUC8/HUC8_12090301.gpkg
-       -co "BLOCKYSIZE=256"
-       -crop_to_cutline -ot Float32 -r bilinear -of "GTiff" -overwrite -co "BLOCKXSIZE=256"
-       -co "TILED=YES" -co "COMPRESS=LZW" -co "BIGTIFF=YES" -tr 10 10 -t_srs ESRI:102039 -cblend 6
-    """
+    if os.path.exists(output_dem_file_path):  # file, not folder
+        msg = (
+            f"{cl.fore.SPRING_GREEN_2B}"
+            f"The dem file already exists at {output_dem_file_path}. \n"
+            "Do you want to overwrite it?\n\n"
+            f"{cl.style.RESET}"
+            f"   -- Type {cl.fore.SPRING_GREEN_2B}'overwrite'{cl.style.RESET}"
+            " if you want to overwrite the current file.\n"
+            f"   -- Type {cl.fore.SPRING_GREEN_2B}'skip'{cl.style.RESET}"
+            " if you want to skip overwriting the file but continue running the program.\n"
+            f"   -- Type {cl.fore.SPRING_GREEN_2B}'abort'{cl.style.RESET}"
+            " to stop the program.\n"
+            f"{cl.fore.LIGHT_YELLOW}  ?={cl.style.RESET}"
+        )
+        resp = input(msg).lower()
 
-    try:
+        if (resp) == "abort":
+            RLOG.lprint(f"\n.. You have selected {resp}. Program stopped.\n")
+            sys.exit(0)
 
-        gdf_aoi = gpd.read_file(domain_file_path)
-
-        # See if file exists and ask if they want to overwrite it.
-        if os.path.exists(output_dem_file_path):  # file, not folder
-            msg = (
-                f"{cl.fore.SPRING_GREEN_2B}"
-                f"The dem file already exists at {output_dem_file_path}. \n"
-                "Do you want to overwrite it?\n\n"
-                f"{cl.style.RESET}"
-                f"   -- Type {cl.fore.SPRING_GREEN_2B}'overwrite'{cl.style.RESET}"
-                " if you want to overwrite the current file.\n"
-                f"   -- Type {cl.fore.SPRING_GREEN_2B}'skip'{cl.style.RESET}"
-                " if you want to skip overwriting the file but continue running the program.\n"
-                f"   -- Type {cl.fore.SPRING_GREEN_2B}'abort'{cl.style.RESET}"
-                " to stop the program.\n"
-                f"{cl.fore.LIGHT_YELLOW}  ?={cl.style.RESET}"
-            )
-            resp = input(msg).lower()
-
-            if (resp) == "abort":
-                RLOG.lprint(f"\n.. You have selected {resp}. Program stopped.\n")
+        elif (resp) == "skip":
+            return
+        else:
+            if (resp) != "overwrite":
+                RLOG.lprint(f"\n.. You have entered an invalid response of {resp}. Program stopped.\n")
                 sys.exit(0)
-
-            elif (resp) == "skip":
-                return
-            else:
-                if (resp) != "overwrite":
-                    RLOG.lprint(f"\n.. You have entered an invalid response of {resp}. Program stopped.\n")
-                    sys.exit(0)
 
         print(" *** Stand by, this may take up to 10 mins depending on computer resources.\n"
               " Note: sometimes the connection to USGS servers can be bumpy so retry if you"
               " have trouble.")
         print()
-        RLOG.lprint(f"Downloading USGS DEM for {output_dem_file_path}")
-        process = subprocess.run(
-            cmd,
-            shell=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True,
-            universal_newlines=True,
-        )
-        print()
-        RLOG.lprint(process)
-        print()
+    
+    """
 
-        if process.stderr != "":
-            if "ERROR" in process.stderr.upper():
-                msg = f" Downloading -- {output_dem_file_path}" f"  ERROR -- details: ({process.stderr})"
-                RLOG.critical(msg)
-                sys.exit(1)
-        else:
-            msg = f" Downloading -- {output_dem_file_path} - Complete"
-            RLOG.lprint(msg)
+    RLOG.lprint(f"Downloading USGS DEM for {output_dem_file_path}")
 
-        dur_msg = print_date_time_duration(start_dt, dt.datetime.utcnow())
-        RLOG.lprint(dur_msg)
-        print()
+    # read the "area of interest" file in to geopandas dataframe
+    gdf_aoi = gpd.read_file(domain_file_path)
 
-    except Exception:
-        msg = "An exception occurred while downloading file the USGS file."
-        RLOG.critical(msg)
-        RLOG.critical(traceback.format_exc())
-        sys.exit(1)
+    # lets come back one dir to use as the temp dir
+    temp_mosaic_dir = os.path.abspath(os.path.join(output_dem_file_path, "..", "dem_temp_downloads"))
+    # create output directory
+    os.makedirs(temp_mosaic_dir, exist_ok=True)
+
+
+    aoi_prj_crs = gdf_aoi.crs.srs  # short form. ie) epsg:5070 (in lower)
+
+    # see if we need to reproject to usgs default
+    gdf_aoi_reproj = None
+    if aoi_prj_crs.lower() != aoi_prj_crs.lower():
+        gdf_aoi_reproj = gdf_aoi.to_crs(pyproj.CRS.from_string(default_crs))
+    else:
+        gdf_aoi_reproj = gdf_aoi
+
+    # buffer the polygons in the input gkpg poly
+    gdf_aoi_reproj["geometry"] = gdf_aoi_reproj.geometry.buffer(default_int_buffer)
+
+    # What if it is an ESRI code coming in?
+    #epsg_code = gdf_aoi_reproj.crs.to_epsg()   
+
+    # We want ints and rounded up. We will clip again in a min (again the domain)
+    # remember.. we are in negative numbers so min and max are reversed on the x axis
+
+    #usgs_url_query_bb = f"&BBOX={minx},{miny},{maxx},{maxy}"
+
+
+    default_int_tile_size = 20000
+    cell_size = default_int_tile_size / 10
+
+    parent_gdf_bounds = gdf_aoi_reproj.bounds
+    parent_minx = round(parent_gdf_bounds.iloc[0]['minx'])
+    #parent_maxx = round(parent_gdf_bounds.iloc[0]['maxx'])
+    parent_maxx = parent_minx - default_int_tile_size
+    parent_miny = round(parent_gdf_bounds.iloc[0]['miny'])
+    #parent_maxy = round(parent_gdf_bounds.iloc[0]['maxy'])
+    parent_maxy = parent_miny + default_int_tile_size
+
+
+    #parent_bb_width = round(parent_maxx - parent_minx)  # ie) 147,078
+    #parent_bb_height = round(parent_maxy - parent_miny) #  ie) 178,041
+
+    # I had x mixed up with min and max
+    # Bbox should have been BBOX=-10908400,3514100,-10911400,3517100  ??  (becuase of the negative x values)
+    # usgs_url_query_bb = f"&BBOX={parent_minx},{parent_miny},{parent_maxx},{parent_maxy}"
+    #usgs_url_query_bb = f"&BBOX={parent_minx},{parent_miny},{parent_maxx},{parent_maxy}"    
+
+    #usgs_url_query_wh = f"&WIDTH={cell_size}&HEIGHT={cell_size}"
+    #full_usgs_url = usgs_url_header + usgs_url_query_1 + usgs_url_query_bb + usgs_url_query_wh
+
+    #download_tiles_list = make_tiles(gdf_aoi_reproj, default_int_overlap, default_int_res, default_int_tile_size, temp_mosaic_dir)
+
+    # "bbox": f"{minx},{maxx},{maxy},{miny}",
+
+    usgs_url_params = {"f": "image",
+              "bbox": f"{parent_maxx},{parent_miny},{parent_minx},{parent_maxy}",
+              "bboxSR": default_crs,
+              "imageSR": default_crs,
+              "format": "tiff",
+              "pixelType": "F32",
+              "size": f"{cell_size},{cell_size}",
+              "noDataInterpretation": "esriNoDataMatchAny",
+              "interpolation": "RSP_BilinearInterpolation"}
+
+    #full_usgs_url = f'https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?SERVICE=WCS&VERSION=1.0.0&REQUEST=GetCoverage&coverage=DEP3Elevation&CRS=EPSG:3857&FORMAT=GeoTiff&BBOX=-10827860.0,3512529.0,-10826360.0,3514029.0&WIDTH=500.0&HEIGHT=500.0'
+
+    #__download_file(usgs_url_header, usgs_url_params,  output_dem_file_path)
+    __download_file(usgs_url_params,  output_dem_file_path)
+
+    print("all done for now)")
+
+    # TODO: remove the temp dir
+
+    sys.exit()
+
+
+    # try:
+
+    #except Exception:
+    #    msg = "An exception occurred while downloading file the USGS file."
+    #    RLOG.critical(msg)
+    #    RLOG.critical(traceback.format_exc())
+    #    sys.exit(1)
+
+
 
 # -------------------------------------------------
-        usgs_url_header, usgs_url_params, output_dem_file_path
-def __download_file(url_address, url_params, output_dem_file_path):
+def make_tiles(gdf_aoi_reproj, int_overlap_size, int_tile_size, temp_mosaic_dir):
+
+    """
+    Using the total bounding box size (which has a buffer built into the overall size),
+    create a list of dictionary objects that are all of the details required as tiles to
+    download from USGS.
+
+    Output:
+        A list of dictionaries that look like this
+        tile_id: (0_0), (0_1)  (same pattern as Andy's)
+        bbox_minx:
+        bbox_miny:
+        bbox_maxx:
+        bbox_maxy:
+        cell_size:  (a 10 of the total size
+        output_size:)
+
+    """
+    
+
+    # buffer the domain for downloading from USGS, but we will clip the buffer out later
+    # gives us a safe download overlsap
+    #gdf_aoi_reproj["geometry"] = gdf_aoi_reproj.geometry.buffer(default_int_buffer)
+    parent_gdf_bounds = gdf_aoi_reproj.bounds
+    parent_minx = parent_gdf_bounds.iloc[0]['minx']
+    parent_maxx = parent_gdf_bounds.iloc[0]['maxx']
+    parent_miny = parent_gdf_bounds.iloc[0]['miny']
+    parent_maxy = parent_gdf_bounds.iloc[0]['maxy']
+    parent_bb_width = round(parent_maxx - parent_minx)  # ie) 147,078
+    parent_bb_height = round(parent_maxy - parent_miny) #  ie) 178,041
+
+    # Break into sets of 10,000 (default_int_tile-size)  (remember, x and y might not be the same size).
+    # We are going to figure out how many complete boxes of 10,000, then the reminder on 
+    # the width (x) and height (y).
+    # Don't worry about the overlap yet.
+
+    mod_x = parent_bb_width % int_tile_size 
+    # ie) 147,078 % 10,000 = 78 (left over) and we will have 147 x cells at 10,000    
+
+    mod_y = parent_bb_height % int_tile_size
+    # ie) 178,041 % 10,000 = 41 (left over) and we will have 178 cells at 10,000
+
+    full_width_x_cells = (parent_bb_width - mod_x) / int_tile_size # ie) 147 
+    full_width_y_cells = (parent_bb_height - mod_y) / int_tile_size # ie) 178
+    num_full_cells = full_width_x_cells * full_width_y_cells  # 147 x 178 = 26,166 cells and downloads (use multi-thread)
+
+
+
+# -------------------------------------------------
+def __download_file(usgs_url_params, output_dem_file_path):
     """
     Downloads a requested URL to a requested file directory
     """
-    try:
-        #urllib.request.urlretrieve(url_address, output_dem_file_path)
-        response = requests.get(url=url_address, params=url_params, allow_redirects=True)
-        print(response)
 
-        with open(output_dem_file_path, mode='wb') as localfile:
-            localfile.write(response.content)
+    #url_with_params = r'https://elevation.nationalmap.gov/arcgis/services/3DEPElevation/ImageServer/WCSServer?SERVICE=WCS&VERSION=1.0.0&REQUEST=GetCoverage&coverage=DEP3Elevation&CRS=EPSG:3857&BBOX=-10813982,3744776,-10812482,3746276&WIDTH=1500&HEIGHT=1500&FORMAT=GeoTiff'
+
+    try:
+        #response = urllib.request.urlretrieve(url_with_params, output_dem_file_path)
+
+        #urllib.request.urlretrieve(url_with_params, output_dem_file_path)
+
+        #if not os.path.exists(output_dem_file_path):
+        #    urllib.request.urlretrieve(url_with_params, output_dem_file_path)
+
+
+        #with requests.get(url=url_with_params, allow_redirects=True, stream=True) as response:
+            #print(response)
+
+        #    with open(output_dem_file_path, mode='wb') as localfile:
+        #        for chunk in response.iter_content(chunk_size=10 * 1024):
+        #            localfile.write(chunk)
+
+
+        url = r"https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?"
+
+
+        """
+        usgs_url_params = {"f": "image",
+              "bbox": f"{-10813982},{3744776},{-10812482},{3746276}",
+              "bboxSR": "EPSG:3857",
+              "imageSR": "EPSG:3857",
+              "format": "tiff",
+              "pixelType": "F32",
+              "size": f"{150},{150}",
+              "noDataInterpretation": "esriNoDataMatchAny",
+              "interpolation": "RSP_BilinearInterpolation"}
+        """
+
+        #"size": f"{parent_bb_width},{parent_bb_height}",
+
+        """
+        response = requests.get(url=url, params=usgs_url_params, allow_redirects=True)
+
+        with open(output_dem_file_path, mode="wb") as image_file:
+            image_file.write(response.content)
+        """
+
+        with requests.get(url=url, params=usgs_url_params, stream=True) as response:
+            with open(output_dem_file_path, mode='wb') as localfile:
+                for chunk in response.iter_content(chunk_size=10 * 1024):
+                    localfile.write(chunk)
+
+        print("hi")
 
     except:
         RLOG.critical(" -- ALERT: Failure to download file")
-        RLOG.critical(f"url_address: {url_address}")
-        RLOG.critical(f"url_params: {url_params}")
+        #RLOG.critical(f"url_address: {url_address}")
+        #RLOG.critical(f"url_params: {url_params}")
         RLOG.critical(f"writing to: {output_dem_file_path}")
         RLOG.critical(traceback.format_exc())    
         sys.exit(1)
