@@ -321,7 +321,7 @@ def __upload_file_to_s3(s3_path, file_name, src_file_path):
     print()
     RLOG.lprint(f"-- Start uploading {src_file_path} to {s3_file_path}")
 
-    file_exists = s3_sf.does_s3_file_exist(s3_file_path)
+    file_exists = s3_sf.is_valid_s3_file(s3_file_path)
     if file_exists is True:
         # Ask if they want to overwrite it
         print()

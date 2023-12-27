@@ -389,100 +389,6 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         raise ex
 
 
-####################################################################
-def get_records(bucket_name, s3_src_folder_path, search_key, is_verbose=True):
-    """
-    Process:
-        - uses a S3 paginator to recursively look for matches (non case-sensitive)
-    Inputs:
-        - bucket_name: e.g mys3bucket_name
-        - s3_src_folder_path: e.g. OWP_ras_models/models
-        - search_key: phrase (str) to be searched: e.g *Trinity River*
-    Output
-        - A list of dictionary items matching records.
-            - first value is the match "key":
-                    ie) 1262811_UNT 213 in Village Cr Washd_g01_1689773310/UNT 213 in Village Cr Washd.r01
-            - The second value is the full "url" of it
-                ie) s3://ras2fim-dev/OWP_ras_models/models-12030105-full/1262811_UNT...r01
-    """
-
-    try:
-        if is_verbose is True:
-            print("")
-            RLOG.lprint(
-                f"{cl.fg('light_yellow')}"
-                f"Searching files and folders in s3://{bucket_name}/{s3_src_folder_path}"
-                f" based on search key of '{search_key}'.\n"
-                " This may take a few minutes depending on seach folder size"
-                f"{cl.attr(0)}"
-            )
-            print("")
-
-        if not s3_src_folder_path.endswith("/"):
-            s3_src_folder_path += "/"
-
-        s3_client = boto3.client("s3")
-        s3_items = []  # a list of dictionaries
-
-        default_kwargs = {"Bucket": bucket_name, "Prefix": s3_src_folder_path}
-
-        # Examples:
-        # search_key = "TRINITY*"  (none... only work if no chars in front of Trinity)
-        # search_key = "*TRINITY*"
-        # search_key = "*trinity river*"
-        # search_key = "*caney*.prj"
-        # search_key = "*caney*.g01"
-        # search_key = "*caney*.g01*"
-        # search_key = "*.g01*"
-        # search_key = "*.g01"
-        # search_key = "1262811*"
-
-        next_token = ""
-
-        while next_token is not None:
-            # will limit to 1000 objects
-            updated_kwargs = default_kwargs.copy()
-            if next_token != "":
-                updated_kwargs["ContinuationToken"] = next_token
-
-            response = s3_client.list_objects_v2(**updated_kwargs)
-            if response.get("KeyCount") == 0:
-                return s3_items
-
-            contents = response.get("Contents")
-            if contents is None:
-                raise Exception("s3 contents not did not load correctly")
-
-            for result in contents:
-                key = result.get("Key")
-                key_adj = key.replace(s3_src_folder_path, "")
-                if search_key == "":
-                    item = {"key": key_adj, "url": f"s3://{bucket_name}/{s3_src_folder_path}{key_adj}"}
-                    s3_items.append(item)
-                elif fnmatch.fnmatch(key_adj, search_key):
-                    item = {"key": key_adj, "url": f"s3://{bucket_name}/{s3_src_folder_path}{key_adj}"}
-                    s3_items.append(item)
-                # no else needed
-
-            next_token = response.get("NextContinuationToken")
-
-        return s3_items
-
-    except botocore.exceptions.NoCredentialsError:
-        RLOG.critical("-----------------")
-        RLOG.critical(
-            "** Credentials not available for the submitted bucket. Try aws configure or review AWS "
-            "permissions options"
-        )
-        sys.exit(1)
-
-    except Exception as ex:
-        RLOG.critical("-----------------")
-        RLOG.critical("** Error finding files or folders in S3:")
-        RLOG.critical(traceback.format_exc())
-        raise ex
-
-
 # -------------------------------------------------
 def download_folders(
     s3_src_parent_path: str, local_parent_folder: str, df_folder_list, df_download_column_name: str
@@ -815,7 +721,7 @@ def get_records_list(bucket_name, s3_src_folder_path, search_key, is_verbose=Tru
         raise ex
 
 
-####################################################################
+# -------------------------------------------------
 def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
     """
     Process:
@@ -893,7 +799,7 @@ def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
         raise ex
 
 
-####################################################################
+# -------------------------------------------------
 def get_folder_size(bucket_name, s3_src_folder_path):
     """
     Granted.. there is no such thing as folders in S3, only keys, but we want the size of
@@ -958,7 +864,7 @@ def get_folder_size(bucket_name, s3_src_folder_path):
         raise ex
 
 
-####################################################################
+# -------------------------------------------------
 def is_valid_s3_folder(s3_full_folder_path):
     """
     Process:  This will throw exceptions for all errors
@@ -1004,7 +910,7 @@ def is_valid_s3_folder(s3_full_folder_path):
     return bucket_name, s3_folder_path
 
 
-####################################################################
+# -------------------------------------------------
 def is_valid_s3_file(s3_full_file_path):
     """
     Process:  This will throw exceptions for all errors
@@ -1057,49 +963,6 @@ def does_s3_bucket_exist(bucket_name):
         # print(resp)
 
         return True  # no exception?  means it exist
-
-    except botocore.exceptions.NoCredentialsError:
-        RLOG.critical("** Credentials not available for submitted bucket. Try aws configure")
-        sys.exit(1)
-
-    except client.exceptions.NoSuchBucket:
-        return False
-
-    except ClientError as ce:
-        RLOG.critical(f"** An error occurred while talking to S3. Details: {ce}")
-        sys.exit(1)
-
-    # other exceptions can be passed through
-
-
-# -------------------------------------------------
-def does_s3_file_exist(full_s3_path_and_file_name):
-    """
-    Process:  This will throw exceptions for all errors
-    Input:
-        - full_s3_path_and_file_name: eg. s3://ras2fim/OWP_ras_models/myfile.txt
-    Output:
-        True (exists) or False
-    """
-
-    if full_s3_path_and_file_name.endswith("/"):
-        full_s3_path_and_file_name = full_s3_path_and_file_name[:-1]
-
-    # we need the "s3 part stripped off for now" (if it is even there)
-    adj_s3_path = full_s3_path_and_file_name.replace("s3://", "")
-    path_segs = adj_s3_path.split("/")
-    bucket_name = path_segs[0]
-    s3_file_path = adj_s3_path.replace(bucket_name, "", 1)
-    s3_file_path = s3_file_path.lstrip("/")
-
-    client = boto3.client("s3")
-
-    try:
-        resp = client.list_objects_v2(Bucket=bucket_name, Prefix=s3_file_path)
-        if 'Contents' in resp:
-            return True
-        else:
-            return False
 
     except botocore.exceptions.NoCredentialsError:
         RLOG.critical("** Credentials not available for submitted bucket. Try aws configure")

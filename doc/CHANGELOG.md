@@ -162,7 +162,6 @@ This PR closes #190.
 - `src/ras2fim.py`: the function call to clip DEMs has been modified to reflect the additional cross section shapefile, and csv file of conflated models, as well as removing the "str_field_name" argument, which is not needed anymore (because we must only use model_id derived from model catalog for tif file names). 
 
 <br/><br/>
-<br/><br/>
 
 ## v2.0.beta.6 - 2023-12-04 - [PR#212](https://github.com/NOAA-OWP/ras2fim/pull/212)
 
