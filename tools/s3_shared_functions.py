@@ -39,14 +39,14 @@ def upload_file_to_s3(src_path, full_s3_path_and_file_name):
 
     try:
         if full_s3_path_and_file_name == "":
-            raise Exception(f"full s3 path and file name is not defined")
+            raise Exception("full s3 path and file name is not defined")
 
         # we need the "s3 part stripped off for now" (if it is even there)
         adj_s3_path = full_s3_path_and_file_name.replace("s3://", "")
         path_segs = adj_s3_path.split("/")
         bucket_name = path_segs[0]
         # could have subfolders
-        s3_key_path = adj_s3_path.replace(bucket_name, "", 1) 
+        s3_key_path = adj_s3_path.replace(bucket_name, "", 1)
         s3_key_path = s3_key_path.lstrip("/")
 
         if len(s3_key_path) == 0:
@@ -811,7 +811,7 @@ def does_s3_bucket_exist(bucket_name):
         return False
 
     except ClientError as ce:
-        RLOG.critical(f"** An error occurred while talking to S3. Details: {ce}")        
+        RLOG.critical(f"** An error occurred while talking to S3. Details: {ce}")
         sys.exit(1)
 
     # other exceptions can be passed through

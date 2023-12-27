@@ -140,7 +140,7 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name, is_verbose):
     time_duration = end_time - start_time
     RLOG.lprint(f"Duration: {str(time_duration).split('.')[0]}")
     print(f"log files saved to {RLOG.LOG_FILE_PATH}")
-    RLOG.lprint("")    
+    RLOG.lprint("")
 
 
 ####################################################################

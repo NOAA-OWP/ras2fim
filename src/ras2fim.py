@@ -83,8 +83,8 @@ def init_and_run_ras2fim(
     # -w   (ie 12090301)
     huc_valid, err_msg = val.is_valid_huc(str_huc8_arg)
     if huc_valid is False:
-        raise ValueError(err_msg)    
-    
+        raise ValueError(err_msg)
+
     # -------------------
     # -i  (ie OWP_ras_models\models) (HECRAS models)
     if os.path.exists(input_models_path) is False:
@@ -167,6 +167,7 @@ def init_and_run_ras2fim(
 
     RLOG.lprint("Sample lprint (console and log file)")
     RLOG.debug("Sample debug (console and log file)")
+    RLOG.notice("Sample notice (console and log file but differnt color to stand out more))
     RLOG.success("Sample success (console and log file)")
     RLOG.warning("Sample warning (console, log file and warning file)")
     RLOG.error("Sample error (console, log file, and error file)")

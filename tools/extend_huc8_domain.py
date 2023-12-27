@@ -34,14 +34,13 @@ def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path, run_by
     if run_by_cmd is True:
         RLOG.lprint("****************************************")
         RLOG.notice("==== Make a polygon for HUC8 extended domain ===")
-        RLOG.lprint(f"    Started (UTC): {get_stnd_date()}")        
+        RLOG.lprint(f"    Started (UTC): {get_stnd_date()}")
         RLOG.lprint(f"  --- (-huc) Target HUC8 number: {target_huc8}")
         RLOG.lprint(f"  --- (-wbd) Path to WBD HUC12s gkpg: {path_wbd_huc12s_gpkg}")
         RLOG.lprint(f"  --- (-o) Path to output folder: {output_path}")
         RLOG.lprint("+-----------------------------------------------------------------+")
     else:
         RLOG.notice(f" -- Making extended domain file for {target_huc8}")
-        RLOG.lprint(f"    Started (UTC): {get_stnd_date()}")
 
     try:
         # ------------
@@ -90,6 +89,7 @@ def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path, run_by
             os.makedirs(output_path, exist_ok=True)
 
         # ------------
+        print()
         print(" *** Stand by, this may take up to 10 mins depending on computer resources")
         # read wbd huc12s
         wbd_huc12s = gpd.read_file(path_wbd_huc12s_gpkg)[['geometry', 'HUC_8', 'HUC_12']]
