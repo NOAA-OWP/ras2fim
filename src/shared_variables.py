@@ -1,11 +1,17 @@
 import os
 
+import ras2fim_logger as rl
+
 
 """
 This is a collection of variables that help manage, centralize and standarize some values,
    such as pathing, or common valuse
 Common pathing, and mostly defaults. Most can be changed or overwritten at this point.
 """
+
+# global RLOG
+R2F_LOG = rl.RAS2FIM_logger()
+
 
 # BASIC ROOT FOLDERS
 DEFAULT_BASE_DIR = r"c:\ras2fim_data"
@@ -34,7 +40,7 @@ DEFAULT_RSF_MODELS_CATALOG_FILE = os.path.join(
 # RAS2FIM OUTPUT FOLDERS
 R2F_DEFAULT_OUTPUT_MODELS = os.path.join(DEFAULT_BASE_DIR, "output_ras2fim")
 R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS = "01_shapes_from_hecras"
-R2F_OUTPUT_DIR_SHAPES_FROM_CONF = "02_shapes_from_conflation"
+R2F_OUTPUT_DIR_SHAPES_FROM_CONF = "02_csv_shapes_from_conflation"
 R2F_OUTPUT_DIR_TERRAIN = "03_terrain"
 R2F_OUTPUT_DIR_HECRAS_TERRAIN = "04_hecras_terrain"
 R2F_OUTPUT_DIR_HECRAS_OUTPUT = "05_hecras_output"

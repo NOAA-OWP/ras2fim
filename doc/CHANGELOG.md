@@ -2,6 +2,7 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
+
 ## v2.0.beta.x - 2023-12-26 - [PR#212](https://github.com/NOAA-OWP/ras2fim/pull/232)
 
 A new tool was needed to support V2, where ras2fim has it's own custom made DEM files. Using the WBD_National.gpkg, we extract a given HUC8, then find all of it's neighboring HUC12, and make a single dissolved poly. This becomes the extent file we need to go against the USGS 1/3 arc (10m) remote VRT. The new DEM is now clipped against our domain poly.  Further, tool allows you to optionally load it to an S3 bucket.  
@@ -32,6 +33,135 @@ Other minor adjustments:
     - `ras_unit_to_s3.py`: Changed the function arguments into `s3_shared_functions.py` for uploading a file to s3. 
     - `s3_shared_functions.py`: Some style changes; Also changed the function arguments for `upload_file_to_s3.py` to make it more flexible (needed by the new acquire system); Added a new function to see if a file exists already in S3.
 
+<br/><br/>
+
+## v2.0.beta.11 - 2023-12-18 - [PR#227](https://github.com/NOAA-OWP/ras2fim/pull/227)
+
+In today's, Dec 15, 2023, merge from [PR 225](https://github.com/NOAA-OWP/ras2fim/pull/225) into Dev, there was some merge conflicts which were fixed on the fly.  During post merge testing, it appears some of the merging was not 100% successful and will be fixed as part of this card.
+
+Also noticed a few other minor pathing required fixes based on other modules in today's merge.
+
+Note: At this point in the current V2 rebuild, ras2fim.py should work up to the end of Step 4 and break on Step 5.
+
+### Changes  
+
+- `src`
+    - `clip_dem_from_shape.py`: a few minor text changes.
+    - `conflate_hecras_to_nwm.py`: Correct merge issues. Some of this was due to merge conflicts that needed to be fixed by hand such as some functions disappearing. Also added a few text fixes. Also fixed a small output pathing issue for folders for the 04_hecras_terrain folder.
+    - `ras2fim.py`: Minor linting fixes, plus changing a variable path value from Step 2 to Step 3.
+    - `worker_fim_rasters.py`: Minor linting fixes.
+
+<br/><br/>
+
+## v2.0.beta.10 - 2023-12-15 - [PR#225](https://github.com/NOAA-OWP/ras2fim/pull/225)
+
+This PR is to complete the step 5 `worker_fim_raster.py` of ras2fim v2 and apply a couple of fixes to step 2 `conflate_hecras_to_nwm.py` results. They include:
+
+1) Issue [210](https://github.com/NOAA-OWP/ras2fim/issues/210):  Developing ras2fim V2 depth grids
+
+Note: Running steps 1 to 4 appear to work correctly but fail on step 5. More changes are coming soon.
+
+### Changes  
+- `src`
+    - `worker_fim_raster.py` Multiple functions were added to former step 5 to complete it including: create_ras_plan_file, create_ras_project_file, create_ras_mapper_xml, create_hecras_files, fn_run_hecras, create_run_hecras_models.
+    - `conflate_hecras_to_nwm.py`: Also, in step 2 the model-id column was added to the results.
+    - `ras2fim.py`: One small change in ras2fim.py related to conflate_hecras_nwm.py. Also moved the copy of the models catalog file to earlier in processing as some steps need it. At finalization, the model catalog will be again copied to the "final" folder. Why?  Steps might modify the catalog during processing.
+    - `shared_variables.py`: Changed folder location for Step 2 so steps 1 to 4 can work. 
+
+<br/><br/>
+
+
+## v2.0.beta.9 - 2023-12-15 - [PR#222](https://github.com/NOAA-OWP/ras2fim/pull/222)
+
+`create_geocurves.py` was failing to merged up MP_logs (multi-proc logs) into the master log file. Upon review, MP_log was not setup correctly in that file and is now fixed. However, it exposed some required minor changes to how the logging system works as a whole. This triggered minor changes in imports for all file.
+
+Also fixed:
+- Closes Issue [# 70](https://github.com/NOAA-OWP/ras2fim/issues/70): Let ras2fim kick off from root ras2fim and not src directory: An super easy to fix, annoying enhancement. The  user is no longer forced to have to be in the "src" directory to run any scripts. They can not be in the "ras2fim" root. Now we can use commands like "python ./src/ras2fim.py" and "python ./tools/s3_search.py".  Easier to keep the focal point of the app at the root directory of ras2fim
+- `conflate_hecras_to_nwm.py`: had an input arg that was listed a Required but is now Optional.
+
+### Changes  
+- `src`
+    - `calculate_all_terrain_stats.py`: changed logging imports.
+    - `clip_dem_from_shape.py`: changed logging imports.
+    - `conflate_hecras_to_nwm.py`: changed logging imports, plus changed input arg for location of `X_National_datasets` to be optional and defaulted
+    - `convert_tif_to_ras_hdf5.py`: changed logging imports.
+    - `create_fim_rasters.py`: : changed logging imports, plus changed file location where to find the "PlanStandard". This now allows for command pathing to no longer be forced to start from the `src` directory. See note above (Issue 70). It also means the input arg for that path is no longer required.
+    - `create_geocurves.py`: changed logging imports, fixed MP_log issue, changed input arg for producing polygons to default to "true" and only require the `-p` argument if you DO NOT want the producing polygons. This is a follow-up to a different PR that changed the default to produce polygons but we didn't notice the missed change in the input args.
+    - `create_model_domain_polygons.py`: changed logging imports.
+    - `create_shapes_from_hecras.py`: changed logging imports.
+    - `get_usgs_dem_from_shape.py`: changed logging imports.
+    - `errors.py`: renamed to `r2f_errors.py` and changed logging imports. 
+    - `ras2fim.py`: changed logging imports, plus remove need to pass in input path to `create_fim_rasters.py`
+    - `ras2fim_logger.py`: Many changes to fix MP_log and enhance the logging system (stopping circular reference issue). Added an new `MP_log_setup` method for MP_logs and not regular RLogs. Also a bit of code cleanup.
+    - `ras2inundation.py`:  changed logging imports.
+    - `reformat_ras_rating_curve.py`: changed logging imports.
+    - `shared_functions.py`: changed logging imports and a little code cleanup.
+    - `shared_variables.py`: Added R2F_LOG (the instantiation of the logging system to here instead of at the bottom of `ras2fim_logger.py`: This solves some problems that started to occur with circular references.
+    - `simplify_fim_rasters.py`:  changed logging imports.
+    - `worker_fim_rasters.py`:  changed logging imports.
+- `tools`
+    - `get_models_by_catalog.py`:  changed logging imports and a bit of code cleanup.
+    - `nws_ras2fim_clip_dem_from_shape.py`:  changed logging imports (despite being largely deprecated)
+    - `nws_ras2fim_entwine.py`:  changed logging imports (despite being largely deprecated)
+    - `nws_ras2fim_terrain_AWS_tiles.py`:  changed logging imports (despite being largely deprecated)
+    - `nws_ras2fim_terrain_Texas.py`:  changed logging imports (despite being largely deprecated)
+    - `nws_ras2fim_terrain_USGS.py`:  changed logging imports (despite being largely deprecated)
+    - `ras_unit_to_s3.py`:  changed logging imports.
+    - `s3_search_tool.py`:  changed logging imports and a couple console output color code. Was correct to screen but was creating invalid values in the log file.
+    - `s3_shared_functions.py`:  changed logging imports and a couple console output color code. Was correct to screen but was creating invalid values in the log file.
+
+<br/><br/>
+
+
+## v2.0.beta.8 - 2023-12-15 - [PR#218](https://github.com/NOAA-OWP/ras2fim/pull/218)
+
+Created a new tool that can compare the S3 version of the `OWP_ras_models_catalog.csv` to the S3 models folder. This is to ensure that the master catalog and the model folders stay in sync. There are rules and tests that are applied and recorded in a new report csv showing errors. See PR for those rules.
+
+### Additions  
+- `tools`
+    - `s3_model_mgmt.py`:  As described above.
+
+### Changes  
+
+- `pyproject.toml`: added a new exception for the new file.
+- `src`
+    - `ras2fim.py`: Changed section headers to the new logging level of "notice" for better readability on screen.
+    - `ras2fim_logger.py`: Code layout changes.
+    - `reformat_ras_rating_curve.py`: Removed a debugging print line.
+    - `shared_variables.py`: Took a slash off the end of "S3_DEFAULT_BUCKET_PATH" variable.
+- `tools`
+    - `get_models_by_catalog.py` : Changed starting model id to be 10001 and not 10000 plus fix a few code layout issues.
+    - `ras_unit_to_s3.py`: Minor text changes and added a date to the log file being created.
+    - `s3_search_tool.py`: Changed a function name in s3_shared_functions which needed updating here; fixed a few code layout issues and added a date to the log file being created.
+    - `s3_shared_functions`:
+        - Small text and layout changes.,
+        - Moved a few functions to different places (on page).
+        - Renamed one function.
+        - Added a new function for "get_folder_list" (all folder names (well key names) at one S3 folder level only, recursively.
+        - Added a new function for "get_folder_size". 
+        - A few renamed variables.
+
+<br/><br/>
+
+## v2.0.beta.7 - 2023-12-15 - [PR#215](https://github.com/NOAA-OWP/ras2fim/pull/215)
+
+The DEM clipping script has been updated to use full WBD gpkg file and find all the HUC12s (even in other HUC8s) that intersects with an RAS model domain. The relevant HUC12s are then dissolved together and used for clipping the DEM for the RAS model. One DEM is created for each RAS model and the tif file is saved under the name <model_id>.tif. 
+Note that the new functionality also needs preparing DEMs that covers bigger domain than the studied HUC8 (probably by applying bigger buffers). Two additional inputs are now required for `src/clip_dem_from_shape.py`: 
+1. The cross sections shapefile (from Step 1 ) to select the HUC12s that intersect with each RAS model
+2. The csv file containing list of conflated models (from step2), so DEM clipping applies only for the conflated models.
+
+This PR closes #190.
+
+### Changes  
+
+- `src/clip_dem_from_shape.py`
+   - The input HUC12 shapefile argument can now be the full WBD shapefile (instead of the HUC12 shapefile from Steps 1&2 which are specific to the studied HUC8).  
+   - Two more input arguments are needed as described above. 
+   - Because the clipped DEM names must follow model_id from model catalog, there is no need to have the "str_field_name" argument anymore, and this argument has been removed. 
+   - The intersection / spatial join algorithm to find the relevant HUC12s has been modified to incorporate cross sections. These last 2 changes were necessary because there could be additional HUC8s that overlap the model, particularly at its headwaters and outlet.
+- `src/ras2fim.py`: the function call to clip DEMs has been modified to reflect the additional cross section shapefile, and csv file of conflated models, as well as removing the "str_field_name" argument, which is not needed anymore (because we must only use model_id derived from model catalog for tif file names). 
+
+<br/><br/>
 <br/><br/>
 
 ## v2.0.beta.6 - 2023-12-04 - [PR#212](https://github.com/NOAA-OWP/ras2fim/pull/212)
@@ -142,13 +272,7 @@ The goal of this PR is to merge the first ras2fim V2.01 to the main branch. Step
 
 <br/><br/>
 
-## RAS2FIM V1 - Code Freeze
 
-Nov 8, 2023
-
-At this point, there are no more projected updates required to the V1 code base. The "dev" branch will now continue on as ras2fim V2. This branch exists in case we need an emergency or critical fix based on V1 code.
-
-<br/><br/>
 
 ## v1.30.1 - 2023-11-2 - [PR#198](https://github.com/NOAA-OWP/ras2fim/pull/198)
 

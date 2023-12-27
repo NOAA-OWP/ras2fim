@@ -1,11 +1,9 @@
 import sys
 
-import ras2fim_logger
-
+import shared_variables as sv
 
 # Global Variables
-# RLOG = ras2fim_logger.RAS2FIM_logger()
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG
 
 
 class ModelUnitError(Exception):
@@ -29,6 +27,7 @@ class NoConflatedModelError(Exception):
     """
 
 
+# -------------------------------------------------
 def check_conflated_models_count(conflated_number):
     try:
         if conflated_number == 0:
@@ -41,5 +40,6 @@ def check_conflated_models_count(conflated_number):
         else:
             return True
     except NoConflatedModelError as e:
-        RLOG.critical(e)
+        sv.R2F_LOG.critical(e)
+        # print(e)
         sys.exit(1)

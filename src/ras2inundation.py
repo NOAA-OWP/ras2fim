@@ -9,11 +9,11 @@ from timeit import default_timer as timer
 import geopandas as gpd
 import pandas as pd
 
-import ras2fim_logger
+import shared_variables as sv
 
 
 # Global Variables
-RLOG = ras2fim_logger.RAS2FIM_logger()
+RLOG = sv.R2F_LOG
 
 
 # -------------------------------------------------

@@ -36,8 +36,8 @@ from rasterio.mask import mask
 from rasterio.merge import merge
 
 
-sys.path.append("..")
-import ras2fim.src.shared_functions as sf
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+import shared_functions as sf
 
 
 #########
