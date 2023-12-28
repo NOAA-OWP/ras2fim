@@ -78,7 +78,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         geocurve_df = pd.read_csv(geocurve_file_path)
         row_idx = geocurve_df["discharge_cms"].sub(discharge_cms).abs().idxmin()
         subset_geocurve = geocurve_df.iloc[row_idx]
-        polygon_filename = subset_geocurve["path"]
+        polygon_filename = subset_geocurve["filename"]
         polygon_path = os.path.join(os.path.split(geocurves_dir)[0], "polys", polygon_filename)
         if os.path.exists(polygon_path):
             feature_id_polygon_path_dict.update(

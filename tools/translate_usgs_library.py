@@ -11,8 +11,7 @@ import traceback
 from timeit import default_timer as timer
 
 warnings.filterwarnings('ignore')
-
-
+ 
 def identify_best_branch_catchments(huc8_outputs_dir, subset_fim_gdf):
 
     # Open branch_polygons and check for overlap with subset_fim_gdf
@@ -33,14 +32,6 @@ def identify_best_branch_catchments(huc8_outputs_dir, subset_fim_gdf):
     del branch_polygons_gdf, joined_gdf, not_null_rows, subset_joined_gdf, branches_of_interest
 
     return branch_path_list
-
-
-def reformat_to_hydrovis_geocurves(site, best_match_path, usgs_gages_gdf):
-    pass
-    # For each feature_id, write a CSV with
-    # discharge_cfs, stage_ft, wse_ft, discharge_cms, stage_m, stage_mm, wse_m, geometry, version
-    # You also to include the HUC12 in the filename, e.g. 5793592_HUC_120903010404_rating_curve_geo.csv
-
 
 def get_union(catchments_gdf, subset_fim_gdf, site_stage):
 
@@ -239,7 +230,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
         for feature_id_item in feature_id_list:
             feature_id_subset = union_subset.loc[union_subset.feature_id == feature_id_item]
 
-            feature_id_subset['path'] = feature_id_subset.apply(lambda row: f"{final_geom_dir}/{int(feature_id_item)}_HUC_{huc12}_{int(row['stage_mm'])}_mm.gpkg", axis=1)
+            feature_id_subset['filename'] = feature_id_subset.apply(lambda row: f"{final_geom_dir}/{int(feature_id_item)}_HUC_{huc12}_{int(row['stage_mm'])}_mm.gpkg", axis=1)
 
             # for idx, row in feature_id_subset.iterrows():
             #     # Construct the path string for each row using its specific 'stage_mm' value
@@ -249,9 +240,9 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
             #     feature_id_subset.loc[idx, 'path'] = path_str
 
             # Write polygons using path
-            unique_path_list = list(feature_id_subset.path.unique())
+            unique_path_list = list(feature_id_subset.filename.unique())
             for unique_path in unique_path_list:
-                unique_path_subset = feature_id_subset.loc[feature_id_subset.path == unique_path]
+                unique_path_subset = feature_id_subset.loc[feature_id_subset.filename == unique_path]
                 unique_path_subset.to_file(unique_path)
             
             # Write final CSV for feature_id
