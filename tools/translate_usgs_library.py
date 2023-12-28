@@ -68,6 +68,14 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
     # Create output_dir if necessary
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+
+    final_geocurves_dir = os.path.join(output_dir, 'geocurves')
+    if not os.path.exists(final_geocurves_dir):
+        os.mkdir(final_geocurves_dir)
+
+    final_geom_dir = os.path.join(output_dir, 'geocurve_polys')
+    if not os.path.exists(final_geom_dir):
+        os.mkdir(final_geom_dir)
     
     start = timer()
 
@@ -203,28 +211,51 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
             iteration += 1
         # Save as geopackage (temp) 5793592_HUC_120903010404_rating_curve_geo.csv
         # TODO write individual geopackages in the same format as RAS2FIM (Ask Carson for latest released data)
-        
 
-        if union.empty == False:
-            # Clean up geodataframe to match ras2fim schema
-            union.rename(columns={'STAGE': 'stage_ft', 'ELEV': 'wse_ft', 'QCFS': 'orig_cfs'}, inplace=True)
-            union['discharge_cms'] = round((union['discharge_cfs'] * 0.0283168), 3)
-            union['stage_m'] = round(union['stage_ft'] * 0.3048, 3)  # Convert feet to meters
-            union['version'] = 'usgs_fim'  # Assuming a constant value
-            union['stage_mm'] = round(union['stage_m'] * 100, 3)
-            union['wse_m'] = round(union['wse_ft'] * 0.3048, 3)
-            union['valid'] = union.is_valid
-            columns_to_keep = ['discharge_cms', 'discharge_cfs', 'stage_m', 'version', 'stage_ft', 'wse_ft', 'geometry', 'feature_id', 'stage_mm', 'wse_m', 'valid']
-            union_subset = union[columns_to_keep]
+        if union.empty == True:
+            print("empty")
+            continue
 
-            output_shapefile = os.path.join(final_dir, str(site) + '_' + branch_id + '.gpkg')
-            union_subset.to_file(output_shapefile, driver='GPKG')
-            
+        # Clean up geodataframe to match ras2fim schema
+        union.rename(columns={'STAGE': 'stage_ft', 'ELEV': 'wse_ft', 'QCFS': 'orig_cfs'}, inplace=True)
+        union['discharge_cms'] = round((union['discharge_cfs'] * 0.0283168), 3)
+        union['stage_m'] = round(union['stage_ft'] * 0.3048, 3)  # Convert feet to meters
+        union['version'] = 'usgs_fim'  # Assuming a constant value
+        union['stage_mm'] = round(union['stage_m'] * 100, 3)
+        union['wse_m'] = round(union['wse_ft'] * 0.3048, 3)
+        union['valid'] = union.is_valid
+        columns_to_keep = ['discharge_cms', 'discharge_cfs', 'stage_m', 'version', 'stage_ft', 'wse_ft', 'geometry', 'feature_id', 'stage_mm', 'wse_m', 'valid']
+        union_subset = union[columns_to_keep]
+
+        #output_shapefile = os.path.join(final_dir, str(site) + '_' + branch_id + '.gpkg')
+        #union_subset.to_file(output_shapefile, driver='GPKG')
+
+        # Convert to Web Mercator
+        union_subset = union_subset.to_crs('EPSG:3857')
+        #union_subset['geometry'] = union_subset['geometry'].simplify(1)
+                
         # Subset to each feature_id
         feature_id_list = list(union_subset.feature_id.unique())
         for feature_id_item in feature_id_list:
             feature_id_subset = union_subset.loc[union_subset.feature_id == feature_id_item]
-            feature_id_output_csv = os.path.join(final_dir, str(int(feature_id_item)) + '_HUC_' + huc12 + '_rating_curve_geo.csv')
+
+            feature_id_subset['path'] = feature_id_subset.apply(lambda row: f"{final_geom_dir}/{int(feature_id_item)}_HUC_{huc12}_{int(row['stage_mm'])}_mm.gpkg", axis=1)
+
+            # for idx, row in feature_id_subset.iterrows():
+            #     # Construct the path string for each row using its specific 'stage_mm' value
+            #     path_str = final_geom_dir + '/' + str(int(feature_id_item)) + '_HUC_' + huc12 + '_' + str(int(row['stage_mm'])) + '_mm.gpkg'
+                
+            #     # Directly assign the constructed string to the 'path' column for the current row
+            #     feature_id_subset.loc[idx, 'path'] = path_str
+
+            # Write polygons using path
+            unique_path_list = list(feature_id_subset.path.unique())
+            for unique_path in unique_path_list:
+                unique_path_subset = feature_id_subset.loc[feature_id_subset.path == unique_path]
+                unique_path_subset.to_file(unique_path)
+            
+            # Write final CSV for feature_id
+            feature_id_output_csv = os.path.join(final_geocurves_dir, str(int(feature_id_item)) + '_HUC_' + huc12 + '_rating_curve_geo.csv')
             feature_id_subset.to_csv(feature_id_output_csv)
 
         #del union

@@ -9,11 +9,11 @@ from timeit import default_timer as timer
 import geopandas as gpd
 import pandas as pd
 
-import ras2fim_logger
+# import ras2fim_logger
 
 
 # Global Variables
-RLOG = ras2fim_logger.RAS2FIM_logger()
+# RLOG = ras2fim_logger.RAS2FIM_logger()
 
 
 # -------------------------------------------------
@@ -30,7 +30,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
 
     # Check that output directory exists. Notify user that output directory will be created if not.
     if not os.path.exists(os.path.split(output_inundation_poly)[0]):
-        RLOG.lprint(
+        print(
             "Parent directory for "
             + os.path.split(output_inundation_poly)[1]
             + " does not exist. Directory/ies will be created."
@@ -69,7 +69,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         try:
             geocurve_file_path = geocurve_path_dictionary[str(feature_id)]["path"]
         except KeyError:
-            RLOG.warning(
+            print(
                 "An exception was found finding geocurve_file_path for feature ID" f" of {feature_id} [path]"
             )
             continue
@@ -78,7 +78,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         geocurve_df = pd.read_csv(geocurve_file_path)
         row_idx = geocurve_df["discharge_cms"].sub(discharge_cms).abs().idxmin()
         subset_geocurve = geocurve_df.iloc[row_idx]
-        polygon_filename = subset_geocurve["filename"]
+        polygon_filename = subset_geocurve["path"]
         polygon_path = os.path.join(os.path.split(geocurves_dir)[0], "polys", polygon_filename)
         if os.path.exists(polygon_path):
             feature_id_polygon_path_dict.update(
@@ -100,7 +100,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
 
         iteration += 1
 
-    RLOG.lprint("Writing final output: " + output_inundation_poly)
+    print("Writing final output: " + output_inundation_poly)
     # Now you have the GeoDataFrame `gdf` with polygons, and you can write it to a GeoPackage
     gdf.to_file(output_inundation_poly, driver="GPKG")
 
@@ -146,7 +146,7 @@ if __name__ == "__main__":
         # creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
         # Assumes RLOG has been added as a global var.
-        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
+        print(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
         start = timer()
@@ -154,7 +154,7 @@ if __name__ == "__main__":
         # call main program
         produce_inundation_from_geocurves(**args)
 
-        RLOG.lprint(f"Completed in {round((timer() - start)/60, 2)} minutes.")
+        print(f"Completed in {round((timer() - start)/60, 2)} minutes.")
 
     except Exception:
-        RLOG.critical(traceback.format_exc())
+        print(traceback.format_exc())
