@@ -552,7 +552,7 @@ def __overwrite_s3_existing_folder(src_path, bucket_name, unit_folder_name, skip
     """
     s3_folder_path = f"{sv.S3_OUTPUT_RAS2FIM_FOLDER}/{unit_folder_name}"
 
-    print("***  NOTE: we will delete the original directory, then upload the new unit")
+    RLOG.notice("***  NOTE: we will delete the original directory, then upload the new unit")
     print()
 
     RLOG.debug(f"Deleting {s3_folder_path}")
@@ -781,7 +781,7 @@ def __add_record_to_tracker(
         if is_verbose is True:
             RLOG.debug("Starting tracker file upload to s3")
 
-        s3_sf.upload_file_to_s3(TRACKER_SRC_LOCAL_PATH, s3_path_to_tracker_file, False)
+        s3_sf.upload_file_to_s3(TRACKER_SRC_LOCAL_PATH, s3_path_to_tracker_file)
 
         if is_verbose is True:
             RLOG.debug("Done upload, removing temp copy")
