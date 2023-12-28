@@ -1,0 +1,311 @@
+# Creates depth grids and SRC for feature-ids in HUC8
+# Uses the 'ras2fim' conda environment
+
+# -------------------------------------------------
+import os
+from datetime import date
+
+import matplotlib.pyplot as plt
+import matplotlib.ticker as tick
+import numpy as np
+import pandas as pd
+
+import ras2fim_logger
+import shared_functions as sf
+
+# Global Variables
+# RLOG = ras2fim_logger.R2F_LOG  # the non mp version
+
+
+# -------------------------------------------------
+# Ploting synthetic rating curves
+def plot_src(str_feature_id, list_int_step_flows, list_step_wse, str_rating_path_to_create, str_file_name):
+
+    fig = plt.figure()
+    fig.patch.set_facecolor("gainsboro")
+    fig.suptitle("FEATURE ID: " + str_feature_id, fontsize=18, fontweight="bold")
+
+    ax = plt.gca()
+    today = date.today()
+
+    ax.text(
+        0.98,
+        0.04,
+        "Created: " + str(today),
+        verticalalignment="bottom",
+        horizontalalignment="right",
+        backgroundcolor="w",
+        transform=ax.transAxes,
+        fontsize=6,
+        style="italic",
+    )
+
+    ax.text(
+        0.98,
+        0.09,
+        "Computed from HEC-RAS models",
+        verticalalignment="bottom",
+        horizontalalignment="right",
+        backgroundcolor="w",
+        transform=ax.transAxes,
+        fontsize=6,
+        style="italic",
+    )
+
+    ax.text(
+        0.98,
+        0.14,
+        "NOAA - Office of Water Prediction",
+        verticalalignment="bottom",
+        horizontalalignment="right",
+        backgroundcolor="w",
+        transform=ax.transAxes,
+        fontsize=6,
+        style="italic",
+    )
+
+    plt.plot(list_int_step_flows, list_step_wse)  # creates the line
+    plt.plot(list_int_step_flows, list_step_wse, "bd")
+    # adding blue diamond points on line
+
+    ax.get_xaxis().set_major_formatter(tick.FuncFormatter(lambda x, p: format(int(x), ",")))
+
+    plt.xticks(rotation=90)
+
+    if model_unit == "meter":
+        plt.ylabel("Average Depth (m)")
+        plt.xlabel("Discharge (m^3/s)")
+    else:
+        plt.ylabel("Average Depth (ft)")
+        plt.xlabel("Discharge (ft^3/s)")
+
+    plt.grid(True)
+
+    str_rating_image_path = str_rating_path_to_create + "\\" + str_file_name
+    plt.savefig(str_rating_image_path, dpi=300, bbox_inches="tight")
+
+    plt.cla()
+    plt.close("all")
+
+
+# -------------------------------------------------
+huc8_num = '12090301'
+path_to_step2_fid_xs_info = 'C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301_2\\02_csv_shapes_from_conflation'
+path_to_ras_output = 'C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301_2\\05_hecras_output'
+path_model_catalog_folder = 'C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301_2'
+path_to_step6 = 'C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301_2\\06_src_depthgrids'
+int_number_of_steps = 76
+model_unit = 'feet'
+
+def create_src_feature_ids(
+    huc8_num,
+    int_number_of_steps,
+    model_unit,
+    path_to_step2_fid_xs_info,
+    path_to_ras_output,
+    path_model_catalog_folder,
+    path_to_step6
+    ):
+
+    # Reading data_summary from step 2
+    str_path_to_fid_xs = os.path.join(path_to_step2_fid_xs_info, f"{huc8_num}_stream_qc_fid_xs.csv")
+    
+    fid_xs_huc8 = pd.read_csv(str_path_to_fid_xs)
+
+    path_conflated_models_splt = [path.split("\\") for path in list(fid_xs_huc8['ras_path'])]
+    conflated_model_names = [names[-2] for names in path_conflated_models_splt]
+
+    # -------------------------------------------------
+    # Reading model_catalog to add model_ids to data_summary
+    path_model_catalog = os.path.join(path_model_catalog_folder, f"OWP_ras_models_catalog_{huc8_num}.csv")
+
+    model_catalog = pd.read_csv(path_model_catalog)
+    models_name_id = pd.concat([model_catalog["final_name_key"], model_catalog["model_id"]], axis = 1)
+
+    final_name_key = list(models_name_id["final_name_key"])
+
+    # -------------------------------------------------
+    # Assigning model_ids to data_summary
+    conflated_model_names_id = []
+    for nms in conflated_model_names:
+
+        indx = final_name_key.index(nms)
+
+        name_id = list(models_name_id.iloc[indx])
+
+        conflated_model_names_id.append(name_id)
+
+    conflated_model_names_id_df = pd.DataFrame(
+        conflated_model_names_id,
+        columns = ["final_name_key", "model_id"]
+        )
+    
+    df_fid_xs_huc8 = pd.concat(
+        [fid_xs_huc8,conflated_model_names_id_df],
+        axis = 1
+        )
+
+    # -------------------------------------------------
+    # Reading all_x_sections_info for all conflated ras streams
+    # Determing paths to the step 5 results
+
+    created_ras_models_folders = os.listdir(path_to_ras_output)
+
+    path_to_all_x_sections_info = []
+    for folders in created_ras_models_folders:
+
+        path_to_all_xs_info = os.path.join(path_to_ras_output, folders, f"all_x_sections_info_{folders}.csv")
+                
+        path_to_all_x_sections_info.append(path_to_all_xs_info)
+
+    # -------------------------------------------------
+    # Assigning feature_ids from df_fid_xs_huc8 to all_x_sections_info
+    
+    # Creating a for loop going through all all_x_sections_info 
+    # for each confalted stream (step 5 results)        
+    for infoind in range(len(path_to_all_x_sections_info)):
+    
+        mid_x_sections_info = pd.read_csv(path_to_all_x_sections_info[infoind]) # 
+        mid_x_sections_info = mid_x_sections_info.rename(columns={'fid_xs': 'mid_xs', 'modelid': 'model_id'})
+
+        model_id = mid_x_sections_info['model_id'][0]
+
+        df_fid_xs_mid = pd.DataFrame()
+        for mid in range(len(df_fid_xs_huc8['model_id'])):
+
+            if df_fid_xs_huc8['model_id'][mid] == model_id:
+                
+                mid_info = df_fid_xs_huc8.iloc[mid][['feature_id',
+                                                    'river',
+                                                    'model_id',
+                                                    'us_xs',
+                                                    'ds_xs',
+                                                    'peak_flow']]
+            
+                df_fid_xs_mid = pd.concat([df_fid_xs_mid,mid_info], axis = 1)
+
+        df_fid_xs_mid = df_fid_xs_mid.T
+        df_fid_xs_mid = df_fid_xs_mid.sort_values(by=['us_xs'], ascending=False)
+        df_fid_xs_mid.index = range(len(df_fid_xs_mid))
+
+        # Discussed in our ras2fim meeting (2023-12-28). Conclusion: 
+        # Inclusion of upstreams XS that are not part of the nwm 
+        # feature_ids in average depth per feature_if.
+        maxind = 0 # df_fid_xs_mid["us_xs"].astype(float).idxmax()
+        
+        df_XS_name = pd.DataFrame(mid_x_sections_info['Xsection_name'])
+        mid_fid = {(indxh, rowh['Xsection_name']): [maxind, df_fid_xs_mid['feature_id'][maxind]] for indxh, rowh in df_XS_name.iterrows()}
+
+        for indxh, rowh in df_XS_name.iterrows():
+
+            for indxh1, rowh1 in df_fid_xs_mid.iterrows():
+
+                # print(indxh1, rowh1['ds_xs'], rowh1['us_xs'])
+                if rowh1['ds_xs'] <= rowh['Xsection_name'] <= rowh1['us_xs']:
+
+                    mid_fid[(indxh, rowh['Xsection_name'])] = [indxh1, df_fid_xs_mid['feature_id'][indxh1]]
+
+
+        df_mid_fid = pd.DataFrame(mid_fid).T
+        df_mid_fid.index = range(len(df_mid_fid))
+        df_mid_fid.columns = ['fidindx', 'feature_id']
+        mid_x_sections_info_fid = pd.concat([mid_x_sections_info, df_mid_fid], axis = 1)
+
+        mid_x_sections_info_fid = mid_x_sections_info_fid.rename(columns={'Unnamed: 0': 'xs_counter'})
+
+        # mid_x_sections_info_fid.to_csv(path_to_step6 + "//" + "mid_x_sections_info_fid.csv")
+        mid_xs_info_fid = (mid_x_sections_info_fid[['model_id', 'feature_id', 'xs_counter', 'Xsection_name', 'wse', 'discharge']])
+
+        # -------------------------------------------------
+        # Create profile names (numbers) and add it to the mid_xs_info_fid
+        # profile_names = [f'flow{ns}_ft' for ns in range(int_number_of_steps)]
+        xs_counter = 1+ mid_x_sections_info_fid['xs_counter'].max()
+
+        # profile_names_col = pd.DataFrame(
+        #     [profile_names[i//xs_counter] for i in range(len(profile_names)*xs_counter)],
+        #     columns = ['profile_name'])
+        
+        profile_num = [ns for ns in range(int_number_of_steps)]
+
+        profile_num_col = pd.DataFrame(
+            [profile_num[i//xs_counter] for i in range(len(profile_num)*xs_counter)],
+            columns = ['profile_num'])
+
+        mid_xs_info_fid = pd.concat([mid_xs_info_fid, profile_num_col], axis = 1) # profile_names_col
+
+        # -------------------------------------------------
+        # Grouped and averaged by 'profile_name', 'feature_id'
+        mid_xs_info_fid_avr = mid_xs_info_fid.groupby(['profile_num', 'feature_id']).mean()
+        
+        fid_ind = mid_xs_info_fid_avr.index.get_level_values('feature_id').drop_duplicates()
+
+        mid_xs_info_fid_1st = mid_xs_info_fid.groupby(['profile_num', 'feature_id']).first()
+        mid_xs_info_fid_lst = mid_xs_info_fid.groupby(['profile_num', 'feature_id']).last()
+
+        for fids in fid_ind:
+        
+            list_int_step_flows = list(
+                mid_xs_info_fid_avr.iloc[mid_xs_info_fid_avr.index.get_level_values('feature_id') == fids]['discharge']
+                )
+            list_step_wse = list(
+                mid_xs_info_fid_avr.iloc[mid_xs_info_fid_avr.index.get_level_values('feature_id') == fids]['wse']
+                )
+            str_feature_id = str(fids)
+
+            fid_mid_x_sections_info_avr = (
+                mid_xs_info_fid_avr.iloc[mid_xs_info_fid_avr.index.get_level_values('feature_id') == fids].astype(int)
+                )
+            fid_mid_x_sections_info_1st = (
+                mid_xs_info_fid_1st.iloc[mid_xs_info_fid_1st.index.get_level_values('feature_id') == fids]
+                )
+            fid_mid_x_sections_info_lst = (
+                mid_xs_info_fid_lst.iloc[mid_xs_info_fid_lst.index.get_level_values('feature_id') == fids]
+                )
+            xs_us_fid = fid_mid_x_sections_info_1st['Xsection_name']
+            xs_us_fid.rename(columns={'Xsection_name': 'xs_us'})
+            xs_ds_fid = fid_mid_x_sections_info_lst['Xsection_name']
+            xs_ds_fid.rename(columns={'Xsection_name': 'xs_ds'})
+
+            fid_mid_x_sections_info_src = fid_mid_x_sections_info_avr[['model_id','wse', 'discharge']]
+            fid_mid_x_sections_info_src = pd.concat([fid_mid_x_sections_info_src, xs_us_fid, xs_ds_fid], axis = 1)
+
+            str_file_name = str_feature_id + "_rating_curve.png"
+
+            # Create a Rating Curve folder
+            str_rating_path_to_create = os.path.join(
+                path_to_step6,
+                created_ras_models_folders[infoind],
+                "Rating_Curve"
+                )
+            os.makedirs(str_rating_path_to_create, exist_ok=True)
+
+            # -------------------------------------------------
+            # Saving all cross sections info per feature_id
+            # TODO: add meter units of feet and meter
+            # TODO: add xs_counter
+            x_sections_info_fid = (
+                mid_x_sections_info_fid[mid_x_sections_info_fid['feature_id'] == fids].astype(int)
+                )
+            path_to_all_xs_info_fid = os.path.join(
+                str_rating_path_to_create,
+                f"all_xs_info_fid_{fids}.csv"
+                )
+            x_sections_info_fid.to_csv(path_to_all_xs_info_fid)
+
+            # -------------------------------------------------
+            # Plotting and saving synthetic rating curves
+            str_xsection_path = os.path.join(
+                str_rating_path_to_create,
+                f"mean_xs_info_fid_{fids}.csv"
+                )
+            fid_mid_x_sections_info_src.to_csv(str_xsection_path, index=True)
+            
+            plot_src(
+                str_feature_id,
+                list_int_step_flows,
+                list_step_wse,
+                str_rating_path_to_create,
+                str_file_name
+                )
+            #
+
