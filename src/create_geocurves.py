@@ -68,9 +68,10 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
 
                 # if the array only has values of zero, then skip it (aka.. no heights above surface)
                 if np.min(reclass_inundation_array) == 0 and np.max(reclass_inundation_array) == 0:
-                    RLOG.warning(f"depth_grid of {depth_grid} does not have any heights above surfase.")
+                    #RLOG.warning(f"depth_grid of {depth_grid} does not have any heights above surfase.")
+                    print((f"depth_grid of {depth_grid} does not have any heights above surface."))
                     continue
-
+                
                 # Aggregate shapes
                 results = (
                     {"properties": {"extent": 1}, "geometry": s}
