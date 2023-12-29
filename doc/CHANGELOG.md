@@ -7,14 +7,15 @@ This PR solves issue #228 and performs:
 
 1. Removes the option of making gpkg files in `create_geocurves.py`. The geometry info is only saved in 'geometry' column of geocurves csv files.
 2. Fixes a bug in `ras2inundation.py` to make sure all geometry info can be read from 'geometry' column of geocurves csv files. Also, because geocurve gpkg polygon files are not available anymore as the input, `ras2inundation.py` now reads ras2fim version number and `stage_m` value (corresponding to the `discharge_cms`) from geocurve csv files. 
+3. Improved the performance of `ras2inundation.py` (e.g., by vectorizing a for loop)
 
 
 ### Changes  
 
-- `create_geocurves.py` 
-- `ras2inundation.py` 
-
-<br/><br/>
+- `create_geocurves.py` ... see above
+- `ras2inundation.py` ... see above
+- `config/r2f_config.env`  ... removed the PRODUCE_GEOCURVE_POLYGONS flag
+- `src/ras2fim.py` ... adjusted/removed the arguments used to call "create_geocurve.py" from ras2fim.py
 
 
 
