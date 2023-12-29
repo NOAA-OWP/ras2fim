@@ -74,7 +74,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         break
 
     if ras2fim_version:
-        RLOG.lprint("Completed deriving ras2fim version from CHANELOG.md file.")
+        RLOG.lprint("Completed deriving ras2fim version from CHANGELOG.md file.")
     else:
         RLOG.warning(f"Failed to derive ras2fim version ({ras2fim_version}) from CHANELOG.md file.")
 
@@ -116,7 +116,6 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
 
     # add version number before saving
     gdf['version'] = ras2fim_version
-
     gdf.to_file(output_inundation_poly, driver="GPKG")
     RLOG.lprint("  Run Ras2inundation - Completed                                         |")
 
