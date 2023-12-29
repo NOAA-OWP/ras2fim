@@ -68,10 +68,10 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
 
                 # if the array only has values of zero, then skip it (aka.. no heights above surface)
                 if np.min(reclass_inundation_array) == 0 and np.max(reclass_inundation_array) == 0:
-                    #RLOG.warning(f"depth_grid of {depth_grid} does not have any heights above surfase.")
+                    # RLOG.warning(f"depth_grid of {depth_grid} does not have any heights above surfase.")
                     print((f"depth_grid of {depth_grid} does not have any heights above surface."))
                     continue
-                
+
                 # Aggregate shapes
                 results = (
                     {"properties": {"extent": 1}, "geometry": s}
@@ -192,22 +192,19 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, version, job_number,
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    # Make geocurves_dir and polys dir
-    geocurve_dirs = []
-    geocurves_dir = os.path.join(output_folder, "geocurves")
-    geocurve_dirs.append(geocurves_dir)
+    # Make geocurves_dir
+    geocurves_dir = os.path.join(output_folder, 'geo_curves')
 
-    for gc_dir in geocurve_dirs:
-        if os.path.exists(gc_dir) and not overwrite:
-            RLOG.lprint(
-                "The output directory, "
-                + gc_dir
-                + ", already exists. Use the overwrite flag (-o) to overwrite."
-            )
-            quit()
+    if os.path.exists(geocurves_dir) and not overwrite:
+        RLOG.lprint(
+            "The output directory, "
+            + geocurves_dir
+            + ", already exists. Use the overwrite flag (-o) to overwrite."
+        )
+        quit()
 
-        if os.path.exists(gc_dir):
-            shutil.rmtree(gc_dir)
+    if os.path.exists(geocurves_dir):
+        shutil.rmtree(geocurves_dir)
 
     # Either way.. we are makign a new geocurve folder. e.g. If it is overwrite, we deleted
     #  before replacing it so we don't have left over garbage
