@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.30.2 - 2023-12-22 - [PR#230](https://github.com/NOAA-OWP/ras2fim/pull/230)
+## v1.30.2 - 2023-12-29 - [PR#230](https://github.com/NOAA-OWP/ras2fim/pull/230)
 
 This PR solves issue #228 and performs:
 
@@ -17,7 +17,7 @@ This PR solves issue #228 and performs:
 - `config/r2f_config.env`  ... removed the PRODUCE_GEOCURVE_POLYGONS flag
 - `src/ras2fim.py` ... adjusted/removed the arguments used to call "create_geocurve.py" from ras2fim.py
 
-
+<br/><br/>
 
 
 ## RAS2FIM V1 - Code Freeze
