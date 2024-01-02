@@ -16,7 +16,7 @@ from shared_functions import get_stnd_date, print_date_time_duration
 
 
 # Global Variables
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG
 
 
 # -------------------------------------------------

@@ -25,7 +25,7 @@ import shared_variables as sv
 
 
 # Global Variables
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG
 
 # local constants (until changed to input param)
 # This URL is part of a series of vrt data available from USGS via an S3 Bucket.
