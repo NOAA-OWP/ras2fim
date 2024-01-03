@@ -14,12 +14,11 @@ import matplotlib.ticker as tick
 import pandas as pd
 
 import ras2fim_logger
-
-
+import shared_variables as sv
 # import shared_functions as sf
 
 # Global Variables
-RLOG = ras2fim_logger.R2F_LOG  # the non mp version
+RLOG = sv.R2F_LOG  # the non mp version
 
 
 # -------------------------------------------------
