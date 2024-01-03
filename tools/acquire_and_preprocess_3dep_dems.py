@@ -384,7 +384,7 @@ if __name__ == '__main__':
     '''
 
     sample (min args)
-        python ./data/usgs/acquire_and_preprocess_3dep_dems.py -huc 12090301
+        python ./tools/acquire_and_preprocess_3dep_dems.py -huc 12090301
 
 
     Notes:
@@ -405,7 +405,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Acquires and pre-processes USGS 3Dep dems')
 
     parser.add_argument(
-        "-huc", dest="huc", help="REQUIRED: A single HUC8", required=True, metavar="", type=str
+        "-huc", dest="huc", help="REQUIRED: A single HUC8", required=True, metavar="", type=str,
     )  # has to be string so it doesn't strip the leading zero
 
     parser.add_argument(
@@ -415,6 +415,7 @@ if __name__ == '__main__':
         f'defaults to {sv.INPUT_DEFAULT_WBD_NATIONAL_FILE_PATH}',
         default=sv.INPUT_DEFAULT_WBD_NATIONAL_FILE_PATH,
         required=False,
+        metavar="",
     )
 
     parser.add_argument(
@@ -424,6 +425,7 @@ if __name__ == '__main__':
         f' Defaults to {sv.INPUT_3DEP_HUC8_10M_ROOT}',
         default=sv.INPUT_3DEP_HUC8_10M_ROOT,
         required=False,
+        metavar="",
     )
 
     parser.add_argument(
@@ -444,6 +446,7 @@ if __name__ == '__main__':
         f' Defaults to {sv.S3_INPUTS_3DEP_DEMS}',
         required=False,
         default=sv.S3_INPUTS_3DEP_DEMS,
+        metavar="",
     )
 
     parser.add_argument(
@@ -452,6 +455,7 @@ if __name__ == '__main__':
         help=f'OPTIONAL: Desired output CRS. Defaults to {sv.DEFAULT_RASTER_OUTPUT_CRS}',
         required=False,
         default=sv.DEFAULT_RASTER_OUTPUT_CRS,
+        metavar="",
     )
 
     # Extract to dictionary and assign to variables.
