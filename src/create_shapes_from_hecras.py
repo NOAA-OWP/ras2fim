@@ -28,8 +28,8 @@ import win32com.client
 from shapely.geometry import LineString
 from shapely.ops import linemerge, split
 
-import ras2fim_logger
 import shared_functions as sf
+import shared_variables as sv
 
 
 # windows component object model for interaction with HEC-RAS API
@@ -39,8 +39,7 @@ import shared_functions as sf
 # h5py for extracting data from the HEC-RAS g**.hdf files
 
 # Global Variables
-# RLOG = ras2fim_logger.RAS2FIM_logger()
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG
 
 
 # -------------------------------------------------

@@ -8,20 +8,21 @@ from pathlib import Path
 import colored as cl
 
 
-# Globally scoped
-CUSTOM_LOG_FILES_PATHS = {}
-LOG_SYSTEM_IS_SETUP = False
-
-# **********************
-# NOTE: there is another global variable at the end of this script (and has to be at the end)
+# Careful... You might not put shared_functions here as it can create circular references,
+#  so shared_functions is put inside functions only/as is need
 
 
 class RAS2FIM_logger:
+    CUSTOM_LOG_FILES_PATHS = {}
+    LOG_SYSTEM_IS_SETUP = False
+
+    LOG_DEFAULT_FOLDER = ""
     LOG_FILE_PATH = ""  # full path and file name
     LOG_WARNING_FILE_PATH = ""
     LOG_ERROR_FILE_PATH = ""
 
-    LOG_DEFAULT_FOLDER = ""
+    LOG_SYS_NOT_SETUP_MSG = "******  Logging to the file system not yet setup.\n"
+    "******  Sometimes this is not setup until after initial validation.\n"
 
     """
     Levels available for use
@@ -66,9 +67,6 @@ class RAS2FIM_logger:
         duplicate all log message with the levels of ERROR, and CRITICAL.
         """
 
-        # Allows us to write the app wide global variables
-        global LOG_SYSTEM_IS_SETUP
-
         # -----------
         # Validation
         if log_file_path is None:
@@ -108,7 +106,45 @@ class RAS2FIM_logger:
         if os.path.isfile(self.LOG_WARNING_FILE_PATH):
             os.remove(self.LOG_WARNING_FILE_PATH)
 
-        LOG_SYSTEM_IS_SETUP = True
+        self.LOG_SYSTEM_IS_SETUP = True
+
+    # -------------------------------------------------
+    def MP_Log_setup(self, file_prefix, log_folder_path):
+        """
+        Overview:
+            This method is sort of a wrapper in that it just manually creates a file name
+            using a defined file path.
+            The file name is calculated as such {file_prefix}-{date_with_milli and random key}.log()
+            ie) produce_geocurves-231122_1407444333_1234.log
+
+            Note: This works when ras2fim.py is running only and not for direct executions of any .py file.
+
+        Inputs:
+            file_prefix (str): a value to prepend to the file names. Often is the name of the function
+               that called this method. Note: Later, when a person has these MP_Logs cleaned up
+               they will use this file_prefix again to search and remove the temp MP_log files as they
+               get rolled back up to the master RLOG file.
+            log_folder_path (str): folder location for the files to be created. Note: it has to be in
+               the same folder as the master RLOG file.
+        """
+
+        # Has to be put here instead of global to this script to avoid circular references
+        import shared_functions as sf
+
+        # -----------------
+        # validation
+        if not os.path.exists(log_folder_path):
+            raise Exception(
+                f"log folder path value of {log_folder_path} does not exist."
+                " It should be where the ras2fim log is."
+            )
+
+        # -----------------
+        file_id = sf.get_date_with_milli()
+        log_file_name = f"{file_prefix}-{file_id}.log"
+        log_file_path = os.path.join(log_folder_path, log_file_name)
+
+        self.setup(log_file_path)
 
     # -------------------------------------------------
     def __calc_warning_error_file_names(self, log_file_and_path):
@@ -251,8 +287,6 @@ class RAS2FIM_logger:
 
         """
 
-        global CUSTOM_LOG_FILES_PATHS
-
         # -----------
         # Validation
         key_name = key_name.strip()
@@ -297,11 +331,11 @@ class RAS2FIM_logger:
 
         # -----------
         # Check to see if the key already exists in the dictionary.
-        if key_name in CUSTOM_LOG_FILES_PATHS:
+        if key_name in self.CUSTOM_LOG_FILES_PATHS:
             raise Exception(f"Internal Error: Custom log key name of {key_name} already exists")
 
         # add to the global list
-        CUSTOM_LOG_FILES_PATHS[key_name] = file_path_and_name
+        self.CUSTOM_LOG_FILES_PATHS[key_name] = file_path_and_name
 
     # -------------------------------------------------
     def write_c_log(self, key_name, msg):
@@ -316,8 +350,6 @@ class RAS2FIM_logger:
         # ie) RLOG.write_c_log("model_list", "hey there")
         #     (or MP_LOG)
 
-        global CUSTOM_LOG_FILES_PATHS
-
         # -----------
         # Validation
         key_name = key_name.strip()
@@ -326,19 +358,23 @@ class RAS2FIM_logger:
 
         # -----------
         # Check to see if the key exists in the dictionary.
-        if key_name not in CUSTOM_LOG_FILES_PATHS:
+        if key_name not in self.CUSTOM_LOG_FILES_PATHS:
             raise Exception(
                 f"Internal Error: Custom log key name of {key_name} does not yet exist."
                 " add_custom_log needs to be called first."
             )
 
-        with open(CUSTOM_LOG_FILES_PATHS[key_name], "a") as f_log:
+        with open(self.CUSTOM_LOG_FILES_PATHS[key_name], "a") as f_log:
             f_log.write(msg + "\n")
 
     # -------------------------------------------------
     def trace(self, msg):
         # goes to file only, not console
         level = "TRACE   "  # keeps spacing the same
+        if self.LOG_FILE_PATH == "":
+            print(self.LOG_SYS_NOT_SETUP_MSG)
+            return
+
         with open(self.LOG_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
 
@@ -347,6 +383,10 @@ class RAS2FIM_logger:
         # goes to console and log file
         level = "LPRINT  "  # keeps spacing the same
         print(f"{msg} ")
+
+        if self.LOG_FILE_PATH == "":
+            print(self.LOG_SYS_NOT_SETUP_MSG)
+            return
 
         with open(self.LOG_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
@@ -359,6 +399,23 @@ class RAS2FIM_logger:
         c_msg_type = f"{cl.fore.DODGER_BLUE_1}<{level}>{cl.style.RESET}"
         print(f"{self.__get_clog_dt()} {c_msg_type} : {msg}")
 
+        if self.LOG_FILE_PATH == "":
+            print(self.LOG_SYS_NOT_SETUP_MSG)
+            return
+
+        with open(self.LOG_FILE_PATH, "a") as f_log:
+            f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
+
+    # -------------------------------------------------
+    def notice(self, msg):
+        # goes to console and log file
+        level = "NOTICE  "  # keeps spacing the same
+        print(f"{cl.fore.TURQUOISE_2}{msg}{cl.style.RESET}")
+
+        if self.LOG_FILE_PATH == "":
+            print(self.LOG_SYS_NOT_SETUP_MSG)
+            return
+
         with open(self.LOG_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
 
@@ -370,6 +427,10 @@ class RAS2FIM_logger:
         c_msg_type = f"{cl.fore.SPRING_GREEN_2B}<{level}>{cl.style.RESET}"
         print(f"{self.__get_clog_dt()} {c_msg_type} : {msg}")
 
+        if self.LOG_FILE_PATH == "":
+            print(self.LOG_SYS_NOT_SETUP_MSG)
+            return
+
         with open(self.LOG_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
 
@@ -380,6 +441,10 @@ class RAS2FIM_logger:
 
         c_msg_type = f"{cl.fore.LIGHT_YELLOW}<{level}>{cl.style.RESET}"
         print(f"{self.__get_clog_dt()} {c_msg_type} : {msg}")
+
+        if self.LOG_FILE_PATH == "":
+            print(self.LOG_SYS_NOT_SETUP_MSG)
+            return
 
         with open(self.LOG_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
@@ -396,6 +461,10 @@ class RAS2FIM_logger:
         c_msg_type = f"{cl.fore.RED_1}<{level}>{cl.style.RESET}"
         print(f"{self.__get_clog_dt()} {c_msg_type} : {msg}")
 
+        if self.LOG_FILE_PATH == "":
+            print(self.LOG_SYS_NOT_SETUP_MSG)
+            return
+
         with open(self.LOG_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
 
@@ -411,13 +480,13 @@ class RAS2FIM_logger:
         c_msg_type += f" <{level}>"
         print(f" {c_msg_type} : {msg} {cl.style.RESET}")
 
+        if self.LOG_FILE_PATH == "":
+            print(self.LOG_SYS_NOT_SETUP_MSG)
+            return
+
         with open(self.LOG_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
 
         # and also write to error logs
         with open(self.LOG_ERROR_FILE_PATH, "a") as f_log:
             f_log.write(f"{self.__get_dt()} | {level} || {msg}\n")
-
-
-# global RLOG
-R2F_LOG = RAS2FIM_logger()

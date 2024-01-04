@@ -46,13 +46,12 @@ import rioxarray as rxr
 from rasterio.merge import merge
 from shapely.geometry import Polygon
 
-import ras2fim_logger
 import shared_functions as sf
+import shared_variables as sv
 
 
 # Global Variables
-# RLOG = ras2fim_logger.RAS2FIM_logger()
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG
 
 
 # -------------------------------------------------

@@ -19,15 +19,9 @@ import rasterio
 from dotenv import load_dotenv
 from tqdm import tqdm
 
-import ras2fim_logger
 import shared_validators as val
 import shared_variables as sv
-from errors import ModelUnitError
-
-
-# Global Variables
-# RLOG = ras2fim_logger.RAS2FIM_logger()
-RLOG = ras2fim_logger.R2F_LOG
+from r2f_errors import ModelUnitError
 
 
 # -------------------------------------------------
@@ -57,7 +51,8 @@ def confirm_models_unit(proj_crs, input_models_path):
             )
 
     except ModelUnitError as e:
-        print(e)
+        sv.R2F_LOG.critical(e)
+        # print(e)
         sys.exit(1)
     return unit
 
@@ -81,7 +76,8 @@ def model_unit_from_crs(proj_crs):
                                  The projection unit must be in feet or meter."
             )
     except ModelUnitError as e:
-        print(e)
+        sv.R2F_LOG.critical(e)
+        # print(e)
         sys.exit(1)
     return unit
 
@@ -142,7 +138,8 @@ def model_unit_from_ras_prj(str_ras_path_arg):
             )
 
     except ModelUnitError as e:
-        print(e)
+        sv.R2F_LOG.critical(e)
+        # print(e)
         sys.exit(1)
     return unit
 
@@ -313,13 +310,14 @@ def find_model_unit_from_rating_curves(r2f_hecras_outputs_dir):
 
         return model_unit
     except ValueError as e:
-        print("Error:", e)
+        sv.R2F_LOG.critical(e)
+        # print("Error:", e)
         sys.exit(1)
     except Exception:
-        print(
-            "Error: Make sure you have specified a correct input directory with has at least"
-            " one '*.rating curve.csv' file."
-        )
+        errMsg = "Error: Make sure you have specified a correct input directory with has at least"
+        " one '*.rating curve.csv' file."
+        sv.R2F_LOG.critical(errMsg)
+        # print(errMsg)
         sys.exit(1)
 
 
@@ -375,15 +373,20 @@ def get_stnd_date(inc_formating=True):
 
 
 # -------------------------------------------------
-def get_date_with_milli():
+def get_date_with_milli(add_random=True):
     # This returns a pattern of YYMMDD_HHMMSSf_{random 4 digit} (f meaning milliseconds to 6 decimals)
     # Some multi processing functions use this for file names.
+
     # We found that some processes can get stuck which can create collisions, so we added a 4 digit
     # random num on the end (1000 - 9999). Yes.. it happened.
 
+    # If add_random is False, the the 4 digit suffix will be dropped
+    # If add_ramdon is True, the output example would be 231122_1407444333_1234
+
     str_date = dt.utcnow().strftime("%y%m%d_%H%M%S%f")
-    random_id = random.randrange(1000, 9999)
-    str_date += "_" + str(random_id)
+    if add_random is True:
+        random_id = random.randrange(1000, 9999)
+        str_date += "_" + str(random_id)
 
     return str_date
 

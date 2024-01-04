@@ -12,10 +12,17 @@ Download and Install [Anaconda](https://www.anaconda.com/products/individual) to
 <br>
 
 ### Step 2:
-If you have not already done so, ensure `git` has been installed and clone a copy of the `ras2fim` repository on to your local machine. Path to your windows folder of choice, then run:<br>
+If you have not already done so, ensure `git` has been installed and clone a copy of the `ras2fim` repository on to your local machine (see note below). Path to your windows folder of choice, then run:<br>
 ```
-    git clone https://github.com/NOAA-OWP/ras2fim.git
+git clone https://github.com/NOAA-OWP/ras2fim.git (see note below)
 ```
+**Note: ras2fim V2 series has started development as of early November 2023. Initial check-ins for the default branch will fail for the short term future until an advanced version is ready.** When the CHANGELOG.md shows version check-ins starting with the phrase `V2.0.beta.x`, means the branch is not yet operational but you are still welcome to contibute to the new WIP branch. Once the usable versions have been merged, the CHANGELOG.md will start with the number of `v2.0.0.0`.
+<br>
+**If you want to view the last stable `V1` series, use the following git clone command which will come from the ras2fim `main (V1)` branch.**
+```
+git clone https://github.com/NOAA-OWP/ras2fim.git -b V1
+```
+
 ### Step 3:
 Open an **Anaconda Powershell Prompt** and navigate to the cloned directory.  Your path may vary.<br>
 ![](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/conda_prompt.png)

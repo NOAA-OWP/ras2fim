@@ -13,14 +13,12 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 
-import ras2fim_logger
 import shared_functions as sf
 import shared_variables as sv
 
 
 # Global Variables
-# RLOG = ras2fim_logger.RAS2FIM_logger()
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG
 
 
 # -----------------------------------------------------------------
@@ -90,8 +88,7 @@ def write_metadata_file(
         " (example: IFC or USGS) (optional)"
     )
     metadata_content.append(
-        "source             User-provided           String          Source that produced the data"
-        " (example: RAS2FIM) (optional)"
+        "source             From ras2fim changelog  String          ras2fim version that produced the data"
     )
     metadata_content.append(
         "timestamp          Calculated in script    Datetime        Describes when this table was compiled"
@@ -153,7 +150,6 @@ def dir_reformat_ras_rc(
     int_output_table_label,
     int_output_geopackage_label,
     int_log_label,
-    source,
     location_type,
     active,
     verbose,
@@ -187,9 +183,6 @@ def dir_reformat_ras_rc(
 
     - int_log_label: (str) suffix for intermediate output table (set in compile_ras_rating_curves,
       defaults to "_log.txt")
-
-    - source: (str) optional input value for the "source" output column
-      (i.e. "", "ras2fim", "ras2fim v2.1")
 
     - location_type: (str) optional input value for the "location_type" output column
      (i.e. "", "USGS", "IFC")
@@ -393,12 +386,22 @@ def dir_reformat_ras_rc(
         rc_geospatial_df = rc_geospatial_df.astype({"huc8": "object"})
 
         # ------------------------------------------------------------------------------------------------
+        # Get ras2fim version and assign to 'source' variable
+
+        changelog_path = '../doc/CHANGELOG.md'  # TODO: replace with shared variable?
+        ras2fim_version = sf.get_changelog_version(changelog_path)
+        source = "ras2fim_" + ras2fim_version
+
+        # print(f'Source: {source}')  # debug
+
+        # ------------------------------------------------------------------------------------------------
         # Build output table
 
         # Get a current timestamp
         timestamp = dt.datetime.utcnow()
 
         # Assemble output table
+        # Ensure the "source" column always has the phrase 'ras2fim' in it somewhere (fim needs it)
         dir_output_table = pd.DataFrame(
             {
                 "fid_xs": rc_geospatial_df["fid_xs"],
@@ -513,7 +516,7 @@ def dir_reformat_ras_rc(
 # Compiles the rating curve and points from each directory
 # -----------------------------------------------------------------
 def compile_ras_rating_curves(
-    input_folder_path, output_save_folder, save_logs, verbose, num_workers, source, location_type, active
+    input_folder_path, output_save_folder, save_logs, verbose, num_workers, location_type, active
 ):
     """
     Overview:
@@ -535,9 +538,6 @@ def compile_ras_rating_curves(
     - save_logs: (bool) option to save output logs as a textfile
 
     - num_workers: (int) number of workers to use during parallel processing
-
-    - source: (str) optional input value for the "source" output column
-      (i.e. "", "ras2fim", "ras2fim v2.1")
 
     - location_type: (str) optional input value for the "location_type" output column
      (i.e. "", "USGS", "IFC")
@@ -584,7 +584,6 @@ def compile_ras_rating_curves(
         sys.exit(msg)
 
     # Check for output folders
-
     if output_save_folder == "":  # Using the default filepath
         output_save_folder = sv.R2F_OUTPUT_DIR_RELEASES
         RLOG.lprint(f"Attempting to use default output save folder: {output_save_folder}")
@@ -690,7 +689,6 @@ def compile_ras_rating_curves(
                 int_output_table_label,
                 int_geopackage_label,
                 int_log_label,
-                source,
                 location_type,
                 active,
                 verbose,
@@ -703,7 +701,7 @@ def compile_ras_rating_curves(
     # for dir in dirlist:
     #     dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
     # int_output_table_label, int_log_label,
-    # source, location_type, active, verbose,
+    # location_type, active, verbose,
     # nwm_shapes_file, hecras_shapes_file, metric_file)
 
     # ------------------------------------------------------------------------------------------------
@@ -841,8 +839,6 @@ def compile_ras_rating_curves(
 
 # -------------------------------------------------
 if __name__ == "__main__":
-    # TODO: Oct 24, 2023: -so flag in the notes below does not appear to exist anymore.
-    # Research required and it likely can be removed from the notes below.
     """
     Sample usage:
 
@@ -857,17 +853,17 @@ if __name__ == "__main__":
     # Maximalist run (all possible arguments):
     python reformat_ras_rating_curve.py
         -i 'C:/ras2fim_data/output_ras2fim' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves'
-        -v -l -j 6 -k -so "ras2fim" -lt "USGS" -ac "True"
+        -v -l -j 6 -k -lt "USGS" -ac "True"
 
     # Run with 6 workers:
     python reformat_ras_rating_curve.py
         -i 'C:/ras2fim_data/output_ras2fim' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves'
         -v -l -j 6
 
-    # Input the data source, location type, and active information using the -so, -lt, and -ac flags:
+    # Input the data location type, and active information using the -so, -lt, and -ac flags:
     python reformat_ras_rating_curve.py
         -i 'C:/ras2fim_data/output_ras2fim' -o 'C:/ras2fim_data/ras2fim_releases/compiled_rating_curves'
-        -v -so "ras2fim" -lt "USGS" -ac "True"
+        -v -lt "USGS" -ac "True"
 
     Notes:
        - Required arguments: None
@@ -878,8 +874,6 @@ if __name__ == "__main__":
                              use the -l tag to save the output log
                              use the -v tag to run in a verbose setting
                              use the -j flag followed by the number to specify number of workers
-                             use the -so flag to input a value for the "source" output column
-                                 (i.e. "ras2fim", "ras2fim v2.1")
                              use the -lt flag to input a value for the "location_type" output column
                                  (i.e. "USGS", "IFC")
                              use the -ac flag to input a value for the "active" column ("True" or "False")
@@ -954,7 +948,6 @@ if __name__ == "__main__":
     num_workers = args["num_workers"]
     location_type = str(args["location_type"])
     active = str(args["active"])
-    source = "ras2fim"
 
     log_file_folder = os.path.join(args["output_path"], "logs")
     try:
@@ -971,7 +964,7 @@ if __name__ == "__main__":
 
         # call main program
         compile_ras_rating_curves(
-            input_folder_path, output_save_folder, log, verbose, num_workers, source, location_type, active
+            input_folder_path, output_save_folder, log, verbose, num_workers, location_type, active
         )
 
     except Exception:

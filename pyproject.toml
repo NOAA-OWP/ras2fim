@@ -82,5 +82,7 @@ per-file-ignores = """
     tools/nws_ras2fim_terrain_Texas.py: E402, E501
     tools/nws_ras2fim_terrain_USGS.py: E402
     tools/ras_unit_to_s3.py: E402
+    tools/s3_model_mgmt.py: E402, E101
+    tools/s3_search_tool.py: E402    
     tools/s3_shared_functions.py: E402
     """

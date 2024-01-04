@@ -1,11 +1,17 @@
 import os
 
+import ras2fim_logger as rl
+
 
 """
 This is a collection of variables that help manage, centralize and standarize some values,
    such as pathing, or common valuse
 Common pathing, and mostly defaults. Most can be changed or overwritten at this point.
 """
+
+# global RLOG
+R2F_LOG = rl.RAS2FIM_logger()
+
 
 # BASIC ROOT FOLDERS
 DEFAULT_BASE_DIR = r"c:\ras2fim_data"
@@ -35,7 +41,7 @@ DEFAULT_RSF_MODELS_CATALOG_FILE = os.path.join(
 # RAS2FIM OUTPUT FOLDERS
 R2F_DEFAULT_OUTPUT_MODELS = os.path.join(DEFAULT_BASE_DIR, "output_ras2fim")
 R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS = "01_shapes_from_hecras"
-R2F_OUTPUT_DIR_SHAPES_FROM_CONF = "02_shapes_from_conflation"
+R2F_OUTPUT_DIR_SHAPES_FROM_CONF = "02_csv_shapes_from_conflation"
 R2F_OUTPUT_DIR_TERRAIN = "03_terrain"
 R2F_OUTPUT_DIR_HECRAS_TERRAIN = "04_hecras_terrain"
 R2F_OUTPUT_DIR_HECRAS_OUTPUT = "05_hecras_output"
@@ -52,13 +58,15 @@ R2F_OUTPUT_DIR_DOMAIN_POLYGONS = "models_domain"
 R2F_OUTPUT_DIR_RELEASES = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
 
 # OUTPUT FILES
-R2F_OUTPUT_FILE_RAS2CAL_CSV = "ras2calibration_output_table.csv"
-R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_output_geopackage.gpkg"
+R2F_OUTPUT_FILE_RAS2CAL_CSV = "ras2calibration_rating_curve_table.csv"
+R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_rating_curve_points.gpkg"
 R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt"
 
 # S3 PATHS (FOLDERS)
-S3_DEFAULT_BUCKET_NAME = "ras2fim"
 S3_OUTPUT_RAS2FIM_FOLDER = "output_ras2fim"
+S3_DEFAULT_BUCKET_NAME = "s3://ras2fim"
+S3_OUTPUT_MODELS_FOLDER = S3_DEFAULT_BUCKET_NAME + "/OWP_ras_models/models"
+S3_DEFAULT_MODELS_CATALOG_PATH = S3_DEFAULT_BUCKET_NAME + "/OWP_ras_models/OWP_ras_models_catalog.csv"
 S3_DEFAULT_OUTPUT_FOLDER = f"s3://{S3_DEFAULT_BUCKET_NAME}/{S3_OUTPUT_RAS2FIM_FOLDER}"
 S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER = "output_ras2fim_archive"
 S3_OUTPUT_TRACKER_FILE = "ras_output_tracker.csv"
@@ -73,6 +81,8 @@ OUTPUT_VERTICAL_DATUM = "NAVD88"
 # DEFAULT MISC VALUES
 DEFAULT_RASTER_OUTPUT_CRS = "EPSG:5070"
 DEFAULT_CONFIG_FILE_PATH = "config\\r2f_config.env"
-
-# DEFAULT LOGGING VALUES
 DEFAULT_LOG_FOLDER = "Logs"
+COL_NAME_DOWNLOAD_SUCCESS = "download_success"
+COL_NAME_ERROR_DETAILS = "error_details"
+COL_NAME_FINAL_NAME_KEY = "final_name_key"
+COL_NAME_MODEL_ID = "model_id"
