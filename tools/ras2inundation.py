@@ -22,7 +22,7 @@ RLOG = sv.R2F_LOG
 
 
 # -------------------------------------------------
-def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundation_poly, overwrite):
+def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundation_poly):
     """
     Produce inundation from RAS2FIM geocurves.
 
@@ -30,7 +30,6 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         geocurves_dir (str): Path to directory containing RAS2FIM geocurve CSVs.
         flow_file (str): Discharges in CMS as a CSV file. "feature_id" and "discharge" columns
          MUST be supplied. output_inundation_poly (str): Path to output inundation polygon.
-        overwrite (bool): Whether to overwrite files if they already exist.
     """
 
     # Check that output directory exists. Notify user that output directory will be created if not.
@@ -41,6 +40,10 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
             + " does not exist. Directory/ies will be created."
         )
         os.makedirs(os.path.split(output_inundation_poly)[0])
+
+    # check that output file name has extension of gpkg
+    if not Path(output_inundation_poly).suffix == '.gpkg':
+        raise TypeError ("The output file must have gpkg extension.")
 
     # Check that geocurves_dir exists
     if not os.path.exists(geocurves_dir):
@@ -74,9 +77,9 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         break
 
     if ras2fim_version:
-        RLOG.lprint("Completed deriving ras2fim version from CHANGELOG.md file.")
+        RLOG.lprint(f"Derived ras2fim version {ras2fim_version} from geocurve files.")
     else:
-        RLOG.warning(f"Failed to derive ras2fim version ({ras2fim_version}) from CHANELOG.md file.")
+        RLOG.warning(f"Failed to derive ras2fim version from geocurve files.")
 
     # Open flow_file to detemine feature_ids to process
     flow_file_df = pd.read_csv(flow_file)
@@ -146,9 +149,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "-t", "--output_inundation_poly", help="Path to output inundation polygon file.", required=False
     )
-    parser.add_argument("-o", "--overwrite", help="Overwrite files", required=False, action="store_true")
-
-    # TODO: Add the functionality of overwrite or remove it. Currently it is an unused argument.
 
     args = vars(parser.parse_args())
 
