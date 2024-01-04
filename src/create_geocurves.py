@@ -56,7 +56,7 @@ def mp_produce_geocurves(
         feature_id_rating_curve_geo = None
 
         # Read rating curve for feature_id
-        MP_LOG.debug(f"rating_curve is {rating_curve}")
+        MP_LOG.trace(f"rating_curve is {rating_curve}")
         rating_curve_df = pd.read_csv(rating_curve)
 
         proj_crs = pyproj.CRS.from_string(sv.DEFAULT_RASTER_OUTPUT_CRS)
