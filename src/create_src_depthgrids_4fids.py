@@ -95,7 +95,7 @@ def plot_src(
 
 # -------------------------------------------------
 def create_src_feature_ids(
-    huc8_num, model_unit, path_to_step2_fid_xs_info, path_to_ras_output, path_model_catalog, path_to_step6
+    huc8_num, path_to_step2_fid_xs_info, path_to_ras_output, path_unit_folder, path_to_step6
 ):
     int_number_of_steps = 76
     model_unit = 'feet'
@@ -110,7 +110,7 @@ def create_src_feature_ids(
 
     # -------------------------------------------------
     # Reading model_catalog to add model_ids to data_summary
-    path_model_catalog2 = os.path.join(path_model_catalog, f"OWP_ras_models_catalog_{huc8_num}.csv")
+    path_model_catalog2 = os.path.join(path_unit_folder, f"OWP_ras_models_catalog_{huc8_num}.csv")
 
     model_catalog = pd.read_csv(path_model_catalog2)
     models_name_id = pd.concat([model_catalog["final_name_key"], model_catalog["model_id"]], axis=1)
@@ -319,11 +319,11 @@ def create_src_feature_ids(
 # -------------------------------------------------
 if __name__ == "__main__":
     # Sample:
-    # python conflate_hecras_to_nwm -w 12090301
+    # python create_src_depthgrids_4fids.py -w 12090301
     # -i 'C:\\ras2fimv2.0\\ras2fim_v2_output_12090301_2\\02_csv_shapes_from_conflation'
     # -o 'C:\\ras2fimv2.0\\ras2fim_v2_output_12090301_2\\06_src_depthgrids'
     # -ro 'C:\\ras2fimv2.0\\ras2fim_v2_output_12090301_2\\05_hecras_output'
-    # -mc 'C:\\ras2fimv2.0\\ras2fim_v2_output_12090301'
+    # -p 'C:\\ras2fimv2.0\\ras2fim_v2_output_12090301'
 
     parser = argparse.ArgumentParser(
         description="== CREATES SYNTHETIC RATING CURVES AND DEPTH GRIDS FOR FEATURE-IDS =="
@@ -342,15 +342,6 @@ if __name__ == "__main__":
         "-i",
         dest="path_fid_xs_info_arg",
         help=r"REQUIRED: Directory containing step 2 output:  Example: C:\02_csv_shapes_from_conflation",
-        required=True,
-        metavar="DIR",
-        type=str,
-    )
-
-    parser.add_argument(
-        "-mc",
-        dest="path_model_catalog_arg",
-        help=r"REQUIRED: Directory containing model catalog for HUC8:  Example: C:\v2_output_12090301",
         required=True,
         metavar="DIR",
         type=str,
@@ -388,7 +379,6 @@ if __name__ == "__main__":
     str_huc8 = args["str_huc8"]
     path_fid_xs_info_arg = args["path_fid_xs_info_arg"]
     path_ras_output_arg = args["path_ras_output_arg"]
-    path_model_catalog_arg = args["path_model_catalog_arg"]
     str_out_arg = args["str_out_arg"]
     path_unit_folder = args["path_unit_folder"]
 
@@ -407,10 +397,8 @@ if __name__ == "__main__":
 
         # call main program
         create_src_feature_ids(
-            str_huc8, path_fid_xs_info_arg, path_ras_output_arg, path_model_catalog_arg, str_out_arg
+            str_huc8, path_fid_xs_info_arg, path_ras_output_arg, path_unit_folder, str_out_arg
         )
 
     except Exception:
         RLOG.critical(traceback.format_exc())
-
-#

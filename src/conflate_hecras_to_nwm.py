@@ -477,7 +477,7 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     # pool.join()
 
     # Now that multi-proc is done, lets merge all of the independent log file from each
-    # RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
+    RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
     # -------------------------------------------------
 
     RLOG.lprint("+-----------------------------------------------------------------+")
