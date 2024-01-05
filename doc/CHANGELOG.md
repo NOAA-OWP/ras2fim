@@ -1,14 +1,32 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+
 ## RAS2FIM V1 - Code Freeze
 
-Nov 8, 2023
+Jan 5, 2024
 
 At this point, there are no more projected updates required to the V1 code base. The "dev" branch will now continue on as ras2fim V2. This branch exists in case we need an emergency or critical fix based on V1 code.
 
 <br/><br/>
 
+## v1.30.2 - 2024-01-05 - [PR#230](https://github.com/NOAA-OWP/ras2fim/pull/230)
+
+This PR solves issue #228 and performs:
+
+1. Removes the option of making gpkg files in `create_geocurves.py`. The geometry info is only saved in 'geometry' column of geocurves csv files.
+2. Fixes a bug in `ras2inundation.py` to make sure all geometry info can be read from 'geometry' column of geocurves csv files. Also, because geocurve gpkg polygon files are not available anymore as the input, `ras2inundation.py` now reads ras2fim version number and `stage_m` value (corresponding to the `discharge_cms`) from geocurve csv files. 
+3. Improved the performance of `ras2inundation.py` (e.g., by vectorizing a for loop)
+
+
+### Changes  
+
+- `create_geocurves.py` ... see above
+- `ras2inundation.py` ... see above
+- `config/r2f_config.env`  ... removed the PRODUCE_GEOCURVE_POLYGONS flag
+- `src/ras2fim.py` ... adjusted/removed the arguments used to call "create_geocurve.py" from ras2fim.py
+
+<br/><br/>
 
 ## v1.30.1 - 2023-11-2 - [PR#166](https://github.com/NOAA-OWP/ras2fim/pull/198)
 

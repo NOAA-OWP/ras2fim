@@ -457,12 +457,6 @@ def fn_run_ras2fim(
     if os.getenv("PRODUCE_GEOCURVES") == "True":
         RLOG.lprint("")
         RLOG.lprint("+++++++ Processing: STEP: Producing Geocurves +++++++")
-
-        create_polys = os.getenv("PRODUCE_GEOCURVE_POLYGONS") == "True"
-        if create_polys is True:
-            RLOG.lprint("+++ (Including creating geocurve polygons) +++++++")
-        else:
-            RLOG.lprint("++++ (Skipping creating geocurve polygon) +++++++")
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
         # Produce geocurves
@@ -473,7 +467,6 @@ def fn_run_ras2fim(
             job_number=job_number,
             output_folder=r2f_final_dir,
             overwrite=False,
-            produce_polys=create_polys,
         )
 
     # -------------------------------------------------
