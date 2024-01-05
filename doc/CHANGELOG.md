@@ -32,6 +32,28 @@ Other minor adjustments:
     - `get_models_by_catalog.py`: A couple small style fixes plus added the new centralized HUC8 validator.
     - `ras_unit_to_s3.py`: Changed the function arguments into `s3_shared_functions.py` for uploading a file to s3. 
     - `s3_shared_functions.py`: Some style changes; Also changed the function arguments for `upload_file_to_s3.py` to make it more flexible (needed by the new acquire system); Added a new function to see if a file exists already in S3.
+## v2.0.beta.12 - 2024-01-05 - [PR#231](https://github.com/NOAA-OWP/ras2fim/pull/231)
+This PR is the ras2fim V2 version of the PR #230. This PR solves issue #229 and performs:
+
+1. Removes the option of making gpkg files in `create_geocurves.py`. The geometry info is only saved in 'geometry' column of geocurves csv files.
+2. Fixes a bug in `ras2inundation.py` to make sure all geometry info can be read from 'geometry' column of geocurves csv files. Also, because geocurve gpkg polygon files are not available anymore as the input, `ras2inundation.py` now reads ras2fim version number and `stage_m` value (corresponding to the `discharge_cms`) from geocurve csv files. Also, removed "overwrite" argument for this file. 
+3. Improved the performance of `ras2inundation.py` (e.g., by vectorizing a for loop)
+4. Moves the `ras2inundation.py` file from `src` to `tools` folder. 
+
+
+### Changes  
+- `src/create_geocurves.py`  ... see above
+-  `config/r2f_config.env`  ... removed the PRODUCE_GEOCURVE_POLYGONS flag
+- `src/ras2fim.py` ... adjusted/removed the arguments used to call "create_geocurve.py" from ras2fim.py
+- `src/clip_dem_from_shape.py` ... added logging on one line
+
+### Additions  
+
+- `tools/ras2inundation.py`
+
+### Removals 
+
+- `src/ras2inundation.py`
 
 <br/><br/>
 

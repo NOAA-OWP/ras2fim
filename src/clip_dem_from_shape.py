@@ -76,6 +76,7 @@ def fn_cut_dems_from_shapes(
     gdf_xs_lines = gpd.read_file(str_cross_sections_path)
 
     # read HUC12s
+    RLOG.lprint("Reading HUC12 polygons for the entire CONUS...this may take 3 minutes")
     gdf_huc12s = gpd.read_file(str_huc12_path)
 
     # important to reproject to model crs especially if the inputs
