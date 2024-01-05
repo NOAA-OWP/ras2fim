@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.12 - 2023-12-29 - [PR#231](https://github.com/NOAA-OWP/ras2fim/pull/231)
+## v2.0.beta.12 - 2024-01-05 - [PR#231](https://github.com/NOAA-OWP/ras2fim/pull/231)
 This PR is the ras2fim V2 version of the PR #230. This PR solves issue #229 and performs:
 
 1. Removes the option of making gpkg files in `create_geocurves.py`. The geometry info is only saved in 'geometry' column of geocurves csv files.
@@ -23,9 +23,7 @@ This PR is the ras2fim V2 version of the PR #230. This PR solves issue #229 and 
 
 - `src/ras2inundation.py`
 
-
 <br/><br/>
-
 
 ## v2.0.beta.11 - 2023-12-18 - [PR#227](https://github.com/NOAA-OWP/ras2fim/pull/227)
 
