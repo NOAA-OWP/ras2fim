@@ -21,7 +21,7 @@ from tqdm import tqdm
 
 import shared_validators as val
 import shared_variables as sv
-from errors import ModelUnitError
+from r2f_errors import ModelUnitError
 
 
 # -------------------------------------------------
@@ -51,7 +51,8 @@ def confirm_models_unit(proj_crs, input_models_path):
             )
 
     except ModelUnitError as e:
-        print(e)
+        sv.R2F_LOG.critical(e)
+        # print(e)
         sys.exit(1)
     return unit
 
@@ -75,7 +76,8 @@ def model_unit_from_crs(proj_crs):
                                  The projection unit must be in feet or meter."
             )
     except ModelUnitError as e:
-        print(e)
+        sv.R2F_LOG.critical(e)
+        # print(e)
         sys.exit(1)
     return unit
 
@@ -136,7 +138,8 @@ def model_unit_from_ras_prj(str_ras_path_arg):
             )
 
     except ModelUnitError as e:
-        print(e)
+        sv.R2F_LOG.critical(e)
+        # print(e)
         sys.exit(1)
     return unit
 
@@ -307,13 +310,14 @@ def find_model_unit_from_rating_curves(r2f_hecras_outputs_dir):
 
         return model_unit
     except ValueError as e:
-        print("Error:", e)
+        sv.R2F_LOG.critical(e)
+        # print("Error:", e)
         sys.exit(1)
     except Exception:
-        print(
-            "Error: Make sure you have specified a correct input directory with has at least"
-            "one '*.rating curve.csv' file."
-        )
+        errMsg = "Error: Make sure you have specified a correct input directory with has at least"
+        " one '*.rating curve.csv' file."
+        sv.R2F_LOG.critical(errMsg)
+        # print(errMsg)
         sys.exit(1)
 
 
@@ -356,11 +360,34 @@ def fn_get_random_string(int_letter_len_fn, int_num_len_fn):
 
 
 # -------------------------------------------------
-def get_stnd_date():
+def get_stnd_date(inc_formating=True):
     # Standardizes date pattern
-    # Returns YYMMDD as in 230725  (UTC)
 
-    str_date = dt.utcnow().strftime("%y%m%d")
+    if inc_formating is False:
+        # Returns YYMMDD as in 230725  (UTC)
+        str_date = dt.utcnow().strftime("%y%m%d")
+    else:
+        # Returns 2023-07-25 22:39:41 (UTC)
+        str_date = dt.utcnow().strftime("%Y-%m-%d, %H:%M:%S (UTC)")
+    return str_date
+
+
+# -------------------------------------------------
+def get_date_with_milli(add_random=True):
+    # This returns a pattern of YYMMDD_HHMMSSf_{random 4 digit} (f meaning milliseconds to 6 decimals)
+    # Some multi processing functions use this for file names.
+
+    # We found that some processes can get stuck which can create collisions, so we added a 4 digit
+    # random num on the end (1000 - 9999). Yes.. it happened.
+
+    # If add_random is False, the the 4 digit suffix will be dropped
+    # If add_ramdon is True, the output example would be 231122_1407444333_1234
+
+    str_date = dt.utcnow().strftime("%y%m%d_%H%M%S%f")
+    if add_random is True:
+        random_id = random.randrange(1000, 9999)
+        str_date += "_" + str(random_id)
+
     return str_date
 
 
@@ -375,15 +402,15 @@ def print_date_time_duration(start_dt, end_dt):
     """
     Process:
     -------
-    Calcuates the diffenence in time between the start and end time
+    Calcuates the difference in time between the start and end time
     and prints is as:
 
         Duration: 4 hours 23 mins 15 secs
 
     -------
     Usage:
-        from utils.shared_functions as sf
-        fh.print_current_date_time()
+        from shared_functions as sf
+        print(sf.print_current_date_time())
 
     -------
     Returns:
@@ -400,7 +427,7 @@ def print_date_time_duration(start_dt, end_dt):
     time_fmt = f"{total_hours:02d} hours {total_mins:02d} mins {seconds:02d} secs"
 
     duration_msg = "Duration: " + time_fmt
-    print(duration_msg)
+    # print(duration_msg)
 
     return duration_msg
 
@@ -430,7 +457,7 @@ def get_stnd_r2f_output_folder_name(huc_number, crs):
     if is_valid_crs is False:
         raise ValueError(err_msg)
 
-    std_date = get_stnd_date()
+    std_date = get_stnd_date(False)
 
     folder_name = f"{huc_number}_{crs_number}_{std_date}"
 
@@ -444,7 +471,7 @@ def progress_bar_handler(executor_dict, verbose, desc):
         total=len(executor_dict),
         disable=(not verbose),
         desc=desc,
-        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
         ncols=100,
     ):
         try:

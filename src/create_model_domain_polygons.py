@@ -2,12 +2,20 @@ import argparse
 import datetime
 import os
 import time
+import traceback
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 from shapely.geometry import LineString, Point, Polygon
 from shapely.validation import make_valid
+
+import shared_functions as sf
+import shared_variables as sv
+
+
+# Global Variables
+RLOG = sv.R2F_LOG
 
 
 # -------------------------------------------------
@@ -48,18 +56,29 @@ def fn_make_domain_polygons(
 
     """
 
-    print(
+    # get the version
+    changelog_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), os.pardir, 'doc', 'CHANGELOG.md')
+    )
+    version = sf.get_changelog_version(changelog_path)
+    RLOG.lprint("Version found: " + version)
+
+    RLOG.lprint("")
+    RLOG.lprint("+++++++ Create polygons for HEC-RAS models domains +++++++")
+
+    RLOG.lprint(
         "  --- (-i) Path to the shapefile containing HEC-RAS models cross sections: "
         + str(xsections_shp_file_path)
     )
-    print("  --- (-o) path to the GPKG output file: " + str(polygons_output_file_path))
-    print(
+    RLOG.lprint("  --- (-o) path to the GPKG output file: " + str(polygons_output_file_path))
+    RLOG.lprint(
         "  --- (-name) column/field name of the input shapefile having unique names for HEC-RAS models: "
         + str(model_name_field)
     )
-    print("  --- (-catalog) path to the model catalog: " + str(model_huc_catalog_path))
-    print("  --- (-conflate) path to the conflation qc file: " + str(conflation_qc_path))
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("  --- (-catalog) path to the model catalog: " + str(model_huc_catalog_path))
+    RLOG.lprint("  --- (-conflate) path to the conflation qc file: " + str(conflation_qc_path))
+    RLOG.lprint("  --- ras2fim version: " + str(version))
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
     flt_start_domain = time.time()
 
@@ -128,25 +147,33 @@ def fn_make_domain_polygons(
     if conflation_qc_path.lower() != "no_qc":
         conflate_qc_df = pd.read_csv(conflation_qc_path)
         models_polygons_gdf["conflated"] = np.where(
-            models_polygons_gdf[model_name_field].isin(conflate_qc_df[model_name_field]).values is True,
-            "yes",
-            "no",
+            models_polygons_gdf[model_name_field].isin(conflate_qc_df[model_name_field]).values, "yes", "no"
         )
 
         # also add HUC8 number
         models_polygons_gdf["HUC8"] = os.path.basename(conflation_qc_path).split("_stream_qc.csv")[0]
 
+    models_polygons_gdf["version"] = version
     models_polygons_gdf.crs = Xsections.crs
     models_polygons_gdf.to_file(polygons_output_file_path, driver="GPKG")
 
     flt_end_domain = time.time()
     flt_time_pass_domain = (flt_end_domain - flt_start_domain) // 1
     time_pass_domain = datetime.timedelta(seconds=flt_time_pass_domain)
-    print("Compute Time: " + str(time_pass_domain))
+    RLOG.success("Compute Time: " + str(time_pass_domain))
 
 
 # -------------------------------------------------
 if __name__ == "__main__":
+    # Sample:
+    # python create_model_domain_polygons.py
+    #  -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\
+    #       01_shapes_from_hecras\cross_section_LN_from_ras.shp
+    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\final\models_domain\models_domain.gpkg
+    #  -name ras_path
+    #  -catalog c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_12030105.csv
+    #  -conflate c:\ras2fim_data\....\02_shapes_from_conflation\12030105_stream_qc.csv
+
     parser = argparse.ArgumentParser(description="==== Make polygons for HEC-RAS models domains ===")
 
     parser.add_argument(
@@ -208,13 +235,27 @@ if __name__ == "__main__":
     model_catalog_path = args["model_catalog_path"]
     conflation_qc_path = args["conflation_qc_path"]
 
-    print()
-    print("+++++++ Create polygons for HEC-RAS models domains +++++++")
+    log_file_folder = os.path.dirname(polygons_output_file_path)
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
 
-    fn_make_domain_polygons(
-        xsections_shp_file_path,
-        polygons_output_file_path,
-        model_name_field,
-        model_catalog_path,
-        conflation_qc_path,
-    )
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
+
+        # call main program
+        fn_make_domain_polygons(
+            xsections_shp_file_path,
+            polygons_output_file_path,
+            model_name_field,
+            model_catalog_path,
+            conflation_qc_path,
+        )
+
+    except Exception:
+        RLOG.critical(traceback.format_exc())

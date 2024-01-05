@@ -4,7 +4,8 @@ import os
 import shutil
 import sys
 import traceback
-import warnings
+
+# import warnings
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 
@@ -16,15 +17,22 @@ import rasterio
 from rasterio.features import shapes
 from shapely.geometry import MultiPolygon, Polygon
 
+import ras2fim_logger
 import shared_functions as sf
 import shared_variables as sv
 
 
-warnings.simplefilter(action="ignore", category=FutureWarning)
+# Global Variables
+RLOG = sv.R2F_LOG  # the non mp version
+
+# warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
 # -------------------------------------------------
-def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, geocurves_dir, polys_dir):
+# This function is used in a Multi-Proc
+def mp_produce_geocurves(
+    feature_id, huc, rating_curve, depth_grid_list, version, geocurves_dir, polys_dir, rlog_folder_path
+):
     """
     For a single feature_id, the function produces a version of a RAS2FIM rating curve
     which includes the geometry of the extent for each stage/flow.
@@ -37,12 +45,19 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
         version (str): The version number.
         output_folder (str): Path to output folder where geo version of rating curve will be written.
         polys_dir (str or Nonetype): Can be a path to a folder where polygons will be written, or None.
-
+        rlog_folder_path (str): Current location of where logs are being produced
     """
     try:
-        depth_grid = ""
+        # setup the global multi-proc logs for this function and it's child functions.
+        mlog_file_prefix = "produce_geocurves"
+        MP_LOG = ras2fim_logger.RAS2FIM_logger()
+        MP_LOG.MP_Log_setup(mlog_file_prefix, rlog_folder_path)
+
+        # depth_grid = ""
+        feature_id_rating_curve_geo = None
 
         # Read rating curve for feature_id
+        MP_LOG.debug(f"rating_curve is {rating_curve}")
         rating_curve_df = pd.read_csv(rating_curve)
 
         proj_crs = pyproj.CRS.from_string(sv.DEFAULT_RASTER_OUTPUT_CRS)
@@ -63,6 +78,7 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
 
                 # if the array only has values of zero, then skip it (aka.. no heights above surface)
                 if np.min(reclass_inundation_array) == 0 and np.max(reclass_inundation_array) == 0:
+                    MP_LOG.warning(f"depth_grid of {depth_grid} does not have any heights above surface.")
                     continue
 
                 # Aggregate shapes
@@ -92,12 +108,12 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
 
                 except AttributeError as ae:
                     # TODO why does this happen? I suspect bad geometry. Small extent?
-                    # TODO: We should log this when the logging system comes online.
-                    print("^^^^^^^^^^^^^^^^^^")
-                    print("Error...")
-                    print(f"  huc is {huc}; feature_id = {feature_id}; depth_grid is {depth_grid}")
-                    print(f"  Details: {ae}")
-                    print("^^^^^^^^^^^^^^^^^^")
+                    MP_LOG.lprint("^^^^^^^^^^^^^^^^^^")
+                    msg = "Warning...\n"
+                    msg += f"  huc is {huc}; feature_id = {feature_id}; depth_grid is {depth_grid}\n"
+                    msg += f"  Details: {ae}"
+                    MP_LOG.warning(msg)
+                    MP_LOG.lprint("^^^^^^^^^^^^^^^^^^")
                     continue
 
                 # -- Add more attributes -- #
@@ -144,17 +160,18 @@ def produce_geocurves(feature_id, huc, rating_curve, depth_grid_list, version, g
                 os.path.join(geocurves_dir, feature_id + "_" + huc + "_rating_curve_geo.csv")
             )
 
-    except Exception as ex:
-        print("*******************")
-        print("Error:")
-        print(f"  huc is {huc}; feature_id = {feature_id}; depth_grid is {depth_grid}")
-        errMsg = str(ex) + " \n   " + traceback.format_exc()
-        print(errMsg)
+    except Exception:
+        MP_LOG.lprint("*******************")
+        errMsg = "Error:\n"
+        errMsg += f"  huc is {huc}; feature_id = {feature_id}"
+        errMsg += " \n   " + traceback.format_exc()
+        MP_LOG.critical(errMsg)
+        sys.exit(1)
 
 
 # -------------------------------------------------
 def manage_geo_rating_curves_production(
-    ras2fim_output_dir, version, job_number, output_folder, overwrite, produce_polys
+    ras2fim_output_dir, job_number, output_folder, overwrite, produce_polys
 ):
     """
     This function sets up the multiprocessed generation of geo version of feature_id-specific rating curves.
@@ -165,10 +182,30 @@ def manage_geo_rating_curves_production(
         job_number (int): The number of jobs to use when parallel processing feature_ids.
         output_folder (str): The path to the output folder where geo rating curves will be written.
     """
-    print()
+
+    # get the version
+    changelog_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), os.pardir, 'doc', 'CHANGELOG.md')
+    )
+    version = sf.get_changelog_version(changelog_path)
+    RLOG.lprint("Version found: " + version)
+
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|                   Create GeoCurves                              |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
+
+    RLOG.lprint(f"  ---(f) ras2fim_output_dir: {ras2fim_output_dir}")
+    RLOG.lprint(f"  ---(v) ras2fim version: {version}")
+    RLOG.lprint(f"  ---(j) job_number: {job_number}")
+    RLOG.lprint(f"  ---(t) output_folder: {output_folder}")
+    RLOG.lprint(f"  ---(o) overwrite: {overwrite}")
+    RLOG.lprint(f"  ---(p) produce_polys: {produce_polys}")
+
+    RLOG.lprint("")
     overall_start_time = datetime.utcnow()
     dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
-    print(f"Started (UTC): {dt_string}")
+    RLOG.lprint(f"Started (UTC): {dt_string}")
 
     # Check job numbers and raise error if necessary
     total_cpus_available = os.cpu_count() - 2
@@ -181,6 +218,7 @@ def manage_geo_rating_curves_production(
 
     # Set up output folders. (final outputs folder now created early in the ras2fim.py lifecycle)
     if not os.path.exists(ras2fim_output_dir):
+        RLOG.error(f"{ras2fim_output_dir} does not exist")
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), ras2fim_output_dir)
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -190,12 +228,12 @@ def manage_geo_rating_curves_production(
     geocurves_dir = os.path.join(output_folder, "geocurves")
     geocurve_dirs.append(geocurves_dir)
 
-    polys_dir = os.path.join(output_folder, "polys")
+    polys_dir = os.path.join(output_folder, "geocurve_polys")
     geocurve_dirs.append(polys_dir)
 
     for gc_dir in geocurve_dirs:
         if os.path.exists(gc_dir) and not overwrite:
-            print(
+            RLOG.lprint(
                 "The output directory, "
                 + gc_dir
                 + ", already exists. Use the overwrite flag (-o) to overwrite."
@@ -209,15 +247,11 @@ def manage_geo_rating_curves_production(
     #  before replacing it so we don't have left over garbage
     os.makedirs(geocurves_dir)
 
+    # later logic will ask if their dir exists to decide if polys are to be created.
     if produce_polys:
         os.makedirs(polys_dir)
     else:
         polys_dir = None
-
-    # Check version arg input.
-    if os.path.isfile(version):
-        version = sf.get_changelog_version(version)
-        print("Version found: " + version)
 
     # Define paths outputs
     simplified_depth_grid_parent_dir = os.path.join(
@@ -233,6 +267,7 @@ def manage_geo_rating_curves_production(
     for huc in local_dir_list:
         full_huc_path = os.path.join(simplified_depth_grid_parent_dir, huc)
         if not os.path.isdir(full_huc_path):
+            RLOG.warning(f"{full_huc_path} is not a directory")
             continue
         feature_id_list = os.listdir(full_huc_path)
         for feature_id in feature_id_list:
@@ -243,6 +278,7 @@ def manage_geo_rating_curves_production(
             try:
                 depth_grid_list = os.listdir(feature_id_depth_grid_dir)
             except FileNotFoundError:
+                RLOG.warning(f"{feature_id_depth_grid_dir} raised an FileNotFoundError")
                 continue
             full_path_depth_grid_list = []
             for depth_grid in depth_grid_list:
@@ -271,58 +307,82 @@ def manage_geo_rating_curves_production(
                 "version": version,
                 "geocurves_dir": geocurves_dir,
                 "polys_dir": polys_dir,
+                "rlog_folder_path": RLOG.LOG_DEFAULT_FOLDER,
             }
 
             try:
-                future = executor.submit(produce_geocurves, **produce_gc_args)
+                future = executor.submit(mp_produce_geocurves, **produce_gc_args)
                 executor_dict[future] = feature_id
-            except Exception as ex:
-                print(f"*** {ex}")
-                traceback.print_exc()
+            except Exception:
+                RLOG.critical(traceback.format_exc())
                 sys.exit(1)
 
         # Send the executor to the progress bar and wait for all MS tasks to finish
         sf.progress_bar_handler(executor_dict, True, f"Creating geocurves with {job_number} workers")
 
+    # Now that multi-proc is done, lets merge all of the independent log file from each
+    RLOG.merge_log_files(RLOG.LOG_FILE_PATH, "produce_geocurves")
+
     # Calculate duration
-    print()
+    RLOG.success("Complete")
     end_time = datetime.utcnow()
     dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
-    print(f"Ended (UTC): {dt_string}")
+    RLOG.lprint(f"Ended (UTC): {dt_string}")
     time_duration = end_time - overall_start_time
-    print(f"Duration: {str(time_duration).split('.')[0]}")
-    print()
+    RLOG.lprint(f"Duration: {str(time_duration).split('.')[0]}")
+    RLOG.lprint("")
 
 
 # -------------------------------------------------
 if __name__ == "__main__":
+    # Sample command (all args)
+    # python create_geocurves.py -f 'c:\ras2fim_data\output_ras2fim\12090301_2277_230923'
+    #  -j 6
+    #  -t 'c:\ras2fim_data\output_ras2fim\12090301_2277_230923\final'
+    #  -o
+    #  -p
+
     # Parse arguments
     parser = argparse.ArgumentParser(description="Produce Geo Rating Curves for RAS2FIM")
     parser.add_argument(
-        "-f", "--ras2fim_output_dir", help="Path to directory containing RAS2FIM outputs", required=True
-    )
-    parser.add_argument(
-        "-v",
-        "--version",
-        help="RAS2FIM Version number, or supply path to repo Changelog",
-        required=False,
-        default="Unspecified",
+        "-f",
+        "--ras2fim_output_dir",
+        help="REQUIRED: Path to directory containing RAS2FIM unit output (huc/crs)",
+        required=True,
     )
     parser.add_argument(
         "-j", "--job_number", help="Number of processes to use", required=False, default=1, type=int
     )
     parser.add_argument(
-        "-t", "--output_folder", help="Target: Where the output folder will be", required=True
+        "-t", "--output_folder", help="Target: Where the geocurve output folder will be", required=True
     )
     parser.add_argument("-o", "--overwrite", help="Overwrite files", required=False, action="store_true")
     parser.add_argument(
         "-p",
         "--produce_polys",
-        help="Produce polygons in addition to geocurves.",
+        help="Skip creating the polygons in addition to geocurves.",
         required=False,
-        default=False,
-        action="store_true",
+        default=True,
+        action="store_false",
     )
 
     args = vars(parser.parse_args())
-    manage_geo_rating_curves_production(**args)
+
+    log_file_folder = args["ras2fim_output_dir"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
+
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split(".")[0]
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
+
+        # call main program
+        manage_geo_rating_curves_production(**args)
+
+    except Exception:
+        RLOG.critical(traceback.format_exc())

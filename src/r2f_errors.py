@@ -1,5 +1,10 @@
 import sys
 
+import shared_variables as sv
+
+# Global Variables
+RLOG = sv.R2F_LOG
+
 
 class ModelUnitError(Exception):
     """
@@ -22,6 +27,7 @@ class NoConflatedModelError(Exception):
     """
 
 
+# -------------------------------------------------
 def check_conflated_models_count(conflated_number):
     try:
         if conflated_number == 0:
@@ -34,5 +40,6 @@ def check_conflated_models_count(conflated_number):
         else:
             return True
     except NoConflatedModelError as e:
-        print(e)
-        sys.exit()
+        sv.R2F_LOG.critical(e)
+        # print(e)
+        sys.exit(1)

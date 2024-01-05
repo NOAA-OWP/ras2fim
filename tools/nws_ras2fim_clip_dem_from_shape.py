@@ -25,8 +25,8 @@ import rioxarray
 import tqdm
 
 
-sys.path.append("..")
-import ras2fim.src.shared_functions as sf
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+import shared_functions as sf
 
 
 # null value in the exported DEMs
@@ -106,7 +106,7 @@ def fn_cut_dems_from_shapes(
         gdf_boundary_raster_prj.iterrows(),
         total=gdf_boundary_raster_prj.shape[0],
         desc="Clipping Grids",
-        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
         ncols=65,
     ):
         # convert the geoPandas geometry to json

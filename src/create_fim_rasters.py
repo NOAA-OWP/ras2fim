@@ -12,17 +12,24 @@
 # Uses the 'ras2fim' conda environment
 # ************************************************************
 import argparse
-import datetime
+import datetime as dt
 import multiprocessing as mp
 import os
-import time
+import sys
+import traceback
+from functools import partial
 from multiprocessing import Pool
 
 import geopandas as gpd
 import pandas as pd
 
-# ras2fim python worker for multiprocessing
+import shared_functions as sf
+import shared_variables as sv
 import worker_fim_rasters
+
+
+# Global Variables
+RLOG = sv.R2F_LOG
 
 
 # -------------------------------------------------
@@ -59,11 +66,12 @@ def fn_create_fim_rasters(
     str_output_folder,
     str_projection_path,
     str_terrain_path,
-    str_std_input_path,
     flt_interval,
     b_terrain_check_only,
+    is_verbose=False,
 ):
-    flt_start_create_fim = time.time()
+    # TODO: Oct 25, 2023, continue with adding the "is_verbose" system
+    start_dt = dt.datetime.utcnow()
 
     # Hard coded constants for this routine
 
@@ -88,41 +96,40 @@ def fn_create_fim_rasters(
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    print(" ")
-    print("+=================================================================+")
-    print("|                NWM RASTER LIBRARY FROM HEC-RAS                  |")
-    print("+-----------------------------------------------------------------+")
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|                NWM RASTER LIBRARY FROM HEC-RAS                  |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
 
     STR_HUC8 = str_desired_huc8
-    print("  ---(w) HUC-8 WATERSHED: " + STR_HUC8)
+    RLOG.lprint("  ---(w) HUC-8 WATERSHED: " + STR_HUC8)
 
     STR_INPUT_FOLDER = str_input_folder
-    print("  ---(i) INPUT PATH: " + STR_INPUT_FOLDER)
+    RLOG.lprint("  ---(i) INPUT PATH: " + STR_INPUT_FOLDER)
 
     STR_ROOT_OUTPUT_DIRECTORY = str_output_folder
-    print("  ---(o) OUTPUT PATH: " + STR_ROOT_OUTPUT_DIRECTORY)
+    RLOG.lprint("  ---(o) OUTPUT PATH: " + STR_ROOT_OUTPUT_DIRECTORY)
 
     STR_PATH_TO_PROJECTION = str_projection_path
-    print("  ---(p) PROJECTION PATH: " + STR_PATH_TO_PROJECTION)
+    RLOG.lprint("  ---(p) PROJECTION PATH: " + STR_PATH_TO_PROJECTION)
 
     STR_PATH_TO_TERRAIN = str_terrain_path
-    print("  ---(t) TERRAIN PATH: " + STR_PATH_TO_TERRAIN)
-
-    STR_PATH_TO_STANDARD_INPUT = str_std_input_path
-    print("  ---[s]   Optional: Standard Input Path: " + STR_PATH_TO_STANDARD_INPUT)
+    RLOG.lprint("  ---(t) TERRAIN PATH: " + STR_PATH_TO_TERRAIN)
 
     # Path to the standard plan file text
-    STR_PLAN_MIDDLE_PATH = STR_PATH_TO_STANDARD_INPUT + r"\PlanStandardText01.txt"
-    STR_PLAN_FOOTER_PATH = STR_PATH_TO_STANDARD_INPUT + r"\PlanStandardText02.txt"
-    STR_PROJECT_FOOTER_PATH = STR_PATH_TO_STANDARD_INPUT + r"\ProjectStandardText01.txt"
+    current_script_dir = os.path.dirname(__file__)
+    STR_PLAN_MIDDLE_PATH = os.path.join(current_script_dir, "\PlanStandardText01.txt")
+    STR_PLAN_FOOTER_PATH = os.path.join(current_script_dir, "\PlanStandardText02.txt")
+    STR_PROJECT_FOOTER_PATH = os.path.join(current_script_dir, "\ProjectStandardText01.txt")
 
     FLT_INTERVAL = flt_interval
-    print("  ---[z]   Optional: Output Elevation Step: " + str(FLT_INTERVAL))
-    print("  ---[c]   Optional: Terrain Check Only: " + str(b_terrain_check_only))
+    RLOG.lprint("  ---[z]   Optional: Output Elevation Step: " + str(FLT_INTERVAL))
+    RLOG.lprint("  ---[c]   Optional: Terrain Check Only: " + str(b_terrain_check_only))
 
-    print("===================================================================")
+    RLOG.lprint("===================================================================")
 
     # "" is just a filler (for an old redundant parameter) simply to keep the order of item unchanged.
+    # TODO: Oct 25, 2023 - complete the is_verbose system
     tpl_input = (
         STR_HUC8,
         STR_INPUT_FOLDER,
@@ -141,6 +148,7 @@ def fn_create_fim_rasters(
         FLT_BUFFER,
         STR_PLAN_FOOTER_PATH,
         b_terrain_check_only,
+        is_verbose,
     )
 
     list_huc8 = []
@@ -176,6 +184,12 @@ def fn_create_fim_rasters(
     for index, row in df_streams_merge_2.iterrows():
         df_streams_merge_2.at[index, "settings"] = tpl_input
 
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("Start of processing in HEC-RAS")
+    log_file_prefix = "fn_main_hecras"
+    fn_main_hecras_partial = partial(
+        worker_fim_rasters.fn_main_hecras, RLOG.LOG_DEFAULT_FOLDER, log_file_prefix
+    )
     # create a pool of processors
     num_processors = mp.cpu_count() - 2
     with Pool(processes=num_processors) as executor:
@@ -183,7 +197,7 @@ def fn_create_fim_rasters(
         int_huc12_index = 0
 
         len_df_huc12 = len(df_huc12)
-        str_prefix = r"Processing HUCs (0 of " + str(len_df_huc12) + "):"
+        str_prefix = r"Processing HUC12s (0 of " + str(len_df_huc12) + "):"
         fn_print_progress_bar(0, len_df_huc12, prefix=str_prefix, suffix="Complete", length=27)
 
         # Loop through each HUC-12
@@ -191,7 +205,7 @@ def fn_create_fim_rasters(
             str_huc12 = str(df_huc12["HUC_12"][i])
             int_huc12_index += 1
             # print(str_huc12)
-            str_prefix = r"Processing HUCs (" + str(int_huc12_index) + " of " + str(len_df_huc12) + "):"
+            str_prefix = r"Processing HUC12s (" + str(int_huc12_index) + " of " + str(len_df_huc12) + "):"
             fn_print_progress_bar(
                 int_huc12_index, len_df_huc12, prefix=str_prefix, suffix="Complete", length=27
             )
@@ -208,7 +222,7 @@ def fn_create_fim_rasters(
             # Create a folder for the HUC-12 area
             os.makedirs(str_root_folder_to_create, exist_ok=True)
 
-            # ammend the pandas dataframe
+            # amend the pandas dataframe
             df_streams_huc12_mod1 = df_streams_huc12[
                 ["feature_id", "us_xs", "ds_xs", "peak_flow", "ras_path", "huc12", "settings"]
             ]
@@ -216,28 +230,49 @@ def fn_create_fim_rasters(
             # create a list of lists from the dataframe
             list_of_lists_df_streams = df_streams_huc12_mod1.values.tolist()
 
-            if len(list_of_lists_df_streams) > 0:
-                executor.map(worker_fim_rasters.fn_main_hecras, list_of_lists_df_streams)
+            try:
+                if len(list_of_lists_df_streams) > 0:
+                    executor.map(fn_main_hecras_partial, list_of_lists_df_streams)
+            except Exception:
+                # It has already been logged in fn_main_hecras, might get a dup error rec
+                RLOG.critical(traceback.format_exc())
+                executor.terminate()
+                RLOG.critical("Pool terminated")
+                sys.exit(1)
+
+    # Now that multi-proc is done, lets merge all of the independent log file from each
+    RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
 
     tif_count = 0
     for root, dirs, files in os.walk(STR_ROOT_OUTPUT_DIRECTORY):
         for file in files:
             if file.endswith(".tif"):
                 tif_count += 1
-    flt_end_create_fim = time.time()
-    flt_time_create_fim = (flt_end_create_fim - flt_start_create_fim) // 1
-    time_pass_create_fim = datetime.timedelta(seconds=flt_time_create_fim)
 
-    print(" ")
-    print("ALL AREAS COMPLETE")
-    print("Number of tif's generated: " + str(tif_count))
-    print("Compute Time: " + str(time_pass_create_fim))
+    RLOG.lprint("")
+    RLOG.success("ALL AREAS COMPLETE")
+    RLOG.success("Number of tif's generated: " + str(tif_count))
 
-    print("====================================================================")
+    dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
+    RLOG.lprint(dur_msg)
+
+    RLOG.lprint("====================================================================")
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
+    # Sample
+
+    # TODO: RESEARCH REQUIRED. Does the "-c" flag even work?
+
+    # python create_fim_rasters.py -w 12030105
+    #  -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\02_shapes_from_conflation
+    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\05_hecras_output
+    #  -p c:\....\12030105_2276_231024\02_shapes_from_conflation\12030105_huc_12_ar.prj
+    #  -t c:\ras2fim_data\output_ras2fim\12030105_2276_231024\04_hecras_terrain
+    #  -s C:\Users\.....\Documents\NOAA-OWP\Projects\ras2fim\dev-logging\ras2fim\src
+    #  -z 0.5  (leave off -c )
+
     parser = argparse.ArgumentParser(
         description="================ NWM RASTER LIBRARY FROM HEC-RAS =================="
     )
@@ -290,17 +325,6 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-s",
-        dest="str_std_input_path",
-        help="  OPTIONAL: path the to the standard inputs:"
-        r" Example: C:\Users\civil\test1\ras2fim\src : Default: working directory",
-        required=False,
-        default=os.getcwd(),
-        metavar="FILE",
-        type=str,
-    )
-
-    parser.add_argument(
         "-z",
         dest="flt_interval",
         help=r"  OPTIONAL: elevation interval of output grids: Example: 0.2 : Default: 0.5",
@@ -319,6 +343,16 @@ if __name__ == "__main__":
         action="store_true",
     )
 
+    parser.add_argument(
+        "-v",
+        "--is_verbose",
+        help="OPTIONAL: Adding this flag will give additional tracing output."
+        "Default = False (no extra output)",
+        required=False,
+        default=False,
+        action="store_true",
+    )
+
     args = vars(parser.parse_args())
     # --------------------------------
 
@@ -327,18 +361,34 @@ if __name__ == "__main__":
     str_output_folder = args["str_output_folder"]
     str_projection_path = args["str_projection_path"]
     str_terrain_path = args["str_terrain_path"]
-    str_std_input_path = args["str_std_input_path"]
     flt_interval = args["flt_interval"]
     b_terrain_check_only = args["b_terrain_check_only"]
+    is_verbose = args["is_verbose"]
 
-    fn_create_fim_rasters(
-        str_desired_huc8,
-        str_input_folder,
-        str_output_folder,
-        str_projection_path,
-        str_terrain_path,
-        str_std_input_path,
-        flt_interval,
-        b_terrain_check_only,
-    )
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    log_file_folder = args["str_output_folder"]
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
+
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+        # Assumes RLOG has been added as a global var.
+        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
+
+        # call main program
+        fn_create_fim_rasters(
+            str_desired_huc8,
+            str_input_folder,
+            str_output_folder,
+            str_projection_path,
+            str_terrain_path,
+            flt_interval,
+            b_terrain_check_only,
+            is_verbose,
+        )
+
+    except Exception:
+        RLOG.critical(traceback.format_exc())
