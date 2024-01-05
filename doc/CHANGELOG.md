@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.X - 2024-01-03 - [PR#233](https://github.com/NOAA-OWP/ras2fim/pull/233)
+## v2.0.beta.14 - 2024-01-05 - [PR#233](https://github.com/NOAA-OWP/ras2fim/pull/233)
 
 This PR merges create_src_depthgrids_4fids.py python script that creates synthetic rating curves (SRC) for each nwm feature id in a HUC8 domain. To create the SRCs, it needs information on water depths in each cross-section per flow value (step 5 output) and upstream and downstream cross-sections of each feature-id (step 2 output). Therefore, this PR also requests changes in step 2 Python script (conflate_hecras_to_nwm.py).
 
@@ -24,6 +24,7 @@ and Step 6 work independently.
 
 - This PR was tested on all RAS models in 12090301 HUC8.  
 
+<br/><br/>
 
 
 ## v2.0.beta.13 - 2024-01-05 - [PR#212](https://github.com/NOAA-OWP/ras2fim/pull/232)
