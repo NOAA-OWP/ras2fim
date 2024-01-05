@@ -80,10 +80,9 @@ def init_and_run_ras2fim(
 
     # -------------------
     # -w   (ie 12090301)
-    if len(str_huc8_arg) != 8:
-        raise ValueError("the -w flag (HUC8) is not 8 characters long")
-    if str_huc8_arg.isnumeric() is False:  # can handle leading zeros
-        raise ValueError("the -w flag (HUC8) does not appear to be a HUC8")
+    huc_valid, err_msg = val.is_valid_huc(str_huc8_arg)
+    if huc_valid is False:
+        raise ValueError(err_msg)
 
     # -------------------
     # -i  (ie OWP_ras_models\models) (HECRAS models)
@@ -174,6 +173,7 @@ def init_and_run_ras2fim(
 
     RLOG.lprint("Sample lprint (console and log file)")
     RLOG.debug("Sample debug (console and log file)")
+    RLOG.notice("Sample notice (console and log file but differnt color to stand out more))
     RLOG.success("Sample success (console and log file)")
     RLOG.warning("Sample warning (console, log file and warning file)")
     RLOG.error("Sample error (console, log file, and error file)")
@@ -469,22 +469,15 @@ def fn_run_ras2fim(
         RLOG.lprint("")
         RLOG.notice("+++++++ Processing: STEP: Producing Geocurves +++++++")
 
-        create_polys = os.getenv("PRODUCE_GEOCURVE_POLYGONS") == "True"
-        if create_polys is True:
-            RLOG.notice("+++ (Including creating geocurve polygons) +++++++")
-        else:
-            RLOG.notice("++++ (Skipping creating geocurve polygon) +++++++")
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
         # Produce geocurves
         job_number = os.cpu_count() - 2
         manage_geo_rating_curves_production(
             ras2fim_output_dir=output_folder_path,
-            version=os.path.join(os.path.dirname(os.path.dirname(__file__)), "doc", "CHANGELOG.md"),
             job_number=job_number,
             output_folder=r2f_final_dir,
             overwrite=False,
-            produce_polys=create_polys,
         )
 
     # -------------------------------------------------

@@ -3,12 +3,17 @@
 import argparse
 import errno
 import os
+import sys
 import traceback
+from pathlib import Path
 from timeit import default_timer as timer
 
 import geopandas as gpd
 import pandas as pd
+from shapely import wkt
 
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import shared_variables as sv
 
 
@@ -17,7 +22,7 @@ RLOG = sv.R2F_LOG
 
 
 # -------------------------------------------------
-def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundation_poly, overwrite):
+def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundation_poly):
     """
     Produce inundation from RAS2FIM geocurves.
 
@@ -25,7 +30,6 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         geocurves_dir (str): Path to directory containing RAS2FIM geocurve CSVs.
         flow_file (str): Discharges in CMS as a CSV file. "feature_id" and "discharge" columns
          MUST be supplied. output_inundation_poly (str): Path to output inundation polygon.
-        overwrite (bool): Whether to overwrite files if they already exist.
     """
 
     # Check that output directory exists. Notify user that output directory will be created if not.
@@ -37,6 +41,10 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         )
         os.makedirs(os.path.split(output_inundation_poly)[0])
 
+    # check that output file name has extension of gpkg
+    if not Path(output_inundation_poly).suffix == '.gpkg':
+        raise TypeError ("The output file must have gpkg extension.")
+
     # Check that geocurves_dir exists
     if not os.path.exists(geocurves_dir):
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), geocurves_dir)
@@ -46,31 +54,50 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), flow_file)
 
     # Create dictionary of available feature_id geocurve full paths.
-    geocurves_list = os.listdir(geocurves_dir)
+    geocurves_list = list(Path(geocurves_dir).glob("*_rating_curve_geo.csv"))
+
+    if len(geocurves_list) == 0:
+        msg = "Error: Make sure you have specified a correct directory with at least one geocurve csv file."
+        RLOG.critical(msg)
+        raise Exception(msg)
+
     geocurve_path_dictionary, available_feature_id_list = {}, []
-    for geocurve in geocurves_list:
-        if ".csv" in geocurve:
-            feature_id = geocurve.split("_")[0]
-            available_feature_id_list.append(feature_id)
-            geocurve_path_dictionary.update({feature_id: {"path": os.path.join(geocurves_dir, geocurve)}})
+    for geocurve_path in geocurves_list:
+        feature_id = geocurve_path.name.split("_")[0]
+        available_feature_id_list.append(feature_id)
+        geocurve_path_dictionary.update({feature_id: {"path": geocurve_path}})
+
+    RLOG.lprint("Completed creating a dictionary of available feature_ids and geocurve files.")
+
+    # get ras2fom version from just one of the geocurve files
+    ras2fim_version = None
+    for _, geocurve_file_path in geocurve_path_dictionary.items():
+        sample_geocurve_data = pd.read_csv(geocurve_file_path["path"])
+        ras2fim_version = sample_geocurve_data.loc[0, "version"]
+        break
+
+    if ras2fim_version:
+        RLOG.lprint(f"Derived ras2fim version {ras2fim_version} from geocurve files.")
+    else:
+        RLOG.warning(f"Failed to derive ras2fim version from geocurve files.")
 
     # Open flow_file to detemine feature_ids to process
     flow_file_df = pd.read_csv(flow_file)
+    flow_file_df['feature_id'] = flow_file_df['feature_id'].astype(str)
+    flow_file_df.set_index('feature_id', inplace=True)
 
-    # Loop through feature_ids and concatenate into a single dataframe
-    iteration = 0
+    # compile each feature id info (discharge, stage, and geometry) into a dictionary
+    RLOG.lprint("Compiling feature_ids info (discharge, stage, geometry) ... ")
     feature_id_polygon_path_dict = {}
-    for feature_id in flow_file_df["feature_id"]:
-        if str(feature_id) not in available_feature_id_list:
-            # Skip flow values not found in RAS library
-            continue
-        discharge_cms = flow_file_df.loc[flow_file_df["feature_id"] == feature_id, "discharge"].values[0]
-        # Get path to polygon from geocurve
+    for feature_id in available_feature_id_list:
+        # Get discharge and path to geometry file
         try:
+            discharge_cms = flow_file_df.loc[feature_id, "discharge"]
             geocurve_file_path = geocurve_path_dictionary[str(feature_id)]["path"]
         except KeyError:
             RLOG.warning(
-                "An exception was found finding geocurve_file_path for feature ID" f" of {feature_id} [path]"
+                "An exception was found finding discharge or geocurve_file_path for feature ID"
+                f" of {feature_id} [path]"
             )
             continue
 
@@ -78,31 +105,22 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         geocurve_df = pd.read_csv(geocurve_file_path)
         row_idx = geocurve_df["discharge_cms"].sub(discharge_cms).abs().idxmin()
         subset_geocurve = geocurve_df.iloc[row_idx]
-        polygon_filename = subset_geocurve["filename"]
-        polygon_path = os.path.join(os.path.split(geocurves_dir)[0], "polys", polygon_filename)
-        if os.path.exists(polygon_path):
-            feature_id_polygon_path_dict.update(
-                {feature_id: {"discharge_cms": discharge_cms, "path": polygon_path}}
-            )
+        polygon_geometry = wkt.loads(subset_geocurve["geometry"])
+        stage_m = subset_geocurve["stage_m"]
 
-        iteration += 1
+        feature_id_polygon_path_dict.update(
+            {feature_id: {"discharge_cms": discharge_cms, "geometry": polygon_geometry, "stage_m": stage_m}}
+        )
 
-    # Concatenate entire list of desired polygons into one geodataframe
-    iteration = 0
-    for feature_id in feature_id_polygon_path_dict:
-        if iteration == 0:
-            gdf = gpd.read_file(feature_id_polygon_path_dict[feature_id]["path"])
-            gdf["discharge_cms"] = feature_id_polygon_path_dict[feature_id]["discharge_cms"]
-        else:
-            new_gdf = gpd.read_file(feature_id_polygon_path_dict[feature_id]["path"])
-            new_gdf["discharge_cms"] = feature_id_polygon_path_dict[feature_id]["discharge_cms"]
-            gdf = gpd.pd.concat([gdf, new_gdf])
+    RLOG.lprint("Creating output gpkg file: " + output_inundation_poly)
+    df = pd.DataFrame.from_dict(feature_id_polygon_path_dict, orient='index').reset_index()
+    df.rename(columns={'index': 'feature_id'}, inplace=True)
+    gdf = gpd.GeoDataFrame(df, geometry='geometry', crs=sv.DEFAULT_RASTER_OUTPUT_CRS)
 
-        iteration += 1
-
-    RLOG.lprint("Writing final output: " + output_inundation_poly)
-    # Now you have the GeoDataFrame `gdf` with polygons, and you can write it to a GeoPackage
+    # add version number before saving
+    gdf['version'] = ras2fim_version
     gdf.to_file(output_inundation_poly, driver="GPKG")
+    RLOG.lprint("  Run Ras2inundation - Completed                                         |")
 
 
 # -------------------------------------------------
@@ -131,7 +149,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "-t", "--output_inundation_poly", help="Path to output inundation polygon file.", required=False
     )
-    parser.add_argument("-o", "--overwrite", help="Overwrite files", required=False, action="store_true")
 
     args = vars(parser.parse_args())
 

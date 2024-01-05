@@ -25,8 +25,64 @@ and Step 6 work independently.
 - This PR was tested on all RAS models in 12090301 HUC8.  
 
 
+
+## v2.0.beta.13 - 2024-01-05 - [PR#212](https://github.com/NOAA-OWP/ras2fim/pull/232)
+
+A new tool was needed to support V2, where ras2fim has it's own custom made DEM files. Using the WBD_National.gpkg, we extract a given HUC8, then find all of it's neighboring HUC12, and make a single dissolved poly. This becomes the extent file we need to go against the USGS 1/3 arc (10m) remote VRT. The new DEM is now clipped against our domain poly.  Further, tool allows you to optionally load it to an S3 bucket.  
+
+Note: The defaulted S3 bucket is for NOAA/OWP use only and requires NOAA/OWP aws credentials. You are welcome to use this tool against your own S3 bucket with your own credentials. Adding the `-skips3` will drop attempts to upload it to S3. 
+
+Other minor adjustments:
+ - adding the huc8 validation script to a few which were doing their own duplicate HUC8 input validation.
+ - A few style, linting and text updates to some files.
+ - a small input and logic change to `s3_shared_functions.py`
+
+### Additions  
+- `src`
+    - `acquire_and_preprocess_3dep_dems.py`: As described above. Also includes a feature to detect if files already exist on the file system or S3 and confirm if you want to stop or overwrite them. As the output DEMs are a key part of V2, we do not want accident overwrites.
+    - `extend_huc8_domain.py`:  The DEMs that ras2fim wants are based on any given HUC8 plus all neighboring HUC12 and this tool makes that domain file.
+
+### Changes  
+
+- `pyproject.toml`: As all files in the `tools` directory have a import pathing problem to files in the `src` directory, it triggers a linting error on all files in the `tools` folder. A simplification to this toml file now covers that type of error for all files in that directory.
+- `src`
+    - `ras2fim.py`:  HUC8 input validation now centralized and re-usable from the HUC8 validator function added to `shared_validators.py`
+    - `ras2fim_logger.py`:  Style (linting) updates and minor text fixes.
+    - `shared_functions.py`: Added a new function for re-projecting rasters.
+    - `shared_validators.py`: A new function added to simplify and re-use huc value validation. ie) added `is_valid_huc`.
+    - `shared_variables.py`:  Moved a few variables to other parts of the page, added a few new ones for the new tool, and other minor adjustments.
+- `tools`
+    - `get_models_by_catalog.py`: A couple small style fixes plus added the new centralized HUC8 validator.
+    - `ras_unit_to_s3.py`: Changed the function arguments into `s3_shared_functions.py` for uploading a file to s3. 
+    - `s3_shared_functions.py`: Some style changes; Also changed the function arguments for `upload_file_to_s3.py` to make it more flexible (needed by the new acquire system); Added a new function to see if a file exists already in S3.
+
 <br/><br/>
 
+
+## v2.0.beta.12 - 2024-01-05 - [PR#231](https://github.com/NOAA-OWP/ras2fim/pull/231)
+This PR is the ras2fim V2 version of the PR #230. This PR solves issue #229 and performs:
+
+1. Removes the option of making gpkg files in `create_geocurves.py`. The geometry info is only saved in 'geometry' column of geocurves csv files.
+2. Fixes a bug in `ras2inundation.py` to make sure all geometry info can be read from 'geometry' column of geocurves csv files. Also, because geocurve gpkg polygon files are not available anymore as the input, `ras2inundation.py` now reads ras2fim version number and `stage_m` value (corresponding to the `discharge_cms`) from geocurve csv files. Also, removed "overwrite" argument for this file. 
+3. Improved the performance of `ras2inundation.py` (e.g., by vectorizing a for loop)
+4. Moves the `ras2inundation.py` file from `src` to `tools` folder. 
+
+
+### Changes  
+- `src/create_geocurves.py`  ... see above
+-  `config/r2f_config.env`  ... removed the PRODUCE_GEOCURVE_POLYGONS flag
+- `src/ras2fim.py` ... adjusted/removed the arguments used to call "create_geocurve.py" from ras2fim.py
+- `src/clip_dem_from_shape.py` ... added logging on one line
+
+### Additions  
+
+- `tools/ras2inundation.py`
+
+### Removals 
+
+- `src/ras2inundation.py`
+
+<br/><br/>
 
 ## v2.0.beta.11 - 2023-12-18 - [PR#227](https://github.com/NOAA-OWP/ras2fim/pull/227)
 

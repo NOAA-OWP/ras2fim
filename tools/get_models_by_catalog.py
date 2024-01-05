@@ -296,6 +296,7 @@ class Get_Models_By_Catalog:
 
         dur_msg = print_date_time_duration(start_dt, dt.datetime.utcnow())
         RLOG.lprint(dur_msg)
+        print(f"log files saved to {RLOG.LOG_FILE_PATH}")
         print()
 
     # -------------------------------------------------
@@ -315,14 +316,9 @@ class Get_Models_By_Catalog:
         """
 
         # ---------------
-        if huc_number is None:  # Possible if not coming via the __main__ (also possible)
-            raise ValueError("huc number not set")
-
-        if len(str(huc_number)) != 8:
-            raise ValueError("huc number is not eight characters in length")
-
-        if huc_number.isnumeric() is False:
-            raise ValueError("huc number is not a number")
+        huc_valid, err_msg = val.is_valid_huc(huc_number)
+        if huc_valid is False:
+            raise ValueError(err_msg)
 
         self.huc_number = huc_number
 
