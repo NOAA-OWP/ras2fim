@@ -3,7 +3,7 @@ We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
 
-## v2.0.beta.12 - 2024-01-05 - [PR#212](https://github.com/NOAA-OWP/ras2fim/pull/232)
+## v2.0.beta.13 - 2024-01-05 - [PR#212](https://github.com/NOAA-OWP/ras2fim/pull/232)
 
 A new tool was needed to support V2, where ras2fim has it's own custom made DEM files. Using the WBD_National.gpkg, we extract a given HUC8, then find all of it's neighboring HUC12, and make a single dissolved poly. This becomes the extent file we need to go against the USGS 1/3 arc (10m) remote VRT. The new DEM is now clipped against our domain poly.  Further, tool allows you to optionally load it to an S3 bucket.  
 
