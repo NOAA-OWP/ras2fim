@@ -1,7 +1,16 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v1.30.2 - 2023-12-29 - [PR#230](https://github.com/NOAA-OWP/ras2fim/pull/230)
+
+## RAS2FIM V1 - Code Freeze
+
+Jan 5, 2024
+
+At this point, there are no more projected updates required to the V1 code base. The "dev" branch will now continue on as ras2fim V2. This branch exists in case we need an emergency or critical fix based on V1 code.
+
+<br/><br/>
+
+## v1.30.2 - 2024-01-05 - [PR#230](https://github.com/NOAA-OWP/ras2fim/pull/230)
 
 This PR solves issue #228 and performs:
 
@@ -18,16 +27,6 @@ This PR solves issue #228 and performs:
 - `src/ras2fim.py` ... adjusted/removed the arguments used to call "create_geocurve.py" from ras2fim.py
 
 <br/><br/>
-
-
-## RAS2FIM V1 - Code Freeze
-
-Nov 8, 2023
-
-At this point, there are no more projected updates required to the V1 code base. The "dev" branch will now continue on as ras2fim V2. This branch exists in case we need an emergency or critical fix based on V1 code.
-
-<br/><br/>
-
 
 ## v1.30.1 - 2023-11-2 - [PR#166](https://github.com/NOAA-OWP/ras2fim/pull/198)
 
