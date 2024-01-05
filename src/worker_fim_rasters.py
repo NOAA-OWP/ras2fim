@@ -181,47 +181,47 @@ def create_list_of_paths_flow_geometry_files_4each_BCs(path_to_conflated_streams
 
     # List of flow file paths
     # Water surface elevation BC
-    str_path_to_flow_file_wse = []
+    ls_path_to_flow_file_wse = []
     for fpath in ls_path_flowfiles:
         file_flow = open(fpath, 'r')
         lines_flow = file_flow.readlines()
 
         for flines in lines_flow:
             if flines[:11] == "Dn Known WS":
-                str_path_to_flow_file_wse.append(fpath)
+                ls_path_to_flow_file_wse.append(fpath)
                 break
 
         file_flow.close()
 
     # Normal depth BC
-    str_path_to_flow_file_nd = []
+    ls_path_to_flow_file_nd = []
     for fpath2 in ls_path_flowfiles:
         file_flow2 = open(fpath2, 'r')
         lines_flow2 = file_flow2.readlines()
 
         for flines2 in lines_flow2:
             if flines2[:8] == "Dn Slope":
-                str_path_to_flow_file_nd.append(fpath2)
+                ls_path_to_flow_file_nd.append(fpath2)
                 break
 
         file_flow2.close()
 
     # List of geometry file paths
-    str_path_to_geo_file_wse = []
-    for fpath_wse in str_path_to_flow_file_wse:
+    ls_path_to_geo_file_wse = []
+    for fpath_wse in ls_path_to_flow_file_wse:
         gpath = fpath_wse[:-3] + "g01"
-        str_path_to_geo_file_wse.append(gpath)
+        ls_path_to_geo_file_wse.append(gpath)
 
-    str_path_to_geo_file_nd = []
-    for fpath_nd in str_path_to_flow_file_nd:
+    ls_path_to_geo_file_nd = []
+    for fpath_nd in ls_path_to_flow_file_nd:
         gpath2 = fpath_nd[:-3] + "g01"
-        str_path_to_geo_file_nd.append(gpath2)
+        ls_path_to_geo_file_nd.append(gpath2)
 
     return (
-        str_path_to_flow_file_wse,
-        str_path_to_flow_file_nd,
-        str_path_to_geo_file_wse,
-        str_path_to_geo_file_nd,
+        ls_path_to_flow_file_wse,
+        ls_path_to_flow_file_nd,
+        ls_path_to_geo_file_wse,
+        ls_path_to_geo_file_nd,
     )
 
 
@@ -1131,20 +1131,29 @@ def create_hecras_files(
     # and create a seperate list of paths to
     # flow and geometry files for WSE and ND BCs
     [
-        str_path_to_flow_file_wse,
-        str_path_to_flow_file_nd,
-        str_path_to_geo_file_wse,
-        str_path_to_geo_file_nd,
+        ls_path_to_flow_file_wse,
+        ls_path_to_flow_file_nd,
+        ls_path_to_geo_file_wse,
+        ls_path_to_geo_file_nd,
     ] = create_list_of_paths_flow_geometry_files_4each_BCs(path_to_conflated_streams_csv)
 
     # Compute boundray condition for models with wse BCs
-    list_bc_target_xs_huc8, profile_names = compute_boundray_condition_wse(
-        int_fn_starting_flow, int_number_of_steps, str_path_to_flow_file_wse, str_path_to_geo_file_wse
-    )
+    #list_bc_target_xs_huc8, profile_names = compute_boundray_condition_wse(
+    #    int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_wse, str_path_to_geo_file_wse
+    #)
+    
+    if len(ls_path_to_flow_file_wse) > 0:
+        list_bc_target_xs_huc8, profile_names = compute_boundray_condition_wse(
+            int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_wse, ls_path_to_geo_file_wse
+        )
+    else:
+        # TODO: Fix this so it doesn't break the system. 
+        raise Exception("Of the current models being used, at least one must have a valid boundary condition.")
+
 
     # Compute boundray condition for models with nd BCs
     list_first_pass_flows_xs_nd, list_str_slope_bc_nd = compute_boundray_condition_nd(
-        int_fn_starting_flow, int_number_of_steps, str_path_to_flow_file_nd
+        int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_nd
     )
 
     # Create the HEC-RAS Flow files Normal Depth BC ~ 40 s
@@ -1152,7 +1161,7 @@ def create_hecras_files(
         huc8_num,
         int_number_of_steps,
         path_to_conflated_streams_csv,
-        str_path_to_flow_file_nd,
+        ls_path_to_flow_file_nd,
         profile_names,
         list_str_slope_bc_nd,
         list_first_pass_flows_xs_nd,
@@ -1165,7 +1174,7 @@ def create_hecras_files(
         int_fn_starting_flow,
         int_number_of_steps,
         path_to_conflated_streams_csv,
-        str_path_to_flow_file_wse,
+        ls_path_to_flow_file_wse,
         profile_names,
         list_bc_target_xs_huc8,
         str_output_filepath,

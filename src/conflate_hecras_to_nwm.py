@@ -3,18 +3,27 @@
 
 import argparse
 import datetime as dt
+import multiprocessing as mp
 import os
-import os.path
 import sys
 import traceback
+
+# import warnings
+from functools import partial
+from multiprocessing import Pool
 from time import sleep
 
 import geopandas as gpd
+
+# may need to pip install netcdf4 for xarray
 import numpy as np
 import pandas as pd
+import tqdm
 import xarray as xr
+from fiona import collection
+from geopandas.tools import sjoin
+from shapely.geometry import LineString, Point, mapping
 from shapely import wkt
-from shapely.geometry import LineString, Point
 
 import ras2fim_logger
 import shared_functions as sf
@@ -24,6 +33,17 @@ import shared_variables as sv
 # Global Variables
 RLOG = sv.R2F_LOG
 MP_LOG = ras2fim_logger.RAS2FIM_logger()  # the mp version
+
+
+# -------------------------------------------------
+def fn_wkt_loads(x):
+    try:
+        return wkt.loads(x)
+    except Exception as ex:
+        RLOG.error("fn_wkt_loads errored out")
+        RLOG.error(x)
+        RLOG.error(f"Details: {ex}")
+        return None
 
 
 # -------------------------------------------------
@@ -108,8 +128,7 @@ def fn_cut_streams_in_two(line, distance):
 
 
 # -------------------------------------------------
-def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg,
-                             str_nation_arg, path_unit_folder):
+def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg, path_unit_folder):
     # TODO: Oct 2023: Review and remove this surpression
     # supress all warnings
     # warnings.filterwarnings("ignore", category=UserWarning)
@@ -129,8 +148,8 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg,
     RLOG.lprint("  ---(i) HEC-RAS INPUT SHP DIRECTORY: " + ble_shp_in_dir)
 
     # note the files names are hardcoded in 1 of 2
-    ble_stream_ln = ble_shp_in_dir + "\\" + "stream_LN_from_ras.shp"
-    # ble_cross_section_ln = ble_shp_in_dir + "\\" + "cross_section_LN_from_ras.shp"
+    ble_stream_ln = os.path.join(ble_shp_in_dir, "stream_LN_from_ras.shp")
+    ble_cross_section_ln = os.path.join(ble_shp_in_dir, "cross_section_LN_from_ras.shp")
 
     shp_out_path = str_shp_out_arg
     RLOG.lprint("  ---(o) OUTPUT DIRECTORY: " + shp_out_path)
@@ -146,17 +165,17 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg,
     # (2) the National water model flowlines geopackage
     # (3) the National water model recurrance flows
 
-    #INPUT_NWM_FLOWS_FILE = "nwm_flows.gpkg"
-    #INPUT_NWM_WBD_LOOKUP_FILE = "nwm_wbd_lookup.nc"
-    #INPUT_WBD_NATIONAL_FILE = "WBD_National.gpkg"
+    # INPUT_NWM_FLOWS_FILE = "nwm_flows.gpkg"
+    # INPUT_NWM_WBD_LOOKUP_FILE = "nwm_wbd_lookup.nc"
+    # INPUT_WBD_NATIONAL_FILE = "WBD_National.gpkg"
     # Input - Watershed boundary data geopackage
-    str_wbd_geopkg_path = str_nation_arg + "\\" + sv.INPUT_WBD_NATIONAL_FILE
+    str_wbd_geopkg_path = os.path.join(str_nation_arg, sv.INPUT_WBD_NATIONAL_FILE)
 
     # Input - National Water Model stream lines geopackage
-    str_nwm_flowline_geopkg_path = str_nation_arg + "\\" + sv.INPUT_NWM_FLOWS_FILE
+    str_nwm_flowline_geopkg_path = os.path.join(str_nation_arg, sv.INPUT_NWM_FLOWS_FILE)
 
     # Input - Recurrance Intervals netCDF
-    str_netcdf_path = str_nation_arg + "\\" + sv.INPUT_NWM_WBD_LOOKUP_FILE
+    str_netcdf_path = os.path.join(str_nation_arg, sv.INPUT_NWM_WBD_LOOKUP_FILE)
 
     # Geospatial projections
     nwm_prj = "ESRI:102039"
@@ -329,16 +348,6 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg,
     )
 
     # -------------------------------------------------
-    # # Remove duplicates to find final ras models
-    # gdf_conflate_streams_ble_to_nwm_filter1 = gdf_conflate_streams_ble_to_nwm_dup.sort_values(
-    #     'Length',
-    #     ascending=False
-    #     ).drop_duplicates(subset=['ras_path'])
-    # gdf_conflate_streams_ble_to_nwm_filter1.index = range(
-    #     len(gdf_conflate_streams_ble_to_nwm_filter1)
-    #     )
-
-    # -------------------------------------------------
     # Remove duplicate rows that have the same ras_models AND feature_id
     gdf_conflate_streams_ble_to_nwm_fid = gdf_conflate_streams_ble_to_nwm_dup.sort_values(
         'Length', ascending=False
@@ -378,15 +387,379 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg,
     gdf_conflate_streams_ble_to_nwm_fid_line.geometry = linestring_geo
 
     # -------------------------------------------------
+    # Assigning feature-ids to conflated streams
+    # -------------------------------------------------
+    # Create points at desired interval along each
+    # national water model stream
+    # -------------------------------------------------
+
+    # TODO - 2021.09.21 - this should be 50 if meters and 150 if feet
+    # too small a value creates long buffering times
+    int_distance_delta = 150  # distance between points in hec-ras projection units
+
+    int_count = 0
+
+    # Multi-Linestrings to Linestrings
+    gdf_streams_nwm_explode = gdf_streams_nwm_bleprj.explode(index_parts=True)
+
+    # TODO - 2021.08.03 - Quicker to buffer the ble_streams first
+    # and get the nwm streams that are inside or touch the buffer?
+
+    list_points_aggregate = []
+    RLOG.lprint("+-----------------------------------------------------------------+")
+
+    for index, row in gdf_streams_nwm_explode.iterrows():
+        str_current_linestring = row["geometry"]
+        distances = np.arange(0, str_current_linestring.length, int_distance_delta)
+        inter_distances = [str_current_linestring.interpolate(distance) for distance in distances]
+        boundary_point = Point(
+            str_current_linestring.boundary.bounds[0], str_current_linestring.boundary.bounds[1]
+        )
+        inter_distances.append(boundary_point)
+
+        tpl_request = (row["feature_id"], row["huc12"], inter_distances)
+        list_points_aggregate.append(tpl_request)
+
+    # Create a pool of processors
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("start of creating gdf of points")
+
+    # -------------------------------------------------
+    # Not MP
+    # def fn_create_gdf_of_points(tpl_request):
+    # # function to create and return a geoDataframe from a list of shapely points
+
+    #     str_feature_id = tpl_request[0]
+    #     str_huc_12 = tpl_request[1]
+    #     list_of_points = tpl_request[2]
+
+    #     # Create an empty dataframe
+    #     df_points_nwm = pd.DataFrame(list_of_points, columns=["geometry"])
+
+    #     # convert dataframe to geodataframe
+    #     gdf_points_nwm = gpd.GeoDataFrame(df_points_nwm, geometry="geometry")
+
+    #     gdf_points_nwm["feature_id"] = str_feature_id
+    #     gdf_points_nwm["huc_12"] = str_huc_12
+
+    #     return gdf_points_nwm
+
+    # list_gdf_points_all_lines = []
+    # for tpl in list_points_aggregate:
+
+    #     points_tuple = fn_create_gdf_of_points(tpl)
+
+    #     list_gdf_points_all_lines.append(points_tuple)
+
+    # -------------------------------------------------
+    log_file_prefix = "mp_create_gdf_of_points"
+    fn_create_gdf_of_points_partial = partial(
+        mp_create_gdf_of_points, RLOG.LOG_DEFAULT_FOLDER, log_file_prefix
+    )
+    num_processors = mp.cpu_count() - 2
+    with Pool(processes=num_processors) as executor:
+        # TODO .. not how to sort as it is a list of tuples
+        sorted_list_points_aggregate = sorted(list_points_aggregate)
+
+        len_points_agg = len(sorted_list_points_aggregate)
+
+        list_gdf_points_all_lines = list(
+            tqdm.tqdm(
+                executor.imap(fn_create_gdf_of_points_partial, sorted_list_points_aggregate),
+                total=len_points_agg,
+                desc="Points on lines",
+                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
+                ncols=67,
+            )
+        )
+
+    # pool.close()
+    # pool.join()
+
+    # Now that multi-proc is done, lets merge all of the independent log file from each
+    RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
+    # -------------------------------------------------
+
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("Mapping points to nwm streams")
+    gdf_points_nwm = gpd.GeoDataFrame(pd.concat(list_gdf_points_all_lines, ignore_index=True))
+    gdf_points_nwm = gdf_points_nwm.set_crs(ble_prj)
+
+    # path of the shapefile to write
+    # str_filepath_nwm_points = os.path.join(shp_out_path, f"{str_huc8}_nwm_points_PT.shp")
+    # write the shapefile
+    # gdf_points_nwm.to_file(str_filepath_nwm_points)
+
+    # -------------------------------------------------
+    # TODO: Dec 12, 2023 somewhere around here is a bug?
+    # read in the model stream shapefile
+    gdf_segments = gpd.read_file(ble_stream_ln)  # gdf_conflate_streams_ble_to_nwm_fid_line.copy()
+
+    # Simplify geom by 4.5 tolerance and rewrite the
+    # geom to eliminate streams with too may verticies
+
+    flt_tolerance = 4.5  # tolerance for simplifcation of HEC-RAS stream centerlines
+
+    for index, row in gdf_segments.iterrows():
+        shp_geom = row["geometry"]
+        shp_simplified_line = shp_geom.simplify(flt_tolerance, preserve_topology=False)
+        gdf_segments.at[index, "geometry"] = shp_simplified_line
+
+    # create merged geometry of all streams
+    shply_line = gdf_segments.geometry.unary_union
+
+    # read in the national water model points
+    gdf_points = gdf_points_nwm
+
+    # reproject the points
+    gdf_points = gdf_points.to_crs(gdf_segments.crs)
+
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("Buffering stream centerlines ~ 60 sec")
+
+    # -------------------------------------------------
+    # buffer the merged stream ceterlines - distance to find valid conflation point
+    # -------------------------------------------------
+    # distance to buffer around modeled stream centerlines
+    int_buffer_dist = 600
+    shp_buff = shply_line.buffer(int_buffer_dist)
+
+    # convert shapely to geoDataFrame
+    gdf_buff = gpd.GeoDataFrame(geometry=[shp_buff])
+
+    # set the CRS of buff
+    gdf_buff = gdf_buff.set_crs(gdf_segments.crs)
+
+    # spatial join - points in polygon
+    gdf_points_in_poly = sjoin(gdf_points, gdf_buff, how="left")
+
+    # drop all points that are not within polygon
+    gdf_points_within_buffer = gdf_points_in_poly.dropna()
+
+    # need to reindex the returned geoDataFrame
+    gdf_points_within_buffer = gdf_points_within_buffer.reset_index()
+
+    # delete the index_right field
+    del gdf_points_within_buffer["index_right"]
+
+    total_points = len(gdf_points_within_buffer)
+
+    df_points_within_buffer = pd.DataFrame(gdf_points_within_buffer)
+    # TODO - 2021.09.21 - create a new df that has only the variables needed in the desired order
+    list_dataframe_args_snap = df_points_within_buffer.values.tolist()
+
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    # -------------------------------------------------
+    # Not MP
+    # list_df_points_projected = []
+    # for snaps in list_dataframe_args_snap:
+
+    #     points_projected = mp_snap_point(shply_line, snaps)
+    #     list_df_points_projected.append(points_projected)
+
+    p = mp.Pool(processes=(mp.cpu_count() - 2))
+
+    list_df_points_projected = list(
+        tqdm.tqdm(
+            p.imap(partial(mp_snap_point, shply_line), list_dataframe_args_snap),
+            total=total_points,
+            desc="Snap Points",
+            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
+            ncols=67,
+        )
+    )
+
+    p.close()
+    p.join()
+    print()
+
+    gdf_points_snap_to_ble = gpd.GeoDataFrame(pd.concat(list_df_points_projected, ignore_index=True))
+
+    gdf_points_snap_to_ble["geometry"] = gdf_points_snap_to_ble.geometry_wkt.apply(fn_wkt_loads)
+    gdf_points_snap_to_ble = gdf_points_snap_to_ble.dropna(subset=["geometry"])
+    gdf_points_snap_to_ble = gdf_points_snap_to_ble.set_crs(gdf_segments.crs)
+
+    # write the shapefile
+    # str_filepath_ble_points = os.path.join(shp_out_path, f"{str_huc8}_ble_snap_points_PT.shp")
+
+    # TODO: Nov 1, 2023. Somewhere in here is a bug?
+    # gdf_points_snap_to_ble.to_file(str_filepath_ble_points)
+
+    # -------------------------------------------------
+    # Buffer the Base Level Engineering streams 0.1 feet (line to polygon)
+
+    gdf_segments_buffer = gdf_segments
+    gdf_segments["geometry"] = gdf_segments_buffer.geometry.buffer(0.1)
+
+    # Spatial join of the points and buffered stream
+
+    gdf_ble_points_feature_id = gpd.sjoin(
+        gdf_points_snap_to_ble,
+        gdf_segments_buffer[["geometry", "ras_path"]],
+        how="left",
+        predicate="intersects",
+    )
+
+    # delete the wkt_geom field
+    del gdf_ble_points_feature_id["index_right"]
+
+    # Intialize the variable
+    gdf_ble_points_feature_id["count"] = 1
+
+    df_ble_guess = pd.pivot_table(
+        gdf_ble_points_feature_id, index=["feature_id", "ras_path"], values=["count"], aggfunc=np.sum
+    )
+
+    df_test = df_ble_guess.sort_values("count")
+
+    str_csv_file = os.path.join(shp_out_path, f"{str_huc8}_interim_list_of_streams.csv")
+
+    # Write out the table - read back in
+    # this is to white wash the data type
+    df_test.to_csv(str_csv_file)
+    df_test = pd.read_csv(str_csv_file)
+
+    # Remove the duplicates and determine the feature_id with the highest count
+    df_test = df_test.drop_duplicates(subset="feature_id", keep="last")
+
+    # Left join the nwm shapefile and the
+    # feature_id/ras_path dataframe on the feature_id
+
+    # When we merge df_test into gdf_streams_nwm_bleprj (which does not have a ras_path colum)
+    # the new gdf_nwm_stream_raspath does have the column of ras_path but it is all NaN
+    # So, we flipped it for gdf_streams_nwm_bleprj into df_test and it fixed it
+    df_nwm_stream_raspath = df_test.merge(gdf_streams_nwm_bleprj, on="feature_id", how="left")
+
+    # We need to convert it back to a geodataframe for next steps (and exporting)
+    gdf_nwm_stream_raspath = gpd.GeoDataFrame(df_nwm_stream_raspath)
+
+    # path of the shapefile to write
+    str_filepath_nwm_stream = os.path.join(shp_out_path, f"{str_huc8}_nwm_streams_ln.shp")
+
+    # write the shapefile
+    gdf_nwm_stream_raspath.to_file(str_filepath_nwm_stream)
+
+    # -------------------------------------------------
+    # Read in the ble cross section shapefile
+    gdf_ble_cross_sections = gpd.read_file(ble_cross_section_ln)
+
+    str_xs_on_feature_id_pt = os.path.join(shp_out_path, f"{str_huc8}_nwm_points_on_xs_PT.shp")
+
+    # Create new dataframe
+    column_names = ["feature_id", "river", "reach", "us_xs", "ds_xs", "peak_flow", "ras_path"]
+
+    df_summary_data = pd.DataFrame(columns=column_names)
+
+    # Loop through all feature_ids in the provided
+    # National Water Model stream shapefile
+
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("Determining conflated stream centerlines")
+
+    int_count = len(gdf_nwm_stream_raspath)
+
+    for i in range(int_count):
+        str_feature_id = gdf_nwm_stream_raspath.loc[[i], "feature_id"].values[0]
+        str_ras_path = gdf_nwm_stream_raspath.loc[[i], "ras_path"].values[0]
+
+        # get the NWM stream geometry
+        df_stream = gdf_nwm_stream_raspath.loc[[i], "geometry"]
+
+        # Select all cross sections in new dataframe where WTR_NM = strBLE_Name
+        df_xs = gdf_ble_cross_sections.loc[gdf_ble_cross_sections["ras_path"] == str_ras_path]
+
+        # Creates a set of points where the streams intersect
+        points = df_stream.unary_union.intersection(df_xs.unary_union)
+
+        if points.geom_type == "MultiPoint":
+            # Create a shapefile of the intersected points
+
+            schema = {"geometry": "Point", "properties": {}}
+
+            with collection(str_xs_on_feature_id_pt, "w", "ESRI Shapefile", schema, crs=ble_prj) as output:
+                # Slice ble_prj to remove the "epsg:"
+                for i in points.geoms:
+                    output.write({"properties": {}, "geometry": mapping(Point(i.x, i.y))})
+
+            df_points = gpd.read_file(str_xs_on_feature_id_pt)
+
+            # SettingWithCopyWarning
+            df_xs["geometry"] = df_xs.geometry.buffer(0.1).copy()
+
+            df_point_feature_id = gpd.sjoin(
+                df_points,
+                df_xs[["geometry", "max_flow", "stream_stn", "river", "reach"]],
+                how="left",
+                predicate="intersects",
+            )
+
+            # determine Maximum and Minimum stream station
+            flt_us_xs = df_point_feature_id["stream_stn"].max()
+            flt_ds_xs = df_point_feature_id["stream_stn"].min()
+
+            # determine the peak flow with this stream station limits
+            flt_max_q = df_point_feature_id["max_flow"].max()
+
+            str_river = df_point_feature_id["river"].values[0]
+            str_reach = df_point_feature_id["reach"].values[0]
+
+            new_rec = {
+                "feature_id": str_feature_id,
+                "river": str_river,
+                "reach": str_reach,
+                "us_xs": flt_us_xs,
+                "ds_xs": flt_ds_xs,
+                "peak_flow": flt_max_q,
+                "ras_path": str_ras_path,
+            }
+
+            df_new_row = pd.DataFrame.from_records([new_rec])
+            df_summary_data = pd.concat([df_summary_data, df_new_row], ignore_index=True)
+
+    # Creates a summary documents
+    # Check to see if matching model is found
+
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("Creating Quality Control Output")
+
+    str_qc_csv_File = os.path.join(shp_out_path, f"{str_huc8}_stream_qc_fid_xs.csv")
+    df_summary_data.to_csv(str_qc_csv_File)
+
+    RLOG.lprint("Number of feature_id's matched: " + str(df_summary_data["feature_id"].nunique()))
+
+    # # check the number of conflated models and stop the code if the number is 0
+    # errors.check_conflated_models_count(len(df_summary_data))
+
+    # gdf_nwm_stream_lines = gpd.read_file(str_filepath_nwm_stream)
+
+    # # load the stream QC lines
+    # df_processed_lines = pd.read_csv(str_qc_csv_File)
+
+    # gdf_non_match = pd.merge(
+    #     gdf_nwm_stream_lines, df_processed_lines, how="outer", indicator=True, on="feature_id"
+    # )
+
+    # gdf_non_match = gdf_non_match[(gdf_non_match._merge != "both")]
+
+    # # path of the shapefile to write
+    # str_filepath_nwm_stream = os.path.join(shp_out_path, f"{str_huc8}_no_match_nwm_lines.shp")
+
+    # # delete the wkt_geom field
+    # del gdf_non_match["_merge"]
+
+    # # write the shapefile
+    # gdf_non_match.to_file(str_filepath_nwm_stream)
+
+    # -------------------------------------------------
     # Find the model_ids from model catalog and
     # save the conflated ras streams to nwm streams
     # -------------------------------------------------
 
-    df_conflated_ras_models = gdf_conflate_streams_ble_to_nwm_fid_line.sort_values(
-        'feature_id', ascending=False
-    ).drop_duplicates(subset=['ras_path'])["ras_path"]
+    df_conflated_ras_models = df_summary_data.sort_values('feature_id', ascending=False).drop_duplicates(
+        subset=['ras_path']
+    )["ras_path"]
 
-    path_model_catalog = path_unit_folder + "\\" + "OWP_ras_models_catalog_" + str_huc8 + ".csv"
+    path_model_catalog = os.path.join(path_unit_folder, "OWP_ras_models_catalog_" + str_huc8 + ".csv")
 
     model_catalog = pd.read_csv(path_model_catalog)
 
@@ -411,7 +784,8 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg,
     df_conflated_ras_models.index = range(len(conflated_model_names_id_df))
     df_conflated_ras_models_path = pd.concat([df_conflated_ras_models, conflated_model_names_id_df], axis=1)
 
-    df_conflated_ras_models_path.to_csv(str_shp_out_arg + "//" + "conflated_ras_models.csv")
+    conflated_radmodels_path = os.path.join(str_shp_out_arg, "conflated_ras_models.csv")
+    df_conflated_ras_models_path.to_csv(conflated_radmodels_path)
 
     RLOG.lprint("")
     RLOG.success("COMPLETE")
