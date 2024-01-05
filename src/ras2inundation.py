@@ -52,6 +52,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
     iteration = 0
     feature_id_polygon_path_dict = {}
     for feature_id in flow_file_df["feature_id"]:
+
         if str(feature_id) not in available_feature_id_list:
             # Skip flow values not found in RAS library
             continue
@@ -65,9 +66,16 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         # Use interpolation to find the row in geocurve_df that corresponds to the discharge_value
         geocurve_df = pd.read_csv(geocurve_file_path)
         row_idx = geocurve_df["discharge_cms"].sub(discharge_cms).abs().idxmin()
-        subset_geocurve = geocurve_df.iloc[row_idx]
-        polygon_filename = subset_geocurve["filename"]
+        subset_geocurve = geocurve_df.iloc[row_idx:]
+
+        if "filename" in subset_geocurve.columns:
+            polygon_filename = subset_geocurve["filename"]
+        else:
+            prefix = '_'.join(geocurve_file_path.split('\\')[-1].split('_')[:3])
+            polygon_filename = f"{prefix}_{int(subset_geocurve.loc[row_idx, 'stage_mm_join'])}_mm.gpkg"
+
         polygon_path = os.path.join(os.path.split(geocurves_dir)[0], "polys", polygon_filename)
+
         if os.path.exists(polygon_path):
             feature_id_polygon_path_dict.update(
                 {feature_id: {"discharge_cms": discharge_cms, "path": polygon_path}}
@@ -76,6 +84,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         iteration += 1
 
     # Concatenate entire list of desired polygons into one geodataframe
+    print(len(feature_id_polygon_path_dict))
     iteration = 0
     for feature_id in feature_id_polygon_path_dict:
         if iteration == 0:
@@ -102,23 +111,30 @@ if __name__ == "__main__":
     #    -f C:\ras2fim_data\inputs\X-National_Datasets\nwm21_17C_recurr_100_0_cms.csv
     #    -t C:\ras2fim_data\output_ras2fim\12090301_2277_230825\final\inundation.gpkg
 
-    # Parse arguments
-    parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.")
-    parser.add_argument(
-        "-g", "--geocurves_dir", help="Path to directory containing RAS2FIM geocurve CSVs.", required=True
-    )
-    parser.add_argument(
-        "-f",
-        "--flow_file",
-        help='Discharges in CMS as CSV file. "feature_id" and "discharge" columns MUST be supplied.',
-        required=True,
-    )
-    parser.add_argument(
-        "-t", "--output_inundation_poly", help="Path to output inundation polygon file.", required=False
-    )
-    parser.add_argument("-o", "--overwrite", help="Overwrite files", required=False, action="store_true")
+    # # Parse arguments
+    # parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.")
+    # parser.add_argument(
+    #     "-g", "--geocurves_dir", help="Path to directory containing RAS2FIM geocurve CSVs.", required=True
+    # )
+    # parser.add_argument(
+    #     "-f",
+    #     "--flow_file",
+    #     help='Discharges in CMS as CSV file. "feature_id" and "discharge" columns MUST be supplied.',
+    #     required=True,
+    # )
+    # parser.add_argument(
+    #     "-t", "--output_inundation_poly", help="Path to output inundation polygon file.", required=False
+    # )
+    # parser.add_argument("-o", "--overwrite", help="Overwrite files", required=False, action="store_true")
+    #
+    # args = vars(parser.parse_args())
 
-    args = vars(parser.parse_args())
+    args = {
+        'geocurves_dir': r'C:\ras2fim_data\output_ras2fim\12040101_102739_230922\final\geocurves',
+        'flow_file': r'C:\ras2fim_data\inputs\X-National_Datasets\nwm21_17C_recurr_100_0_cms.csv',
+        'output_inundation_poly': r'C:\ras2fim_data\output_ras2fim\12040101_102739_230922\final\inundation.gpkg',
+        'overwrite': True
+    }
 
     start = timer()
 
