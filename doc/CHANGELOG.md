@@ -19,6 +19,7 @@ and Step 6 work independently.
 - `src`
 
   - `create_src_depthgrids_4fids.py`: This script creates synthetic rating curves (SRC) for each nwm feature-id in a HUC8 domain
+  - `worker_fim_rasters.py`: Changed a few variable names and add temp test for missing elevation boundary condition.
 
 ### Testing
 
