@@ -86,7 +86,7 @@ def plot_src(
 
     plt.grid(True)
 
-    str_rating_image_path = str_rating_path_to_create + "\\" + str_file_name
+    str_rating_image_path = os.path.join(str_rating_path_to_create, str_file_name)
     plt.savefig(str_rating_image_path, dpi=300, bbox_inches="tight")
 
     plt.cla()

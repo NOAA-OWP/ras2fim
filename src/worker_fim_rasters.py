@@ -19,9 +19,6 @@ import shared_functions as sf
 import shared_variables as sv
 
 
-# import win32com.client
-# from scipy.interpolate import interp1d
-
 # Global Variables
 RLOG = sv.R2F_LOG  # the non mp version
 MP_LOG = ras2fim_logger.RAS2FIM_logger()  # mp version
@@ -172,7 +169,7 @@ def create_list_of_paths_flow_geometry_files_4each_BCs(path_to_conflated_streams
     # Hard-coded as the name of output folder for step 2
     # "conflated_ras_models.csv":
     # Hard-coded as the name of output csv file for step 2
-    str_path_to_csv = path_to_conflated_streams_csv + "//" + "conflated_ras_models.csv"
+    str_path_to_csv = os.path.join(path_to_conflated_streams_csv, "conflated_ras_models.csv")
 
     path_conflated_streams = pd.read_csv(str_path_to_csv)
     path_conflated_models = list(path_conflated_streams['ras_path'])
@@ -228,12 +225,12 @@ def create_list_of_paths_flow_geometry_files_4each_BCs(path_to_conflated_streams
 # -------------------------------------------------
 # Compute BC (75 flows/WSE) for the parent RAS models with WSE BC
 def compute_boundray_condition_wse(
-    int_fn_starting_flow, int_number_of_steps, str_path_to_flow_file_wse, str_path_to_geo_file_wse
+    int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_wse, ls_path_to_geo_file_wse
 ):
     list_bc_target_xs_huc8 = []
-    for path_in in range(len(str_path_to_flow_file_wse)):
+    for path_in in range(len(ls_path_to_flow_file_wse)):
         # Get max flow for each xs in which flow changes in a dataframe format
-        max_flow_df_wse = fn_get_flow_dataframe(str_path_to_flow_file_wse[path_in])
+        max_flow_df_wse = fn_get_flow_dataframe(ls_path_to_flow_file_wse[path_in])
 
         # -------------------------------------------------
         # Create firstpass flow dataframe for each xs in which flow changes
@@ -253,7 +250,7 @@ def compute_boundray_condition_wse(
         # Get all flow data from the current plan's (parent models) flow file
         # and save it in a pandas dataframe for
         # Water surface elevation BC
-        str_path_hecras_flow_fn = str_path_to_flow_file_wse[path_in]
+        str_path_hecras_flow_fn = ls_path_to_flow_file_wse[path_in]
 
         file1 = open(str_path_hecras_flow_fn, 'r')
         lines = file1.readlines()
@@ -329,7 +326,7 @@ def compute_boundray_condition_wse(
         # -------------------------------------------------
         # Finding the last cross section (target XS for min elevation)
         # Water surface elevation BC
-        str_path_hecras_geo_fn = str_path_to_geo_file_wse[path_in]  #
+        str_path_hecras_geo_fn = ls_path_to_geo_file_wse[path_in]  #
 
         file_geo = open(str_path_hecras_geo_fn, 'r')
         lines_geo = file_geo.readlines()
@@ -487,15 +484,15 @@ def compute_boundray_condition_wse(
 
 # -------------------------------------------------
 # Compute BCs for the RAS parent models with normal depth (slope) BC
-def compute_boundray_condition_nd(int_fn_starting_flow, int_number_of_steps, str_path_to_flow_file_nd):
+def compute_boundray_condition_nd(int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_nd):
     list_str_slope_bc_nd = []
     list_first_pass_flows_xs_nd = []
     list_num_of_flow_change_xs_nd = []
 
-    for path_in in range(len(str_path_to_flow_file_nd)):
+    for path_in in range(len(ls_path_to_flow_file_nd)):
         # Get max flow for each xs in which flow changes in a dataframe format
         # path_in = 1
-        max_flow_df_nd = fn_get_flow_dataframe(str_path_to_flow_file_nd[path_in])
+        max_flow_df_nd = fn_get_flow_dataframe(ls_path_to_flow_file_nd[path_in])
 
         # Number of XSs where flow changes for each ras model with normal depth BC
         list_num_of_flow_change_xs_nd.append(len(max_flow_df_nd['start_xs']))
@@ -517,7 +514,7 @@ def compute_boundray_condition_nd(int_fn_starting_flow, int_number_of_steps, str
         list_first_pass_flows_xs_nd.append(first_pass_flows_xs_nd)
 
         # read the slope from parent ras model
-        file_flow2 = open(str_path_to_flow_file_nd[path_in], 'r')
+        file_flow2 = open(ls_path_to_flow_file_nd[path_in], 'r')
         lines_flow2 = file_flow2.readlines()
 
         for flines2 in lines_flow2:
@@ -538,7 +535,7 @@ def create_ras_flow_file_nd(
     huc8_num,
     int_number_of_steps,
     path_to_conflated_streams_csv,
-    str_path_to_flow_file_nd,
+    ls_path_to_flow_file_nd,
     profile_names,
     list_str_slope_bc_nd,
     list_first_pass_flows_xs_nd,
@@ -550,14 +547,15 @@ def create_ras_flow_file_nd(
     # Hard-coded as the name of output folder for step 2
     # "conflated_ras_models.csv":
     # Hard-coded as the name of output csv file for step 2
-    str_path_to_csv = path_to_conflated_streams_csv + "//" + "conflated_ras_models.csv"
+    str_path_to_csv = os.path.join(path_to_conflated_streams_csv, "conflated_ras_models.csv")
 
     path_conflated_streams = pd.read_csv(str_path_to_csv)
     path_conflated_models = list(path_conflated_streams['ras_path'])
     path_conflated_models_splt = [path.split("\\") for path in path_conflated_models]
     conflated_model_names = [names[-2] for names in path_conflated_models_splt]
 
-    path_model_catalog = str_output_filepath + "\\" + "OWP_ras_models_catalog_" + huc8_num + ".csv"
+    # TODO: path_model_catalog
+    path_model_catalog = os.path.join(str_output_filepath, "OWP_ras_models_catalog_" + huc8_num + ".csv")
 
     model_catalog = pd.read_csv(path_model_catalog)
     models_name_id = pd.concat([model_catalog["final_name_key"], model_catalog["model_id"]], axis=1)
@@ -580,8 +578,8 @@ def create_ras_flow_file_nd(
     path_to_parent_ras = pathlib.PurePath(path_conflated_models[0]).parents[1]
 
     # -------------------------------------------------
-    for path_in in range(len(str_path_to_flow_file_nd)):
-        path_to_flow_file_nd_splt = str_path_to_flow_file_nd[path_in].split("\\")
+    for path_in in range(len(ls_path_to_flow_file_nd)):
+        path_to_flow_file_nd_splt = ls_path_to_flow_file_nd[path_in].split("\\")
 
         model_ids = str(
             list(
@@ -591,20 +589,16 @@ def create_ras_flow_file_nd(
             )[0]
         )
 
-        path_newras_nd = (
-            str_output_filepath
-            + "//"
-            + "05_hecras_output"
-            + "//"
-            + model_ids
-            + "_"
-            + path_to_flow_file_nd_splt[-2][8:-15]
-        )
+        path_newras_nd = os.path.join(
+            str_output_filepath,
+            sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
+            model_ids + "_" + path_to_flow_file_nd_splt[-2][8:-15]
+            )
 
         # Copy and paste conflated parent ras models in the output ras model directory
         for folders in folder_names_conflated:
             if folders == path_to_flow_file_nd_splt[-2]:
-                source = str(path_to_parent_ras) + "//" + folders
+                source = os.path.join(str(path_to_parent_ras), folders)
                 destination = path_newras_nd
 
                 try:
@@ -618,13 +612,13 @@ def create_ras_flow_file_nd(
                 break
 
         # Get max flow for each xs in which flow changes in a dataframe format
-        max_flow_df_nd = fn_get_flow_dataframe(str_path_to_flow_file_nd[path_in])
+        max_flow_df_nd = fn_get_flow_dataframe(ls_path_to_flow_file_nd[path_in])
 
         # Number of XSs where flow changes for each ras model with normal depth BC
         int_num_of_flow_change_xs_nd = len(max_flow_df_nd['start_xs'])
 
         # All text up to the first cross section - Header of the Flow File
-        with open(str_path_to_flow_file_nd[path_in]) as flow_file2:  # str_read_geom_file_path
+        with open(ls_path_to_flow_file_nd[path_in]) as flow_file2:  # str_read_geom_file_path
             flowfile_contents2 = flow_file2.read()
 
         # Get River, reach and Upstream XS for flow file
@@ -679,7 +673,7 @@ def create_ras_flow_file_nd(
         str_flowfile2 += "DSS Import GetPeak= 0 " + "\n"
         str_flowfile2 += "DSS Import FillOption= 0 " + "\n"
 
-        new_flow_file_path_v2 = path_newras_nd + "//" + path_to_flow_file_nd_splt[-1]
+        new_flow_file_path_v2 = os.path.join(path_newras_nd, path_to_flow_file_nd_splt[-1])
         file2 = open(new_flow_file_path_v2, "w")  # str_feature_id
         file2.write(str_flowfile2)
         file2.close()
@@ -694,7 +688,7 @@ def create_ras_flow_file_wse(
     int_fn_starting_flow,
     int_number_of_steps,
     path_to_conflated_streams_csv,
-    str_path_to_flow_file_wse,
+    ls_path_to_flow_file_wse,
     profile_names,
     list_bc_target_xs_huc8,
     str_output_filepath,
@@ -705,14 +699,17 @@ def create_ras_flow_file_wse(
     # Hard-coded as the name of output folder for step 2
     # "conflated_ras_models.csv":
     # Hard-coded as the name of output csv file for step 2
-    str_path_to_csv = path_to_conflated_streams_csv + "//" + "conflated_ras_models.csv"
+
+    # TODO: path_to_conflated_streams_csv
+    str_path_to_csv = os.path.join(path_to_conflated_streams_csv, "conflated_ras_models.csv")
 
     path_conflated_streams = pd.read_csv(str_path_to_csv)
     path_conflated_models = list(path_conflated_streams['ras_path'])
     path_conflated_models_splt = [path.split("\\") for path in path_conflated_models]
     conflated_model_names = [names[-2] for names in path_conflated_models_splt]
 
-    path_model_catalog = str_output_filepath + "\\" + "OWP_ras_models_catalog_" + huc8_num + ".csv"
+    # TODO: path_model_catalog
+    path_model_catalog = os.path.join(str_output_filepath, "OWP_ras_models_catalog_" + huc8_num + ".csv")
 
     model_catalog = pd.read_csv(path_model_catalog)
     models_name_id = pd.concat([model_catalog["final_name_key"], model_catalog["model_id"]], axis=1)
@@ -734,8 +731,8 @@ def create_ras_flow_file_wse(
 
     path_to_parent_ras = pathlib.PurePath(path_conflated_models[0]).parents[1]
 
-    for path_in in range(len(str_path_to_flow_file_wse)):
-        path_to_flow_file_wse_splt = str_path_to_flow_file_wse[path_in].split("\\")
+    for path_in in range(len(ls_path_to_flow_file_wse)):
+        path_to_flow_file_wse_splt = ls_path_to_flow_file_wse[path_in].split("\\")
 
         model_ids = str(
             list(
@@ -745,20 +742,16 @@ def create_ras_flow_file_wse(
             )[0]
         )
 
-        path_newras_wse = (
-            str_output_filepath
-            + "//"
-            + "05_hecras_output"
-            + "//"
-            + model_ids
-            + "_"
-            + path_to_flow_file_wse_splt[-2][8:-15]
+        path_newras_wse = os.path.join(
+            str_output_filepath,
+            sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
+            model_ids + "_" + path_to_flow_file_wse_splt[-2][8:-15]
         )
 
         # Copy and paste conflated parent ras models in the new ras model directory
         for folders in folder_names_conflated:
             if folders == path_to_flow_file_wse_splt[-2]:
-                source = str(path_to_parent_ras) + "/" + folders
+                source = os.path.join(str(path_to_parent_ras), folders)
                 destination = path_newras_wse
 
                 # if os.path.isfile(source):
@@ -777,7 +770,7 @@ def create_ras_flow_file_wse(
         # Water surface elevation BC
 
         # Get max flow for each xs in which flow changes in a dataframe format
-        max_flow_df_wse = fn_get_flow_dataframe(str_path_to_flow_file_wse[path_in])
+        max_flow_df_wse = fn_get_flow_dataframe(ls_path_to_flow_file_wse[path_in])
 
         first_pass_flows_xs_wse = []
         for num_xs in range(len(max_flow_df_wse)):
@@ -791,7 +784,7 @@ def create_ras_flow_file_wse(
         # Writing the HEC-RAS Flow file for WSE BC
 
         # All text up to the first cross section - Header of the Flow File
-        with open(str_path_to_flow_file_wse[path_in]) as flow_file:  # str_read_geom_file_path
+        with open(ls_path_to_flow_file_wse[path_in]) as flow_file:  # str_read_geom_file_path
             flowfile_contents = flow_file.read()
 
         # Get River, reach and Upstream XS for flow file
@@ -852,25 +845,25 @@ def create_ras_flow_file_wse(
         str_flowfile += "DSS Import GetPeak= 0 " + "\n"
         str_flowfile += "DSS Import FillOption= 0 " + "\n"
 
-        new_flow_file_path_wse = path_newras_wse + "//" + path_to_flow_file_wse_splt[-1]
+        new_flow_file_path_wse = os.path.join(path_newras_wse, path_to_flow_file_wse_splt[-1])
         file = open(new_flow_file_path_wse, "w")
         file.write(str_flowfile)
         file.close()
 
 
-# str_path_to_ras2fim = "C:/Users/rdp-user/Projects/dev-v2-new"
 # model_unit = "feet"
 # -------------------------------------------------
 # Create the HEC-RAS Plan file
 # All RAS Models BC ~ 5 S
 # -------------------------------------------------
-def create_ras_plan_file(str_path_to_ras2fim, str_output_filepath):
-    str_path_to_standard_input = str_path_to_ras2fim + "//" + "ras2fim" + "//" + "src"
-    str_plan_middle_path = str_path_to_standard_input + "/PlanStandardText01.txt"
-    str_plan_footer_path = str_path_to_standard_input + "/PlanStandardText02.txt"
+def create_ras_plan_file(str_output_filepath):
+
+    current_script_dir = os.path.dirname(__file__)
+    str_plan_middle_path = os.path.join(current_script_dir, "\PlanStandardText01.txt")
+    str_plan_footer_path = os.path.join(current_script_dir, "\PlanStandardText02.txt")
 
     # The name of output folder is hard-coded
-    path_v2ras = str_output_filepath + "//" + "05_hecras_output"
+    path_v2ras = os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
 
     folder_names_conflated = os.listdir(path_v2ras)
 
@@ -904,9 +897,11 @@ def create_ras_plan_file(str_path_to_ras2fim, str_output_filepath):
             file_contents = f.read()
         str_planfile += file_contents
 
-        file = open(
-            str_output_filepath + "//" + "05_hecras_output" + "//" + folder + "//" + folder[6:] + ".p01", "w"
-        )
+        path_plan = os.path.join(str_output_filepath, 
+                                 sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, 
+                                 folder, 
+                                 folder[6:] + ".p01")
+        file = open(path_plan, "w")
 
         file.write(str_planfile)
         file.close()
@@ -916,12 +911,13 @@ def create_ras_plan_file(str_path_to_ras2fim, str_output_filepath):
 # Create the HEC-RAS Project file
 # All RAS Models BC ~ 5 S
 # -------------------------------------------------
-def create_ras_project_file(str_path_to_ras2fim, str_output_filepath, model_unit):
-    str_path_to_standard_input = str_path_to_ras2fim + "//" + "ras2fim" + "//" + "src"
-    str_project_footer_path = str_path_to_standard_input + "/ProjectStandardText01.txt"
+def create_ras_project_file(str_output_filepath, model_unit):
+
+    current_script_dir = os.path.dirname(__file__)
+    str_project_footer_path = os.path.join(current_script_dir, "\ProjectStandardText01.txt")
 
     # The name of output folder is hard-coded
-    path_v2ras = str_output_filepath + "//" + "05_hecras_output"
+    path_v2ras = os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
 
     folder_names_conflated = os.listdir(path_v2ras)
 
@@ -944,9 +940,11 @@ def create_ras_project_file(str_path_to_ras2fim, str_output_filepath, model_unit
             file_contents = f.read()
         str_projectfile += file_contents
 
-        file = open(
-            str_output_filepath + "//" + "05_hecras_output" + "//" + folder + "//" + folder[6:] + ".prj", "w"
-        )
+        path_project = os.path.join(str_output_filepath,
+                                    sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
+                                    folder,
+                                    folder[6:] + ".prj")
+        file = open(path_project, "w")
 
         file.write(str_projectfile)
         file.close()
@@ -959,7 +957,7 @@ def create_ras_project_file(str_path_to_ras2fim, str_output_filepath, model_unit
 def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, model_unit):
     # Function to create the RASMapper XML and add the requested DEM's to be created
 
-    path_v2ras = str_output_filepath + "//" + "05_hecras_output"
+    path_v2ras = os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
 
     folder_names_conflated = os.listdir(path_v2ras)
 
@@ -968,7 +966,7 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
     terrain_names = [folders[:5] for folders in folder_names_conflated]
 
     str_output_filepath_xml = str_output_filepath.replace("/", "\\")
-    str_path_to_terrain = str_output_filepath_xml + "\\" + "04_hecras_terrains"
+    str_path_to_terrain = os.path.join(str_output_filepath_xml, sv.R2F_OUTPUT_DIR_HECRAS_TERRAIN)
 
     # -------------------------------------------------
 
@@ -979,8 +977,8 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
     # -------------------------------------------------
     # Create .rasmap XML file for all conflated models (new ras models)
 
-    str_path_to_projection = (
-        str_output_filepath_xml + "\\" + "02_csv_shapes_from_conflation" + "\\" + huc8_num + "_huc_12_ar.prj"
+    str_path_to_projection = os.path.join(
+        str_output_filepath_xml, + sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, + huc8_num + "_huc_12_ar.prj"
     )
 
     for xy in range(len(str_river_id_fn)):
@@ -1101,17 +1099,13 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
 
         str_ras_mapper_file += r"</RASMapper>"
 
-        file = open(
-            str_output_filepath_xml
-            + "\\"
-            + "05_hecras_output"
-            + "\\"
-            + folder_names_conflated[xy]
-            + "\\"
-            + str_river_id_fn[xy]
-            + ".rasmap",
-            "w",
-        )
+        rasmap_path = os.path.join(
+            str_output_filepath_xml,
+            sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
+            folder_names_conflated[xy],
+            str_river_id_fn[xy] + ".rasmap"
+            )
+        file = open(rasmap_path, "w")
 
         file.write(str_ras_mapper_file)
         file.close()
@@ -1122,9 +1116,9 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
 # For All RAS Models BC ~ 3 min
 # -------------------------------------------------
 def create_hecras_files(
-    huc8_num, int_fn_starting_flow, int_number_of_steps, str_output_filepath, str_path_to_ras2fim, model_unit
-):
-    path_to_conflated_streams_csv = str_output_filepath + "//" + "02_csv_shapes_from_conflation"
+    huc8_num, int_fn_starting_flow, int_number_of_steps, str_output_filepath, model_unit
+    ):
+    path_to_conflated_streams_csv = os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
 
     # Reading original parent models flow and geometry files
     # with different WSE and normal depth (ND, slope) BCs
@@ -1139,7 +1133,7 @@ def create_hecras_files(
 
     # Compute boundray condition for models with wse BCs
     #list_bc_target_xs_huc8, profile_names = compute_boundray_condition_wse(
-    #    int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_wse, str_path_to_geo_file_wse
+    #    int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_wse, ls_path_to_geo_file_wse
     #)
     
     if len(ls_path_to_flow_file_wse) > 0:
@@ -1181,10 +1175,10 @@ def create_hecras_files(
     )
 
     # Create the HEC-RAS plan files ~ 5 s
-    create_ras_plan_file(str_path_to_ras2fim, str_output_filepath)
+    create_ras_plan_file(str_output_filepath)
 
     # Create the HEC-RAS project files ~ 5 s
-    create_ras_project_file(str_path_to_ras2fim, str_output_filepath, model_unit)
+    create_ras_project_file(str_output_filepath, model_unit)
 
     # Create the HEC-RAS mapper xml files ~ 5 s
     create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, model_unit)
@@ -1198,6 +1192,7 @@ def create_hecras_files(
 
 # int_number_of_steps = 76
 def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
+
     try:
         hec = None
 
@@ -1328,7 +1323,7 @@ def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
 # Main Function: Calls All defs and
 # Creates depth grids for one HUC8 ~ 20 hours
 # -------------------------------------------------
-def create_run_hecras_models(huc8_num, str_output_filepath, str_path_to_ras2fim, model_unit):
+def create_run_hecras_models(huc8_num, str_output_filepath, model_unit):
     int_fn_starting_flow = 1  # cfs
     int_number_of_steps = 76
 
@@ -1342,11 +1337,10 @@ def create_run_hecras_models(huc8_num, str_output_filepath, str_path_to_ras2fim,
         int_fn_starting_flow,
         int_number_of_steps,
         str_output_filepath,
-        str_path_to_ras2fim,
         model_unit,
     )
 
-    path_created_ras_models = os.path.join(str_output_filepath, "05_hecras_output")
+    path_created_ras_models = os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
 
     names_created_ras_models = os.listdir(path_created_ras_models)
 
@@ -1364,24 +1358,24 @@ def create_run_hecras_models(huc8_num, str_output_filepath, str_path_to_ras2fim,
 
         all_x_sections_info = fn_run_hecras(str_ras_projectpath, int_number_of_steps)
 
-        path_to_all_x_sections_info = str_output_filepath + "//" + "05_hecras_output" + "//" + folder
+        path_to_all_x_sections_info = os.path.join(str_output_filepath,
+                                                   sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
+                                                   folder)
 
         all_x_sections_info.to_csv(
-            path_to_all_x_sections_info + "//" + "all_x_sections_info" + "_" + folder + ".csv"
+            os.path.join(path_to_all_x_sections_info, "all_x_sections_info" + "_" + folder + ".csv")
         )
 
     # Be happy
 
 
 # str_output_filepath = "C:/ras2fim_data/OWP_ras_models/ras2fimv2.0/ras2fim_v2_output_12090301"
-# str_path_to_ras2fim = "C:/Users/rdp-user/Projects/dev-v2-step6"
 # huc8_num = "12090301"
 # model_unit = "feet"
 # str_output_filepath = "C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301"
 # create_run_hecras_models(
 # huc8_num,
 # str_output_filepath,
-# str_path_to_ras2fim,
 # model_unit
 # )
 
@@ -1415,17 +1409,6 @@ if __name__ == "__main__":
         type=str,
     )
 
-    # TODO: Dec 14, 2023. New code coming on merge coming soon that removes this argument as it will
-    # no longer be needed.
-    parser.add_argument(
-        "-r",
-        dest="str_path_to_ras2fim",
-        help=r"REQUIRED: Directory containing ras2fim dev:  Example: C:/Users/Projects/dev",
-        required=True,
-        metavar="DIR",
-        type=str,
-    )
-
     parser.add_argument(
         "-u",
         dest="model_unit",
@@ -1439,7 +1422,6 @@ if __name__ == "__main__":
 
     str_huc8 = args["str_huc8"]
     str_output_filepath = args["str_output_filepath"]
-    str_path_to_ras2fim = args["str_path_to_ras2fim"]
     model_unit = args["model_unit"]
     log_file_folder = os.path.join(str_output_filepath, "logs")
 
@@ -1456,7 +1438,7 @@ if __name__ == "__main__":
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
-        create_run_hecras_models(str_huc8, str_output_filepath, str_path_to_ras2fim, model_unit)
+        create_run_hecras_models(str_huc8, str_output_filepath, model_unit)
 
     except Exception:
         RLOG.critical(traceback.format_exc())
@@ -1468,5 +1450,4 @@ if __name__ == "__main__":
 # TODO: Add ras2fime v1 error functions
 # TODO: Add new Rob's error functions
 # TODO: Write a better function for "profile_name"
-# TODO: look for places that should use os.path.join instead of some_var + "\\" + "some_folder_name"
 # -------------------------------------------------
