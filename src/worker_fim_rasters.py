@@ -474,12 +474,12 @@ def compute_boundray_condition_wse(
 
     # -------------------------------------------------
     # Create profile names
-    profile_names = fn_create_profile_names(first_pass_flows_xs_wse_df.index, '_ft')
+    # profile_names = fn_create_profile_names(first_pass_flows_xs_wse_df.index, '_ft')
 
     # TODO make all src monotonic
     # TODO optimize k-not point
 
-    return list_bc_target_xs_huc8, profile_names
+    return list_bc_target_xs_huc8
 
 
 # -------------------------------------------------
@@ -858,9 +858,10 @@ def create_ras_flow_file_wse(
 # -------------------------------------------------
 def create_ras_plan_file(str_output_filepath):
 
-    current_script_dir = os.path.dirname(__file__)
-    str_plan_middle_path = os.path.join(current_script_dir, "\PlanStandardText01.txt")
-    str_plan_footer_path = os.path.join(current_script_dir, "\PlanStandardText02.txt")
+    current_script_dir = os.path.dirname(os.path.abspath(__file__))
+    # print(__file__, current_script_dir)
+    str_plan_middle_path = os.path.join(current_script_dir, "PlanStandardText01.txt")
+    str_plan_footer_path = os.path.join(current_script_dir, "PlanStandardText02.txt")
 
     # The name of output folder is hard-coded
     path_v2ras = os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
@@ -913,8 +914,8 @@ def create_ras_plan_file(str_output_filepath):
 # -------------------------------------------------
 def create_ras_project_file(str_output_filepath, model_unit):
 
-    current_script_dir = os.path.dirname(__file__)
-    str_project_footer_path = os.path.join(current_script_dir, "\ProjectStandardText01.txt")
+    current_script_dir = os.path.dirname(os.path.abspath(__file__))
+    str_project_footer_path = os.path.join(current_script_dir, "ProjectStandardText01.txt")
 
     # The name of output folder is hard-coded
     path_v2ras = os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
@@ -970,7 +971,7 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
 
     # -------------------------------------------------
 
-    # TODO: makes sure profile_names works correctly and use it istead
+    # TODO: profile_names for second path flow
 
     list_step_profiles_xml_fn = ["flow_" + str(nms) for nms in range(int_number_of_steps)]
 
@@ -978,7 +979,7 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
     # Create .rasmap XML file for all conflated models (new ras models)
 
     str_path_to_projection = os.path.join(
-        str_output_filepath_xml, + sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, + huc8_num + "_huc_12_ar.prj"
+        str_output_filepath_xml, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, huc8_num + "_huc_12_ar.prj"
     )
 
     for xy in range(len(str_river_id_fn)):
@@ -1118,6 +1119,9 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
 def create_hecras_files(
     huc8_num, int_fn_starting_flow, int_number_of_steps, str_output_filepath, model_unit
     ):
+
+    # print(os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF))
+    # TODO: need to be sort out with ROB
     path_to_conflated_streams_csv = os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
 
     # Reading original parent models flow and geometry files
@@ -1131,24 +1135,19 @@ def create_hecras_files(
         ls_path_to_geo_file_nd,
     ] = create_list_of_paths_flow_geometry_files_4each_BCs(path_to_conflated_streams_csv)
 
-    # Compute boundray condition for models with wse BCs
-    #list_bc_target_xs_huc8, profile_names = compute_boundray_condition_wse(
-    #    int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_wse, ls_path_to_geo_file_wse
-    #)
-    
-    if len(ls_path_to_flow_file_wse) > 0:
-        list_bc_target_xs_huc8, profile_names = compute_boundray_condition_wse(
-            int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_wse, ls_path_to_geo_file_wse
-        )
-    else:
-        # TODO: Fix this so it doesn't break the system. 
-        raise Exception("Of the current models being used, at least one must have a valid boundary condition.")
 
-
-    # Compute boundray condition for models with nd BCs
+    # Compute boundray condition for models with normal depth BCs
     list_first_pass_flows_xs_nd, list_str_slope_bc_nd = compute_boundray_condition_nd(
         int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_nd
     )
+
+    # Defining profile names
+    # TODO: This needs to be fixed for second pass flow
+    # if len(list_first_pass_flows_xs_nd)>0:
+    list_profiles = [ns for ns in range(int_number_of_steps)] #len(list_first_pass_flows_xs_nd[0])
+    profile_names_str = fn_create_profile_names(list_profiles, '_ft')
+    # else: profile_names = [f'flow{ns}_ft' for ns in range(len(list_bc_target_xs_huc8))]
+
 
     # Create the HEC-RAS Flow files Normal Depth BC ~ 40 s
     create_ras_flow_file_nd(
@@ -1156,23 +1155,36 @@ def create_hecras_files(
         int_number_of_steps,
         path_to_conflated_streams_csv,
         ls_path_to_flow_file_nd,
-        profile_names,
+        profile_names_str,
         list_str_slope_bc_nd,
         list_first_pass_flows_xs_nd,
         str_output_filepath,
-    )
+        )
+    
 
-    # Create the HEC-RAS Flow files for Water Surface Elevation BC ~ 10 s
-    create_ras_flow_file_wse(
-        huc8_num,
-        int_fn_starting_flow,
-        int_number_of_steps,
-        path_to_conflated_streams_csv,
-        ls_path_to_flow_file_wse,
-        profile_names,
-        list_bc_target_xs_huc8,
-        str_output_filepath,
-    )
+    # Compute boundray condition for models with wse BCs and
+    # Creating the flow files for wse BC
+    if len(ls_path_to_flow_file_wse) > 0:
+        list_bc_target_xs_huc8 = compute_boundray_condition_wse(
+            int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_wse, ls_path_to_geo_file_wse
+        )
+
+        # Create the HEC-RAS Flow files for Water Surface Elevation BC ~ 10 s
+        create_ras_flow_file_wse(
+            huc8_num,
+            int_fn_starting_flow,
+            int_number_of_steps,
+            path_to_conflated_streams_csv,
+            ls_path_to_flow_file_wse,
+            profile_names_str,
+            list_bc_target_xs_huc8,
+            str_output_filepath,
+        )
+
+    else:
+        RLOG.lprint("|        There is no RAS model with WSE boundary condition        |")
+        # raise Exception("Of the current models being used, at least one must have a valid boundary condition.")
+
 
     # Create the HEC-RAS plan files ~ 5 s
     create_ras_plan_file(str_output_filepath)
@@ -1190,7 +1202,6 @@ def create_hecras_files(
 # -------------------------------------------------
 
 
-# int_number_of_steps = 76
 def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
 
     try:
@@ -1372,7 +1383,6 @@ def create_run_hecras_models(huc8_num, str_output_filepath, model_unit):
 # str_output_filepath = "C:/ras2fim_data/OWP_ras_models/ras2fimv2.0/ras2fim_v2_output_12090301"
 # huc8_num = "12090301"
 # model_unit = "feet"
-# str_output_filepath = "C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301"
 # create_run_hecras_models(
 # huc8_num,
 # str_output_filepath,
@@ -1384,7 +1394,6 @@ if __name__ == "__main__":
     # Sample:
     # python worker_fim_rasters -w 12090301
     # -o 'C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301'
-    # -r 'C:\\Users\\rdp-user\\Projects\\dev-v2-new'
     # -u 'feet'
 
     parser = argparse.ArgumentParser(
@@ -1445,9 +1454,7 @@ if __name__ == "__main__":
 
 
 # -------------------------------------------------
-# TODO List
 # TODO: take terrain path (step4) and projection path (step2) seperatly and add their arguments
 # TODO: Add ras2fime v1 error functions
 # TODO: Add new Rob's error functions
-# TODO: Write a better function for "profile_name"
 # -------------------------------------------------
