@@ -15,13 +15,10 @@ import argparse
 import datetime as dt
 import multiprocessing as mp
 import os
-import sys
 import traceback
 from functools import partial
 from multiprocessing import Pool
 
-import geopandas as gpd
-import pandas as pd
 import tqdm
 
 import shared_functions as sf
@@ -65,7 +62,7 @@ def fn_create_fim_rasters(
     huc8_num,
     str_output_folder, #str_output_filepath
     model_unit,
-    is_verbose=False,
+#    is_verbose=False,
     ):
 
     # TODO: Oct 25, 2023, continue with adding the "is_verbose" system
@@ -94,9 +91,7 @@ def fn_create_fim_rasters(
         int_number_of_steps,
         str_output_folder,
         model_unit,
-    )
-
-   
+    )   
 
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
@@ -107,39 +102,42 @@ def fn_create_fim_rasters(
     path_created_ras_models = os.path.join(str_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
 
     names_created_ras_models = os.listdir(path_created_ras_models)
+
+    ls_run_hecras_inputs = []
+    for folder in names_created_ras_models:
+
+        folder_mame_splt = folder.split("_")
+        project_file_name = folder_mame_splt[1]
+
+        str_ras_projectpath = os.path.join(path_created_ras_models, folder, project_file_name + ".prj")
+
+        run_hecras_inputs = [str_ras_projectpath, int_number_of_steps, folder]
+        ls_run_hecras_inputs.append(run_hecras_inputs)
+
+    def fn_run_one_ras_model (str_ras_projectpath, int_number_of_steps, folder):
+
+        all_x_sections_info = worker_fim_rasters.fn_run_hecras(str_ras_projectpath, int_number_of_steps)
+
+        path_to_all_x_sections_info = os.path.join(str_output_folder,
+                                                    sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
+                                                    folder)
+        all_x_sections_info.to_csv(
+            os.path.join(path_to_all_x_sections_info, "all_x_sections_info" + "_" + folder + ".csv")
+        )
     
     log_file_prefix = "fn_run_hecras"
     fn_main_hecras_partial = partial(
-        worker_fim_rasters.fn_run_hecras, RLOG.LOG_DEFAULT_FOLDER, log_file_prefix
-    )
+        fn_run_one_ras_model, RLOG.LOG_DEFAULT_FOLDER, log_file_prefix
+        )
     # create a pool of processors
     num_processors = mp.cpu_count() - 2
     with Pool(processes=num_processors) as executor:
         
-        for folder in names_created_ras_models:
-
-            folder_mame_splt = folder.split("_")
-            project_file_name = folder_mame_splt[1]
-
-            str_ras_projectpath = os.path.join(path_created_ras_models, folder, project_file_name + ".prj")
-
-            list_points_aggregate = [str_ras_projectpath, int_number_of_steps]
-
-            all_x_sections_info = worker_fim_rasters.fn_run_hecras(str_ras_projectpath, int_number_of_steps)
-
-            path_to_all_x_sections_info = os.path.join(str_output_folder,
-                                                       sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
-                                                       folder)
-
-            all_x_sections_info.to_csv(
-                os.path.join(path_to_all_x_sections_info, "all_x_sections_info" + "_" + folder + ".csv")
-            )
-
-        len_points_agg = len(list_points_aggregate)
+        len_points_agg = len(ls_run_hecras_inputs)
         tqdm.tqdm(
-            executor.imap(fn_main_hecras_partial, list_points_aggregate),
+            executor.imap(fn_main_hecras_partial, ls_run_hecras_inputs),
             total=len_points_agg,
-            desc="Points on lines",
+            desc="Number of Processed RAS Models",
             bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
             ncols=67,
         )
@@ -168,16 +166,8 @@ def fn_create_fim_rasters(
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
     # Sample
-
-    # TODO: RESEARCH REQUIRED. Does the "-c" flag even work?
-
-    # python create_fim_rasters.py -w 12030105
-    #  -i c:\ras2fim_data\output_ras2fim\12030105_2276_231024\02_shapes_from_conflation
-    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\05_hecras_output
-    #  -p c:\....\12030105_2276_231024\02_shapes_from_conflation\12030105_huc_12_ar.prj
-    #  -t c:\ras2fim_data\output_ras2fim\12030105_2276_231024\04_hecras_terrain
-    #  -s C:\Users\.....\Documents\NOAA-OWP\Projects\ras2fim\dev-logging\ras2fim\src
-    #  -z 0.5  (leave off -c )
+    # python create_fim_rasters.py -w 12090301 -u feet
+    #  -o c:\ras2fim_data\output_ras2fim\12090301_2276_240108\05_hecras_output
 
     parser = argparse.ArgumentParser(
         description="================ NWM RASTER LIBRARY FROM HEC-RAS =================="
@@ -185,20 +175,19 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-w",
-        dest="str_desired_huc8",
-        help=r"REQUIRED: the desired huc-8 watershed: Example:  12090301",
+        dest="str_huc8_arg",
+        help=r"REQUIRED: Desired huc-8 watershed: Example:  12090301",
         required=True,
         metavar="STRING",
         type=str,
     )
 
     parser.add_argument(
-        "-i",
-        dest="str_input_folder",
-        help="REQUIRED: directory containing results of conflation (step 2):"
-        r" Example: C:\ras2fim_12090301\02_shapes_from_conflation",
+        "-u",
+        dest="model_unit",
+        help=r"REQUIRED: HEC-RAS models unit: Example:  feet",
         required=True,
-        metavar="DIR",
+        metavar="STRING",
         type=str,
     )
 
@@ -211,65 +200,12 @@ if __name__ == "__main__":
         type=str,
     )
 
-    parser.add_argument(
-        "-p",
-        dest="str_projection_path",
-        help="REQUIRED: path the to the projection file: Example: "
-        r"C:\ras2fim_12090301\02_shapes_from_conflation\12090301_huc_12_ar.prj",
-        required=True,
-        metavar="FILE",
-        type=str,
-    )
-
-    parser.add_argument(
-        "-t",
-        dest="str_terrain_path",
-        help=r"REQUIRED: path the to hdf5 terrain folder: Example: C:\ras2fim_12090301\04_hecras_terrain",
-        required=True,
-        metavar="FILE",
-        type=str,
-    )
-
-    parser.add_argument(
-        "-z",
-        dest="flt_interval",
-        help=r"  OPTIONAL: elevation interval of output grids: Example: 0.2 : Default: 0.5",
-        required=False,
-        default=0.5,
-        metavar="FLOAT",
-        type=float,
-    )
-
-    parser.add_argument(
-        "-c",
-        dest="b_terrain_check_only",
-        help="OPTIONAL: check terrain only-skip HEC-RAS simulation and mapping: Default=False",
-        required=False,
-        default=False,
-        action="store_true",
-    )
-
-    parser.add_argument(
-        "-v",
-        "--is_verbose",
-        help="OPTIONAL: Adding this flag will give additional tracing output."
-        "Default = False (no extra output)",
-        required=False,
-        default=False,
-        action="store_true",
-    )
-
     args = vars(parser.parse_args())
     # --------------------------------
 
-    str_desired_huc8 = args["str_desired_huc8"]
-    str_input_folder = args["str_input_folder"]
+    str_huc8_arg = args["str_huc8_arg"]
+    model_unit = args["model_unit"]
     str_output_folder = args["str_output_folder"]
-    str_projection_path = args["str_projection_path"]
-    str_terrain_path = args["str_terrain_path"]
-    flt_interval = args["flt_interval"]
-    b_terrain_check_only = args["b_terrain_check_only"]
-    is_verbose = args["is_verbose"]
 
     log_file_folder = args["str_output_folder"]
     try:
@@ -286,14 +222,10 @@ if __name__ == "__main__":
 
         # call main program
         fn_create_fim_rasters(
-            str_desired_huc8,
-            str_input_folder,
+            str_huc8_arg,
             str_output_folder,
-            str_projection_path,
-            str_terrain_path,
-            flt_interval,
-            b_terrain_check_only,
-            is_verbose,
+            model_unit,
+        #    is_verbose,
         )
 
     except Exception:

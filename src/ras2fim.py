@@ -395,12 +395,9 @@ def fn_run_ras2fim(
     if int_step <= 5:
         fn_create_fim_rasters(
             str_huc8_arg,
-            str_shapes_from_conflation_dir,
             str_hecras_out_dir,
-            str_projection_path,
-            str_hecras_terrain_dir,
-            flt_interval,
-            B_TERRAIN_CHECK_ONLY,
+            model_unit,
+            # B_TERRAIN_CHECK_ONLY,
         )
 
     # -------------------------------------------

@@ -1334,123 +1334,123 @@ def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
 # Main Function: Calls All defs and
 # Creates depth grids for one HUC8 ~ 20 hours
 # -------------------------------------------------
-def create_run_hecras_models(huc8_num, str_output_filepath, model_unit):
-    int_fn_starting_flow = 1  # cfs
-    int_number_of_steps = 76
+# def create_run_hecras_models(huc8_num, str_output_filepath, model_unit):
+#     int_fn_starting_flow = 1  # cfs
+#     int_number_of_steps = 76
 
-    RLOG.lprint("")
-    RLOG.lprint("+=================================================================+")
-    RLOG.lprint("|               CREATING CONFLATED HEC-RAS MODELS                 |")
-    RLOG.lprint("+-----------------------------------------------------------------+")
+#     RLOG.lprint("")
+#     RLOG.lprint("+=================================================================+")
+#     RLOG.lprint("|               CREATING CONFLATED HEC-RAS MODELS                 |")
+#     RLOG.lprint("+-----------------------------------------------------------------+")
 
-    create_hecras_files(
-        huc8_num,
-        int_fn_starting_flow,
-        int_number_of_steps,
-        str_output_filepath,
-        model_unit,
-    )
+#     create_hecras_files(
+#         huc8_num,
+#         int_fn_starting_flow,
+#         int_number_of_steps,
+#         str_output_filepath,
+#         model_unit,
+#     )
 
-    path_created_ras_models = os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+#     path_created_ras_models = os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
 
-    names_created_ras_models = os.listdir(path_created_ras_models)
+#     names_created_ras_models = os.listdir(path_created_ras_models)
 
-    RLOG.lprint("")
-    RLOG.lprint("+=================================================================+")
-    RLOG.lprint("|              PROCESSING CONFLATED HEC-RAS MODELS                |")
-    RLOG.lprint("|          AND CREATING DEPTH GRIDS FOR HEC-RAS STREAMS           |")
-    RLOG.lprint("+-----------------------------------------------------------------+")
+#     RLOG.lprint("")
+#     RLOG.lprint("+=================================================================+")
+#     RLOG.lprint("|              PROCESSING CONFLATED HEC-RAS MODELS                |")
+#     RLOG.lprint("|          AND CREATING DEPTH GRIDS FOR HEC-RAS STREAMS           |")
+#     RLOG.lprint("+-----------------------------------------------------------------+")
 
-    for folder in names_created_ras_models:
-        folder_mame_splt = folder.split("_")
-        project_file_name = folder_mame_splt[1]
+#     for folder in names_created_ras_models:
+#         folder_mame_splt = folder.split("_")
+#         project_file_name = folder_mame_splt[1]
 
-        str_ras_projectpath = path_created_ras_models + '//' + folder + '//' + project_file_name + ".prj"
+#         str_ras_projectpath = path_created_ras_models + '//' + folder + '//' + project_file_name + ".prj"
 
-        all_x_sections_info = fn_run_hecras(str_ras_projectpath, int_number_of_steps)
+#         all_x_sections_info = fn_run_hecras(str_ras_projectpath, int_number_of_steps)
 
-        path_to_all_x_sections_info = os.path.join(str_output_filepath,
-                                                   sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
-                                                   folder)
+#         path_to_all_x_sections_info = os.path.join(str_output_filepath,
+#                                                    sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
+#                                                    folder)
 
-        all_x_sections_info.to_csv(
-            os.path.join(path_to_all_x_sections_info, "all_x_sections_info" + "_" + folder + ".csv")
-        )
+#         all_x_sections_info.to_csv(
+#             os.path.join(path_to_all_x_sections_info, "all_x_sections_info" + "_" + folder + ".csv")
+#         )
 
-# Be happy
-
-
-# str_output_filepath = "C:/ras2fim_data/OWP_ras_models/ras2fimv2.0/ras2fim_v2_output_12090301"
-# huc8_num = "12090301"
-# model_unit = "feet"
-# create_run_hecras_models(
-# huc8_num,
-# str_output_filepath,
-# model_unit
-# )
+# # Be happy
 
 
-if __name__ == "__main__":
-    # Sample:
-    # python worker_fim_rasters -w 12090301
-    # -o 'C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301'
-    # -u 'feet'
+# # str_output_filepath = "C:/ras2fim_data/OWP_ras_models/ras2fimv2.0/ras2fim_v2_output_12090301"
+# # huc8_num = "12090301"
+# # model_unit = "feet"
+# # create_run_hecras_models(
+# # huc8_num,
+# # str_output_filepath,
+# # model_unit
+# # )
 
-    parser = argparse.ArgumentParser(
-        description="===== CONFLATE HEC-RAS TO NATIONAL WATER MODEL STREAMS ====="
-    )
 
-    parser.add_argument(
-        "-w",
-        dest="str_huc8",
-        help="REQUIRED: HUC-8 watershed that is being evaluated: Example: 12090301",
-        required=True,
-        metavar="STRING",
-        type=str,
-    )
+# if __name__ == "__main__":
+#     # Sample:
+#     # python worker_fim_rasters -w 12090301
+#     # -o 'C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301'
+#     # -u 'feet'
 
-    parser.add_argument(
-        "-o",
-        dest="str_output_filepath",
-        help=r"REQUIRED: path to write output files: Example: C:/ras2fimv2.0/ras2fim_v2_output_12090301",
-        required=True,
-        metavar="DIR",
-        type=str,
-    )
+#     parser = argparse.ArgumentParser(
+#         description="===== CONFLATE HEC-RAS TO NATIONAL WATER MODEL STREAMS ====="
+#     )
 
-    parser.add_argument(
-        "-u",
-        dest="model_unit",
-        help="REQUIRED: HEC-RAS Models Unit: Example: feet",
-        required=True,
-        metavar="STRING",
-        type=str,
-    )
+#     parser.add_argument(
+#         "-w",
+#         dest="str_huc8",
+#         help="REQUIRED: HUC-8 watershed that is being evaluated: Example: 12090301",
+#         required=True,
+#         metavar="STRING",
+#         type=str,
+#     )
 
-    args = vars(parser.parse_args())
+#     parser.add_argument(
+#         "-o",
+#         dest="str_output_filepath",
+#         help=r"REQUIRED: path to write output files: Example: C:/ras2fimv2.0/ras2fim_v2_output_12090301",
+#         required=True,
+#         metavar="DIR",
+#         type=str,
+#     )
 
-    str_huc8 = args["str_huc8"]
-    str_output_filepath = args["str_output_filepath"]
-    model_unit = args["model_unit"]
-    log_file_folder = os.path.join(str_output_filepath, "logs")
+#     parser.add_argument(
+#         "-u",
+#         dest="model_unit",
+#         help="REQUIRED: HEC-RAS Models Unit: Example: feet",
+#         required=True,
+#         metavar="STRING",
+#         type=str,
+#     )
 
-    try:
-        # Catch all exceptions through the script if it came
-        # from command line.
-        # Note.. this code block is only needed here if you are calling from command line.
-        # Otherwise, the script calling one of the functions in here is assumed
-        # to have setup the logger.
+#     args = vars(parser.parse_args())
 
-        # creates the log file name as the script name
-        script_file_name = os.path.basename(__file__).split('.')[0]
-        # Assumes RLOG has been added as a global var.
-        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
+#     str_huc8 = args["str_huc8"]
+#     str_output_filepath = args["str_output_filepath"]
+#     model_unit = args["model_unit"]
+#     log_file_folder = os.path.join(str_output_filepath, "logs")
 
-        # call main program
-        create_run_hecras_models(str_huc8, str_output_filepath, model_unit)
+#     try:
+#         # Catch all exceptions through the script if it came
+#         # from command line.
+#         # Note.. this code block is only needed here if you are calling from command line.
+#         # Otherwise, the script calling one of the functions in here is assumed
+#         # to have setup the logger.
 
-    except Exception:
-        RLOG.critical(traceback.format_exc())
+#         # creates the log file name as the script name
+#         script_file_name = os.path.basename(__file__).split('.')[0]
+#         # Assumes RLOG has been added as a global var.
+#         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
+
+#         # call main program
+#         create_run_hecras_models(str_huc8, str_output_filepath, model_unit)
+
+#     except Exception:
+#         RLOG.critical(traceback.format_exc())
 
 
 # -------------------------------------------------
