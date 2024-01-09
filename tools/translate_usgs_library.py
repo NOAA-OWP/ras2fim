@@ -87,13 +87,17 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
     print(f"Datasets loaded in {round((timer() - start)/60, 2)} minutes.")
 
     # Loop through sites
-    with ProcessPoolExecutor(max_workers=job_number) as executor:
+    if job_number > 1:
+        with ProcessPoolExecutor(max_workers=job_number) as executor:
 
+            for index, row in fim_domain_gdf.iterrows():
+                executor.submit(process_translation, index, row, usgs_rc_df, output_dir, final_geocurves_dir, final_geom_dir, usgs_gages_gdf, usgs_gages_gpkg, usgs_map_gpkg, level_path_parent_dir)
+    else:
         for index, row in fim_domain_gdf.iterrows():
-            executor.submit(process_translation, index, row, usgs_rc_df, output_dir, final_geocurves_dir, final_geom_dir, usgs_gages_gdf)
+            process_translation(index, row, usgs_rc_df, output_dir, final_geocurves_dir, final_geom_dir, usgs_gages_gdf, usgs_gages_gpkg, usgs_map_gpkg, level_path_parent_dir)
 
 
-def process_translation(process_translation, index, row, usgs_rc_df, output_dir, final_geocurves_dir, final_geom_dir, usgs_gages_gdf):
+def process_translation(index, row, usgs_rc_df, output_dir, final_geocurves_dir, final_geom_dir, usgs_gages_gdf, usgs_gages_gpkg, usgs_map_gpkg, level_path_parent_dir):
         site_start = timer()
         site = row['usgs_id']
         geometry = row['geometry']
