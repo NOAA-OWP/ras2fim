@@ -201,7 +201,6 @@ def create_src_feature_ids(
 
         # -------------------------------------------------
         # Create profile names (numbers) and add it to the mid_xs_info_fid
-        # profile_names = [f'flow{ns}_ft' for ns in range(int_number_of_steps)]
         xs_counter = 1 + mid_x_sections_info_fid['xs_counter'].max()
 
         # profile_names_col = pd.DataFrame(

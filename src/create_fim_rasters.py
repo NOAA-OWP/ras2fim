@@ -22,6 +22,7 @@ from multiprocessing import Pool
 
 import geopandas as gpd
 import pandas as pd
+import tqdm
 
 import shared_functions as sf
 import shared_variables as sv
@@ -61,189 +62,102 @@ def fn_print_progress_bar(
 
 # -------------------------------------------------
 def fn_create_fim_rasters(
-    str_desired_huc8,
-    str_input_folder,
-    str_output_folder,
-    str_projection_path,
-    str_terrain_path,
-    flt_interval,
-    b_terrain_check_only,
+    huc8_num,
+    str_output_folder, #str_output_filepath
+    model_unit,
     is_verbose=False,
-):
+    ):
+
     # TODO: Oct 25, 2023, continue with adding the "is_verbose" system
     start_dt = dt.datetime.utcnow()
 
     # Constant - number of flood depth profiles to run on the first pass
-    INT_NUMBER_OF_STEPS = 75
+    int_fn_starting_flow = 1  # cfs
 
     # Constant - Starting flow for the first pass of the HEC-RAS simulation
-    INT_STARTING_FLOW = 1
+    int_number_of_steps = 76
 
-    # Constant - Maximum flow multiplier
-    # up-scales the maximum flow from input
-    FLT_MAX_MULTIPLY = 1.2
+    RLOG.lprint("  ---(w) HUC-8 WATERSHED: " + huc8_num)
 
-    # Constant - buffer of dem around floodplain envelope
-    FLT_BUFFER = 15
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    RLOG.lprint("")
-    RLOG.lprint("+=================================================================+")
-    RLOG.lprint("|                NWM RASTER LIBRARY FROM HEC-RAS                  |")
-    RLOG.lprint("+-----------------------------------------------------------------+")
-
-    STR_HUC8 = str_desired_huc8
-    RLOG.lprint("  ---(w) HUC-8 WATERSHED: " + STR_HUC8)
-
-    STR_INPUT_FOLDER = str_input_folder
-    RLOG.lprint("  ---(i) INPUT PATH: " + STR_INPUT_FOLDER)
-
-    STR_ROOT_OUTPUT_DIRECTORY = str_output_folder
-    RLOG.lprint("  ---(o) OUTPUT PATH: " + STR_ROOT_OUTPUT_DIRECTORY)
-
-    STR_PATH_TO_PROJECTION = str_projection_path
-    RLOG.lprint("  ---(p) PROJECTION PATH: " + STR_PATH_TO_PROJECTION)
-
-    STR_PATH_TO_TERRAIN = str_terrain_path
-    RLOG.lprint("  ---(t) TERRAIN PATH: " + STR_PATH_TO_TERRAIN)
-
-    # Path to the standard plan file text
-    current_script_dir = os.path.dirname(__file__)
-    STR_PLAN_MIDDLE_PATH = os.path.join(current_script_dir, "\PlanStandardText01.txt")
-    STR_PLAN_FOOTER_PATH = os.path.join(current_script_dir, "\PlanStandardText02.txt")
-    STR_PROJECT_FOOTER_PATH = os.path.join(current_script_dir, "\ProjectStandardText01.txt")
-
-    FLT_INTERVAL = flt_interval
-    RLOG.lprint("  ---[z]   Optional: Output Elevation Step: " + str(FLT_INTERVAL))
-    RLOG.lprint("  ---[c]   Optional: Terrain Check Only: " + str(b_terrain_check_only))
+    RLOG.lprint("  ---(o) OUTPUT PATH: " + str_output_folder)
 
     RLOG.lprint("===================================================================")
 
-    # "" is just a filler (for an old redundant parameter) simply to keep the order of item unchanged.
-    # TODO: Oct 25, 2023 - complete the is_verbose system
-    tpl_input = (
-        STR_HUC8,
-        STR_INPUT_FOLDER,
-        STR_ROOT_OUTPUT_DIRECTORY,
-        STR_PATH_TO_PROJECTION,
-        STR_PATH_TO_TERRAIN,
-        STR_PLAN_MIDDLE_PATH,
-        STR_PROJECT_FOOTER_PATH,
-        FLT_INTERVAL,
-        "",
-        INT_XS_BUFFER,
-        IS_CREATE_MAPS,
-        INT_NUMBER_OF_STEPS,
-        INT_STARTING_FLOW,
-        FLT_MAX_MULTIPLY,
-        FLT_BUFFER,
-        STR_PLAN_FOOTER_PATH,
-        b_terrain_check_only,
-        is_verbose,
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|               CREATING CONFLATED HEC-RAS MODELS                 |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
+
+    worker_fim_rasters.create_hecras_files(
+        huc8_num,
+        int_fn_starting_flow,
+        int_number_of_steps,
+        str_output_folder,
+        model_unit,
     )
 
-    list_huc8 = []
-    list_huc8.append(STR_HUC8)
+   
 
-    str_stream_csv = STR_INPUT_FOLDER + "\\" + str(list_huc8[0]) + "_stream_qc.csv"
-
-    str_stream_nwm_ln_shp = STR_INPUT_FOLDER + "\\" + str(list_huc8[0]) + "_nwm_streams_ln.shp"
-    str_huc12_area_shp = STR_INPUT_FOLDER + "\\" + str(list_huc8[0]) + "_huc_12_ar.shp"
-
-    # read the two dataframes
-    df_streams = gpd.read_file(str_stream_csv)
-    gdf_streams = gpd.read_file(str_stream_nwm_ln_shp)
-
-    # convert the df_stream 'feature_id' to int64
-    df_streams = df_streams.astype({"feature_id": "int64"})
-
-    # left join on feature_id
-    df_streams_merge = pd.merge(df_streams, gdf_streams, on="feature_id")
-
-    # limit the fields
-    df_streams_merge_2 = df_streams_merge[
-        ["feature_id", "reach", "us_xs", "ds_xs", "peak_flow", "ras_path_x", "huc12"]
-    ]
-
-    # rename the ras_path_x column to ras_path
-    df_streams_merge_2 = df_streams_merge_2.rename(columns={"ras_path_x": "ras_path"})
-
-    # add the settings tuple
-    df_streams_merge_2["settings"] = ""
-    df_streams_merge_2["settings"] = df_streams_merge_2["settings"].astype(object)
-
-    for index, row in df_streams_merge_2.iterrows():
-        df_streams_merge_2.at[index, "settings"] = tpl_input
-
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.lprint("|              PROCESSING CONFLATED HEC-RAS MODELS                |")
+    RLOG.lprint("|          AND CREATING DEPTH GRIDS FOR HEC-RAS STREAMS           |")
     RLOG.lprint("+-----------------------------------------------------------------+")
-    RLOG.lprint("Start of processing in HEC-RAS")
-    log_file_prefix = "fn_main_hecras"
+
+    path_created_ras_models = os.path.join(str_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+
+    names_created_ras_models = os.listdir(path_created_ras_models)
+    
+    log_file_prefix = "fn_run_hecras"
     fn_main_hecras_partial = partial(
-        worker_fim_rasters.fn_main_hecras, RLOG.LOG_DEFAULT_FOLDER, log_file_prefix
+        worker_fim_rasters.fn_run_hecras, RLOG.LOG_DEFAULT_FOLDER, log_file_prefix
     )
     # create a pool of processors
     num_processors = mp.cpu_count() - 2
     with Pool(processes=num_processors) as executor:
-        df_huc12 = gpd.read_file(str_huc12_area_shp)
-        int_huc12_index = 0
+        
+        for folder in names_created_ras_models:
 
-        len_df_huc12 = len(df_huc12)
-        str_prefix = r"Processing HUC12s (0 of " + str(len_df_huc12) + "):"
-        fn_print_progress_bar(0, len_df_huc12, prefix=str_prefix, suffix="Complete", length=27)
+            folder_mame_splt = folder.split("_")
+            project_file_name = folder_mame_splt[1]
 
-        # Loop through each HUC-12
-        for i in df_huc12.index:
-            str_huc12 = str(df_huc12["HUC_12"][i])
-            int_huc12_index += 1
-            # print(str_huc12)
-            str_prefix = r"Processing HUC12s (" + str(int_huc12_index) + " of " + str(len_df_huc12) + "):"
-            fn_print_progress_bar(
-                int_huc12_index, len_df_huc12, prefix=str_prefix, suffix="Complete", length=27
+            str_ras_projectpath = os.path.join(path_created_ras_models, folder, project_file_name + ".prj")
+
+            list_points_aggregate = [str_ras_projectpath, int_number_of_steps]
+
+            all_x_sections_info = worker_fim_rasters.fn_run_hecras(str_ras_projectpath, int_number_of_steps)
+
+            path_to_all_x_sections_info = os.path.join(str_output_folder,
+                                                       sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
+                                                       folder)
+
+            all_x_sections_info.to_csv(
+                os.path.join(path_to_all_x_sections_info, "all_x_sections_info" + "_" + folder + ".csv")
             )
 
-            # Constant - Folder to write the HEC-RAS folders and files
-            str_root_folder_to_create = STR_ROOT_OUTPUT_DIRECTORY + "\\HUC_" + str_huc12
+        len_points_agg = len(list_points_aggregate)
+        tqdm.tqdm(
+            executor.imap(fn_main_hecras_partial, list_points_aggregate),
+            total=len_points_agg,
+            desc="Points on lines",
+            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
+            ncols=67,
+        )
 
-            # Select all the 'feature_id' in a given huc12
-            df_streams_huc12 = df_streams_merge_2.query("huc12 == @str_huc12")
-
-            # Reset the query index
-            df_streams_huc12 = df_streams_huc12.reset_index()
-
-            # Create a folder for the HUC-12 area
-            os.makedirs(str_root_folder_to_create, exist_ok=True)
-
-            # amend the pandas dataframe
-            df_streams_huc12_mod1 = df_streams_huc12[
-                ["feature_id", "us_xs", "ds_xs", "peak_flow", "ras_path", "huc12", "settings"]
-            ]
-
-            # create a list of lists from the dataframe
-            list_of_lists_df_streams = df_streams_huc12_mod1.values.tolist()
-
-            try:
-                if len(list_of_lists_df_streams) > 0:
-                    executor.map(fn_main_hecras_partial, list_of_lists_df_streams)
-            except Exception:
-                # It has already been logged in fn_main_hecras, might get a dup error rec
-                RLOG.critical(traceback.format_exc())
-                executor.terminate()
-                RLOG.critical("Pool terminated")
-                sys.exit(1)
+    # pool.close()
+    # pool.join()
 
     # Now that multi-proc is done, lets merge all of the independent log file from each
     RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
 
     tif_count = 0
-    for root, dirs, files in os.walk(STR_ROOT_OUTPUT_DIRECTORY):
+    for root, dirs, files in os.walk(str_output_folder):
         for file in files:
             if file.endswith(".tif"):
                 tif_count += 1
 
     RLOG.lprint("")
-    RLOG.success("ALL AREAS COMPLETE")
-    RLOG.success("Number of tif's generated: " + str(tif_count))
+    RLOG.success("STEP 5 COMPLETE")
 
     dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
