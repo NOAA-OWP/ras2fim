@@ -7,6 +7,7 @@ import numpy as np
 import warnings
 import shutil
 import traceback
+from concurrent.futures import ProcessPoolExecutor, as_completed, wait
 
 from timeit import default_timer as timer
 
@@ -55,7 +56,7 @@ def get_union(catchments_gdf, subset_fim_gdf, site_stage):
     return union
     
 
-def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent_dir, usgs_rating_curves, usgs_gages_gpkg):
+def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent_dir, usgs_rating_curves, usgs_gages_gpkg, job_number):
     # Create output_dir if necessary
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -86,7 +87,13 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
     print(f"Datasets loaded in {round((timer() - start)/60, 2)} minutes.")
 
     # Loop through sites
-    for index, row in fim_domain_gdf.iterrows():
+    with ProcessPoolExecutor(max_workers=job_number) as executor:
+
+        for index, row in fim_domain_gdf.iterrows():
+            executor.submit(process_translation, index, row, usgs_rc_df, output_dir, final_geocurves_dir, final_geom_dir, usgs_gages_gdf)
+
+
+def process_translation(process_translation, index, row, usgs_rc_df, output_dir, final_geocurves_dir, final_geom_dir, usgs_gages_gdf):
         site_start = timer()
         site = row['usgs_id']
         geometry = row['geometry']
@@ -97,7 +104,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
         # Exit if site-specific rating curve doesn't exist in provided file
         if subset_usgs_rc_df.empty:
             print("Missing RC for " + site)
-            continue
+            return
 
         # if site != "04100222":
         #     continue
@@ -105,7 +112,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
         try:
             int(site)
         except ValueError: 
-            continue
+            return
 
         # Create output directory site
         site_dir = os.path.join(output_dir, site)
@@ -132,7 +139,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
             huc8 = huc12[:8]
         except IndexError as e:
             print(e)
-            continue  # TODO log, why?
+            return  # TODO log, why?
 
         # Subset the entire usgs_fim_gdf library to only one site at a time
         subset_fim_gdf = usgs_fim_gdf.loc[usgs_fim_gdf.USGSID==site]
@@ -146,12 +153,12 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
         else:
             print("Missing branch data, expected: " + huc8_outputs_dir)
             shutil.rmtree(site_dir)
-            continue
+            return
 
         # Get list of unique stage values
         site_stages = list(subset_fim_gdf.STAGE.unique())
         if len(site_stages) == 0:
-            continue
+            return
 
         # Loop through different catchments, do the below processing, then check for best geometrical match
         branch_id_list, candidate_layers = [], []
@@ -171,7 +178,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
             if os.path.exists(catchments):
                 catchments_gdf = gpd.read_file(catchments)
             else:
-                continue  # TODO log
+                return  # TODO log
             
             # Once the union with the highest count is known, perform union again with only that branch
             feature_count = len(get_union(catchments_gdf, subset_fim_gdf, first_site_stage))
@@ -184,7 +191,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
         # Select best match of all the generated FIM/branch unions
         print("Producing union for " + site + "...")
         if len(feature_count_list) == 0:
-            continue
+            return
         max_index = feature_count_list.index(max(feature_count_list))
         best_match_catchments_gdf = gpd.read_file(catchments_path_list[max_index])
 
@@ -205,7 +212,7 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
 
         if union.empty == True:
             print("empty")
-            continue
+            return
 
         # Clean up geodataframe to match ras2fim schema
         union.rename(columns={'STAGE': 'stage_ft', 'ELEV': 'wse_ft', 'QCFS': 'orig_cfs'}, inplace=True)
@@ -302,6 +309,16 @@ if __name__ == '__main__':
         default=None,
         type=str,
     )
+
+    parser.add_argument(
+        "-j",
+        "--job_number",
+        help="Number of jobs to use.",
+        required=True,
+        default=None,
+        type=int,
+    )
+
 
     #TODO need to find the right branch catchments layer for cutting for each site. Go with biggest?
 
