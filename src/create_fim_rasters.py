@@ -73,14 +73,6 @@ def fn_create_fim_rasters(
     # TODO: Oct 25, 2023, continue with adding the "is_verbose" system
     start_dt = dt.datetime.utcnow()
 
-    # Hard coded constants for this routine
-
-    INT_XS_BUFFER = 2  # Number of XS to add upstream and downstream
-    # of the segmented
-
-    # Constant - Toggle the Creation of RAS Map products
-    IS_CREATE_MAPS = True
-
     # Constant - number of flood depth profiles to run on the first pass
     INT_NUMBER_OF_STEPS = 75
 
