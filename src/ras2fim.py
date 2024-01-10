@@ -397,7 +397,6 @@ def fn_run_ras2fim(
             str_huc8_arg,
             output_folder_path,
             model_unit,
-            # B_TERRAIN_CHECK_ONLY,
         )
 
     # -------------------------------------------

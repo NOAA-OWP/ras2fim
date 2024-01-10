@@ -103,8 +103,8 @@ def fn_create_fim_rasters(
 
     names_created_ras_models = os.listdir(path_created_ras_models)
 
-    print(names_created_ras_models)
     log_file_prefix = "fn_run_hecras"
+
     ls_run_hecras_inputs = []
     for model_folder in names_created_ras_models:
 
@@ -112,6 +112,7 @@ def fn_create_fim_rasters(
         project_file_name = folder_mame_splt[1]
 
         str_ras_projectpath = os.path.join(path_created_ras_models, model_folder, project_file_name + ".prj")
+        print(str_ras_projectpath)
 
         run_hecras_inputs = [str_ras_projectpath, 
                              int_number_of_steps,
@@ -120,15 +121,18 @@ def fn_create_fim_rasters(
                              RLOG.LOG_DEFAULT_FOLDER,
                              log_file_prefix
                              ]
-        ls_run_hecras_inputs.append(run_hecras_inputs)
+        
+        ls_run_hecras_inputs.append(run_hecras_inputs)    
+    print('')
+    print(ls_run_hecras_inputs)    
 
-    
-    # 
     # fn_main_hecras_partial = #partial(
     #     fn_run_one_ras_model, RLOG.LOG_DEFAULT_FOLDER, log_file_prefix
     #     )
     # create a pool of processors
     num_processors = mp.cpu_count() - 2
+    print('num_processors')
+
     with Pool(processes=num_processors) as executor:
         
         len_points_agg = len(ls_run_hecras_inputs)
@@ -213,10 +217,7 @@ if __name__ == "__main__":
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
-        fn_create_fim_rasters(
-            str_huc8_arg,
-            unit_output_folder,
-            model_unit,
+        fn_create_fim_rasters(str_huc8_arg, unit_output_folder, model_unit,
         #    is_verbose,
         )
 

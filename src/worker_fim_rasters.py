@@ -1331,8 +1331,14 @@ def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
     return all_x_sections_info
 
 
-def fn_run_one_ras_model (
-    str_ras_projectpath, int_number_of_steps, model_folder, unit_output_folder, log_default_folder, log_file_prefix):
+def fn_run_one_ras_model(
+    str_ras_projectpath,
+    int_number_of_steps,
+    model_folder,
+    unit_output_folder,
+    log_default_folder,
+    log_file_prefix
+    ):
 
     global MP_LOG
     try:
@@ -1347,9 +1353,11 @@ def fn_run_one_ras_model (
         path_to_all_x_sections_info = os.path.join(unit_output_folder,
                                                     sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
                                                     model_folder)
-        all_x_sections_info.to_csv(os.path.join(
+        path_all_x_sections_info = os.path.join(
             path_to_all_x_sections_info,
-            "all_x_sections_info" + "_" + model_folder + ".csv"))
+            "all_x_sections_info" + "_" + model_folder + ".csv"
+            )
+        all_x_sections_info.to_csv(path_all_x_sections_info)
         
         MP_LOG.lprint(f"Processing {model_folder} Model Completed")
 
