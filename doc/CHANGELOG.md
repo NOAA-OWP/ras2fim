@@ -1,6 +1,33 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.15 - 2024-01-09 - [PR#250](https://github.com/NOAA-OWP/ras2fim/pull/250)
+
+With most V2 development being focused on figuring out the logic, we have let linting and code standards lapse. This get the files caught up for linting and moving forward, all PR's will be fully linted, styled, logging included.
+
+### Changes  
+- `src`
+    - `calculate_all_terrain_stats.py`: Linting updates and minor multi-proc style updates.
+    - `clip_dem_from_shapes.py`: Linting updates.
+    - `conflate_hecras_to_nwm.py`: Linting updates and minor multi-proc style updates.
+    - `convert_tif_to_ras_hdf5.py`: Linting updates.
+    - `convert_fim_rasters.py`:  Linting updates.
+    - `create_geocurves.py`:  Linting updates.
+    - `create_model_domain_polygons.py: Linting updates.
+    - `create_shapes_from_hecras.py`: Linting updates and minor multi-proc style updates.
+    - `create_src_depthgrids_4fids.py`: Linting updates.
+    - `simplify_fim_rasters.py`: Just minor multi-proc style update.  Note; considering it is work in progress, not all linting was completed.
+    - `worker_fim_rasters.py`: Just a few minor linting updates. Note; considering it is work in progress, not all linting was completed.
+- `tools`
+    - `acquire_and_preprocess_3dep_dems.py`: Linting updates.
+    - `ras2inundation.py`: Linting updates.
+    - `s3_model_mgmt.py`: Linting updates.
+
+### Testing
+Limited testing was available. I was able to run ras2fim.py which failed at Step5 which is work in progress. All tools in the "tools" directory can not be used as the ras2fim bucket has no models in it currently.
+
+<br/><br/>
+
 ## v2.0.beta.14 - 2024-01-05 - [PR#233](https://github.com/NOAA-OWP/ras2fim/pull/233)
 
 This PR merges create_src_depthgrids_4fids.py python script that creates synthetic rating curves (SRC) for each nwm feature id in a HUC8 domain. To create the SRCs, it needs information on water depths in each cross-section per flow value (step 5 output) and upstream and downstream cross-sections of each feature-id (step 2 output). Therefore, this PR also requests changes in step 2 Python script (conflate_hecras_to_nwm.py).

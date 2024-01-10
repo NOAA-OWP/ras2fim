@@ -310,20 +310,16 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
 
         list_dataframe_args = df_grids_to_convert.values.tolist()
 
-        p = mp.Pool(processes=(mp.cpu_count() - 2))
-
-        list(
-            tqdm.tqdm(
-                p.imap(fn_create_grid, list_dataframe_args),
-                total=len_grids_convert,
-                desc="Convert Grids",
-                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
-                ncols=65,
+        with mp.Pool(processes=(mp.cpu_count() - 2)) as executor:
+            list(
+                tqdm.tqdm(
+                    executor.imap(fn_create_grid, list_dataframe_args),
+                    total=len_grids_convert,
+                    desc="Convert Grids",
+                    bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
+                    ncols=65,
+                )
             )
-        )
-
-        p.close()
-        p.join()
 
     RLOG.lprint("+-----------------------------------------------------------------+")
     RLOG.lprint("Making metric rating curve files")

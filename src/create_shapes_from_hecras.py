@@ -701,13 +701,9 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
 
         # create a pool of processors
         num_processors = mp.cpu_count() - 2
-        p = Pool(processes=num_processors)
-
-        # multi-process the HEC-RAS calculation of these models
-        p.map(fn_open_hecras, list_models_to_compute)
-
-        p.close()
-        p.join()
+        with Pool(processes=num_processors) as executor:
+            # multi-process the HEC-RAS calculation of these models
+            executor.map(fn_open_hecras, list_models_to_compute)
     # -----
 
     list_geodataframes_stream = []

@@ -21,16 +21,11 @@ import shared_functions as sf
 import shared_variables as sv
 
 
-RLOG = sv.R2F_LOG
-
-
-pd.options.mode.chained_assignment = None
-
-# ************************************************************
-
 # Global Variables
 # null value in the exported DEMs
 INT_NO_DATA_VAL = -9999
+RLOG = sv.R2F_LOG
+pd.options.mode.chained_assignment = None
 
 
 # -------------------------------------------------
@@ -57,7 +52,7 @@ def fn_cut_dems_from_shapes(
 
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
-    RLOG.lprint("|         CUT DEMs FROM LARGER DEM PER POLYGON SHAPEFILE          |")
+    RLOG.notice("|         CUT DEMs FROM LARGER DEM PER POLYGON SHAPEFILE          |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     RLOG.lprint("  ---(i) HUC12s SHAPEFILE PATH: " + str_huc12_path)
