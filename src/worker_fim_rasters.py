@@ -2,7 +2,7 @@
 # Uses the 'ras2fim' conda environment
 
 # -------------------------------------------------
-import argparse
+# import argparse
 import errno
 import os
 import pathlib
@@ -1117,13 +1117,14 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
 # For All RAS Models BC ~ 3 min
 # -------------------------------------------------
 def create_hecras_files(
-    huc8_num, int_fn_starting_flow, int_number_of_steps, str_output_filepath, model_unit
+    huc8_num, int_fn_starting_flow, int_number_of_steps, unit_output_folder, model_unit
     ):
 
     # print(os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF))
     # TODO: need to be sort out with ROB
-    path_to_conflated_streams_csv = os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
-
+    path_to_conflated_streams_csv = os.path.join(unit_output_folder, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
+    # print(str_output_filepath)
+    # print(path_to_conflated_streams_csv)
     # Reading original parent models flow and geometry files
     # with different WSE and normal depth (ND, slope) BCs
     # and create a seperate list of paths to
@@ -1158,7 +1159,7 @@ def create_hecras_files(
         profile_names_str,
         list_str_slope_bc_nd,
         list_first_pass_flows_xs_nd,
-        str_output_filepath,
+        unit_output_folder,
         )
     
 
@@ -1178,7 +1179,7 @@ def create_hecras_files(
             ls_path_to_flow_file_wse,
             profile_names_str,
             list_bc_target_xs_huc8,
-            str_output_filepath,
+            unit_output_folder,
         )
 
     else:
@@ -1187,13 +1188,13 @@ def create_hecras_files(
 
 
     # Create the HEC-RAS plan files ~ 5 s
-    create_ras_plan_file(str_output_filepath)
+    create_ras_plan_file(unit_output_folder)
 
     # Create the HEC-RAS project files ~ 5 s
-    create_ras_project_file(str_output_filepath, model_unit)
+    create_ras_project_file(unit_output_folder, model_unit)
 
     # Create the HEC-RAS mapper xml files ~ 5 s
-    create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, model_unit)
+    create_ras_mapper_xml(huc8_num, int_number_of_steps, unit_output_folder, model_unit)
 
 
 # -------------------------------------------------
@@ -1306,8 +1307,8 @@ def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
         # re-raise it as error handling is farther up the chain
         # but I do need the finally to ensure the hec.QuitRas() is run
         print("++++++++++++++++++++++++")
-        print("An exception occurred with the HEC-RAS engine or its parameters.")
-        print(f"details: {ex}")
+        MP_LOG.error("An exception occurred with the HEC-RAS engine or its parameters.")
+        MP_LOG.error(f"details: {ex}")
         print()
         # re-raise it for logging (coming)
         raise ex
@@ -1322,13 +1323,43 @@ def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
             try:
                 hec.QuitRas()  # close HEC-RAS no matter watch
             except Exception as ex2:
-                print("--- An error occured trying to close the HEC-RAS window process")
-                print(f"--- Details: {ex2}")
+                MP_LOG.error("--- An error occured trying to close the HEC-RAS window process")
+                MP_LOG.error(f"--- Details: {ex2}")
                 print()
                 # do nothng
 
     return all_x_sections_info
 
+
+def fn_run_one_ras_model (
+    str_ras_projectpath, int_number_of_steps, model_folder, unit_output_folder, log_default_folder, log_file_prefix):
+
+    global MP_LOG
+    try:
+        file_id = sf.get_date_with_milli()
+        log_file_name = f"{log_file_prefix}-{file_id}.log"
+        MP_LOG.setup(os.path.join(log_default_folder, log_file_name))
+
+        MP_LOG.lprint(f"Starting Processing {model_folder} Model")
+
+        all_x_sections_info = fn_run_hecras(str_ras_projectpath, int_number_of_steps)
+
+        path_to_all_x_sections_info = os.path.join(unit_output_folder,
+                                                    sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
+                                                    model_folder)
+        all_x_sections_info.to_csv(os.path.join(
+            path_to_all_x_sections_info,
+            "all_x_sections_info" + "_" + model_folder + ".csv"))
+        
+        MP_LOG.lprint(f"Processing {model_folder} Model Completed")
+
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            MP_LOG.error(traceback.format_exc())
+        else:
+            print(traceback.format_exc())
+
+        # sys.exit(1)
 
 # -------------------------------------------------
 # Main Function: Calls All defs and

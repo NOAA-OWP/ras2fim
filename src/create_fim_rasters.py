@@ -60,7 +60,7 @@ def fn_print_progress_bar(
 # -------------------------------------------------
 def fn_create_fim_rasters(
     huc8_num,
-    str_output_folder, #str_output_filepath
+    unit_output_folder, #str_output_filepath: C:\ras2fim_v2_output\12090301_2277_240109
     model_unit,
 #    is_verbose=False,
     ):
@@ -76,7 +76,7 @@ def fn_create_fim_rasters(
 
     RLOG.lprint("  ---(w) HUC-8 WATERSHED: " + huc8_num)
 
-    RLOG.lprint("  ---(o) OUTPUT PATH: " + str_output_folder)
+    RLOG.lprint("  ---(o) OUTPUT PATH: " + unit_output_folder)
 
     RLOG.lprint("===================================================================")
 
@@ -89,7 +89,7 @@ def fn_create_fim_rasters(
         huc8_num,
         int_fn_starting_flow,
         int_number_of_steps,
-        str_output_folder,
+        unit_output_folder,
         model_unit,
     )   
 
@@ -99,43 +99,41 @@ def fn_create_fim_rasters(
     RLOG.lprint("|          AND CREATING DEPTH GRIDS FOR HEC-RAS STREAMS           |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
-    path_created_ras_models = os.path.join(str_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    path_created_ras_models = os.path.join(unit_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
 
     names_created_ras_models = os.listdir(path_created_ras_models)
 
+    print(names_created_ras_models)
+    log_file_prefix = "fn_run_hecras"
     ls_run_hecras_inputs = []
-    for folder in names_created_ras_models:
+    for model_folder in names_created_ras_models:
 
-        folder_mame_splt = folder.split("_")
+        folder_mame_splt = model_folder.split("_")
         project_file_name = folder_mame_splt[1]
 
-        str_ras_projectpath = os.path.join(path_created_ras_models, folder, project_file_name + ".prj")
+        str_ras_projectpath = os.path.join(path_created_ras_models, model_folder, project_file_name + ".prj")
 
-        run_hecras_inputs = [str_ras_projectpath, int_number_of_steps, folder]
+        run_hecras_inputs = [str_ras_projectpath, 
+                             int_number_of_steps,
+                             model_folder,
+                             unit_output_folder,
+                             RLOG.LOG_DEFAULT_FOLDER,
+                             log_file_prefix
+                             ]
         ls_run_hecras_inputs.append(run_hecras_inputs)
 
-    def fn_run_one_ras_model (str_ras_projectpath, int_number_of_steps, folder):
-
-        all_x_sections_info = worker_fim_rasters.fn_run_hecras(str_ras_projectpath, int_number_of_steps)
-
-        path_to_all_x_sections_info = os.path.join(str_output_folder,
-                                                    sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
-                                                    folder)
-        all_x_sections_info.to_csv(
-            os.path.join(path_to_all_x_sections_info, "all_x_sections_info" + "_" + folder + ".csv")
-        )
     
-    log_file_prefix = "fn_run_hecras"
-    fn_main_hecras_partial = partial(
-        fn_run_one_ras_model, RLOG.LOG_DEFAULT_FOLDER, log_file_prefix
-        )
+    # 
+    # fn_main_hecras_partial = #partial(
+    #     fn_run_one_ras_model, RLOG.LOG_DEFAULT_FOLDER, log_file_prefix
+    #     )
     # create a pool of processors
     num_processors = mp.cpu_count() - 2
     with Pool(processes=num_processors) as executor:
         
         len_points_agg = len(ls_run_hecras_inputs)
         tqdm.tqdm(
-            executor.imap(fn_main_hecras_partial, ls_run_hecras_inputs),
+            executor.imap(worker_fim_rasters.fn_run_one_ras_model, ls_run_hecras_inputs),
             total=len_points_agg,
             desc="Number of Processed RAS Models",
             bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
@@ -147,12 +145,6 @@ def fn_create_fim_rasters(
 
     # Now that multi-proc is done, lets merge all of the independent log file from each
     RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
-
-    tif_count = 0
-    for root, dirs, files in os.walk(str_output_folder):
-        for file in files:
-            if file.endswith(".tif"):
-                tif_count += 1
 
     RLOG.lprint("")
     RLOG.success("STEP 5 COMPLETE")
@@ -193,8 +185,8 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-o",
-        dest="str_output_folder",
-        help=r"REQUIRED: path to write ras2fim output files: Example: C:\ras2fim_12090301\05_hecras_output",
+        dest="unit_output_folder",
+        help=r"REQUIRED: path to write ras2fim output files: Example: C:\ras2fim_12090301",
         required=True,
         metavar="DIR",
         type=str,
@@ -205,9 +197,9 @@ if __name__ == "__main__":
 
     str_huc8_arg = args["str_huc8_arg"]
     model_unit = args["model_unit"]
-    str_output_folder = args["str_output_folder"]
+    unit_output_folder = args["unit_output_folder"]
 
-    log_file_folder = args["str_output_folder"]
+    log_file_folder = args["unit_output_folder"]
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -223,7 +215,7 @@ if __name__ == "__main__":
         # call main program
         fn_create_fim_rasters(
             str_huc8_arg,
-            str_output_folder,
+            unit_output_folder,
             model_unit,
         #    is_verbose,
         )
