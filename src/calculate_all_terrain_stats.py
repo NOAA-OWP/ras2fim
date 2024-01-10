@@ -4,10 +4,7 @@
 # HEC-RAS 1D model to the elevation of that point in the provided terrain.
 # This script walks a directory to find all the "Rasmap" XML files and
 # compute a file containing all the statistics data. (mean, median, std, etc.)
-#
-# Created by: Andy Carter, PE
-# Last revised - 2021.10.24
-#
+
 # Uses the 'ras2fim' conda environment
 
 import argparse
@@ -311,7 +308,7 @@ def fn_calculate_all_terrain_stats(str_input_dir):
 
     print("")
     RLOG.lprint("+=================================================================+")
-    RLOG.lprint("|    CALCULATE TERRAIN STATISTICS FOR MULTIPLE HEC-RAS MODELS     |")
+    RLOG.notice("|    CALCULATE TERRAIN STATISTICS FOR MULTIPLE HEC-RAS MODELS     |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     RLOG.lprint("  ---(i) RAS MAPPER DIRECTORY: " + str_input_dir)
@@ -319,21 +316,17 @@ def fn_calculate_all_terrain_stats(str_input_dir):
 
     list_of_list_processed = fn_get_list_of_lists_to_compute(str_input_dir)
 
-    p = mp.Pool(processes=(mp.cpu_count() - 2))
-
-    len_processed = len(list_of_list_processed)
-    list_return_values = list(
-        tqdm.tqdm(
-            p.imap(fn_get_stats_dataseries, list_of_list_processed),
-            total=len_processed,
-            desc="Computing Stats",
-            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
-            ncols=65,
+    with mp.Pool(processes=(mp.cpu_count() - 2)) as executor:
+        len_processed = len(list_of_list_processed)
+        list_return_values = list(
+            tqdm.tqdm(
+                executor.imap(fn_get_stats_dataseries, list_of_list_processed),
+                total=len_processed,
+                desc="Computing Stats",
+                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
+                ncols=65,
+            )
         )
-    )
-
-    p.close()
-    p.join()
 
     df_stats_values = pd.DataFrame(list_return_values)
 

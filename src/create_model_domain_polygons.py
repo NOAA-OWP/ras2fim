@@ -48,7 +48,7 @@ def fn_make_domain_polygons(
         1) First cross section
         2) Upper edge (by connecting the end points of all cross section)
         3) Last Cross section
-         4) lower edge (by connecting the first points of all cross sections )
+        4) lower edge (by connecting the first points of all cross sections )
 
         To make a valid polygon, need to reverse the order of points of either of cross sections
         and either of edges. Here, we reverse order of points of first cross section and lower edge.
@@ -64,7 +64,7 @@ def fn_make_domain_polygons(
     RLOG.lprint("Version found: " + version)
 
     RLOG.lprint("")
-    RLOG.lprint("+++++++ Create polygons for HEC-RAS models domains +++++++")
+    RLOG.notice("+++++++ Create polygons for HEC-RAS models domains +++++++")
 
     RLOG.lprint(
         "  --- (-i) Path to the shapefile containing HEC-RAS models cross sections: "

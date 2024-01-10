@@ -25,8 +25,6 @@ import shared_variables as sv
 # Global Variables
 RLOG = sv.R2F_LOG  # the non mp version
 
-# warnings.simplefilter(action="ignore", category=FutureWarning)
-
 
 # -------------------------------------------------
 # This function is used in a Multi-Proc
@@ -177,7 +175,7 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, job_number, output_f
 
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
-    RLOG.lprint("|                   Create GeoCurves                              |")
+    RLOG.notice("|                   Create GeoCurves                              |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     RLOG.lprint(f"  ---(f) ras2fim_output_dir: {ras2fim_output_dir}")

@@ -43,7 +43,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
 
     # check that output file name has extension of gpkg
     if not Path(output_inundation_poly).suffix == '.gpkg':
-        raise TypeError ("The output file must have gpkg extension.")
+        raise TypeError("The output file must have gpkg extension.")
 
     # Check that geocurves_dir exists
     if not os.path.exists(geocurves_dir):
@@ -79,7 +79,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
     if ras2fim_version:
         RLOG.lprint(f"Derived ras2fim version {ras2fim_version} from geocurve files.")
     else:
-        RLOG.warning(f"Failed to derive ras2fim version from geocurve files.")
+        RLOG.warning("Failed to derive ras2fim version from geocurve files.")
 
     # Open flow_file to detemine feature_ids to process
     flow_file_df = pd.read_csv(flow_file)

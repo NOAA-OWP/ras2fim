@@ -4,11 +4,7 @@
 # Create flood inundation rasters and supporting InFRM data from the
 # preprocessed HEC-RAS geospatial 1D data.  This creates data per
 # feature-id for the National Water Model
-#
-# Created by: Andy Carter, PE
-# Created: 2021-08-12
-# Last revised - 2021.10.24
-#
+
 # Uses the 'ras2fim' conda environment
 # ************************************************************
 import argparse
@@ -98,7 +94,7 @@ def fn_create_fim_rasters(
 
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
-    RLOG.lprint("|                NWM RASTER LIBRARY FROM HEC-RAS                  |")
+    RLOG.notice("|                NWM RASTER LIBRARY FROM HEC-RAS                  |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     STR_HUC8 = str_desired_huc8

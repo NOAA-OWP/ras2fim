@@ -1138,18 +1138,19 @@ def create_hecras_files(
     ] = create_list_of_paths_flow_geometry_files_4each_BCs(path_to_conflated_streams_csv)
 
     # Compute boundray condition for models with wse BCs
-    #list_bc_target_xs_huc8, profile_names = compute_boundray_condition_wse(
+    # list_bc_target_xs_huc8, profile_names = compute_boundray_condition_wse(
     #    int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_wse, str_path_to_geo_file_wse
-    #)
-    
+    # )
+
     if len(ls_path_to_flow_file_wse) > 0:
         list_bc_target_xs_huc8, profile_names = compute_boundray_condition_wse(
             int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_wse, ls_path_to_geo_file_wse
         )
     else:
-        # TODO: Fix this so it doesn't break the system. 
-        raise Exception("Of the current models being used, at least one must have a valid boundary condition.")
-
+        # TODO: Fix this so it doesn't break the system.
+        raise Exception(
+            "Of the current models being used, at least one must have a valid boundary condition."
+        )
 
     # Compute boundray condition for models with nd BCs
     list_first_pass_flows_xs_nd, list_str_slope_bc_nd = compute_boundray_condition_nd(

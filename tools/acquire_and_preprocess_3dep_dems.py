@@ -18,7 +18,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src'
 import extend_huc8_domain as hd
 import s3_shared_functions as s3_sf
 
-import ras2fim_logger
 import shared_functions as sf
 import shared_validators as val
 import shared_variables as sv
@@ -405,7 +404,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Acquires and pre-processes USGS 3Dep dems')
 
     parser.add_argument(
-        "-huc", dest="huc", help="REQUIRED: A single HUC8", required=True, metavar="", type=str,
+        "-huc", dest="huc", help="REQUIRED: A single HUC8", required=True, metavar="", type=str
     )  # has to be string so it doesn't strip the leading zero
 
     parser.add_argument(
