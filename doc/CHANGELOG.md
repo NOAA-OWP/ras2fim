@@ -1,6 +1,29 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.X - 2024-01-11 - [PR#247](https://github.com/NOAA-OWP/ras2fim/pull/247)
+
+The main goals of this PR are to re-add the multiprocessing module to `create_fim_rasters.py`, reconnect `create_fim_rasters.py` to `worker_fim_rasters.py`, and make `ras2fim.py` work in step 5 and step 6. 
+
+### Changes
+- `src'
+   - `shared_variables.py`: "R2F_OUTPUT_DIR_SRC_DEPTHGRIDS" variable was added to this script
+   - `worker_fim_rasters.py`
+      1. Reformatting the paths which are hard-coded in the script
+      2. Bug: When there were no parent models with WSE BC, the script would not run and give us an error. This bug was fixed in this PR. 
+      3. This script was connected to create_fim_rasters.py to bring in the multi-processing tool.
+   - `create_fim_rasters.py`: Updated to connect to worker_fim_rasters.py and get the multi-processing tool working
+   - `create_src_depthgrids_4fids.py`: 
+      1. Reformatting the paths which are hard-coded in the script
+      2. Connected to ras2fim.py
+   - `ras2fim.py`: updated to connect to `create_src_depthgrids_4fids.py`
+   
+### Testing
+This PR is tested for some RAS models in HUC 12090301. 
+
+<br/><br/>
+
+
 ## v2.0.beta.15 - 2024-01-09 - [PR#250](https://github.com/NOAA-OWP/ras2fim/pull/250)
 
 With most V2 development being focused on figuring out the logic, we have let linting and code standards lapse. This get the files caught up for linting and moving forward, all PR's will be fully linted, styled, logging included.

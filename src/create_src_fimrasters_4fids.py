@@ -97,7 +97,6 @@ def plot_src(
 
 # -------------------------------------------------
 def fn_create_src_feature_ids(huc8_num, path_unit_folder):
-    
     int_number_of_steps = 76
     model_unit = 'feet'
 
@@ -108,7 +107,9 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     # Reading data_summary from step 2
-    str_path_to_fid_xs = os.path.join(path_unit_folder, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc8_num}_stream_qc_fid_xs.csv")
+    str_path_to_fid_xs = os.path.join(
+        path_unit_folder, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc8_num}_stream_qc_fid_xs.csv"
+    )
 
     fid_xs_huc8 = pd.read_csv(str_path_to_fid_xs)
 
@@ -267,10 +268,10 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
 
             # Create a Rating Curve folder
             str_rating_path_to_create = os.path.join(
-                path_unit_folder, 
-                sv.R2F_OUTPUT_DIR_SRC_DEPTHGRIDS, 
-                created_ras_models_folders[infoind], 
-                "Rating_Curve"
+                path_unit_folder,
+                sv.R2F_OUTPUT_DIR_SRC_DEPTHGRIDS,
+                created_ras_models_folders[infoind],
+                "Rating_Curve",
             )
             os.makedirs(str_rating_path_to_create, exist_ok=True)
 
@@ -339,7 +340,6 @@ if __name__ == "__main__":
         type=str,
     )
 
-    
     parser.add_argument(
         "-p",
         dest="path_unit_folder",
@@ -368,9 +368,7 @@ if __name__ == "__main__":
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
-        fn_create_src_feature_ids(
-            str_huc8, path_unit_folder,
-        )
+        fn_create_src_feature_ids(str_huc8, path_unit_folder)
 
     except Exception:
         RLOG.critical(traceback.format_exc())
