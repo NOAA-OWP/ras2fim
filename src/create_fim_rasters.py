@@ -11,11 +11,13 @@ import argparse
 import datetime as dt
 import multiprocessing as mp
 import os
+import shutil
+import time
 import traceback
-from functools import partial
-from multiprocessing import Pool
+# from multiprocessing import Pool
+from concurrent.futures import ProcessPoolExecutor
 
-import tqdm
+# import tqdm
 
 import shared_functions as sf
 import shared_variables as sv
@@ -24,7 +26,6 @@ import worker_fim_rasters
 
 # Global Variables
 RLOG = sv.R2F_LOG
-
 
 # -------------------------------------------------
 # Print iterations progress
@@ -64,6 +65,16 @@ def fn_create_fim_rasters(
     # TODO: Oct 25, 2023, continue with adding the "is_verbose" system
     start_dt = dt.datetime.utcnow()
 
+    path_created_ras_models = os.path.join(unit_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+
+    if os.path.exists(path_created_ras_models):
+        shutil.rmtree(path_created_ras_models)
+        # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
+        # so sometimes mkdir can fail if rmtree isn't done
+        time.sleep(1)  # 1 seconds
+
+        #os.mkdir(self.path_created_ras_models)
+
     # Constant - number of flood depth profiles to run on the first pass
     int_fn_starting_flow = 1  # cfs
 
@@ -88,57 +99,64 @@ def fn_create_fim_rasters(
         unit_output_folder,
         model_unit,
     )   
-
+    RLOG.lprint("*** All HEC-RAS Models Created ***")
+    RLOG.lprint("")
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
-    RLOG.lprint("|              PROCESSING CONFLATED HEC-RAS MODELS                |")
-    RLOG.lprint("|          AND CREATING DEPTH GRIDS FOR HEC-RAS STREAMS           |")
+    RLOG.notice("|              PROCESSING CONFLATED HEC-RAS MODELS                |")
+    RLOG.notice("|          AND CREATING DEPTH GRIDS FOR HEC-RAS STREAMS           |")
     RLOG.lprint("+-----------------------------------------------------------------+")
-
-    path_created_ras_models = os.path.join(unit_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
 
     names_created_ras_models = os.listdir(path_created_ras_models)
 
     log_file_prefix = "fn_run_hecras"
 
     ls_run_hecras_inputs = []
+    ctr = 0
     for model_folder in names_created_ras_models:
 
         folder_mame_splt = model_folder.split("_")
         project_file_name = folder_mame_splt[1]
 
         str_ras_projectpath = os.path.join(path_created_ras_models, model_folder, project_file_name + ".prj")
-        print(str_ras_projectpath)
 
-        run_hecras_inputs = [str_ras_projectpath, 
-                             int_number_of_steps,
-                             model_folder,
-                             unit_output_folder,
-                             RLOG.LOG_DEFAULT_FOLDER,
-                             log_file_prefix
-                             ]
+        run_hecras_inputs = {'str_ras_projectpath':str_ras_projectpath,
+                             'int_number_of_steps':int_number_of_steps,
+                             'model_folder':model_folder,
+                             'unit_output_folder':unit_output_folder,
+                             'log_default_folder':RLOG.LOG_DEFAULT_FOLDER,
+                             'log_file_prefix':log_file_prefix,
+                             'index_number':ctr,
+                             'total_number_models': len(names_created_ras_models)
+                             }
         
-        ls_run_hecras_inputs.append(run_hecras_inputs)    
-    print('')
-    print(ls_run_hecras_inputs)    
-
-    # fn_main_hecras_partial = #partial(
-    #     fn_run_one_ras_model, RLOG.LOG_DEFAULT_FOLDER, log_file_prefix
-    #     )
+        ls_run_hecras_inputs.append(run_hecras_inputs)
+        ctr += 1
+    
     # create a pool of processors
-    num_processors = mp.cpu_count() - 2
-    print('num_processors')
+    num_processors = mp.cpu_count() - 6 #2
+    import sys
 
-    with Pool(processes=num_processors) as executor:
-        
-        len_points_agg = len(ls_run_hecras_inputs)
-        tqdm.tqdm(
-            executor.imap(worker_fim_rasters.fn_run_one_ras_model, ls_run_hecras_inputs),
-            total=len_points_agg,
-            desc="Number of Processed RAS Models",
-            bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
-            ncols=67,
-        )
+    with ProcessPoolExecutor(max_workers=num_processors) as executor:
+
+        executor_dict = {}
+        for dicts in ls_run_hecras_inputs:
+     
+            try:
+                future = executor.submit(worker_fim_rasters.fn_run_one_ras_model, **dicts)
+                executor_dict[future] = dicts['model_folder']
+            except Exception:
+                RLOG.critical(traceback.format_exc())
+                sys.exit(1)           
+
+
+        # tqdm.tqdm(
+        #     executor.imap(worker_fim_rasters.fn_run_one_ras_model, ls_run_hecras_inputs),
+        #     total=len_points_agg,
+        #     desc="Number of Processed RAS Models",
+        #     bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
+        #     ncols=67,
+        # )
 
     # pool.close()
     # pool.join()

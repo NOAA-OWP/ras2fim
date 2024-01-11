@@ -96,14 +96,19 @@ def plot_src(
 
 
 # -------------------------------------------------
-def create_src_feature_ids(
-    huc8_num, path_to_step2_fid_xs_info, path_to_ras_output, path_unit_folder, path_to_step6
-):
+def fn_create_src_feature_ids(huc8_num, path_unit_folder):
+    
     int_number_of_steps = 76
     model_unit = 'feet'
 
+    RLOG.lprint("===================================================================")
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.notice("|               CREATING SYNTHETIC RATING CURVES                  |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
+
     # Reading data_summary from step 2
-    str_path_to_fid_xs = os.path.join(path_to_step2_fid_xs_info, f"{huc8_num}_stream_qc_fid_xs.csv")
+    str_path_to_fid_xs = os.path.join(path_unit_folder, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc8_num}_stream_qc_fid_xs.csv")
 
     fid_xs_huc8 = pd.read_csv(str_path_to_fid_xs)
 
@@ -138,12 +143,12 @@ def create_src_feature_ids(
     # -------------------------------------------------
     # Reading all_x_sections_info (results from step5) for all conflated ras streams
     # Determing paths to the step 5 results
-
-    created_ras_models_folders = os.listdir(path_to_ras_output)
+    path_to_step5 = os.path.join(path_unit_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    created_ras_models_folders = os.listdir(path_to_step5)
 
     path_to_all_x_sections_info = []
     for folders in created_ras_models_folders:
-        path_to_all_xs_info = os.path.join(path_to_ras_output, folders, f"all_x_sections_info_{folders}.csv")
+        path_to_all_xs_info = os.path.join(path_to_step5, folders, f"all_x_sections_info_{folders}.csv")
 
         path_to_all_x_sections_info.append(path_to_all_xs_info)
 
@@ -159,7 +164,7 @@ def create_src_feature_ids(
         model_id = mid_x_sections_info['model_id'][0]
 
         df_fid_xs_mid = pd.DataFrame()
-        # df_fid_xs_huc8.to_csv(path_to_step6 + '//' + 'df_fid_xs_huc8_cr.csv')
+
         for mid in range(len(df_fid_xs_huc8['model_id'])):
             if df_fid_xs_huc8['model_id'][mid] == model_id:
                 mid_info = df_fid_xs_huc8.iloc[mid][
@@ -196,7 +201,6 @@ def create_src_feature_ids(
 
         mid_x_sections_info_fid = mid_x_sections_info_fid.rename(columns={'Unnamed: 0': 'xs_counter'})
 
-        # mid_x_sections_info_fid.to_csv(path_to_step6 + "//" + "mid_x_sections_info_fid.csv")
         mid_xs_info_fid = mid_x_sections_info_fid[
             ['model_id', 'feature_id', 'xs_counter', 'Xsection_name', 'wse', 'discharge']
         ]
@@ -263,7 +267,10 @@ def create_src_feature_ids(
 
             # Create a Rating Curve folder
             str_rating_path_to_create = os.path.join(
-                path_to_step6, created_ras_models_folders[infoind], "Rating_Curve"
+                path_unit_folder, 
+                sv.R2F_OUTPUT_DIR_SRC_DEPTHGRIDS, 
+                created_ras_models_folders[infoind], 
+                "Rating_Curve"
             )
             os.makedirs(str_rating_path_to_create, exist_ok=True)
 
@@ -309,11 +316,7 @@ def create_src_feature_ids(
 
 
 # huc8_num = '12090301'
-# path_to_step2_fid_xs_info = path_model_catalog + '\\02_csv_shapes_from_conflation'
-# path_to_ras_output = path_model_catalog + '\\05_hecras_output'
-# path_model_catalog = 'C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301_2'
 # path_to_step6 = path_model_catalog + '\\06_src_depthgrids'
-# model_unit = 'feet'
 
 # create_src_feature_ids(huc8_num,path_to_step2_fid_xs_info,path_to_ras_output,path_model_catalog,path_to_step6)
 
@@ -321,9 +324,6 @@ def create_src_feature_ids(
 if __name__ == "__main__":
     # Sample:
     # python create_src_depthgrids_4fids.py -w 12090301
-    # -i 'C:\\ras2fimv2.0\\ras2fim_v2_output_12090301_2\\02_csv_shapes_from_conflation'
-    # -o 'C:\\ras2fimv2.0\\ras2fim_v2_output_12090301_2\\06_src_depthgrids'
-    # -ro 'C:\\ras2fimv2.0\\ras2fim_v2_output_12090301_2\\05_hecras_output'
     # -p 'C:\\ras2fimv2.0\\ras2fim_v2_output_12090301'
 
     parser = argparse.ArgumentParser(
@@ -339,33 +339,7 @@ if __name__ == "__main__":
         type=str,
     )
 
-    parser.add_argument(
-        "-i",
-        dest="path_fid_xs_info_arg",
-        help=r"REQUIRED: Directory containing step 2 output:  Example: C:\02_csv_shapes_from_conflation",
-        required=True,
-        metavar="DIR",
-        type=str,
-    )
-
-    parser.add_argument(
-        "-ro",
-        dest="path_ras_output_arg",
-        help=r"REQUIRED: path to hecras output, step 5: Example: E:\05_hecras_output",
-        required=True,
-        metavar="DIR",
-        type=str,
-    )
-
-    parser.add_argument(
-        "-o",
-        dest="str_out_arg",
-        help=r"REQUIRED: path to write output files: Example: C:\06_src_depthgrids",
-        required=True,
-        metavar="DIR",
-        type=str,
-    )
-
+    
     parser.add_argument(
         "-p",
         dest="path_unit_folder",
@@ -378,9 +352,6 @@ if __name__ == "__main__":
     args = vars(parser.parse_args())
 
     str_huc8 = args["str_huc8"]
-    path_fid_xs_info_arg = args["path_fid_xs_info_arg"]
-    path_ras_output_arg = args["path_ras_output_arg"]
-    str_out_arg = args["str_out_arg"]
     path_unit_folder = args["path_unit_folder"]
 
     log_file_folder = os.path.join(path_unit_folder, "logs")
@@ -397,8 +368,8 @@ if __name__ == "__main__":
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
-        create_src_feature_ids(
-            str_huc8, path_fid_xs_info_arg, path_ras_output_arg, path_unit_folder, str_out_arg
+        fn_create_src_feature_ids(
+            str_huc8, path_unit_folder,
         )
 
     except Exception:

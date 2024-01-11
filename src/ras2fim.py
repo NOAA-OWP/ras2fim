@@ -33,6 +33,7 @@ from clip_dem_from_shape import fn_cut_dems_from_shapes
 from conflate_hecras_to_nwm import fn_conflate_hecras_to_nwm
 from convert_tif_to_ras_hdf5 import fn_convert_tif_to_ras_hdf5
 from create_fim_rasters import fn_create_fim_rasters
+from create_src_depthgrids_4fids import fn_create_src_feature_ids
 from create_geocurves import manage_geo_rating_curves_production
 from create_model_domain_polygons import fn_make_domain_polygons
 from create_shapes_from_hecras import fn_create_shapes_from_hecras
@@ -398,6 +399,17 @@ def fn_run_ras2fim(
             output_folder_path,
             model_unit,
         )
+
+    # -------------------------------------------
+
+    # --- Step 6: create_src_depthgrids_for_fids ---
+
+    RLOG.lprint("")
+    RLOG.notice("+++ Processing: STEP 6 (create src and fim rasters per fid) +++")
+    RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+
+    if int_step <= 6:
+        fn_create_src_feature_ids(str_huc8_arg, output_folder_path)
 
     # -------------------------------------------
     flt_resolution_depth_grid = int(output_resolution)

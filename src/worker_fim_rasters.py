@@ -1209,7 +1209,7 @@ def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
         hec = None
 
         # Get the river name (instead of str_feature_id in V1)
-        list_path = str_ras_projectpath.split("//")
+        list_path = str_ras_projectpath.split("\\") # is a string
         # str_river_name = str(list_path[-1][0:-4])
         str_model_id = str(list_path[-2][0:5])
 
@@ -1337,16 +1337,22 @@ def fn_run_one_ras_model(
     model_folder,
     unit_output_folder,
     log_default_folder,
-    log_file_prefix
+    log_file_prefix,
+    index_number,
+    total_number_models,
     ):
 
-    global MP_LOG
     try:
+
+        global MP_LOG
+
         file_id = sf.get_date_with_milli()
         log_file_name = f"{log_file_prefix}-{file_id}.log"
         MP_LOG.setup(os.path.join(log_default_folder, log_file_name))
 
+        MP_LOG.lprint(f"Processing Model Number {index_number+1} Out Of {total_number_models}")
         MP_LOG.lprint(f"Starting Processing {model_folder} Model")
+        MP_LOG.trace(str_ras_projectpath)
 
         all_x_sections_info = fn_run_hecras(str_ras_projectpath, int_number_of_steps)
 
