@@ -25,6 +25,7 @@ import traceback
 
 import pyproj
 
+
 import shared_functions as sf
 import shared_validators as val
 import shared_variables as sv
@@ -394,11 +395,7 @@ def fn_run_ras2fim(
     # ==============================================
 
     if int_step <= 5:
-        fn_create_fim_rasters(
-            str_huc8_arg,
-            output_folder_path,
-            model_unit,
-        )
+        fn_create_fim_rasters(str_huc8_arg, output_folder_path, model_unit)
 
     # -------------------------------------------
 

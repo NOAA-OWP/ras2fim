@@ -15,7 +15,6 @@ import shutil
 import time
 import traceback
 
-# from multiprocessing import Pool
 from concurrent.futures import ProcessPoolExecutor
 
 import shared_functions as sf
@@ -23,38 +22,8 @@ import shared_variables as sv
 import worker_fim_rasters
 
 
-# import tqdm
-
-
 # Global Variables
 RLOG = sv.R2F_LOG
-
-
-# -------------------------------------------------
-# Print iterations progress
-def fn_print_progress_bar(
-    iteration, total, prefix="", suffix="", decimals=0, length=100, fill="█", printEnd="\r"
-):
-    """
-    from: https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
-    Call in a loop to create terminal progress bar
-    Keyword arguments:
-        iteration   - Required  : current iteration (Int)
-        total       - Required  : total iterations (Int)
-        prefix      - Optional  : prefix string (Str)
-        suffix      - Optional  : suffix string (Str)
-        decimals    - Optional  : positive number of decimals in percent complete (Int)
-        length      - Optional  : character length of bar (Int)
-        fill        - Optional  : bar fill character (Str)
-        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
-    """
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + "-" * (length - filledLength)
-    print(f"\r{prefix} |{bar}| {percent}% {suffix}", end=printEnd)
-    # Print New Line on Complete
-    if iteration == total:
-        print()
 
 
 # -------------------------------------------------
@@ -75,7 +44,8 @@ def fn_create_fim_rasters(
         # so sometimes mkdir can fail if rmtree isn't done
         time.sleep(1)  # 1 seconds
 
-        # os.mkdir(self.path_created_ras_models)
+        # re-created later
+
 
     # Constant - number of flood depth profiles to run on the first pass
     int_fn_starting_flow = 1  # cfs
@@ -83,16 +53,13 @@ def fn_create_fim_rasters(
     # Constant - Starting flow for the first pass of the HEC-RAS simulation
     int_number_of_steps = 76
 
-    RLOG.lprint("  ---(w) HUC-8 WATERSHED: " + huc8_num)
-
-    RLOG.lprint("  ---(o) OUTPUT PATH: " + unit_output_folder)
-
     RLOG.lprint("===================================================================")
-
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
     RLOG.notice("|               CREATING CONFLATED HEC-RAS MODELS                 |")
     RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("  ---(w) HUC-8 WATERSHED: " + huc8_num)
+    RLOG.lprint("  ---(o) OUTPUT PATH: " + unit_output_folder)
 
     worker_fim_rasters.create_hecras_files(
         huc8_num, int_fn_starting_flow, int_number_of_steps, unit_output_folder, model_unit
@@ -132,7 +99,7 @@ def fn_create_fim_rasters(
         ctr += 1
 
     # create a pool of processors
-    num_processors = mp.cpu_count() - 6  # 2
+    num_processors = mp.cpu_count() - 2
     import sys
 
     with ProcessPoolExecutor(max_workers=num_processors) as executor:
@@ -144,17 +111,6 @@ def fn_create_fim_rasters(
             except Exception:
                 RLOG.critical(traceback.format_exc())
                 sys.exit(1)
-
-        # tqdm.tqdm(
-        #     executor.imap(worker_fim_rasters.fn_run_one_ras_model, ls_run_hecras_inputs),
-        #     total=len_points_agg,
-        #     desc="Number of Processed RAS Models",
-        #     bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
-        #     ncols=67,
-        # )
-
-    # pool.close()
-    # pool.join()
 
     # Now that multi-proc is done, lets merge all of the independent log file from each
     RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
@@ -212,7 +168,7 @@ if __name__ == "__main__":
     model_unit = args["model_unit"]
     unit_output_folder = args["unit_output_folder"]
 
-    log_file_folder = args["unit_output_folder"]
+    log_file_folder = os.path.join(args["unit_output_folder"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.

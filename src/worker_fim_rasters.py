@@ -95,63 +95,68 @@ def fn_get_flow_dataframe(str_path_hecras_flow_fn):
     df['start_xs'] = []
     df['max_flow'] = []
 
-    file1 = open(str_path_hecras_flow_fn, 'r')
-    lines = file1.readlines()
-    i = 0  # number of the current row
+    with open(str_path_hecras_flow_fn, 'r') as hecras_flow_file:
+        hecras_flow_lines = hecras_flow_file.readlines()
+        i = 0  # number of the current row
 
-    for line in lines:
-        if line[:19] == 'Number of Profiles=':
-            # determine the number of profiles
-            int_flow_profiles = int(line[19:])
+        for line in hecras_flow_lines:
+            if line[:19] == 'Number of Profiles=':
+                # determine the number of profiles
+                int_flow_profiles = int(line[19:])
 
-            # determine the number of rows of flow - each row has maximum of 10
-            int_flow_rows = int(int_flow_profiles // 10 + 1)
+                # determine the number of rows of flow - each row has maximum of 10
+                int_flow_rows = int(int_flow_profiles // 10 + 1)
 
-        if line[:15] == 'River Rch & RM=':
-            str_river_reach = line[15:]  # remove first 15 characters
+            if line[:15] == 'River Rch & RM=':
+                str_river_reach = line[15:]  # remove first 15 characters
 
-            # split the data on the comma
-            list_river_reach = str_river_reach.split(",")
+                # split the data on the comma
+                list_river_reach = str_river_reach.split(",")
 
-            # Get from array - use strip to remove whitespace
-            str_river = list_river_reach[0].strip()
-            str_reach = list_river_reach[1].strip()
-            str_start_xs = list_river_reach[2].strip()
-            flt_start_xs = float(str_start_xs)
+                # Get from array - use strip to remove whitespace
+                str_river = list_river_reach[0].strip()
+                str_reach = list_river_reach[1].strip()
+                str_start_xs = list_river_reach[2].strip()
+                flt_start_xs = float(str_start_xs)
 
-            # Read the flow values line(s)
-            list_flow_values = []
+                # Read the flow values line(s)
+                list_flow_values = []
 
-            # for each line with flow data
-            for j in range(i + 1, i + int_flow_rows + 1):
-                # get the current line
-                line_flows = lines[j]
+                # for each line with flow data
+                for j in range(i + 1, i + int_flow_rows + 1):
+                    # get the current line
+                    line_flows = hecras_flow_lines[j]
 
-                # determine the number of values on this
-                # line from character count
-                int_val_in_row = int((len(lines[j]) - 1) / 8)
+                    # determine the number of values on this
+                    # line from character count
+                    int_val_in_row = int((len(hecras_flow_lines[j]) - 1) / 8)
 
-                # for each value in the row
-                for k in range(0, int_val_in_row):
-                    # get the flow value (Max of 8 characters)
-                    str_flow = line_flows[k * 8 : k * 8 + 8].strip()
-                    # convert the string to a float
-                    flt_flow = float(str_flow)
-                    # append data to list of flow values
-                    list_flow_values.append(flt_flow)
+                    # for each value in the row
+                    for k in range(0, int_val_in_row):
+                        # get the flow value (Max of 8 characters)
+                        str_flow = line_flows[k * 8 : k * 8 + 8].strip()
+                        # convert the string to a float
+                        flt_flow = float(str_flow)
+                        # append data to list of flow values
+                        list_flow_values.append(flt_flow)
 
-            # Get the max value in list
-            flt_max_flow = max(list_flow_values)
+                # Get the max value in list
+                flt_max_flow = max(list_flow_values)
 
-            # write to dataFrame
-            df_new_row = pd.DataFrame.from_records(
-                [{"river": str_river, "reach": str_reach, "start_xs": flt_start_xs, "max_flow": flt_max_flow}]
-            )
-            df = pd.concat([df, df_new_row], ignore_index=True)
+                # write to dataFrame
+                df_new_row = pd.DataFrame.from_records(
+                    [
+                        {
+                            "river": str_river,
+                            "reach": str_reach,
+                            "start_xs": flt_start_xs,
+                            "max_flow": flt_max_flow,
+                        }
+                    ]
+                )
+                df = pd.concat([df, df_new_row], ignore_index=True)
 
-        i += 1
-
-    file1.close()
+            i += 1
 
     return df
 
@@ -180,28 +185,26 @@ def create_list_of_paths_flow_geometry_files_4each_BCs(path_to_conflated_streams
     # Water surface elevation BC
     ls_path_to_flow_file_wse = []
     for fpath in ls_path_flowfiles:
-        file_flow = open(fpath, 'r')
-        lines_flow = file_flow.readlines()
+        with open(fpath, 'r') as file_flow:
+            lines_flow = file_flow.readlines()
 
-        for flines in lines_flow:
-            if flines[:11] == "Dn Known WS":
-                ls_path_to_flow_file_wse.append(fpath)
-                break
-
-        file_flow.close()
+            for flines in lines_flow:
+                if flines[:11] == "Dn Known WS":
+                    ls_path_to_flow_file_wse.append(fpath)
+                    break
+            file_flow.close()
 
     # Normal depth BC
     ls_path_to_flow_file_nd = []
     for fpath2 in ls_path_flowfiles:
-        file_flow2 = open(fpath2, 'r')
-        lines_flow2 = file_flow2.readlines()
+        with open(fpath2, 'r') as file_flow2:
+            lines_flow2 = file_flow2.readlines()
 
-        for flines2 in lines_flow2:
-            if flines2[:8] == "Dn Slope":
-                ls_path_to_flow_file_nd.append(fpath2)
-                break
-
-        file_flow2.close()
+            for flines2 in lines_flow2:
+                if flines2[:8] == "Dn Slope":
+                    ls_path_to_flow_file_nd.append(fpath2)
+                    break
+            file_flow2.close()
 
     # List of geometry file paths
     ls_path_to_geo_file_wse = []
@@ -252,88 +255,88 @@ def compute_boundray_condition_wse(
         # Water surface elevation BC
         str_path_hecras_flow_fn = ls_path_to_flow_file_wse[path_in]
 
-        file1 = open(str_path_hecras_flow_fn, 'r')
-        lines = file1.readlines()
-        i = 0  # number of the current row
-        list_all_flow_values = []
+        with open(str_path_hecras_flow_fn, 'r') as hecras_flow_file:
+            hecras_flow_lines = hecras_flow_file.readlines()
+            i = 0  # number of the current row
+            list_all_flow_values = []
 
-        for line in lines:
-            if line[:19] == 'Number of Profiles=':
-                # determine the number of profiles
-                int_flow_profiles = int(line[19:])
+            for line in hecras_flow_lines:
+                if line[:19] == 'Number of Profiles=':
+                    # determine the number of profiles
+                    int_flow_profiles = int(line[19:])
 
-                # determine the number of rows of flow - each row has maximum of 10
-                int_flow_rows = int(int_flow_profiles // 10 + 1)
+                    # determine the number of rows of flow - each row has maximum of 10
+                    int_flow_rows = int(int_flow_profiles // 10 + 1)
 
-            if line[:15] == 'River Rch & RM=':
-                # Read the flow values line(s)
-                list_flow_values = []
+                if line[:15] == 'River Rch & RM=':
+                    # Read the flow values line(s)
+                    list_flow_values = []
 
-                # for each line with flow data
-                for j in range(i + 1, i + int_flow_rows + 1):
-                    # get the current line
-                    line_flows = lines[j]
+                    # for each line with flow data
+                    for j in range(i + 1, i + int_flow_rows + 1):
+                        # get the current line
+                        line_flows = hecras_flow_lines[j]
 
-                    # determine the number of values on this
-                    # line from character count
-                    int_val_in_row = int((len(lines[j]) - 1) / 8)
+                        # determine the number of values on this
+                        # line from character count
+                        int_val_in_row = int((len(hecras_flow_lines[j]) - 1) / 8)
 
-                    # for each value in the row
-                    for k in range(0, int_val_in_row):
-                        # get the flow value (Max of 8 characters)
-                        str_flow = line_flows[k * 8 : k * 8 + 8].strip()
-                        # convert the string to a float
-                        flt_flow = float(str_flow)
-                        # append data to list of flow values
-                        list_flow_values.append(flt_flow)
+                        # for each value in the row
+                        for k in range(0, int_val_in_row):
+                            # get the flow value (Max of 8 characters)
+                            str_flow = line_flows[k * 8 : k * 8 + 8].strip()
+                            # convert the string to a float
+                            flt_flow = float(str_flow)
+                            # append data to list of flow values
+                            list_flow_values.append(flt_flow)
 
-                # print(list_flow_values)
-                list_all_flow_values.append(list_flow_values)
+                    # print(list_flow_values)
+                    list_all_flow_values.append(list_flow_values)
 
-            i += 1
+                i += 1
 
-        df_all_flow_values = pd.DataFrame(list_all_flow_values)
-        column_names = ['flow' + str(j + 1) for j in range(int_flow_profiles)]
-        df_all_flow_values.columns = column_names
+            df_all_flow_values = pd.DataFrame(list_all_flow_values)
+            column_names = ['flow' + str(j + 1) for j in range(int_flow_profiles)]
+            df_all_flow_values.columns = column_names
 
-        all_flow_info_df = pd.concat([max_flow_df_wse, df_all_flow_values], axis=1)
-        target_xs = int(list(all_flow_info_df['start_xs'])[-1])  # last xs that flow changes in
-        # str_target_xs = str(target_xs)
+            all_flow_info_df = pd.concat([max_flow_df_wse, df_all_flow_values], axis=1)
+            target_xs = int(list(all_flow_info_df['start_xs'])[-1])  # last xs that flow changes in
+            # str_target_xs = str(target_xs)
 
-        # -------------------------------------------------
-        # All flow data dataframe for the boundary condition of known WSE
-        target_xs_flows = df_all_flow_values.iloc[-1]
-        target_xs_flows_df = pd.DataFrame(target_xs_flows)
-        target_xs_flows_df.index = [k for k in range(int_flow_profiles)]
-        target_xs_flows_df.columns = ['discharge']
+            # -------------------------------------------------
+            # All flow data dataframe for the boundary condition of known WSE
+            target_xs_flows = df_all_flow_values.iloc[-1]
+            target_xs_flows_df = pd.DataFrame(target_xs_flows)
+            target_xs_flows_df.index = [k for k in range(int_flow_profiles)]
+            target_xs_flows_df.columns = ['discharge']
 
-        # Get the WSE for the boundray condition (known WSE)
-        target_xs_wse = []
-        for line in lines:
-            if line[:12] == 'Dn Known WS=':
-                # determine the number of profiles
-                WSE = float(line[12:])
-                target_xs_wse.append(WSE)
+            # Get the WSE for the boundray condition (known WSE)
+            target_xs_wse = []
+            for line in hecras_flow_lines:
+                if line[:12] == 'Dn Known WS=':
+                    # determine the number of profiles
+                    WSE = float(line[12:])
+                    target_xs_wse.append(WSE)
 
-        target_xs_wse_df = pd.DataFrame(target_xs_wse, columns=['wse'])
+            target_xs_wse_df = pd.DataFrame(target_xs_wse, columns=['wse'])
 
-        # Dataframe of known WSE BC (flow and wse)
-        bc_df = pd.concat([target_xs_flows_df, target_xs_wse_df], axis=1)
-        bc_sort_df = bc_df.sort_values(by=['discharge'])
+            # Dataframe of known WSE BC (flow and wse)
+            bc_df = pd.concat([target_xs_flows_df, target_xs_wse_df], axis=1)
+            bc_sort_df = bc_df.sort_values(by=['discharge'])
 
-        file1.close()
+            hecras_flow_file.close()
 
         # -------------------------------------------------
         # Finding the last cross section (target XS for min elevation)
         # Water surface elevation BC
         str_path_hecras_geo_fn = ls_path_to_geo_file_wse[path_in]  #
 
-        file_geo = open(str_path_hecras_geo_fn, 'r')
-        lines_geo = file_geo.readlines()
-        for gline in lines_geo:
-            if gline[:14] == 'Type RM Length':
-                target_line = gline.split(",")
-                counter_xs = int(target_line[1])
+        with open(str_path_hecras_geo_fn, 'r') as file_geo:
+            lines_geo = file_geo.readlines()
+            for gline in lines_geo:
+                if gline[:14] == 'Type RM Length':
+                    target_line = gline.split(",")
+                    counter_xs = int(target_line[1])
 
         # Last XS for min elevation
         str_target_xs_min_elev = counter_xs
@@ -390,8 +393,6 @@ def compute_boundray_condition_wse(
         flt_stat_elev_df = pd.DataFrame(flt_stat_elev_ls_rsh, columns=['sta', 'elev']).dropna()
 
         min_elev_target_xs = min(flt_stat_elev_df['elev'])
-
-        file_geo.close()
 
         # -------------------------------------------------
         # WSE boundary condition (bc) dataframe plus min elevation point
@@ -472,11 +473,6 @@ def compute_boundray_condition_wse(
 
         list_bc_target_xs_huc8.append(bc_target_xs)
 
-    # -------------------------------------------------
-    # Create profile names
-    # profile_names = fn_create_profile_names(first_pass_flows_xs_wse_df.index, '_ft')
-
-    # TODO make all src monotonic
     # TODO optimize k-not point
 
     return list_bc_target_xs_huc8
@@ -514,15 +510,15 @@ def compute_boundray_condition_nd(int_fn_starting_flow, int_number_of_steps, ls_
         list_first_pass_flows_xs_nd.append(first_pass_flows_xs_nd)
 
         # read the slope from parent ras model
-        file_flow2 = open(ls_path_to_flow_file_nd[path_in], 'r')
-        lines_flow2 = file_flow2.readlines()
+        with open(ls_path_to_flow_file_nd[path_in], 'r') as file_flow2:
+            lines_flow2 = file_flow2.readlines()
 
-        for flines2 in lines_flow2:
-            if flines2[:8] == "Dn Slope":
-                list_str_slope_bc_nd.append(flines2[9:])
-                break
+            for flines2 in lines_flow2:
+                if flines2[:8] == "Dn Slope":
+                    list_str_slope_bc_nd.append(flines2[9:])
+                    break
 
-        file_flow2.close()
+            file_flow2.close()
 
     return list_first_pass_flows_xs_nd, list_str_slope_bc_nd
 
@@ -674,9 +670,9 @@ def create_ras_flow_file_nd(
         str_flowfile2 += "DSS Import FillOption= 0 " + "\n"
 
         new_flow_file_path_v2 = os.path.join(path_newras_nd, path_to_flow_file_nd_splt[-1])
-        file2 = open(new_flow_file_path_v2, "w")  # str_feature_id
-        file2.write(str_flowfile2)
-        file2.close()
+        with open(new_flow_file_path_v2, "w") as file2:  # str_feature_id
+            file2.write(str_flowfile2)
+            file2.close()
 
 
 # -------------------------------------------------
@@ -700,7 +696,6 @@ def create_ras_flow_file_wse(
     # "conflated_ras_models.csv":
     # Hard-coded as the name of output csv file for step 2
 
-    # TODO: path_to_conflated_streams_csv
     str_path_to_csv = os.path.join(path_to_conflated_streams_csv, "conflated_ras_models.csv")
 
     path_conflated_streams = pd.read_csv(str_path_to_csv)
@@ -708,7 +703,7 @@ def create_ras_flow_file_wse(
     path_conflated_models_splt = [path.split("\\") for path in path_conflated_models]
     conflated_model_names = [names[-2] for names in path_conflated_models_splt]
 
-    # TODO: path_model_catalog
+
     path_model_catalog = os.path.join(str_output_filepath, "OWP_ras_models_catalog_" + huc8_num + ".csv")
 
     model_catalog = pd.read_csv(path_model_catalog)
@@ -756,10 +751,10 @@ def create_ras_flow_file_wse(
 
                 # if os.path.isfile(source):
                 try:
-                    shutil.copytree(source, destination)
+                    shutil.copytree(source, destination, dirs_exist_ok=True)
                 except OSError as exc:  # python >2.5
                     if exc.errno in (errno.ENOTDIR, errno.EINVAL):
-                        shutil.copy(source, destination)
+                        shutil.copy(source, destination, dirs_exist_ok=True)
                     else:
                         raise
 
@@ -846,19 +841,17 @@ def create_ras_flow_file_wse(
         str_flowfile += "DSS Import FillOption= 0 " + "\n"
 
         new_flow_file_path_wse = os.path.join(path_newras_wse, path_to_flow_file_wse_splt[-1])
-        file = open(new_flow_file_path_wse, "w")
-        file.write(str_flowfile)
-        file.close()
+        with open(new_flow_file_path_wse, "w") as file:
+            file.write(str_flowfile)
+            file.close()
 
 
-# model_unit = "feet"
 # -------------------------------------------------
 # Create the HEC-RAS Plan file
 # All RAS Models BC ~ 5 S
 # -------------------------------------------------
 def create_ras_plan_file(str_output_filepath):
     current_script_dir = os.path.dirname(os.path.abspath(__file__))
-    # print(__file__, current_script_dir)
     str_plan_middle_path = os.path.join(current_script_dir, "PlanStandardText01.txt")
     str_plan_footer_path = os.path.join(current_script_dir, "PlanStandardText02.txt")
 
@@ -900,10 +893,9 @@ def create_ras_plan_file(str_output_filepath):
         path_plan = os.path.join(
             str_output_filepath, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, folder, folder[6:] + ".p01"
         )
-        file = open(path_plan, "w")
-
-        file.write(str_planfile)
-        file.close()
+        with open(path_plan, "w") as file:
+            file.write(str_planfile)
+            file.close()
 
 
 # -------------------------------------------------
@@ -941,10 +933,9 @@ def create_ras_project_file(str_output_filepath, model_unit):
         path_project = os.path.join(
             str_output_filepath, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, folder, folder[6:] + ".prj"
         )
-        file = open(path_project, "w")
-
-        file.write(str_projectfile)
-        file.close()
+        with open(path_project, "w") as file:
+            file.write(str_projectfile)
+            file.close()
 
 
 # -------------------------------------------------
@@ -1102,10 +1093,9 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
             folder_names_conflated[xy],
             str_river_id_fn[xy] + ".rasmap",
         )
-        file = open(rasmap_path, "w")
-
-        file.write(str_ras_mapper_file)
-        file.close()
+        with open(rasmap_path, "w") as file:
+            file.write(str_ras_mapper_file)
+            file.close()
 
 
 # -------------------------------------------------
@@ -1113,11 +1103,8 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
 # For All RAS Models BC ~ 3 min
 # -------------------------------------------------
 def create_hecras_files(huc8_num, int_fn_starting_flow, int_number_of_steps, unit_output_folder, model_unit):
-    # print(os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF))
-    # TODO: need to be sort out with ROB
     path_to_conflated_streams_csv = os.path.join(unit_output_folder, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
-    # print(str_output_filepath)
-    # print(path_to_conflated_streams_csv)
+
     # Reading original parent models flow and geometry files
     # with different WSE and normal depth (ND, slope) BCs
     # and create a seperate list of paths to
@@ -1190,15 +1177,13 @@ def create_hecras_files(huc8_num, int_fn_starting_flow, int_number_of_steps, uni
 # Runs HEC-RAS
 # For One RAS Model ~ 3 min
 # -------------------------------------------------
-
-
 def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
     try:
         hec = None
 
         # Get the river name (instead of str_feature_id in V1)
         list_path = str_ras_projectpath.split("\\")  # is a string
-        # str_river_name = str(list_path[-1][0:-4])
+
         str_model_id = str(list_path[-2][0:5])
 
         hec = win32com.client.Dispatch("RAS630.HECRASController")
@@ -1359,133 +1344,3 @@ def fn_run_one_ras_model(
             print(traceback.format_exc())
 
         # sys.exit(1)
-
-
-# -------------------------------------------------
-# Main Function: Calls All defs and
-# Creates depth grids for one HUC8 ~ 20 hours
-# -------------------------------------------------
-# def create_run_hecras_models(huc8_num, str_output_filepath, model_unit):
-#     int_fn_starting_flow = 1  # cfs
-#     int_number_of_steps = 76
-
-#     RLOG.lprint("")
-#     RLOG.lprint("+=================================================================+")
-#     RLOG.lprint("|               CREATING CONFLATED HEC-RAS MODELS                 |")
-#     RLOG.lprint("+-----------------------------------------------------------------+")
-
-#     create_hecras_files(
-#         huc8_num,
-#         int_fn_starting_flow,
-#         int_number_of_steps,
-#         str_output_filepath,
-#         model_unit,
-#     )
-
-#     path_created_ras_models = os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-
-#     names_created_ras_models = os.listdir(path_created_ras_models)
-
-#     RLOG.lprint("")
-#     RLOG.lprint("+=================================================================+")
-#     RLOG.lprint("|              PROCESSING CONFLATED HEC-RAS MODELS                |")
-#     RLOG.lprint("|          AND CREATING DEPTH GRIDS FOR HEC-RAS STREAMS           |")
-#     RLOG.lprint("+-----------------------------------------------------------------+")
-
-#     for folder in names_created_ras_models:
-#         folder_mame_splt = folder.split("_")
-#         project_file_name = folder_mame_splt[1]
-
-#         str_ras_projectpath = path_created_ras_models + '//' + folder + '//' + project_file_name + ".prj"
-
-#         all_x_sections_info = fn_run_hecras(str_ras_projectpath, int_number_of_steps)
-
-#         path_to_all_x_sections_info = os.path.join(str_output_filepath,
-#                                                    sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
-#                                                    folder)
-
-#         all_x_sections_info.to_csv(
-#             os.path.join(path_to_all_x_sections_info, "all_x_sections_info" + "_" + folder + ".csv")
-#         )
-
-# # Be happy
-
-
-# # str_output_filepath = "C:/ras2fim_data/OWP_ras_models/ras2fimv2.0/ras2fim_v2_output_12090301"
-# # huc8_num = "12090301"
-# # model_unit = "feet"
-# # create_run_hecras_models(
-# # huc8_num,
-# # str_output_filepath,
-# # model_unit
-# # )
-
-
-# if __name__ == "__main__":
-#     # Sample:
-#     # python worker_fim_rasters -w 12090301
-#     # -o 'C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\ras2fim_v2_output_12090301'
-#     # -u 'feet'
-
-#     parser = argparse.ArgumentParser(
-#         description="===== CONFLATE HEC-RAS TO NATIONAL WATER MODEL STREAMS ====="
-#     )
-
-#     parser.add_argument(
-#         "-w",
-#         dest="str_huc8",
-#         help="REQUIRED: HUC-8 watershed that is being evaluated: Example: 12090301",
-#         required=True,
-#         metavar="STRING",
-#         type=str,
-#     )
-
-#     parser.add_argument(
-#         "-o",
-#         dest="str_output_filepath",
-#         help=r"REQUIRED: path to write output files: Example: C:/ras2fimv2.0/ras2fim_v2_output_12090301",
-#         required=True,
-#         metavar="DIR",
-#         type=str,
-#     )
-
-#     parser.add_argument(
-#         "-u",
-#         dest="model_unit",
-#         help="REQUIRED: HEC-RAS Models Unit: Example: feet",
-#         required=True,
-#         metavar="STRING",
-#         type=str,
-#     )
-
-#     args = vars(parser.parse_args())
-
-#     str_huc8 = args["str_huc8"]
-#     str_output_filepath = args["str_output_filepath"]
-#     model_unit = args["model_unit"]
-#     log_file_folder = os.path.join(str_output_filepath, "logs")
-
-#     try:
-#         # Catch all exceptions through the script if it came
-#         # from command line.
-#         # Note.. this code block is only needed here if you are calling from command line.
-#         # Otherwise, the script calling one of the functions in here is assumed
-#         # to have setup the logger.
-
-#         # creates the log file name as the script name
-#         script_file_name = os.path.basename(__file__).split('.')[0]
-#         # Assumes RLOG has been added as a global var.
-#         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
-
-#         # call main program
-#         create_run_hecras_models(str_huc8, str_output_filepath, model_unit)
-
-#     except Exception:
-#         RLOG.critical(traceback.format_exc())
-
-
-# -------------------------------------------------
-# TODO: take terrain path (step4) and projection path (step2) seperatly and add their arguments
-# TODO: Add ras2fime v1 error functions
-# TODO: Add new Rob's error functions
-# -------------------------------------------------
