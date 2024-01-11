@@ -315,6 +315,7 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
             )
             #
 
+    RLOG.success("Complete")
 
 # huc8_num = '12090301'
 # path_to_step6 = path_model_catalog + '\\06_src_depthgrids'

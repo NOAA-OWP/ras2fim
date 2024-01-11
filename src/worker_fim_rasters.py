@@ -1011,11 +1011,11 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
 
             if model_unit == "meter":
                 str_ras_mapper_file += (
-                    "\\" + str_river_id_fn[xy] + "\\" + "Depth (" + str(i) + 'm).vrt">' + "\n"
+                    "\\" + str_river_id_fn[xy] + "\\" + "Depth_" + str(i) + 'm.vrt">' + "\n"
                 )
             else:
                 str_ras_mapper_file += (
-                    "\\" + str_river_id_fn[xy] + "\\" + "Depth (" + str(i) + 'ft).vrt">' + "\n"
+                    "\\" + str_river_id_fn[xy] + "\\" + "Depth_" + str(i) + 'ft.vrt">' + "\n"
                 )
 
             str_ras_mapper_file += "        <LabelFeatures "
@@ -1027,11 +1027,11 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
 
             if model_unit == "meter":
                 str_ras_mapper_file += (
-                    'Terrain" StoredFilename=".\\' + str_river_id_fn[xy] + "\\Depth (" + str(i) + 'm).vrt"'
+                    'Terrain" StoredFilename=".\\' + str_river_id_fn[xy] + "\\Depth_" + str(i) + 'm.vrt"'
                 )
             else:
                 str_ras_mapper_file += (
-                    'Terrain" StoredFilename=".\\' + str_river_id_fn[xy] + "\\Depth (" + str(i) + 'ft).vrt"'
+                    'Terrain" StoredFilename=".\\' + str_river_id_fn[xy] + "\\Depth_" + str(i) + 'ft.vrt"'
                 )
 
             str_ras_mapper_file += (
@@ -1048,19 +1048,19 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
         str_ras_mapper_file += 'ResultsMap" Checked="True" Filename=".'
 
         str_ras_mapper_file += (
-            "\\" + str_river_id_fn[xy] + "\\" + "Inundation Boundary (" + str(list_step_profiles_xml_fn[-1])
+            "\\" + str_river_id_fn[xy] + "\\" + "Inundation Boundary_" + str(list_step_profiles_xml_fn[-1])
         )
 
-        str_ras_mapper_file += 'ft Value_0).shp">' + "\n"
+        str_ras_mapper_file += 'ft Value_0.shp">' + "\n"
         str_ras_mapper_file += '        <MapParameters MapType="depth" '
         str_ras_mapper_file += 'LayerName="Inundation Boundary"'
         str_ras_mapper_file += ' OutputMode="Stored Polygon'
         str_ras_mapper_file += ' Specified Depth"  StoredFilename=".'
         str_ras_mapper_file += (
-            "\\" + str_river_id_fn[xy] + "\\" + "Inundation Boundary (" + str(list_step_profiles_xml_fn[-1])
+            "\\" + str_river_id_fn[xy] + "\\" + "Inundation Boundary_" + str(list_step_profiles_xml_fn[-1])
         )
         str_ras_mapper_file += (
-            'm Value_0).shp"  Terrain="'
+            'm Value_0.shp"  Terrain="'
             + terrain_names[xy]
             + '" ProfileIndex="'
             + str(len(list_step_profiles_xml_fn) - 1)
