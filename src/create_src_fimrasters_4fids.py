@@ -13,7 +13,7 @@ import matplotlib.ticker as tick
 # import numpy as np
 import pandas as pd
 
-import ras2fim_logger
+# import ras2fim_logger
 import shared_variables as sv
 
 

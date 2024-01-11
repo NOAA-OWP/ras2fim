@@ -592,8 +592,8 @@ def create_ras_flow_file_nd(
         path_newras_nd = os.path.join(
             str_output_filepath,
             sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
-            model_ids + "_" + path_to_flow_file_nd_splt[-2][8:-15]
-            )
+            model_ids + "_" + path_to_flow_file_nd_splt[-2][8:-15],
+        )
 
         # Copy and paste conflated parent ras models in the output ras model directory
         for folders in folder_names_conflated:
@@ -745,7 +745,7 @@ def create_ras_flow_file_wse(
         path_newras_wse = os.path.join(
             str_output_filepath,
             sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
-            model_ids + "_" + path_to_flow_file_wse_splt[-2][8:-15]
+            model_ids + "_" + path_to_flow_file_wse_splt[-2][8:-15],
         )
 
         # Copy and paste conflated parent ras models in the new ras model directory
@@ -857,7 +857,6 @@ def create_ras_flow_file_wse(
 # All RAS Models BC ~ 5 S
 # -------------------------------------------------
 def create_ras_plan_file(str_output_filepath):
-
     current_script_dir = os.path.dirname(os.path.abspath(__file__))
     # print(__file__, current_script_dir)
     str_plan_middle_path = os.path.join(current_script_dir, "PlanStandardText01.txt")
@@ -898,10 +897,9 @@ def create_ras_plan_file(str_output_filepath):
             file_contents = f.read()
         str_planfile += file_contents
 
-        path_plan = os.path.join(str_output_filepath, 
-                                 sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, 
-                                 folder, 
-                                 folder[6:] + ".p01")
+        path_plan = os.path.join(
+            str_output_filepath, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, folder, folder[6:] + ".p01"
+        )
         file = open(path_plan, "w")
 
         file.write(str_planfile)
@@ -913,7 +911,6 @@ def create_ras_plan_file(str_output_filepath):
 # All RAS Models BC ~ 5 S
 # -------------------------------------------------
 def create_ras_project_file(str_output_filepath, model_unit):
-
     current_script_dir = os.path.dirname(os.path.abspath(__file__))
     str_project_footer_path = os.path.join(current_script_dir, "ProjectStandardText01.txt")
 
@@ -941,10 +938,9 @@ def create_ras_project_file(str_output_filepath, model_unit):
             file_contents = f.read()
         str_projectfile += file_contents
 
-        path_project = os.path.join(str_output_filepath,
-                                    sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
-                                    folder,
-                                    folder[6:] + ".prj")
+        path_project = os.path.join(
+            str_output_filepath, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, folder, folder[6:] + ".prj"
+        )
         file = open(path_project, "w")
 
         file.write(str_projectfile)
@@ -1104,8 +1100,8 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
             str_output_filepath_xml,
             sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
             folder_names_conflated[xy],
-            str_river_id_fn[xy] + ".rasmap"
-            )
+            str_river_id_fn[xy] + ".rasmap",
+        )
         file = open(rasmap_path, "w")
 
         file.write(str_ras_mapper_file)
@@ -1116,10 +1112,7 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
 # Create All HEC-RAS files
 # For All RAS Models BC ~ 3 min
 # -------------------------------------------------
-def create_hecras_files(
-    huc8_num, int_fn_starting_flow, int_number_of_steps, unit_output_folder, model_unit
-    ):
-
+def create_hecras_files(huc8_num, int_fn_starting_flow, int_number_of_steps, unit_output_folder, model_unit):
     # print(os.path.join(str_output_filepath, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF))
     # TODO: need to be sort out with ROB
     path_to_conflated_streams_csv = os.path.join(unit_output_folder, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
@@ -1136,7 +1129,6 @@ def create_hecras_files(
         ls_path_to_geo_file_nd,
     ] = create_list_of_paths_flow_geometry_files_4each_BCs(path_to_conflated_streams_csv)
 
-
     # Compute boundray condition for models with normal depth BCs
     list_first_pass_flows_xs_nd, list_str_slope_bc_nd = compute_boundray_condition_nd(
         int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_nd
@@ -1145,10 +1137,9 @@ def create_hecras_files(
     # Defining profile names
     # TODO: This needs to be fixed for second pass flow
     # if len(list_first_pass_flows_xs_nd)>0:
-    list_profiles = [ns for ns in range(int_number_of_steps)] #len(list_first_pass_flows_xs_nd[0])
+    list_profiles = [ns for ns in range(int_number_of_steps)]  # len(list_first_pass_flows_xs_nd[0])
     profile_names_str = fn_create_profile_names(list_profiles, '_ft')
     # else: profile_names = [f'flow{ns}_ft' for ns in range(len(list_bc_target_xs_huc8))]
-
 
     # Create the HEC-RAS Flow files Normal Depth BC ~ 40 s
     create_ras_flow_file_nd(
@@ -1160,8 +1151,7 @@ def create_hecras_files(
         list_str_slope_bc_nd,
         list_first_pass_flows_xs_nd,
         unit_output_folder,
-        )
-    
+    )
 
     # Compute boundray condition for models with wse BCs and
     # Creating the flow files for wse BC
@@ -1183,9 +1173,8 @@ def create_hecras_files(
         )
 
     else:
-        RLOG.lprint("|        There is no RAS model with WSE boundary condition        |")
-        # raise Exception("Of the current models being used, at least one must have a valid boundary condition.")
-
+        RLOG.lprint(" ")
+        RLOG.lprint("|        There Is No RAS Model With WSE Boundary Condition        |")
 
     # Create the HEC-RAS plan files ~ 5 s
     create_ras_plan_file(unit_output_folder)
@@ -1204,12 +1193,11 @@ def create_hecras_files(
 
 
 def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
-
     try:
         hec = None
 
         # Get the river name (instead of str_feature_id in V1)
-        list_path = str_ras_projectpath.split("\\") # is a string
+        list_path = str_ras_projectpath.split("\\")  # is a string
         # str_river_name = str(list_path[-1][0:-4])
         str_model_id = str(list_path[-2][0:5])
 
@@ -1340,10 +1328,8 @@ def fn_run_one_ras_model(
     log_file_prefix,
     index_number,
     total_number_models,
-    ):
-
+):
     try:
-
         global MP_LOG
 
         file_id = sf.get_date_with_milli()
@@ -1356,15 +1342,14 @@ def fn_run_one_ras_model(
 
         all_x_sections_info = fn_run_hecras(str_ras_projectpath, int_number_of_steps)
 
-        path_to_all_x_sections_info = os.path.join(unit_output_folder,
-                                                    sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT,
-                                                    model_folder)
+        path_to_all_x_sections_info = os.path.join(
+            unit_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, model_folder
+        )
         path_all_x_sections_info = os.path.join(
-            path_to_all_x_sections_info,
-            "all_x_sections_info" + "_" + model_folder + ".csv"
-            )
+            path_to_all_x_sections_info, "all_x_sections_info" + "_" + model_folder + ".csv"
+        )
         all_x_sections_info.to_csv(path_all_x_sections_info)
-        
+
         MP_LOG.lprint(f"Processing {model_folder} Model Completed")
 
     except Exception:
@@ -1374,6 +1359,7 @@ def fn_run_one_ras_model(
             print(traceback.format_exc())
 
         # sys.exit(1)
+
 
 # -------------------------------------------------
 # Main Function: Calls All defs and

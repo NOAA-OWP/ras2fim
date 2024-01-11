@@ -14,18 +14,21 @@ import os
 import shutil
 import time
 import traceback
+
 # from multiprocessing import Pool
 from concurrent.futures import ProcessPoolExecutor
-
-# import tqdm
 
 import shared_functions as sf
 import shared_variables as sv
 import worker_fim_rasters
 
 
+# import tqdm
+
+
 # Global Variables
 RLOG = sv.R2F_LOG
+
 
 # -------------------------------------------------
 # Print iterations progress
@@ -57,11 +60,10 @@ def fn_print_progress_bar(
 # -------------------------------------------------
 def fn_create_fim_rasters(
     huc8_num,
-    unit_output_folder, #str_output_filepath: C:\ras2fim_v2_output\12090301_2277_240109
+    unit_output_folder,  # str_output_filepath: C:\ras2fim_v2_output\12090301_2277_240109
     model_unit,
-#    is_verbose=False,
-    ):
-
+    #    is_verbose=False,
+):
     # TODO: Oct 25, 2023, continue with adding the "is_verbose" system
     start_dt = dt.datetime.utcnow()
 
@@ -73,7 +75,7 @@ def fn_create_fim_rasters(
         # so sometimes mkdir can fail if rmtree isn't done
         time.sleep(1)  # 1 seconds
 
-        #os.mkdir(self.path_created_ras_models)
+        # os.mkdir(self.path_created_ras_models)
 
     # Constant - number of flood depth profiles to run on the first pass
     int_fn_starting_flow = 1  # cfs
@@ -93,12 +95,8 @@ def fn_create_fim_rasters(
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     worker_fim_rasters.create_hecras_files(
-        huc8_num,
-        int_fn_starting_flow,
-        int_number_of_steps,
-        unit_output_folder,
-        model_unit,
-    )   
+        huc8_num, int_fn_starting_flow, int_number_of_steps, unit_output_folder, model_unit
+    )
     RLOG.lprint("*** All HEC-RAS Models Created ***")
     RLOG.lprint("")
     RLOG.lprint("")
@@ -114,41 +112,38 @@ def fn_create_fim_rasters(
     ls_run_hecras_inputs = []
     ctr = 0
     for model_folder in names_created_ras_models:
-
         folder_mame_splt = model_folder.split("_")
         project_file_name = folder_mame_splt[1]
 
         str_ras_projectpath = os.path.join(path_created_ras_models, model_folder, project_file_name + ".prj")
 
-        run_hecras_inputs = {'str_ras_projectpath':str_ras_projectpath,
-                             'int_number_of_steps':int_number_of_steps,
-                             'model_folder':model_folder,
-                             'unit_output_folder':unit_output_folder,
-                             'log_default_folder':RLOG.LOG_DEFAULT_FOLDER,
-                             'log_file_prefix':log_file_prefix,
-                             'index_number':ctr,
-                             'total_number_models': len(names_created_ras_models)
-                             }
-        
+        run_hecras_inputs = {
+            'str_ras_projectpath': str_ras_projectpath,
+            'int_number_of_steps': int_number_of_steps,
+            'model_folder': model_folder,
+            'unit_output_folder': unit_output_folder,
+            'log_default_folder': RLOG.LOG_DEFAULT_FOLDER,
+            'log_file_prefix': log_file_prefix,
+            'index_number': ctr,
+            'total_number_models': len(names_created_ras_models),
+        }
+
         ls_run_hecras_inputs.append(run_hecras_inputs)
         ctr += 1
-    
+
     # create a pool of processors
-    num_processors = mp.cpu_count() - 6 #2
+    num_processors = mp.cpu_count() - 6  # 2
     import sys
 
     with ProcessPoolExecutor(max_workers=num_processors) as executor:
-
         executor_dict = {}
         for dicts in ls_run_hecras_inputs:
-     
             try:
                 future = executor.submit(worker_fim_rasters.fn_run_one_ras_model, **dicts)
                 executor_dict[future] = dicts['model_folder']
             except Exception:
                 RLOG.critical(traceback.format_exc())
-                sys.exit(1)           
-
+                sys.exit(1)
 
         # tqdm.tqdm(
         #     executor.imap(worker_fim_rasters.fn_run_one_ras_model, ls_run_hecras_inputs),
@@ -165,7 +160,7 @@ def fn_create_fim_rasters(
     RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
 
     RLOG.lprint("")
-    RLOG.success("STEP 5 COMPLETE")
+    RLOG.success(" STEP 5 COMPLETE ")
 
     dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
@@ -231,8 +226,11 @@ if __name__ == "__main__":
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
-        fn_create_fim_rasters(str_huc8_arg, unit_output_folder, model_unit,
-        #    is_verbose,
+        fn_create_fim_rasters(
+            str_huc8_arg,
+            unit_output_folder,
+            model_unit,
+            #    is_verbose,
         )
 
     except Exception:
