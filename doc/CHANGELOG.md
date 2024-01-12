@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.X - 2024-01-11 - [PR#247](https://github.com/NOAA-OWP/ras2fim/pull/247)
+## v2.0.beta.17 - 2024-01-12 - [PR#247](https://github.com/NOAA-OWP/ras2fim/pull/247)
 
 The main goals of this PR are to re-add the multiprocessing module to `create_fim_rasters.py`, reconnect `create_fim_rasters.py` to `worker_fim_rasters.py`, and make `ras2fim.py` work in step 5 and step 6. 
 
