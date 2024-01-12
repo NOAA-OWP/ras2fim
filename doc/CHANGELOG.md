@@ -24,6 +24,20 @@ This PR is tested for some RAS models in HUC 12090301.
 <br/><br/>
 
 
+## v2.0.beta.16 - 2024-01-12 - [PR#253](https://github.com/NOAA-OWP/ras2fim/pull/253)
+
+This PR closes the issues  #219 and #246 and fixes a bug in ras2fim Step 1 as elaborated in #219 . 
+
+### Background
+To improve the conflation accuracy in Step 2, the streamlines are cut in Step 1 by shortening the portion of the streams that are downstream of the most downstream cross section. The current code is valid only if a HEC-RAS model streamline has been digitized from upstream to downstream. However, there are many HEC-RAS models that the streamlines have been digitized from downstream to upstream (this will not impact the integrity of these 1D HEC-RAS models though). 
+
+This bug fix will evaluate if a stream has been digitized from upstream to downstream. If not, the stream linestring is reversed and then the current algorithm to shorten the streamline is applied. 
+
+### Changes  
+- `src/create_shapes_from_hecras.py`
+
+<br/><br/>
+
 ## v2.0.beta.15 - 2024-01-09 - [PR#250](https://github.com/NOAA-OWP/ras2fim/pull/250)
 
 With most V2 development being focused on figuring out the logic, we have let linting and code standards lapse. This get the files caught up for linting and moving forward, all PR's will be fully linted, styled, logging included.
