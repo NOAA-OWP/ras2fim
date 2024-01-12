@@ -25,6 +25,7 @@ import traceback
 
 import pyproj
 
+
 import shared_functions as sf
 import shared_validators as val
 import shared_variables as sv
@@ -36,6 +37,7 @@ from create_fim_rasters import fn_create_fim_rasters
 from create_geocurves import manage_geo_rating_curves_production
 from create_model_domain_polygons import fn_make_domain_polygons
 from create_shapes_from_hecras import fn_create_shapes_from_hecras
+from create_src_fimrasters_4fids import fn_create_src_feature_ids
 from get_usgs_dem_from_shape import fn_get_usgs_dem_from_shape
 from reformat_ras_rating_curve import dir_reformat_ras_rc
 from simplify_fim_rasters import fn_simplify_fim_rasters
@@ -393,15 +395,18 @@ def fn_run_ras2fim(
     # ==============================================
 
     if int_step <= 5:
-        fn_create_fim_rasters(
-            str_huc8_arg,
-            str_shapes_from_conflation_dir,
-            str_hecras_out_dir,
-            str_projection_path,
-            str_hecras_terrain_dir,
-            flt_interval,
-            B_TERRAIN_CHECK_ONLY,
-        )
+        fn_create_fim_rasters(str_huc8_arg, output_folder_path, model_unit)
+
+    # -------------------------------------------
+
+    # --- Step 6: create_src_depthgrids_for_fids ---
+
+    RLOG.lprint("")
+    RLOG.notice("+++ Processing: STEP 6 (create src and fim rasters per fid) +++")
+    RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+
+    if int_step <= 6:
+        fn_create_src_feature_ids(str_huc8_arg, output_folder_path)
 
     # -------------------------------------------
     flt_resolution_depth_grid = int(output_resolution)

@@ -5,7 +5,7 @@ Y Axis Title=Elevation
 X Axis Title(PF)=Main Channel Distance
 X Axis Title(XS)=Station
 BEGIN DESCRIPTION:
-Created from provided data for Flood Inundation Library - Andy Carter-NOAA-OWP
+Created from provided data for Flood Inundation Library - NOAA-OWP
 END DESCRIPTION:
 DSS Start Date=
 DSS Start Time=
