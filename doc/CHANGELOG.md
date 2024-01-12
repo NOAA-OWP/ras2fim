@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.16 - 2024-01-11 - [PR#253](https://github.com/NOAA-OWP/ras2fim/pull/253)
+## v2.0.beta.16 - 2024-01-12 - [PR#253](https://github.com/NOAA-OWP/ras2fim/pull/253)
 
 This PR closes the issues  #219 and #246 and fixes a bug in ras2fim Step 1 as elaborated in #219 . 
 
