@@ -3,10 +3,6 @@
 # library of rasters with a corresponding synthetic rating curve for a
 # corresponding National Water Model (NWM) reach segment.
 #
-# This script needs other scripts to complete the process
-# [create_shapes_from_hecras, conflate_hecras_to_nwm, get_usgs_dem_from_shape,
-# clip_dem_from_shape, convert_tif_to_ras_hdf5, create_fim_rasters,
-# worker_fim_raster, simplify_fim_rasters, calculate_all_terrain_stats]
 #
 # This is built to run on a Windows machine and requires that HEC-RAS v6.3
 # be installed prior to execution.
@@ -36,7 +32,6 @@ from create_fim_rasters import fn_create_fim_rasters
 from create_geocurves import manage_geo_rating_curves_production
 from create_model_domain_polygons import fn_make_domain_polygons
 from create_shapes_from_hecras import fn_create_shapes_from_hecras
-from get_usgs_dem_from_shape import fn_get_usgs_dem_from_shape
 from reformat_ras_rating_curve import dir_reformat_ras_rc
 from simplify_fim_rasters import fn_simplify_fim_rasters
 
@@ -51,19 +46,22 @@ RLOG = sv.R2F_LOG
 # If you are calling this function from an another python file, please just call this function
 # as it validates inputs and sets up other key variables.
 # Then will make the call to fn_run_ras2fim
+
+# TODO: Do we need this all defaulted?
 def init_and_run_ras2fim(
-    str_huc8_arg,
-    str_crs_arg,
+    huc8,
+    projection,
     r2f_output_dir=sv.R2F_DEFAULT_OUTPUT_MODELS,
-    str_hec_path=sv.DEFAULT_HECRAS_ENGINE_PATH,
+    hecras_engine_path=sv.DEFAULT_HECRAS_ENGINE_PATH,
     input_models_path=sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
-    str_nation_arg=sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
-    str_terrain_override="None Specified - using USGS WCS",
+    dir_datasets=sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
+    dem_file_path="",
     model_huc_catalog_path=sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
     str_step_override="None Specified - starting at the beginning",
     output_resolution=10,
     config_file=sv.DEFAULT_CONFIG_FILE_PATH,
 ):
+    
     config_file = sf.load_config_enviro_path(config_file)
 
     ####################################################################
@@ -74,13 +72,13 @@ def init_and_run_ras2fim(
     # Functions below check for a series of exceptions
 
     # I don't need the crs_number for now
-    is_valid, err_msg, crs_number = val.is_valid_crs(str_crs_arg)
+    is_valid, err_msg, crs_number = val.is_valid_crs(projection)
     if is_valid is False:
         raise ValueError(err_msg)
 
     # -------------------
     # -w   (ie 12090301)
-    huc_valid, err_msg = val.is_valid_huc(str_huc8_arg)
+    huc_valid, err_msg = val.is_valid_huc(huc8)
     if huc_valid is False:
         raise ValueError(err_msg)
 
@@ -90,7 +88,7 @@ def init_and_run_ras2fim(
         raise ValueError(f"the -i arg ({input_models_path}) does not appear to be a valid folder.")
 
     # -------------------
-    proj_crs = pyproj.CRS.from_string(str_crs_arg)
+    proj_crs = pyproj.CRS.from_string(projection)
     model_unit = sf.confirm_models_unit(proj_crs, input_models_path)
 
     # -------------------
@@ -101,31 +99,34 @@ def init_and_run_ras2fim(
         )
 
     # -------------------
-    output_folder_name = sf.get_stnd_r2f_output_folder_name(str_huc8_arg, str_crs_arg)
-    output_folder_path = os.path.join(r2f_output_dir, output_folder_name)
+    unit_folder_name = sf.get_stnd_r2f_output_folder_name(huc8, projection)
+    unit_output_path = os.path.join(r2f_output_dir, unit_folder_name)
 
-    if os.path.exists(output_folder_path) is True:
-        raise ValueError(f"The path of {output_folder_path} already exists. Please delete it and restart.")
+    if os.path.exists(unit_output_path) is True:
+        raise ValueError(f"The path of {unit_output_path} already exists. Please delete it and restart.")
 
     # -------------------
     # -n  (ie: inputs\\X-National_Datasets)
-    if (os.path.exists(str_nation_arg) is False) and (str_nation_arg != sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR):
+    if (os.path.exists(dir_datasets) is False) and (dir_datasets != sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR):
         raise ValueError(
             "the -n arg (inputs x national datasets path arg) does not appear to be a valid folder."
         )
 
     # -------------------
     # -r  (ie: C:\Program Files (x86)\HEC\HEC-RAS\6.3)
-    if os.path.exists(str_hec_path) is False:
+    if os.path.exists(hecras_engine_path) is False:
         raise ValueError("the -r arg (HEC-RAS engine path) does not appear to be correct.")
 
     # -------------------
     # -t  (ie: blank or a path such as inputs\12090301_dem_meters_0_2277.tif)
-    if str_terrain_override != "None Specified - using USGS WCS":
-        if os.path.exists(str_terrain_override) is False:  # might be a full path
+    if dem_file_path != "":
+        if os.path.exists(dem_file_path) is False:  # might be a full path
             raise ValueError(
-                f"the -t arg (terrain override) path of {str_terrain_override} does not appear exist."
+                f"the -t arg (terrain override) path of {dem_file_path} does not appear exist."
             )
+    else: # calculate it based on defaults
+        dem_file_path = "coming"
+
 
     # -------------------
     if str_step_override == "None Specified - starting at the beginning":
@@ -140,29 +141,29 @@ def init_and_run_ras2fim(
     # -------------------
     # make the folder only if all other valudation tests pass.
     # pathing has already been validated and ensure the child folder does not pre-exist
-    os.mkdir(output_folder_path)
+    os.mkdir(unit_output_path)
 
     # -------------------
     # adjust the model_catalog file name if applicable
     # for some reason, the argparser is sometimes making this an one element array (??)
     if "[]" in model_huc_catalog_path:
-        model_huc_catalog_path = model_huc_catalog_path.replace("[]", str_huc8_arg)
+        model_huc_catalog_path = model_huc_catalog_path.replace("[]", huc8)
     if os.path.exists(model_huc_catalog_path) is False:
         raise FileNotFoundError(
             f"The -mc models catalog ({model_huc_catalog_path}) does not exist. Please check your pathing."
         )
     # We need to copy the catalog to the root of the output unit so steps can use it
     # It may be adjsuted along the way and it wil be recopied to "final" folder at the end.
-    shutil.copy2(model_huc_catalog_path, output_folder_path)
+    shutil.copy2(model_huc_catalog_path, unit_output_path)
     # now change its path to be its new home in the output unit folder.
 
     model_file_name = os.path.basename(model_huc_catalog_path)
-    model_huc_catalog_path = os.path.join(output_folder_path, model_file_name)
+    model_huc_catalog_path = os.path.join(unit_output_path, model_file_name)
 
     # -------------------
     # setup the logging class (default unit folder path (HUC/CRS))
     # Log file must pre-exist
-    log_folder = os.path.join(output_folder_path, "logs")
+    log_folder = os.path.join(unit_output_path, "logs")
     os.mkdir(log_folder)
     RLOG.setup(os.path.join(log_folder, "ras2fim.log"))
 
@@ -185,7 +186,7 @@ def init_and_run_ras2fim(
     # ---- Make the "final" folder now as some modules will write to it through the steps
     #      why test if it exists with makedir for output above? We are going to be retarting
     #      the step system so it won't auto make the huc output dir
-    r2f_final_dir = os.path.join(output_folder_path, sv.R2F_OUTPUT_DIR_FINAL)
+    r2f_final_dir = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_FINAL)
     if not os.path.exists(r2f_final_dir):
         os.mkdir(r2f_final_dir)
 
@@ -201,13 +202,13 @@ def init_and_run_ras2fim(
     # -------------------
     # Now call the processing function
     fn_run_ras2fim(
-        str_huc8_arg,
+        huc8,
         input_models_path,
-        output_folder_path,
-        str_crs_arg,
-        str_nation_arg,
-        str_hec_path,
-        str_terrain_override,
+        unit_output_path,
+        projection,
+        dir_datasets,
+        hecras_engine_path,
+        dem_file_path,
         model_huc_catalog_path,
         int_step,
         output_resolution,
@@ -219,13 +220,13 @@ def init_and_run_ras2fim(
 # If you are calling this python file from an another python file, DO NOT call this function first.
 # Call the init_and_run_ras2fim function as it validates inputs and sets up other key variables.
 def fn_run_ras2fim(
-    str_huc8_arg,
+    huc8,
     input_models_path,
-    output_folder_path,
-    str_crs_arg,
-    str_nation_arg,
-    str_hec_path,
-    str_terrain_override,
+    unit_output_path,
+    projection,
+    dir_datasets,
+    hecras_engine_path,
+    dem_file_path,
     model_huc_catalog_path,
     int_step,
     output_resolution,
@@ -239,13 +240,13 @@ def fn_run_ras2fim(
     RLOG.lprint("     Created by Andy Carter, PE of the National Water Center")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
-    RLOG.lprint(f"  ---(r) HUC 8 WATERSHED: {str_huc8_arg}")
-    RLOG.lprint(f"  ---(i) PATH TO HEC-RAS: {input_models_path}")
-    RLOG.lprint(f"  ---(o) OUTPUT DIRECTORY: {output_folder_path}")
-    RLOG.lprint(f"  ---(p) PROJECTION OF HEC-RAS MODELS: {str_crs_arg}")
-    RLOG.lprint(f"  ---(n) PATH TO NATIONAL DATASETS: {str_nation_arg}")
-    RLOG.lprint(f"  ---(r) PATH TO HEC-RAS v6.3: {str_hec_path}")
-    RLOG.lprint(f"  ---[t] Terrain to Utilize {str_terrain_override}")
+    RLOG.lprint(f"  ---(r) HUC 8 WATERSHED: {huc8}")
+    RLOG.lprint(f"  ---(i) PATH TO INPUT MODELS: {input_models_path}")
+    RLOG.lprint(f"  ---(o) UNIT OUTPUT DIRECTORY: {unit_output_path}")
+    RLOG.lprint(f"  ---(p) PROJECTION OF HEC-RAS MODELS: {projection}")
+    RLOG.lprint(f"  ---(n) PATH TO NATIONAL DATASETS: {dir_datasets}")
+    RLOG.lprint(f"  ---(r) PATH TO HEC-RAS v6.3: {hecras_engine_path}")
+    RLOG.lprint(f"  ---(t) DEM FILE: {dem_file_path}")
     RLOG.lprint("  ---[s] Step to start at - " + str(int_step))
     RLOG.lprint(
         "  --- The Ras Models unit (extracted from RAS model prj file and given EPSG code): " + model_unit
@@ -256,129 +257,104 @@ def fn_run_ras2fim(
     # ---- Make the "final" folder now as some modules will write to it through the steps
     #      why test if it exists with makedir for output above? We are going to be retarting
     #      the step system so it won't auto make the huc output dir
-    r2f_final_dir = os.path.join(output_folder_path, sv.R2F_OUTPUT_DIR_FINAL)
+    r2f_final_dir = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_FINAL)
 
     # ---- Step 1: create_shapes_from_hecras ----
     # create a folder for the shapefiles from hec-ras
     RLOG.lprint("")
     RLOG.notice("+++++++ Processing: STEP 1 (create_shapes_from_hecras) +++++++")
 
-    str_shapes_from_hecras_dir = os.path.join(output_folder_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS)
-    if not os.path.exists(str_shapes_from_hecras_dir):
-        os.mkdir(str_shapes_from_hecras_dir)
+    dir_shapes_from_hecras = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS)
+    if not os.path.exists(dir_shapes_from_hecras):
+        os.mkdir(dir_shapes_from_hecras)
 
     # run the first script (create_shapes_from_hecras)
     if int_step <= 1:
-        fn_create_shapes_from_hecras(input_models_path, str_shapes_from_hecras_dir, str_crs_arg)
+        fn_create_shapes_from_hecras(input_models_path, dir_shapes_from_hecras, projection)
     # -------------------------------------------
 
     # ------ Step 2: conflate_hecras_to_nwm -----
-    # do whatever is needed to create folders and determine variables
     RLOG.lprint("")
     RLOG.notice("+++++++ Processing: STEP 2 (conflate_hecras_to_nwm) +++++++")
 
-    str_shapes_from_conflation_dir = os.path.join(output_folder_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
-    if not os.path.exists(str_shapes_from_conflation_dir):
-        os.mkdir(str_shapes_from_conflation_dir)
+    dir_shapes_from_conflation = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
+    if not os.path.exists(dir_shapes_from_conflation):
+        os.mkdir(dir_shapes_from_conflation)
 
     # run the second script (conflate_hecras_to_nwm)
     if int_step <= 2:
         fn_conflate_hecras_to_nwm(
-            str_huc8_arg,
-            str_shapes_from_hecras_dir,
-            str_shapes_from_conflation_dir,
-            str_nation_arg,
-            output_folder_path,
+            huc8,
+            dir_shapes_from_hecras,
+            dir_shapes_from_conflation,
+            dir_datasets,
+            unit_output_path,
         )
     # -------------------------------------------
 
-    # ------ Step 3: get_usgs_dem_from_shape or clip_dem_from_shape ----
-    str_area_shp_name = str_huc8_arg + "_huc_12_ar.shp"
-    str_input_path = os.path.join(str_shapes_from_conflation_dir, str_area_shp_name)
+    # ------ Step 3: clip_dem_from_shape ----
     RLOG.lprint("")
-    RLOG.notice("+++++++ Processing: STEP 3 get / cut DEM +++++++")
+    RLOG.notice("+++++++ Processing: STEP 3 get terrain / cut DEM +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
     # create output folder
-    str_terrain_from_usgs_dir = os.path.join(output_folder_path, sv.R2F_OUTPUT_DIR_TERRAIN)
-    if not os.path.exists(str_terrain_from_usgs_dir):
-        os.mkdir(str_terrain_from_usgs_dir)
-
-    # field name is from the National watershed boundary dataset (WBD)
-    str_field_name = "HUC_12"
+    dir_terrain = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_TERRAIN)
 
     # *** variables set - raster terrain harvesting ***
     # ==============================================
-    int_res = 3  # resolution of the downloaded terrain (meters)
+    #int_res = 3  # resolution of the downloaded terrain (meters)
     int_buffer = 300  # buffer distance for each watershed shp
-    int_tile = 1500  # tile size requested from USGS WCS
+    #int_tile = 1500  # tile size requested from USGS WCS
     # ==============================================
 
     # run the third script
     if int_step <= 3:
         # provide conflation qc file to mark the parent models that conflated to NWM reaches
-        conflation_qc_path = os.path.join(str_shapes_from_conflation_dir, "conflated_ras_models.csv")
+        conflation_csv_path = os.path.join(dir_shapes_from_conflation, "conflated_ras_models.csv")
 
-        if str_terrain_override == "None Specified - using USGS WCS":
-            # create terrain from the USGS WCS
-            fn_get_usgs_dem_from_shape(
-                str_input_path,
-                str_terrain_from_usgs_dir,
-                int_res,
-                int_buffer,
-                int_tile,
-                model_unit,
-                str_field_name,
-            )
-        else:
-            # user has supplied the terrain file
-            str_cross_sections_path = str_shapes_from_hecras_dir + "\\cross_section_LN_from_ras.shp"
-            str_huc12_path = str_nation_arg + "\\" + sv.INPUT_WBD_NATIONAL_FILE
+        cross_sections_path = dir_shapes_from_hecras + "\\cross_section_LN_from_ras.shp"
+        wbd_national_file_path = os.path.join(dir_datasets, sv.INPUT_WBD_NATIONAL_FILE)
+        
+        # TODO: Path to dem
 
-            fn_cut_dems_from_shapes(
-                str_huc12_path,
-                str_cross_sections_path,
-                conflation_qc_path,
-                str_terrain_override,
-                str_terrain_from_usgs_dir,
-                int_buffer,
-                model_unit,
-            )
+        fn_cut_dems_from_shapes(
+            wbd_national_file_path,
+            cross_sections_path,
+            conflation_csv_path,
+            dem_file_path,
+            unit_output_path,
+            int_buffer,            
+            model_unit,
+        )
     # -------------------------------------------
 
     # ------  Step 4: convert_tif_to_ras_hdf5 -----
 
-    # folder of tifs created in third script (get_usgs_dem_from_shape)
-    # str_terrain_from_usgs_dir
-
     # create a converted terrain folder
-    str_hecras_terrain_dir = os.path.join(output_folder_path, sv.R2F_OUTPUT_DIR_HECRAS_TERRAIN)
-    if not os.path.exists(str_hecras_terrain_dir):
-        os.mkdir(str_hecras_terrain_dir)
+    dir_hecras_terrain = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_TERRAIN)
+    if not os.path.exists(dir_hecras_terrain):
+        os.mkdir(dir_hecras_terrain)
 
     RLOG.lprint("")
     RLOG.notice("+++++++ Processing: STEP 4 (convert tif to ras hdf5 +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
-    str_area_prj_name = str_huc8_arg + "_huc_12_ar.prj"
-    str_projection_path = os.path.join(str_shapes_from_conflation_dir, str_area_prj_name)
+    area_prj_file_name = huc8 + "_huc_12_ar.prj"
+    projection_file_path = os.path.join(dir_shapes_from_conflation, area_prj_file_name)
 
     if int_step <= 4:
         fn_convert_tif_to_ras_hdf5(
-            str_hec_path, str_terrain_from_usgs_dir, str_hecras_terrain_dir, str_projection_path, model_unit
+            hecras_engine_path, dir_terrain, dir_hecras_terrain, projection_file_path, model_unit
         )
 
     # -------------------------------------------
 
     # ------ Step 5: create_fim_rasters -----
 
-    # folder of tifs created in third script (get_usgs_dem_from_shape)
-    # str_terrain_from_usgs_dir
-
     # create a converted terrain folder
-    str_hecras_out_dir = os.path.join(output_folder_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-    if not os.path.exists(str_hecras_out_dir):
-        os.mkdir(str_hecras_out_dir)
+    dir_hecras_output = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    if not os.path.exists(dir_hecras_output):
+        os.mkdir(dir_hecras_output)
 
     RLOG.lprint("")
     RLOG.notice("+++++++ Processing: STEP 5 (create fim rasters) +++++++")
@@ -394,11 +370,11 @@ def fn_run_ras2fim(
 
     if int_step <= 5:
         fn_create_fim_rasters(
-            str_huc8_arg,
-            str_shapes_from_conflation_dir,
-            str_hecras_out_dir,
-            str_projection_path,
-            str_hecras_terrain_dir,
+            huc8,
+            dir_shapes_from_conflation,
+            dir_hecras_output,
+            projection_file_path,
+            dir_hecras_terrain,
             flt_interval,
             B_TERRAIN_CHECK_ONLY,
         )
@@ -411,7 +387,7 @@ def fn_run_ras2fim(
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
     fn_simplify_fim_rasters(
-        str_hecras_out_dir, flt_resolution_depth_grid, sv.DEFAULT_RASTER_OUTPUT_CRS, model_unit
+        dir_hecras_output, flt_resolution_depth_grid, sv.DEFAULT_RASTER_OUTPUT_CRS, model_unit
     )
 
     # ----------------------------------------
@@ -419,7 +395,7 @@ def fn_run_ras2fim(
     RLOG.notice("+++++++ Processing: STEP 5.c (calculate terrain statistics) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
-    fn_calculate_all_terrain_stats(str_hecras_out_dir)
+    fn_calculate_all_terrain_stats(dir_hecras_output)
 
     # -------------------------------------------------
     if os.getenv("RUN_RAS2CALIBRATION") == "True":
@@ -428,7 +404,7 @@ def fn_run_ras2fim(
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
         dir_reformat_ras_rc(
-            output_folder_path,
+            unit_output_path,
             sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
             sv.R2F_OUTPUT_FILE_RAS2CAL_CSV,
             sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG,
@@ -447,19 +423,19 @@ def fn_run_ras2fim(
 
         shutil.copy2(
             os.path.join(
-                output_folder_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_CSV
+                unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_CSV
             ),
             r2f_final_ras2cal_subdir,
         )
         shutil.copy2(
             os.path.join(
-                output_folder_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG
+                unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG
             ),
             r2f_final_ras2cal_subdir,
         )
         shutil.copy2(
             os.path.join(
-                output_folder_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, "README_reformat_ras_rating_curve.txt"
+                unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, "README_reformat_ras_rating_curve.txt"
             ),
             r2f_final_ras2cal_subdir,
         )
@@ -474,7 +450,7 @@ def fn_run_ras2fim(
         # Produce geocurves
         job_number = os.cpu_count() - 2
         manage_geo_rating_curves_production(
-            ras2fim_output_dir=output_folder_path,
+            ras2fim_output_dir=unit_output_path,
             job_number=job_number,
             output_folder=r2f_final_dir,
             overwrite=False,
@@ -487,10 +463,10 @@ def fn_run_ras2fim(
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
         # get the path to the shapefile containing cross sections of the parent HEC-RAS models
-        xsections_shp_file_path = os.path.join(str_shapes_from_hecras_dir, "cross_section_LN_from_ras.shp")
+        xsections_shp_file_path = os.path.join(dir_shapes_from_hecras, "cross_section_LN_from_ras.shp")
 
         # provide conflation qc file to mark the parent models that conflated to NWM reaches
-        conflation_qc_path = os.path.join(str_shapes_from_conflation_dir, "%s_stream_qc.csv" % str_huc8_arg)
+        conflation_csv_path = os.path.join(dir_shapes_from_conflation, "%s_stream_qc.csv" % huc8)
 
         # make output folder and build path to the output file
         # TODO: Nov 3, 2023: The creation of the output_polygon_dir and polygons_output_file_path
@@ -507,7 +483,7 @@ def fn_run_ras2fim(
             polygons_output_file_path,
             "ras_path",
             model_huc_catalog_path,
-            conflation_qc_path,
+            conflation_csv_path,
         )
 
     # -------------------------------------------------
@@ -516,7 +492,7 @@ def fn_run_ras2fim(
 
     # Copy it here in case it gets updated along the way
     shutil.copy2(model_huc_catalog_path, r2f_final_dir)
-    run_arguments_filepath = os.path.join(output_folder_path, "run_arguments.txt")
+    run_arguments_filepath = os.path.join(unit_output_path, "run_arguments.txt")
     shutil.copy2(run_arguments_filepath, r2f_final_dir)
 
     RLOG.lprint("+=================================================================+")
@@ -608,8 +584,8 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-w",
-        dest="str_huc8_arg",
-        help="REQUIRED: HUC-8 watershed that is being evaluated: Example: 10170204",
+        dest="huc8",
+        help="REQUIRED: HUC-8 that is being evaluated: Example: 10170204",
         required=True,
         metavar="",
         type=str,
@@ -617,7 +593,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-p",
-        dest="str_crs_arg",
+        dest="projection",
         help="REQUIRED: projection of HEC-RAS models: Example EPSG:2277",
         required=True,
         metavar="",
@@ -638,7 +614,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-r",
-        dest="str_hec_path",
+        dest="hecras_engine_path",
         help=r"OPTIONAL: path to HEC-RAS 6.3: Defaults to C:\Program Files (x86)\HEC\HEC-RAS\6.3"
         r' but you can override it, Example: "C:\Program Files (x86)\HEC\HEC-RAS\6.4" (wrap in quotes)',
         required=False,
@@ -660,7 +636,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-n",
-        dest="str_nation_arg",
+        dest="dir_datasets",
         help=r"OPTIONAL: path to national datasets: Example: E:\X-NWS\X-National_Datasets."
         r" Defaults to c:\ras2fim_data\inputs\X-National_Datasets.",
         default=sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
@@ -671,13 +647,14 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-t",
-        dest="str_terrain_override",
+        dest="dem_file_path",
         help="OPTIONAL: full path to DEM Tif to use for mapping:"
-        r"Example: c:\ras2fim_data\inputs\some_dem.tif."
-        "Defaults to calling USGS website, but note.. it can be unstable and throw 404 and 500 errors.",
+         r" e.g C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m\HUC8_12030201_dem.tif"
+         "\n *** Critical Note: ensure the DEM has a large enough buffer to cover models that"
+         " that cross HUC8 boundaries.",        
         required=False,
         metavar="",
-        default="None Specified - using USGS WCS",
+        default="",
         type=str,
     )
 

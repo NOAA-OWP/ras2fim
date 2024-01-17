@@ -40,11 +40,11 @@ def fn_is_valid_file(parser, arg):
 
 # -------------------------------------------------
 def fn_cut_dems_from_shapes(
-    str_huc12_path,
-    str_cross_sections_path,
-    str_conflated_models_path,
-    str_input_terrain_path,
-    str_output_dir,
+    huc12_features_file,
+    cross_sections_file_path,
+    conflated_models_file_path,
+    source_dem_file_path,
+    output_dir,
     int_buffer,
     model_unit,
 ):
@@ -55,31 +55,31 @@ def fn_cut_dems_from_shapes(
     RLOG.notice("|         CUT DEMs FROM LARGER DEM PER POLYGON SHAPEFILE          |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
-    RLOG.lprint("  ---(i) HUC12s SHAPEFILE PATH: " + str_huc12_path)
-    RLOG.lprint("  ---(x) XS SHAPEFILE PATH: " + str_cross_sections_path)
-    RLOG.lprint("  ---(conflate) CONFLATED MODELS LIST PATH: " + str_conflated_models_path)
-    RLOG.lprint("  ---(t) TERRAIN INPUT PATH: " + str_input_terrain_path)
-    RLOG.lprint("  ---(o) DEM OUTPUT PATH: " + str_output_dir)
+    RLOG.lprint("  ---(i) HUC12s FEATURES PATH: " + huc12_features_file)
+    RLOG.lprint("  ---(x) XS SHAPEFILE PATH: " + cross_sections_file_path)
+    RLOG.lprint("  ---(conflate) CONFLATED MODELS LIST PATH: " + conflated_models_file_path)
+    RLOG.lprint("  ---(t) TERRAIN INPUT PATH: " + source_dem_file_path)
+    RLOG.lprint("  ---(o) DEM OUTPUT PATH: " + output_dir)
     RLOG.lprint("  ---[b] Optional: BUFFER: " + str(int_buffer))
     RLOG.lprint("  --- The Ras Models unit (extracted from given shapefile): " + model_unit)
     RLOG.lprint("+-----------------------------------------------------------------+")
 
-    if not os.path.exists(str_output_dir):
-        os.mkdir(str_output_dir)
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
 
     # read models xsections
-    gdf_xs_lines = gpd.read_file(str_cross_sections_path)
+    gdf_xs_lines = gpd.read_file(cross_sections_file_path)
 
     # read HUC12s
     RLOG.lprint("Reading HUC12 polygons for the entire CONUS...this may take 3 minutes")
-    gdf_huc12s = gpd.read_file(str_huc12_path)
+    gdf_huc12s = gpd.read_file(huc12_features_file)
 
     # important to reproject to model crs especially if the inputs
     # HUC12s are for the entire US with geographic crs
     gdf_huc12s.to_crs(gdf_xs_lines.crs, inplace=True)
 
     # filter xsections only for the conflated models
-    conflated_models = pd.read_csv(str_conflated_models_path)
+    conflated_models = pd.read_csv(conflated_models_file_path)
     conflated_mode_ids = conflated_models['model_id'].unique().tolist()
 
     gdf_xs_lines = gdf_xs_lines.merge(
@@ -87,7 +87,7 @@ def fn_cut_dems_from_shapes(
     )  # this filters conflated xsections
 
     # read dem as Xarray DataArray.use rio for reproject,crop, save. The rest is Xr DataArray operations.
-    dem = rioxarray.open_rasterio(str_input_terrain_path)
+    dem = rioxarray.open_rasterio(source_dem_file_path)
     dem = dem.rio.reproject(gdf_huc12s.crs)
 
     # note that because of the large size of the input DEM, there is no benefit in using multiprocessing here
@@ -126,7 +126,7 @@ def fn_cut_dems_from_shapes(
         if clipped_dem.rio.crs is None:
             clipped_dem.rio.write_crs(gdf_huc12s.crs, inplace=True)
 
-        str_dem_out = str_output_dir + "\\" + str(model_id) + ".tif"
+        str_dem_out = output_dir + "\\" + str(model_id) + ".tif"
         clipped_dem.rio.to_raster(str_dem_out, compress="lzw", dtype="float32")
 
     RLOG.success("COMPLETE")
@@ -144,9 +144,9 @@ if __name__ == "__main__":
     # python .\clip_dem_from_shape.py
     # -x "c:\ras2fim_data\output_ras2fim\***\01_shapes_from_hecras\cross_section_LN_from_ras.shp"
     # -i 'C:\ras2fim_data\inputs\X-National_Datasets\WBD_National.gpkg'
-    # -t "C:\ras2fim_data\inputs\HUC8_12090301_dem.tif"
-    # -o desired_output_dir
-    # -conflate "c:\ras2fim_data\output_ras2fim\***\02_csv_shapes_from_conflation\***_stream_qc.csv"
+    # -t "C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m\HUC8_12090301_dem.tif"
+    # -o "C:\ras2fim_data\output_ras2fim\12030105_2276_240111\03_terrain"
+    # -conflate "c:\ras2fim_data\output_ras2fim\***\02_csv_shapes_from_conflation\conflated_ras_models.csv"
 
     parser = argparse.ArgumentParser(
         description="============== CUT DEMs FROM LARGER DEMS PER POLYGON SHAPEFILE  =============="
@@ -154,9 +154,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-x",
-        dest="str_cross_sections_path",
+        dest="cross_sections_file_path",
         help=r"REQUIRED: path to the HEC-RAS models cross sections shapefile (lines) "
-        r"Example: cross_section_LN_from_ras.shp",
+        r"e.g. c:\ras2fim_data\output_ras2fim\***\01_shapes_from_hecras\cross_section_LN_from_ras.shp",
         required=True,
         metavar="FILE",
         type=lambda x: fn_is_valid_file(parser, x),
@@ -164,9 +164,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-i",
-        dest="str_huc12_path",
-        help=r"REQUIRED: path to the HUC12 polygons shapefile/gpkg file"
-        r"Example: C:\ras2fim_data\inputs\X-National_Datasets\WBD_National.gpkg",
+        dest="huc12_features_file",
+        help=r"REQUIRED: path to the HUC12 polygons shapefile/gpkg file."
+        r" Example: C:\ras2fim_data\inputs\X-National_Datasets\WBD_National.gpkg",
         required=True,
         metavar="FILE",
         type=lambda x: fn_is_valid_file(parser, x),
@@ -174,8 +174,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-conflate",
-        dest="str_conflated_models_path",
-        help=r"REQUIRED: path to the CSV file containing conflated models",
+        dest="conflated_models_file_path",
+        help=r"REQUIRED: path to the CSV file containing conflated models."
+        r" e.g. c:\ras2fim_data\output_ras2fim\***\02_csv_shapes_from_conflation\conflated_ras_models.csv",
         required=True,
         metavar="FILE",
         type=lambda x: fn_is_valid_file(parser, x),
@@ -183,8 +184,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-t",
-        dest="str_input_terrain_path",
-        help=r"REQUIRED: path to the input DEM terrain (tif or vrt) Example: G:\x-fathom\DEM\temp.vrt",
+        dest="source_dem_file_path",
+        help="REQUIRED: path to the input DEM terrain."
+         r" e.g. C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m\HUC8_12090301_dem.tif",
         required=True,
         metavar="FILE",
         type=lambda x: fn_is_valid_file(parser, x),
@@ -192,8 +194,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-o",
-        dest="str_output_dir",
-        help=r"REQUIRED: directory to write DEM files Example: Example: C:\test\terrain_out",
+        dest="output_dir",
+        help="REQUIRED: directory to write DEM files."
+        " e.g.  e.g. C:\ras2fim_data\output_ras2fim\12030105_2276_240111\03_terrain",
         required=True,
         metavar="DIR",
         type=str,
@@ -211,26 +214,26 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    str_huc12_path = args["str_huc12_path"]
-    str_cross_sections_path = args["str_cross_sections_path"]
-    str_conflated_models_path = args["str_conflated_models_path"]
-    str_input_terrain_path = args["str_input_terrain_path"]
-    str_output_dir = args["str_output_dir"]
+    huc12_features_file = args["huc12_features_file"]
+    cross_sections_file_path = args["cross_sections_file_path"]
+    conflated_models_file_path = args["conflated_models_file_path"]
+    source_dem_file_path = args["source_dem_file_path"]
+    output_dir = args["output_dir"]
     int_buffer = args["int_buffer"]
 
     # find model unit using the given shapefile
     try:
-        gis_prj_path = str_cross_sections_path[0:-3] + "prj"
+        gis_prj_path = cross_sections_file_path[0:-3] + "prj"
         with open(gis_prj_path, "r") as prj_file:
             prj_text = prj_file.read()
     except Exception:
-        prj_text = gpd.read_file(str_cross_sections_path).crs
+        prj_text = gpd.read_file(cross_sections_file_path).crs
 
     proj_crs = pyproj.CRS(prj_text)
 
     model_unit = sf.model_unit_from_crs(proj_crs)
 
-    log_file_folder = args["str_output_dir"]
+    log_file_folder = args["output_dir"]
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -245,11 +248,11 @@ if __name__ == "__main__":
 
         # call main program
         fn_cut_dems_from_shapes(
-            str_huc12_path,
-            str_cross_sections_path,
-            str_conflated_models_path,
-            str_input_terrain_path,
-            str_output_dir,
+            huc12_features_file,
+            cross_sections_file_path,
+            conflated_models_file_path,
+            source_dem_file_path,
+            output_dir,
             int_buffer,
             model_unit,
         )
