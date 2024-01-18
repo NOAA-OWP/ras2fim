@@ -47,7 +47,6 @@ RLOG = sv.R2F_LOG
 # as it validates inputs and sets up other key variables.
 # Then will make the call to fn_run_ras2fim
 
-# TODO: Do we need this all defaulted?
 def init_and_run_ras2fim(
     huc8,
     projection,
@@ -55,13 +54,17 @@ def init_and_run_ras2fim(
     hecras_engine_path=sv.DEFAULT_HECRAS_ENGINE_PATH,
     input_models_path=sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
     dir_datasets=sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
-    dem_file_path="",
-    model_huc_catalog_path=sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
+    model_huc_catalog_path=sv.DEFAULT_RSF_MODELS_CATALOG_FILE,    
+    terrain_file_path=sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM,
     str_step_override="None Specified - starting at the beginning",
     output_resolution=10,
     config_file=sv.DEFAULT_CONFIG_FILE_PATH,
 ):
     
+    print("Screen outputs have colors and may not display correctly unless your console window"
+          " has a black background")
+
+
     config_file = sf.load_config_enviro_path(config_file)
 
     ####################################################################
@@ -118,15 +121,23 @@ def init_and_run_ras2fim(
         raise ValueError("the -r arg (HEC-RAS engine path) does not appear to be correct.")
 
     # -------------------
-    # -t  (ie: blank or a path such as inputs\12090301_dem_meters_0_2277.tif)
-    if dem_file_path != "":
-        if os.path.exists(dem_file_path) is False:  # might be a full path
+    if "[]" in terrain_file_path:  # calculate it based on defaults
+        terrain_file_path = sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM.replace("[]", huc8)            
+        # dem might not yet be on the file system.
+        if os.path.exists(terrain_file_path) is False:  
             raise ValueError(
-                f"the -t arg (terrain override) path of {dem_file_path} does not appear exist."
+                f"The calculated terrain DEM path of {terrain_file_path} does not appear exist.\n"
+                f"For NOAA/OWP staff.... this file can likely be downloaded from {sv.S3_INPUTS_3DEP_DEMS}"
             )
-    else: # calculate it based on defaults
-        dem_file_path = "coming"
-
+    elif terrain_file_path != "":
+        if os.path.exists(terrain_file_path) is False:  # might be a full path
+            raise ValueError(
+                f"The default calculated terrain DEM path of {terrain_file_path} does not appear exist."
+            )
+    else:
+        raise ValueError(
+            f"terrain DEM path has not been set."
+        )
 
     # -------------------
     if str_step_override == "None Specified - starting at the beginning":
@@ -168,6 +179,8 @@ def init_and_run_ras2fim(
     RLOG.setup(os.path.join(log_folder, "ras2fim.log"))
 
     """
+    # Kept temporarily for development example display purposes, just uncomment and run
+
     print("............... Temp sample RLOG types")
     RLOG.trace("Sample trace (log file only)")
     print("Trace logs only to file so you won't see it on screen, this is a print line")
@@ -208,7 +221,7 @@ def init_and_run_ras2fim(
         projection,
         dir_datasets,
         hecras_engine_path,
-        dem_file_path,
+        terrain_file_path,
         model_huc_catalog_path,
         int_step,
         output_resolution,
@@ -226,7 +239,7 @@ def fn_run_ras2fim(
     projection,
     dir_datasets,
     hecras_engine_path,
-    dem_file_path,
+    terrain_file_path,
     model_huc_catalog_path,
     int_step,
     output_resolution,
@@ -246,11 +259,10 @@ def fn_run_ras2fim(
     RLOG.lprint(f"  ---(p) PROJECTION OF HEC-RAS MODELS: {projection}")
     RLOG.lprint(f"  ---(n) PATH TO NATIONAL DATASETS: {dir_datasets}")
     RLOG.lprint(f"  ---(r) PATH TO HEC-RAS v6.3: {hecras_engine_path}")
-    RLOG.lprint(f"  ---(t) DEM FILE: {dem_file_path}")
-    RLOG.lprint("  ---[s] Step to start at - " + str(int_step))
-    RLOG.lprint(
-        "  --- The Ras Models unit (extracted from RAS model prj file and given EPSG code): " + model_unit
-    )
+    RLOG.lprint(f"  ---(t) TERRAIN DEM FILE: {terrain_file_path}")
+    RLOG.lprint(f"  ---[s] Step to start at: {int_step}")
+    RLOG.lprint("  --- The Ras Models unit"
+                f" (extracted from RAS model prj file and given EPSG code): {model_unit}")
     RLOG.lprint(f"  --- ras2fim started: {sf.get_stnd_date()}")
 
     # -------------------------------------------
@@ -300,29 +312,24 @@ def fn_run_ras2fim(
     # create output folder
     dir_terrain = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_TERRAIN)
 
-    # *** variables set - raster terrain harvesting ***
-    # ==============================================
-    #int_res = 3  # resolution of the downloaded terrain (meters)
-    int_buffer = 300  # buffer distance for each watershed shp
-    #int_tile = 1500  # tile size requested from USGS WCS
-    # ==============================================
-
     # run the third script
     if int_step <= 3:
+
+        int_buffer = 300  # buffer distance for each watershed shp
+
         # provide conflation qc file to mark the parent models that conflated to NWM reaches
         conflation_csv_path = os.path.join(dir_shapes_from_conflation, "conflated_ras_models.csv")
 
         cross_sections_path = dir_shapes_from_hecras + "\\cross_section_LN_from_ras.shp"
         wbd_national_file_path = os.path.join(dir_datasets, sv.INPUT_WBD_NATIONAL_FILE)
         
-        # TODO: Path to dem
-
         fn_cut_dems_from_shapes(
+            huc8,
             wbd_national_file_path,
             cross_sections_path,
             conflation_csv_path,
-            dem_file_path,
-            unit_output_path,
+            terrain_file_path,
+            dir_terrain,
             int_buffer,            
             model_unit,
         )
@@ -336,7 +343,7 @@ def fn_run_ras2fim(
         os.mkdir(dir_hecras_terrain)
 
     RLOG.lprint("")
-    RLOG.notice("+++++++ Processing: STEP 4 (convert tif to ras hdf5 +++++++")
+    RLOG.notice("+++++++ Processing: STEP 4 (convert tif to ras hdf5) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
     area_prj_file_name = huc8 + "_huc_12_ar.prj"
@@ -511,7 +518,9 @@ def create_input_args_log(**kwargs):
         **kwargs is any dictionary of key / value pairs
     """
 
-    r2f_huc_output_dir = kwargs.get("output_folder_path")
+    r2f_huc_output_dir = kwargs.get("unit_output_path")
+    if r2f_huc_output_dir is None:
+        raise AttributeError("Interal Error: kwarg key of unit_output_path has not been set")
     arg_log_file = os.path.join(r2f_huc_output_dir, ARG_LOG_FILE_NAME)
 
     # Remove it if is aleady exists (relavent if we add an override system)
@@ -585,7 +594,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-w",
         dest="huc8",
-        help="REQUIRED: HUC-8 that is being evaluated: Example: 10170204",
+        help="REQUIRED: HUC-8 that is being evaluated: Example: 12090301",
         required=True,
         metavar="",
         type=str,
@@ -626,7 +635,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-i",
         dest="input_models_path",
-        help=r"OPTIONAL: path containing the HEC_RAS files: Example -i C:\HEC\input_folder\my_models."
+        help=r"OPTIONAL: path containing the HEC_RAS files: Example -i C:\HEC\input_folder\my_models.\n"
         r" Defaults to c:\ras2fim_datas\OWP_ras_models\models.",
         default=sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
         required=False,
@@ -637,7 +646,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-n",
         dest="dir_datasets",
-        help=r"OPTIONAL: path to national datasets: Example: E:\X-NWS\X-National_Datasets."
+        help=r"OPTIONAL: path to national datasets: Example: E:\X-NWS\X-National_Datasets.\n"
         r" Defaults to c:\ras2fim_data\inputs\X-National_Datasets.",
         default=sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
         required=False,
@@ -647,14 +656,13 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-t",
-        dest="dem_file_path",
-        help="OPTIONAL: full path to DEM Tif to use for mapping:"
-         r" e.g C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m\HUC8_12030201_dem.tif"
-         "\n *** Critical Note: ensure the DEM has a large enough buffer to cover models that"
-         " that cross HUC8 boundaries.",        
+        dest="terrain_file_path",
+        help="OPTIONAL: full path to terrain DEM Tif to use for mapping"
+         r" e.g C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m\HUC8_12030201_dem.tif.\n"
+         f" Defaults to (huc adjusted) {sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM} ",
         required=False,
         metavar="",
-        default="",
+        default=sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM,
         type=str,
     )
 
