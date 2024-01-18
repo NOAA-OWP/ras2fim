@@ -9,6 +9,12 @@ Other misc fixes:
 - cleanup some variable names which were misleading, confusing or using non PEP-8 standards. Most of this cleanup was in ras2fim.py.
 - A bit of linting cleanup from previous files that existed in the dev.
 
+#### CRITICAL NOTE:
+ - For NOAA/OWP staff: 
+      _Make sure you are using the new ras2fim DEMs files and not the earlier FIM DEMs which have different margins._  
+ - For non NOAA/OWS staff:
+     _You can run the `extend_huc8_domain.py` script to make the new ras2fim DEMs that are required._
+
 ### Removals 
 - `src`
     - `get_usgs_dem_from_shape.py`
