@@ -47,7 +47,7 @@ def fn_cut_dems_from_shapes(
     terrain_file_path,
     output_dir,
     int_buffer,
-    model_unit = "",
+    model_unit="",
 ):
     flt_start_run = time.time()
 
@@ -78,41 +78,36 @@ def fn_cut_dems_from_shapes(
     RLOG.lprint(f"  ---[b] Optional: BUFFER: {int_buffer}")
 
     if "[]" in terrain_file_path:
-        terrain_file_path = sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM.replace("[]", huc8)        
+        terrain_file_path = sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM.replace("[]", huc8)
         RLOG.lprint(f"  ---[t] TERRAIN INPUT PATH (calculated): {terrain_file_path}")
     else:
-        RLOG.lprint(f"  ---[t] TERRAIN INPUT PATH : {terrain_file_path}")        
+        RLOG.lprint(f"  ---[t] TERRAIN INPUT PATH : {terrain_file_path}")
         RLOG.lprint(f"  --- The Ras Models unit: {model_unit}")
     RLOG.lprint("+-----------------------------------------------------------------+")
-
 
     # -------------------
     # Validation and variable setup
     # TODO complete validation and page setup
 
     if "[]" in terrain_file_path:  # calculate it based on defaults
-        terrain_file_path = sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM.replace("[]", huc8)            
+        terrain_file_path = sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM.replace("[]", huc8)
         # dem might not yet be on the file system.
-        if os.path.exists(terrain_file_path) is False:  
+        if os.path.exists(terrain_file_path) is False:
             raise ValueError(
                 f"The calculated terrain DEM path of {terrain_file_path} does not appear exist.\n"
                 f"For NOAA/OWP staff.... this file can likely be downloaded from {sv.S3_INPUTS_3DEP_DEMS}"
-            )    
+            )
     elif terrain_file_path != "":
         if os.path.exists(terrain_file_path) is False:  # might be a full path
             raise ValueError(
                 f"The default calculated terrain DEM path of {terrain_file_path} does not appear exist."
             )
     else:
-        raise ValueError(
-            f"terrain DEM path has not been set."
-        )
+        raise ValueError("terrain DEM path has not been set.")
 
     # -------------------
     if (model_unit != "feet") and (model_unit != "meter"):
-        raise Exception(
-            f"Interal Error: The calcated model unit value of {model_unit} is invalid."
-        )
+        raise Exception(f"Interal Error: The calcated model unit value of {model_unit} is invalid.")
 
     # =================================
 
@@ -139,7 +134,6 @@ def fn_cut_dems_from_shapes(
     # filter xsections only for the conflated models
     conflated_models = pd.read_csv(conflated_models_file_path)
     conflated_model_ids = conflated_models['model_id'].unique().tolist()
-
 
     for model_id in conflated_model_ids:
         RLOG.trace(f"Processing {model_id} from conflated_model_ids")
@@ -203,14 +197,12 @@ def fn_cut_dems_from_shapes(
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
-    # Sample:
+    # Sample (min args)
     # python .\clip_dem_from_shape.py
     # -w 12090301
     # -x "c:\ras2fim_data\output_ras2fim\***\01_shapes_from_hecras\cross_section_LN_from_ras.shp"
-    # -i 'C:\ras2fim_data\inputs\X-National_Datasets\WBD_National.gpkg'
-    # -t "C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m\HUC8_12090301_dem.tif"
-    # -o "C:\ras2fim_data\output_ras2fim\12030105_2276_240111\03_terrain"
     # -conflate "c:\ras2fim_data\output_ras2fim\***\02_csv_shapes_from_conflation\conflated_ras_models.csv"
+    # -o "C:\ras2fim_data\output_ras2fim\12030105_2276_240111\03_terrain"
 
     parser = argparse.ArgumentParser(
         description="============== CUT DEMs FROM LARGER DEMS PER POLYGON SHAPEFILE  =============="
@@ -271,8 +263,8 @@ if __name__ == "__main__":
         "-t",
         dest="terrain_file_path",
         help="OPTIONAL: full path to terrain DEM Tif to use for mapping"
-         r" e.g C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m\HUC8_12030201_dem.tif.\n"
-         f" Defaults (huc adjusted) to {sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM}",
+        r" e.g C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m\HUC8_12030201_dem.tif.\n"
+        f" Defaults (huc adjusted) to {sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM}",
         required=False,
         metavar="",
         default=sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM,

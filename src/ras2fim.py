@@ -21,7 +21,6 @@ import traceback
 
 import pyproj
 
-
 import shared_functions as sf
 import shared_validators as val
 import shared_variables as sv
@@ -49,6 +48,7 @@ RLOG = sv.R2F_LOG
 # as it validates inputs and sets up other key variables.
 # Then will make the call to fn_run_ras2fim
 
+
 def init_and_run_ras2fim(
     huc8,
     projection,
@@ -56,16 +56,20 @@ def init_and_run_ras2fim(
     hecras_engine_path=sv.DEFAULT_HECRAS_ENGINE_PATH,
     input_models_path=sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
     dir_datasets=sv.INPUT_DEFAULT_X_NATIONAL_DS_DIR,
-    model_huc_catalog_path=sv.DEFAULT_RSF_MODELS_CATALOG_FILE,    
+    model_huc_catalog_path=sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
     terrain_file_path=sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM,
     str_step_override="None Specified - starting at the beginning",
     output_resolution=10,
     config_file=sv.DEFAULT_CONFIG_FILE_PATH,
 ):
-    
-    print("Screen outputs have colors and may not display correctly unless your console window"
-          " has a black background")
-
+    print()
+    print("************************************")
+    print(
+        "*** Screen outputs have colors and may not display correctly unless your console window"
+        " has a black background."
+    )
+    print("************************************")
+    print()
 
     config_file = sf.load_config_enviro_path(config_file)
 
@@ -124,9 +128,9 @@ def init_and_run_ras2fim(
 
     # -------------------
     if "[]" in terrain_file_path:  # calculate it based on defaults
-        terrain_file_path = sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM.replace("[]", huc8)            
+        terrain_file_path = sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM.replace("[]", huc8)
         # dem might not yet be on the file system.
-        if os.path.exists(terrain_file_path) is False:  
+        if os.path.exists(terrain_file_path) is False:
             raise ValueError(
                 f"The calculated terrain DEM path of {terrain_file_path} does not appear exist.\n"
                 f"For NOAA/OWP staff.... this file can likely be downloaded from {sv.S3_INPUTS_3DEP_DEMS}"
@@ -137,9 +141,7 @@ def init_and_run_ras2fim(
                 f"The default calculated terrain DEM path of {terrain_file_path} does not appear exist."
             )
     else:
-        raise ValueError(
-            f"terrain DEM path has not been set."
-        )
+        raise ValueError("terrain DEM path has not been set.")
 
     # -------------------
     if str_step_override == "None Specified - starting at the beginning":
@@ -263,8 +265,9 @@ def fn_run_ras2fim(
     RLOG.lprint(f"  ---(r) PATH TO HEC-RAS v6.3: {hecras_engine_path}")
     RLOG.lprint(f"  ---(t) TERRAIN DEM FILE: {terrain_file_path}")
     RLOG.lprint(f"  ---[s] Step to start at: {int_step}")
-    RLOG.lprint("  --- The Ras Models unit"
-                f" (extracted from RAS model prj file and given EPSG code): {model_unit}")
+    RLOG.lprint(
+        "  --- The Ras Models unit" f" (extracted from RAS model prj file and given EPSG code): {model_unit}"
+    )
     RLOG.lprint(f"  --- ras2fim started: {sf.get_stnd_date()}")
 
     # -------------------------------------------
@@ -298,17 +301,13 @@ def fn_run_ras2fim(
     # run the second script (conflate_hecras_to_nwm)
     if int_step <= 2:
         fn_conflate_hecras_to_nwm(
-            huc8,
-            dir_shapes_from_hecras,
-            dir_shapes_from_conflation,
-            dir_datasets,
-            unit_output_path,
+            huc8, dir_shapes_from_hecras, dir_shapes_from_conflation, dir_datasets, unit_output_path
         )
     # -------------------------------------------
 
     # ------ Step 3: clip_dem_from_shape ----
     RLOG.lprint("")
-    RLOG.notice("+++++++ Processing: STEP 3 get terrain / cut DEM +++++++")
+    RLOG.notice("+++++++ Processing: STEP 3 (cut terrain DEM) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
     # create output folder
@@ -316,7 +315,6 @@ def fn_run_ras2fim(
 
     # run the third script
     if int_step <= 3:
-
         int_buffer = 300  # buffer distance for each watershed shp
 
         # provide conflation qc file to mark the parent models that conflated to NWM reaches
@@ -324,7 +322,7 @@ def fn_run_ras2fim(
 
         cross_sections_path = dir_shapes_from_hecras + "\\cross_section_LN_from_ras.shp"
         wbd_national_file_path = os.path.join(dir_datasets, sv.INPUT_WBD_NATIONAL_FILE)
-        
+
         fn_cut_dems_from_shapes(
             huc8,
             wbd_national_file_path,
@@ -332,13 +330,12 @@ def fn_run_ras2fim(
             conflation_csv_path,
             terrain_file_path,
             dir_terrain,
-            int_buffer,            
+            int_buffer,
             model_unit,
         )
     # -------------------------------------------
 
     # ------  Step 4: convert_tif_to_ras_hdf5 -----
-
     # create a converted terrain folder
     dir_hecras_terrain = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_TERRAIN)
     if not os.path.exists(dir_hecras_terrain):
@@ -359,7 +356,6 @@ def fn_run_ras2fim(
     # -------------------------------------------
 
     # ------ Step 5: create_fim_rasters -----
-
     # create a converted terrain folder
     dir_hecras_output = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
     if not os.path.exists(dir_hecras_output):
@@ -369,29 +365,12 @@ def fn_run_ras2fim(
     RLOG.notice("+++++++ Processing: STEP 5 (create fim rasters) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
-    # *** variables set - raster terrain harvesting ***
-    # ==============================================
-    if model_unit == "feet":
-        flt_interval = 0.5  # vertical step of average depth (0.5ft)
-    else:
-        flt_interval = 0.2  # vertical step of average depth (0.2m)
-    # ==============================================
-
     if int_step <= 5:
-        fn_create_fim_rasters(
-            huc8,
-            dir_shapes_from_conflation,
-            dir_hecras_output,
-            projection_file_path,
-            dir_hecras_terrain,
-            flt_interval,
-            B_TERRAIN_CHECK_ONLY,
-        )
+        fn_create_fim_rasters(huc8, unit_output_path, model_unit)
 
     # -------------------------------------------
 
     # --- Step 6: create_src_depthgrids_for_fids ---
-
     RLOG.lprint("")
     RLOG.notice("+++ Processing: STEP 6 (create src and fim rasters per fid) +++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
@@ -403,7 +382,7 @@ def fn_run_ras2fim(
     flt_resolution_depth_grid = int(output_resolution)
 
     RLOG.lprint("")
-    RLOG.notice("+++++++ Processing: Step ???? (simplifying fim rasters and create metrics) +++++++")
+    RLOG.notice("+++++++ Processing: Step 7 (simplifying fim rasters and create metrics) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
     fn_simplify_fim_rasters(
@@ -412,10 +391,14 @@ def fn_run_ras2fim(
 
     # ----------------------------------------
     RLOG.lprint("")
-    RLOG.notice("+++++++ Processing: STEP ?????  (calculate terrain statistics) +++++++")
+    RLOG.notice("+++++++ Processing: STEP 8 (calculate terrain statistics) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
     fn_calculate_all_terrain_stats(dir_hecras_output)
+
+    # TODO:
+    # Jan 2024, sv.R2F_OUTPUT_DIR_METRIC might be deprecated in favour of R2F_OUTPUT_DIR_SRC_DEPTHGRIDS
+    #   Research required as next steps continue to evolve
 
     # -------------------------------------------------
     if os.getenv("RUN_RAS2CALIBRATION") == "True":
@@ -442,9 +425,7 @@ def fn_run_ras2fim(
         os.mkdir(r2f_final_ras2cal_subdir)
 
         shutil.copy2(
-            os.path.join(
-                unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_CSV
-            ),
+            os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_CSV),
             r2f_final_ras2cal_subdir,
         )
         shutil.copy2(
@@ -671,8 +652,8 @@ if __name__ == "__main__":
         "-t",
         dest="terrain_file_path",
         help="OPTIONAL: full path to terrain DEM Tif to use for mapping"
-         r" e.g C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m\HUC8_12030201_dem.tif.\n"
-         f" Defaults to (huc adjusted) {sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM} ",
+        r" e.g C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m\HUC8_12030201_dem.tif.\n"
+        f" Defaults to (huc adjusted) {sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM} ",
         required=False,
         metavar="",
         default=sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM,
