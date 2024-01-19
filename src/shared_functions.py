@@ -177,7 +177,6 @@ def convert_rating_curve_to_metric(ras2rem_dir):
 
 # -------------------------------------------------
 def load_config_enviro_path(config_file=sv.DEFAULT_CONFIG_FILE_PATH):
-    ####################################################################
     # Load the enviroment file
 
     # The sv.DEFAULT_CONFIG_FILE_PATH comes in relative to the root and not to src/ras2fim

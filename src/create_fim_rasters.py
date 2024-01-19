@@ -14,7 +14,6 @@ import os
 import shutil
 import time
 import traceback
-
 from concurrent.futures import ProcessPoolExecutor
 
 import shared_functions as sf
@@ -38,14 +37,14 @@ def fn_create_fim_rasters(
 
     path_created_ras_models = os.path.join(unit_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
 
+    # Remove it so it is perfectly clean, no residue from previous runs.
     if os.path.exists(path_created_ras_models):
         shutil.rmtree(path_created_ras_models)
         # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
         # so sometimes mkdir can fail if rmtree isn't done
         time.sleep(1)  # 1 seconds
 
-        # re-created later
-
+    # re-created later
 
     # Constant - number of flood depth profiles to run on the first pass
     int_fn_starting_flow = 1  # cfs

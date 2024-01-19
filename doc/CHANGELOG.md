@@ -1,6 +1,44 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.18 - 2024-01-19 - [PR#256](https://github.com/NOAA-OWP/ras2fim/pull/256)
+
+Update Step 3 to remove the option of getting DEMs (terrain files) from USGS on demand and now use only pre-cut `ras2fim DEMS`.  The new required terrain DEMs are optional as they can be defaulted in.
+
+Other misc fixes:
+- cleanup some variable names which were misleading, confusing or using non PEP-8 standards. Most of this cleanup was in ras2fim.py.
+- A bit of linting cleanup from previous files that existed in the dev.
+
+#### CRITICAL NOTE:
+ - For NOAA/OWP staff: 
+      _Make sure you are using the new ras2fim DEMs files and not the earlier FIM DEMs which have different margins._  
+ - For non NOAA/OWS staff:
+     _You can run the `extend_huc8_domain.py` script to make the new ras2fim DEMs that are required._
+
+### Removals 
+- `src`
+    - `get_usgs_dem_from_shape.py`
+
+### Changes  
+- `src`
+    - `clip_dem_from_shape.py`: Rebuild for new creating individual DEMs for each model.
+    - `conflate_hecras_to_nwm.py`:  Added a missing tag to stop adding an unnecessary index column to an output csv.
+    - `create_fim_rasters.py`: Linting fixes and misc comment fixes.
+    - `create_src_fimrasters_4fids.py`: Small linting fix.
+    - `ras2fim.py`
+         - Rename most variables to be misleading, confusing or using non PEP-8 standards.
+         - Adjustments related to Step 3 (clip dem from shape)
+    - `ras2fim_logger.py`:  Added a message to other developers.
+    - `shared_functions.py`: Small styling fix.
+    - `shared_variables.py`: Adjustments for Step 3 changes (clip dem from shape)
+    - `worker_fim_rasters.py`:  Linting fix.
+- `tools`
+    - `extend_huc8_domain.py`: Linting fix.
+    - `s3_model_mgmt.py`:  Linting fix.
+
+<br/><br/>
+
+
 ## v2.0.beta.17 - 2024-01-12 - [PR#247](https://github.com/NOAA-OWP/ras2fim/pull/247)
 
 The main goals of this PR are to re-add the multiprocessing module to `create_fim_rasters.py`, reconnect `create_fim_rasters.py` to `worker_fim_rasters.py`, and make `ras2fim.py` work in step 5 and step 6. 
@@ -17,9 +55,7 @@ The main goals of this PR are to re-add the multiprocessing module to `create_fi
       1. Reformatting the paths which are hard-coded in the script
       2. Connected to ras2fim.py
    - `ras2fim.py`: updated to connect to `create_src_depthgrids_4fids.py`
-   
-### Testing
-This PR is tested for some RAS models in HUC 12090301. 
+  
 
 <br/><br/>
 
@@ -37,6 +73,7 @@ This bug fix will evaluate if a stream has been digitized from upstream to downs
 - `src/create_shapes_from_hecras.py`
 
 <br/><br/>
+
 
 ## v2.0.beta.15 - 2024-01-09 - [PR#250](https://github.com/NOAA-OWP/ras2fim/pull/250)
 
@@ -60,10 +97,8 @@ With most V2 development being focused on figuring out the logic, we have let li
     - `ras2inundation.py`: Linting updates.
     - `s3_model_mgmt.py`: Linting updates.
 
-### Testing
-Limited testing was available. I was able to run ras2fim.py which failed at Step5 which is work in progress. All tools in the "tools" directory can not be used as the ras2fim bucket has no models in it currently.
-
 <br/><br/>
+
 
 ## v2.0.beta.14 - 2024-01-05 - [PR#233](https://github.com/NOAA-OWP/ras2fim/pull/233)
 
@@ -75,19 +110,13 @@ and Step 6 work independently.
 ### Additions  
 
 - `src`
-
   - `conflate_hecras_to_nwm.py`: Some changes were added to this script to provide upstream and downstream cross-sections of each feature-id in a CSV file. 
 
 ### Changes 
 
 - `src`
-
   - `create_src_depthgrids_4fids.py`: This script creates synthetic rating curves (SRC) for each nwm feature-id in a HUC8 domain
   - `worker_fim_rasters.py`: Changed a few variable names and add temp test for missing elevation boundary condition.
-
-### Testing
-
-- This PR was tested on all RAS models in 12090301 HUC8.  
 
 <br/><br/>
 
@@ -150,6 +179,7 @@ This PR is the ras2fim V2 version of the PR #230. This PR solves issue #229 and 
 
 <br/><br/>
 
+
 ## v2.0.beta.11 - 2023-12-18 - [PR#227](https://github.com/NOAA-OWP/ras2fim/pull/227)
 
 In today's, Dec 15, 2023, merge from [PR 225](https://github.com/NOAA-OWP/ras2fim/pull/225) into Dev, there was some merge conflicts which were fixed on the fly.  During post merge testing, it appears some of the merging was not 100% successful and will be fixed as part of this card.
@@ -167,6 +197,7 @@ Note: At this point in the current V2 rebuild, ras2fim.py should work up to the 
     - `worker_fim_rasters.py`: Minor linting fixes.
 
 <br/><br/>
+
 
 ## v2.0.beta.10 - 2023-12-15 - [PR#225](https://github.com/NOAA-OWP/ras2fim/pull/225)
 

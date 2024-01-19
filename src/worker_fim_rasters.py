@@ -703,7 +703,6 @@ def create_ras_flow_file_wse(
     path_conflated_models_splt = [path.split("\\") for path in path_conflated_models]
     conflated_model_names = [names[-2] for names in path_conflated_models_splt]
 
-
     path_model_catalog = os.path.join(str_output_filepath, "OWP_ras_models_catalog_" + huc8_num + ".csv")
 
     model_catalog = pd.read_csv(path_model_catalog)

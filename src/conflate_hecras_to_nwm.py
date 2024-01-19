@@ -656,7 +656,7 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     RLOG.lprint("Creating Quality Control Output")
 
     str_qc_csv_File = os.path.join(shp_out_path, f"{str_huc8}_stream_qc_fid_xs.csv")
-    df_summary_data.to_csv(str_qc_csv_File)
+    df_summary_data.to_csv(str_qc_csv_File, index=False)
 
     RLOG.lprint("Number of feature_id's matched: " + str(df_summary_data["feature_id"].nunique()))
 
