@@ -18,7 +18,7 @@ import s3_shared_functions as s3_sf
 
 import shared_validators as val
 import shared_variables as sv
-from shared_functions import get_stnd_date, print_date_time_duration
+from shared_functions import get_stnd_date, print_date_time_duration, get_source_info
 
 
 # Global Variables
@@ -43,11 +43,15 @@ Features for this tool include:
     - A log file for the output is created with unique date/time stamp.
 
     - A "verbose" flag can be optionally added as an argument for additional processing details
-         (note: don't over use this as it can make errors harder to find). To find an error, simply
-         search the log for the word "error"
+        (note: don't over use this as it can make errors harder to find). To find an error, simply
+        search the log for the word "error".
 
-    - Filters downloads from the src models catalog to look for status of "ready" only. Also filters out
-         records where the final_name_key starts with either "1_", "2_" or "3_".
+    - Filters for the src models catalog
+         - status of "ready" only.
+         - filters out records where the final_name_key starts with either "1_", "2_" or "3_".
+         - matching huc from input
+         - matching crs from input
+         - matching source code from input (such as ble)
 
     - This script can find huc numbers in the models catalog "hucs" field regardless of string
          format in that column.
@@ -75,10 +79,11 @@ class Get_Models_By_Catalog:
     # aka. not through "__main__"
     def get_models(
         self,
-        s3_path_to_catalog_file,
         huc_number,
         projection,
+        source_code,
         list_only=False,
+        s3_path_to_catalog_file=sv.S3_DEFAULT_MODELS_CATALOG_PATH,        
         target_owp_ras_models_path=sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
         target_owp_ras_models_csv_file=sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
         is_verbose=False,
@@ -105,17 +110,19 @@ class Get_Models_By_Catalog:
 
         Inputs
         -----------------------
-        - s3_path_to_catalog_file (str) : e.g. s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv
-          (left as full pathing in case of pathing changes).
-
         - huc_number (string)
 
         - projection (string): To calculate which model folders are to be downloaded, you need
           the HUC number and the case-senstive CRS number. The projection value must match the
           'crs' column in the master copy in S3  (OWP_ras_models_catalog.csv)
 
+        - source_code (string): source code of where the model data came from.
+
         - list_only (True / False) : If you override to true, you can get just a csv list and
           not the downloads.
+
+        - s3_path_to_catalog_file (str) : e.g. s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv
+          (left as full pathing in case of pathing changes).
 
         - target_owp_ras_models_path (str): Local path you want the model folders to be loaded to.
           Default: c\ras2fim_data\OWP_ras_models\models.
@@ -141,9 +148,10 @@ class Get_Models_By_Catalog:
         # ----------
         # Validate inputs
         self.__validate_inputs(
-            s3_path_to_catalog_file,
             huc_number,
             projection,
+            source_code,
+            s3_path_to_catalog_file,            
             target_owp_ras_models_path,
             target_owp_ras_models_csv_file,
             list_only,
@@ -162,7 +170,9 @@ class Get_Models_By_Catalog:
         RLOG.lprint(f" Started (UTC): {get_stnd_date()}")
         RLOG.lprint(f" -- HUC: {huc_number}")
         RLOG.lprint(f" -- CRS: {projection}")
+        RLOG.lprint(f" -- Source Code: {source_code}")        
         RLOG.lprint("")
+        RLOG.lprint(f" -- Source path for models catalog: {self.s3_path_to_catalog_file}")
         RLOG.lprint(f" -- Source download path for models: {self.src_owp_model_folder_path}")
         RLOG.lprint(f" -- Target file name and path for the filtered csv: {self.target_filtered_csv_path}")
         RLOG.lprint(f" -- Target path for models: {self.target_owp_ras_models_path}")
@@ -185,16 +195,13 @@ class Get_Models_By_Catalog:
 
             df_all["nhdplus_comid"] = df_all["nhdplus_comid"].astype(str)
 
-            if self.is_verbose is True:
-                RLOG.debug(f"models catalog raw record count = {len(df_all)}")
-
             # ----------
-
             filter_msg = (
                 "After filtering, there are no valid remaining models to process.\n\n"
                 "  Filtering is done via the following rules:\n"
                 "    - The submitted huc must be found in catalog 'hucs' field with a matching"
                 " crs value (case-sensitive)\n"
+                "    - The records must match the source_code argument\n"
                 "    - Status has to be 'ready'\n"
                 "    - The final_name_key column must not start with the values of 1__, 2__ or 3__\n"
                 "  1__, 2__ and 3__ are filtered as required by the pre-processing team.\n"
@@ -219,11 +226,14 @@ class Get_Models_By_Catalog:
                 return
 
             # ----------
-            # Now filter based on CRS
-            self.df_filtered = df_huc.loc[(df_huc["crs"] == self.projection)]
+            # Now filter based on CRS and source code
+            df_query = f"crs == '{self.projection}' & source_code == '{self.source_code}'"
+            self.df_filtered = df_huc.query(df_query)
+
             if self.df_filtered.empty:
                 RLOG.error(filter_msg)
                 return
+            num_recs_attempted_download = len(self.df_filtered)
 
             # Adding a model_id column starting at number 10001 and incrementing by one
             # Adding new column
@@ -261,6 +271,7 @@ class Get_Models_By_Catalog:
                 )
 
                 RLOG.lprint("--------------------------------------")
+                RLOG.notice(f"Number of models attempted for downloaded: {num_recs_attempted_download}")                
                 cnt = self.df_filtered[sv.COL_NAME_DOWNLOAD_SUCCESS].value_counts()[True]
                 self.num_success_downloads = cnt
 
@@ -271,14 +282,17 @@ class Get_Models_By_Catalog:
                     )
                 else:
                     num_skips = len(self.df_filtered) - self.num_success_downloads
-                    RLOG.success(
-                        f"Number of models folders successfully downloaded: {self.num_success_downloads}"
-                    )
                     if num_skips > 0:
                         RLOG.warning(
                             f"Number of models folders skipped / errored during download: {num_skips}."
                             " Please review the output logs or the filtered csv for skip/error details."
                         )
+                        RLOG.warning("Number of models folders successfully"
+                                    f" downloaded: {self.num_success_downloads}")
+
+                    RLOG.notice(
+                        f"Number of models folders successfully downloaded: {self.num_success_downloads}"
+                    )
 
         except Exception:
             errMsg = "--------------------------------------\n An error has occurred"
@@ -292,19 +306,19 @@ class Get_Models_By_Catalog:
         RLOG.lprint("--------------------------------------")
         RLOG.success(f"Get ras models completed: {get_stnd_date()}")
         RLOG.success(f"Filtered model catalog saved to : {self.target_filtered_csv_path}")
-        print(f"Log file saved to : {RLOG.LOG_FILE_PATH}")
+        print(f"log files saved to {RLOG.LOG_FILE_PATH}")
 
         dur_msg = print_date_time_duration(start_dt, dt.datetime.utcnow())
         RLOG.lprint(dur_msg)
-        print(f"log files saved to {RLOG.LOG_FILE_PATH}")
         print()
 
     # -------------------------------------------------
     def __validate_inputs(
         self,
-        s3_path_to_catalog_file,
         huc_number,
         projection,
+        source_code,
+        s3_path_to_catalog_file,        
         target_owp_ras_models_path,
         target_owp_ras_models_csv_file,
         list_only,
@@ -329,6 +343,14 @@ class Get_Models_By_Catalog:
 
         self.projection = projection
         self.crs_number = crs_number
+
+        # ---------------
+        if source_code == "":
+            raise ValueError("Source code value can not be empty")
+        self.source_name = get_source_info(source_code)
+        if self.source_name == "":
+            raise ValueError(f"Source code value of {source_code} is not a known valid code")
+        self.source_code = source_code
 
         # ---------------
         if target_owp_ras_models_csv_file == "":
@@ -398,17 +420,15 @@ if __name__ == "__main__":
 
     # ----------------------------
     # Sample Usage (min required args) (also downloads related folders)
-    # python3 ./tools/get_ras_models_by_catalog.py -u 12090301 -p ESRI:102739
-    #  -s s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv
+    # python3 ./tools/get_ras_models_by_catalog.py -u 12090301 -p ESRI:102739 -sc ble
 
     # Sample Usage with most params
-    # python3 ./tools/get_ras_models_by_catalog.py -u 12090301 -p ESRI:102739
-    #  -s s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv
-    #  -tm c:\\ras2fim\\ras_models -tcsv c:\\ras2fim\ras_models\12090301_models_catalog.csv -v
+    # python3 ./tools/get_ras_models_by_catalog.py -u 12090301 -p ESRI:102739 -sc ble
+    #  -s s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv -v
+    #  -tm c:\\ras2fim\\ras_models -tcsv c:\\ras2fim\ras_models\12090301_models_catalog.csv
 
     # Sample Usage to get just the list and not the model folders downloaded (and most defaults)
-    # python3 ./tools/get_ras_models_by_catalog.py -u 12090301 -p EPSG:2277
-    #   -s s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv -f
+    # python3 ./tools/get_ras_models_by_catalog.py -u 12090301 -p EPSG:2277 -sc ble -f
 
     # ----------------------------
     # NOTE: You need to have aws credentials already run on this machine, at least once
@@ -420,6 +440,7 @@ if __name__ == "__main__":
     # named "models" and under where the -s / --sub_path_to_catalog file is at.
     # e.g.  s3://(some bucket)/OWP_ras_models/OWP_ras_models_catalog.csv with a "models" folder beside
     # it with all of the "model" folders under that.
+    #
     #     ie)  s3://(some bucket)/OWP_ras_models/OWP_ras_models_catalog.csv
     #                                           /models/
     #                                                   /(model number 1 folder)
@@ -430,23 +451,14 @@ if __name__ == "__main__":
     # subfolders is critical
 
     parser = argparse.ArgumentParser(
-        description="Communication with aws s3 data services to download OWP_ras_model folders by HUC"
-    )
-
-    # can't default due to security.  ie) s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv
-    # Note: the actual models folders are assumed to be a folder named "models" beside the models_catalog.csv
-    parser.add_argument(
-        "-s",
-        "--s3_path_to_catalog_file",
-        help="REQUIRED: S3 path and file name of models_catalog.",
-        required=True,
-        metavar="",
+        description="Communication with aws s3 data services to download OWP_ras_model"
+        "folders by HUC, CRS and source code"
     )
 
     parser.add_argument(
         "-u",
         "--huc_number",
-        help="REQUIRED: Download model records matching this provided number",
+        help="REQUIRED: Please enter the HUC8 number. Only models matching this HUC will be downloaded.",
         required=True,
         metavar="",
     )
@@ -454,14 +466,35 @@ if __name__ == "__main__":
     parser.add_argument(
         "-p",
         "--projection",
-        help="REQUIRED: All model folders have an applicable crs value, but one HUC might have some"
-        "  models in one crs and another set of models in a different crs. This results in one HUC having"
-        " to be processed twice (one per crs).\n\nPlease enter the crs value from the"
-        "  OWP_ras_models_catalog.csv to help filter the correct models you need."
-        " Example: EPSG:2277 (case sensitive)",
+        help="REQUIRED: Please enter the crs value. Example: EPSG:2277 (case sensitive).\n"
+        " All model folders have an applicable crs value, but one HUC might have some"
+        " models in one crs and another set of models in a different crs. This results in one HUC having"
+        " to be processed twice (one per crs)."
+        ,
         required=True,
         metavar="",
         type=str,
+    )
+
+    # Note: As of Jan 2024, 'ble' is the only acceptable value but this could change at any time.
+    parser.add_argument(
+        "-sc",
+        "--source_code",
+        help="REQUIRED: Enter the source code to filter by those records.\n All model listed in the"
+        " models catalog have an applicable short source code, such as ble, ifc or usgs (case-sensitive).",
+        required=True,
+        metavar="",
+        type=str,
+    )
+
+    parser.add_argument(
+        "-s",
+        "--s3_path_to_catalog_file",
+        help="OPTIONAL: S3 path and file name of models_catalog."
+         F" Defaulted to {sv.S3_DEFAULT_MODELS_CATALOG_PATH}",
+        required=False,
+        default=sv.S3_DEFAULT_MODELS_CATALOG_PATH,
+        metavar="",
     )
 
     parser.add_argument(

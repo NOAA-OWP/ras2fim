@@ -429,6 +429,8 @@ def download_folders(
 
     """
 
+    s3_client = boto3.client('s3')
+
     # nested function
     def __download_folder(bucket_name, folder_id, s3_src_folder, target_local_folder):
         # send in blank search key
@@ -440,7 +442,6 @@ def download_folders(
             return result
 
         try:
-            s3_client = boto3.client('s3')
 
             for s3_item in s3_items:
                 # need to make the src file to be the full url minus the s:// and bucket name

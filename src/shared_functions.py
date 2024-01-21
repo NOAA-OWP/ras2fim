@@ -155,7 +155,7 @@ def get_changelog_version(changelog_path):
 # -------------------------------------------------
 def convert_rating_curve_to_metric(ras2rem_dir):
     src_path = os.path.join(ras2rem_dir, "rating_curve.csv")
-    df = pd.read_csv(src_path)
+    df = pd.read_csv(src_path, encoding="unicode_escape")
 
     # convert to metric if needed
     if "stage_m" not in df.columns:  # if no meters, then only Imperial units are in the file
@@ -506,3 +506,37 @@ def reproject_raster(temp_dem_file_path, output_dem_file_path, new_proj_wkt, res
                 resampling=Resampling.nearest,
                 dst_resolution=resolution,
             )
+
+# -------------------------------------------------
+def get_source_info(source_code):
+    """
+    Overview:
+        - Loads the file /config/source_codes.csv which as two columns (source_code, source_info)
+    Input:
+        - source_code (str): e.g. ble
+    Output
+        - source_name (long form name of the model source data)
+        - If record not found, an empty value will be returned.
+    """
+
+    referential_path = os.path.join(os.path.dirname(__file__), "..", "config", "source_codes.csv")
+    source_code_file = os.path.abspath(referential_path)
+
+    if os.path.exists(source_code_file) is False:
+        raise FileNotFoundError(f"sources code file not found as {source_code_file}")
+    
+    df_sources = pd.read_csv(source_code_file, sep=",", header=None, names=["source_code", "source_name"])
+    if df_sources.empty:
+        raise Exception(f"{source_code_file} appears to be empty")
+    
+    df_source = df_sources.loc[(df_sources["source_code"] == source_code)]
+    if df_source.empty:
+        return ""
+    
+    if len(df_source) > 1:
+        raise Exception(f"{source_code_file} has more than one record with the source code of {source_code}")
+    
+    return df_source["source_name"].iloc[0]
+
+
+
