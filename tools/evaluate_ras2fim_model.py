@@ -124,6 +124,16 @@ if __name__ == '__main__':
 
     import argparse
 
+    """
+    Example Usage:
+
+    python evaluate_ras2fim_model.py
+    -i "s3://ras2fim/output_ras2fim/12030105_2276_ble_230923/final/inundation_polys/ble_100yr_inundation.gpkg"
+    -m "s3://ras2fim/output_ras2fim/12030105_2276_ble_230923/final/models_domain/models_domain.gpkg"
+    -b "s3://ras2fim-dev/gval/benchmark_data/ble/12030105/100yr/ble_huc_12030105_extent_100yr.tif"
+    -st "12030105_2276_ble_230923_100yr" -o "./test_eval"
+    """
+
     # Parse arguments
     parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.")
     parser.add_argument(

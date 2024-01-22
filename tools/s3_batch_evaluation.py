@@ -227,6 +227,16 @@ if __name__ == '__main__':
     import os
     from datetime import datetime
 
+    """
+    Example Usage:
+
+    python s3_batch_evaluation.py
+    -su "12030105_2276_ble_230923,12040101_102739_ble_230922"
+    -b "ble,nws"
+    -st "100yr,500yr,moderate"
+    -o "./test_batch_eval"
+    """
+
     # Parse arguments
     parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.")
     parser.add_argument(
@@ -269,6 +279,9 @@ if __name__ == '__main__':
     RLOG.setup(os.path.join(args['output_dir'], script_file_name + ".log"))
 
     run_batch_evaluations(**args)
+
+
+
 
 
 
