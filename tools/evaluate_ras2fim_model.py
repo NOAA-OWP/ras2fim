@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import datetime
 
 import geopandas as gpd
@@ -8,6 +9,12 @@ import rioxarray as rxr
 from geocube.api.core import make_geocube
 from gval.utils.loading_datasets import adjust_memory_strategy
 
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+import shared_variables as sv
+
+
+RLOG = sv.R2F_LOG
 
 adjust_memory_strategy("normal")
 
@@ -151,5 +158,10 @@ if __name__ == '__main__':
     )
 
     args = vars(parser.parse_args())
+
+    # creates the log file name as the script name
+    script_file_name = os.path.basename(__file__).split('.')[0] + datetime.now().strftime('%Y-%m-%d_%H:%M')
+    # assumes RLOG has been added as a global var.
+    RLOG.setup(os.path.join(args['output_dir'], script_file_name + ".log"))
 
     evaluate_model_results(**args)

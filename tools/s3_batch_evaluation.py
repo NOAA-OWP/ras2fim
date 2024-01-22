@@ -1,8 +1,15 @@
+import os
+import sys
+
 from evaluate_ras2fim_model import evaluate_model_results
 from s3_shared_functions import get_folder_list, is_valid_s3_file
-from tqdm import tqdm
 
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+import shared_variables as sv
+
+
+RLOG = sv.R2F_LOG
 BUCKET = 'ras2fim'
 BUCKET_DEV = "ras2fim-dev"
 RESOLUTION = 10
@@ -209,13 +216,16 @@ def run_batch_evaluations(spatial_units: list = None,
                                 )
 
     # Run ras2fim model evaluation
-    for kwargs in tqdm(eval_args):
+    for kwargs in eval_args:
+        RLOG.lprint(f"Processing evaluation for spatial processing unit {kwargs['spatial_unit']}")
         evaluate_model_results(**kwargs)
 
 
 if __name__ == '__main__':
 
     import argparse
+    import os
+    from datetime import datetime
 
     # Parse arguments
     parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.")
@@ -252,6 +262,11 @@ if __name__ == '__main__':
         args['benchmark_sources'] = args['benchmark_sources'].split(',')
     if args['stages']:
         args['stages'] = args['stages']
+
+    # creates the log file name as the script name
+    script_file_name = os.path.basename(__file__).split('.')[0] + datetime.now().strftime('%Y-%m-%d_%H:%M')
+    # assumes RLOG has been added as a global var.
+    RLOG.setup(os.path.join(args['output_dir'], script_file_name + ".log"))
 
     run_batch_evaluations(**args)
 
