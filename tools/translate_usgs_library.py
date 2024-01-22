@@ -13,6 +13,7 @@ from timeit import default_timer as timer
 
 warnings.filterwarnings('ignore')
  
+
 def identify_best_branch_catchments(huc8_outputs_dir, subset_fim_gdf):
 
     # Open branch_polygons and check for overlap with subset_fim_gdf
@@ -33,6 +34,7 @@ def identify_best_branch_catchments(huc8_outputs_dir, subset_fim_gdf):
     del branch_polygons_gdf, joined_gdf, not_null_rows, subset_joined_gdf, branches_of_interest
 
     return branch_path_list
+
 
 def get_union(catchments_gdf, subset_fim_gdf, site_stage):
 
@@ -61,6 +63,8 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+        
+    # Create output directories.
     final_geocurves_dir = os.path.join(output_dir, 'geocurves')
     if not os.path.exists(final_geocurves_dir):
         os.mkdir(final_geocurves_dir)
@@ -79,17 +83,16 @@ def reformat_usgs_fims_to_geocurves(usgs_map_gpkg, output_dir, level_path_parent
     print("Loading USGS gages...")
     usgs_gages_gdf = gpd.read_file(usgs_gages_gpkg)
 
+    # Open and dissolve FIM domain by USGS unique ID.
     fim_domain_gdf_pre_diss = gpd.read_file(usgs_map_gpkg, layer='fim_model_extent')
     fim_domain_gdf_pre_diss['usgs_id'] = fim_domain_gdf_pre_diss['USGSID']
-
     fim_domain_gdf = fim_domain_gdf_pre_diss.dissolve(by="USGSID")
 
     print(f"Datasets loaded in {round((timer() - start)/60, 2)} minutes.")
 
-    # Loop through sites
+    # Multiprocess translation process
     if job_number > 1:
         with ProcessPoolExecutor(max_workers=job_number) as executor:
-
             for index, row in fim_domain_gdf.iterrows():
                 executor.submit(process_translation, index, row, usgs_rc_df, output_dir, final_geocurves_dir, final_geom_dir, usgs_gages_gdf, usgs_gages_gpkg, usgs_map_gpkg, level_path_parent_dir)
     else:
@@ -110,9 +113,6 @@ def process_translation(index, row, usgs_rc_df, output_dir, final_geocurves_dir,
             print("Missing RC for " + site)
             return
 
-        # if site != "04100222":
-        #     continue
-
         try:
             int(site)
         except ValueError: 
@@ -123,10 +123,12 @@ def process_translation(index, row, usgs_rc_df, output_dir, final_geocurves_dir,
         if not os.path.exists(site_dir):
             os.mkdir(site_dir) 
 
+        # Create directories for temporary files.
         branch_parent_dir = os.path.join(site_dir, 'branches')
         if not os.path.exists(branch_parent_dir):
             os.mkdir(branch_parent_dir)
 
+        # Create final directory.
         final_dir = os.path.join(site_dir, 'final')
         if not os.path.exists(final_dir):
             os.mkdir(final_dir)
@@ -168,10 +170,11 @@ def process_translation(index, row, usgs_rc_df, output_dir, final_geocurves_dir,
         branch_id_list, candidate_layers = [], []
         catchments_path_list, feature_count_list = [], []
 
+        # Identify the first map in the stack.
         first_site_stage = site_stages[0]
 
-        for catchments in branch_path_list:
-            
+        # Loop through all relevant branches and perform unions
+        for catchments in branch_path_list:            
             branch_id = os.path.split(catchments)[1].split('_')[-1].replace('.gpkg','')
             branch_id_list.append(branch_id)
             branch_output_dir = os.path.join(branch_parent_dir, branch_id)
@@ -199,6 +202,7 @@ def process_translation(index, row, usgs_rc_df, output_dir, final_geocurves_dir,
         max_index = feature_count_list.index(max(feature_count_list))
         best_match_catchments_gdf = gpd.read_file(catchments_path_list[max_index])
 
+        # Merge all relevant unions for the "best match" union
         iteration = 1
         for site_stage in site_stages:
             if iteration == 1:
