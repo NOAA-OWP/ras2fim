@@ -105,23 +105,8 @@ def mp_create_gdf_of_points(rlog_file_path, rlog_file_prefix, tpl_request):
 
 
 # -------------------------------------------------
-def fn_cut_streams_in_two(line, distance):
-    # Cuts a line in two at a distance from its starting point
-    # Cut end of the ble streams to avoid conflation with downstream nwm streams
-    if distance <= 0.0 or distance >= line.length:
-        return [LineString(line)]
-    coords = list(line.coords)
-    for i2, pi2 in enumerate(coords):
-        pdl = line.project(Point(pi2))
-        if pdl == distance:
-            return [LineString(coords[: i2 + 1]), LineString(coords[i2:])]
-        if pdl > distance:
-            cpl = line.interpolate(distance)
-            return [LineString(coords[:i2] + [(cpl.x, cpl.y)]), LineString([(cpl.x, cpl.y)] + coords[i2:])]
-
-
-# -------------------------------------------------
 def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg, path_unit_folder):
+    
     # -------------------------------------------------
     # INPUT
     start_dt = dt.datetime.utcnow()
@@ -235,6 +220,7 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     # reanme ID to feature_id
     gdf_stream = gdf_stream.rename(columns={"ID": "feature_id"})
 
+    # -------------------------------------------------
     # Load the netCDF file to pandas dataframe - 15 seconds
     RLOG.lprint("+-----------------------------------------------------------------+")
     RLOG.lprint("Loading the National Water Model Recurrence Flows ~ 15 sec")
@@ -258,121 +244,6 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     # project the nwm streams to the ble projecion
     gdf_streams_nwm_bleprj = gdf_streams_huc_only.to_crs(ble_prj)
 
-    # -------------------------------------------------
-    # Determine the conflated ras streams to nwm streams
-    # -------------------------------------------------
-
-    RLOG.lprint("Buffering NWM Streams ~ 120 sec")
-    # Make a buffer around streams_nwm (create a polygone)
-
-    nwm_buffer = 50  # ft
-    ras_buffer = 150  # ft
-
-    streams_nwm_bleprj_buf = gdf_streams_nwm_bleprj.buffer(nwm_buffer)
-    streams_nwm_bleprj_buf_geom = streams_nwm_bleprj_buf.copy()
-    gdf_streams_nwm_bleprj_buf = gdf_streams_nwm_bleprj.copy()
-    gdf_streams_nwm_bleprj_buf.geometry = streams_nwm_bleprj_buf_geom
-
-    # -------------------------------------------------
-    # Make a buffer around ras_ble_streams (create a polygone)
-    # Explode MultiLineString geometry to LineString geometry
-    gdf_ble_streams_intersect_exp = gdf_ble_streams_intersect.explode(index_parts=True, ignore_index=True)
-
-    # Excluding streams with length less that 500 ft
-    distance_delta = 500  # ft
-
-    ble_streams_intersect_len = gdf_ble_streams_intersect_exp.length
-
-    sln_indx = []
-    for sln in range(len(ble_streams_intersect_len)):
-        if ble_streams_intersect_len[sln] > distance_delta:
-            sln_indx.append(sln)
-
-    # Ble streams with length latger than distance_delta (500 ft)
-    gdf_ble_streams_intersect_ldd = gdf_ble_streams_intersect_exp.iloc[sln_indx]
-    gdf_ble_streams_intersect_ldd.index = range(len(gdf_ble_streams_intersect_ldd))
-
-    # Generate the equidistant points
-    distances = [np.arange(0, length, distance_delta) for length in gdf_ble_streams_intersect_ldd.length]
-
-    gdf_ble_streams_intersect_ldd_geo = gdf_ble_streams_intersect_ldd.geometry
-
-    list_ble_streams_cut_geo = []
-    for dc in range(len(distances)):  # ~ 120 s
-        # ligne = gdf_ble_streams_intersect_ldd.iloc[dc].geometry
-        ligne = gdf_ble_streams_intersect_ldd_geo[dc]
-
-        # Cut end of the ble streams to avoid conflation with downstream nwm streams
-        # geometry collection format
-        if len(distances[dc]) >= 4:
-            ligne_cut = fn_cut_streams_in_two(ligne, distances[dc][-3])
-
-        if len(distances[dc]) == 3:
-            ligne_cut = fn_cut_streams_in_two(ligne, distances[dc][-2])
-
-        if len(distances[dc]) == 2:
-            ligne_cut = fn_cut_streams_in_two(ligne, distances[dc][-1])
-
-        list_ble_streams_cut_geo.append(ligne_cut[0])
-
-    # Replacing gdf_ble_streams_intersect geometry with shorter streams geometry
-    gdf_ble_streams_intersect_ldd_cut = gdf_ble_streams_intersect_ldd.copy()
-    gdf_ble_streams_intersect_ldd_cut.geometry = list_ble_streams_cut_geo
-
-    # Make a buffer around ble_streams
-    ble_streams_intersect_buf = gdf_ble_streams_intersect_ldd_cut.buffer(ras_buffer)
-    ble_streams_intersect_buf_geom = ble_streams_intersect_buf.copy()
-    gdf_ble_streams_intersect_buf = gdf_ble_streams_intersect_ldd_cut.copy()
-    gdf_ble_streams_intersect_buf.geometry = ble_streams_intersect_buf_geom
-
-    # -------------------------------------------------
-    # Conflate ble streams to nwm streams
-    RLOG.lprint("Determining conflated stream centerlines")
-    gdf_conflate_streams_ble_to_nwm_dup = gpd.overlay(
-        gdf_streams_nwm_bleprj_buf, gdf_ble_streams_intersect_buf, how='intersection'
-    )
-
-    # -------------------------------------------------
-    # Remove duplicate rows that have the same ras_models AND feature_id
-    gdf_conflate_streams_ble_to_nwm_fid = gdf_conflate_streams_ble_to_nwm_dup.sort_values(
-        'Length', ascending=False
-    ).drop_duplicates(subset=['ras_path', 'feature_id'])
-    gdf_conflate_streams_ble_to_nwm_fid.index = range(len(gdf_conflate_streams_ble_to_nwm_fid))
-
-    # -------------------------------------------------
-    # Replacing polygon geometry with linestring geometry
-    conflated_huc12_raspath = gdf_conflate_streams_ble_to_nwm_fid[["HUC_12", "ras_path"]]
-    ble_huc12_raspath = gdf_ble_streams_intersect[["HUC_12", "ras_path"]]
-
-    def find_index(row, a, b):
-        if (row['HUC_12'] == a) and (row['ras_path'] == b):
-            return row.name
-        else:
-            return None
-
-    linestring_geo = []
-    linestring_indx = []
-    for cfid in range(len(conflated_huc12_raspath)):
-        indices = (
-            ble_huc12_raspath.apply(
-                find_index,
-                axis=1,
-                a=conflated_huc12_raspath["HUC_12"][cfid],
-                b=conflated_huc12_raspath["ras_path"][cfid],
-            )
-            .dropna()
-            .tolist()
-        )
-        linestring_indx.append(int(indices[0]))
-
-        line_geo = gdf_ble_streams_intersect['geometry'][indices[0]]
-        linestring_geo.append(line_geo)
-
-    gdf_conflate_streams_ble_to_nwm_fid_line = gdf_conflate_streams_ble_to_nwm_fid.copy()
-    gdf_conflate_streams_ble_to_nwm_fid_line.geometry = linestring_geo
-
-    # -------------------------------------------------
-    # Assigning feature-ids to conflated streams
     # -------------------------------------------------
     # Create points at desired interval along each
     # national water model stream
@@ -433,7 +304,6 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
 
     # Now that multi-proc is done, lets merge all of the independent log file from each
     RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
-    # -------------------------------------------------
 
     RLOG.lprint("+-----------------------------------------------------------------+")
     RLOG.lprint("Mapping points to nwm streams")
@@ -441,8 +311,7 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     gdf_points_nwm = gdf_points_nwm.set_crs(ble_prj)
 
     # -------------------------------------------------
-    # TODO: Dec 12, 2023 somewhere around here is a bug?
-    # read in the model stream shapefile
+    # Read in the model stream shapefile
     gdf_segments = gpd.read_file(ble_stream_ln)  # gdf_conflate_streams_ble_to_nwm_fid_line.copy()
 
     # Simplify geom by 4.5 tolerance and rewrite the
@@ -494,7 +363,7 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     total_points = len(gdf_points_within_buffer)
 
     df_points_within_buffer = pd.DataFrame(gdf_points_within_buffer)
-    # TODO - 2021.09.21 - create a new df that has only the variables needed in the desired order
+
     list_dataframe_args_snap = df_points_within_buffer.values.tolist()
 
     RLOG.lprint("+-----------------------------------------------------------------+")
@@ -518,7 +387,7 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     gdf_points_snap_to_ble = gdf_points_snap_to_ble.set_crs(gdf_segments.crs)
 
     # write the shapefile
-    # str_filepath_ble_points = os.path.join(shp_out_path, f"{str_huc8}_ble_snap_points_PT.shp")
+    str_filepath_ble_points = os.path.join(shp_out_path, f"{str_huc8}_ble_snap_points_PT.shp")
 
     # TODO: Nov 1, 2023. Somewhere in here is a bug?
     # gdf_points_snap_to_ble.to_file(str_filepath_ble_points)
@@ -593,6 +462,7 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     # National Water Model stream shapefile
     int_count = len(gdf_nwm_stream_raspath)
     for i in range(int_count):
+
         str_feature_id = gdf_nwm_stream_raspath.loc[[i], "feature_id"].values[0]
         str_ras_path = gdf_nwm_stream_raspath.loc[[i], "ras_path"].values[0]
 
@@ -661,8 +531,8 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     RLOG.lprint("Number of feature_id's matched: " + str(df_summary_data["feature_id"].nunique()))
 
     # -------------------------------------------------
-    # Find the model_ids from model catalog and
-    # save the conflated ras streams to nwm streams
+    # Reads the model_ids from model catalog and
+    # save the conflated ras to nwm streams paths
     # -------------------------------------------------
     df_conflated_ras_models = df_summary_data.sort_values('feature_id', ascending=False).drop_duplicates(
         subset=['ras_path']

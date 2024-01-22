@@ -32,7 +32,7 @@ from create_fim_rasters import fn_create_fim_rasters
 from create_geocurves import manage_geo_rating_curves_production
 from create_model_domain_polygons import fn_make_domain_polygons
 from create_shapes_from_hecras import fn_create_shapes_from_hecras
-from create_src_fimrasters_4fids import fn_create_src_feature_ids
+from create_rating_curves import fn_create_src_feature_ids
 from reformat_ras_rating_curve import dir_reformat_ras_rc
 from simplify_fim_rasters import fn_simplify_fim_rasters
 
