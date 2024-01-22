@@ -3,6 +3,9 @@ We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 ## v2.0.beta.18 - 2024-01-19 - [PR#256](https://github.com/NOAA-OWP/ras2fim/pull/256)
 
+
+## v2.0.beta.18 - 2024-01-19 - [PR#256](https://github.com/NOAA-OWP/ras2fim/pull/256)
+
 Update Step 3 to remove the option of getting DEMs (terrain files) from USGS on demand and now use only pre-cut `ras2fim DEMS`.  The new required terrain DEMs are optional as they can be defaulted in.
 
 Other misc fixes:

@@ -105,7 +105,6 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         # Use interpolation to find the row in geocurve_df that corresponds to the discharge_value
         geocurve_df = pd.read_csv(geocurve_file_path)
         row_idx = geocurve_df["discharge_cms"].sub(discharge_cms).abs().idxmin()
-
         subset_geocurve = geocurve_df.iloc[row_idx]
         polygon_geometry = wkt.loads(subset_geocurve["geometry"])
         stage_m = subset_geocurve["stage_m"]
@@ -137,7 +136,7 @@ if __name__ == "__main__":
     #    -t C:\ras2fim_data\output_ras2fim\12090301_2277_230825\final\inundation.gpkg
     #    -o
 
-    # # Parse arguments
+    # Parse arguments
     parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.")
     parser.add_argument(
         "-g", "--geocurves_dir", help="Path to directory containing RAS2FIM geocurve CSVs.", required=True
