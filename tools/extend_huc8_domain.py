@@ -9,7 +9,6 @@ import geopandas as gpd
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
-import ras2fim_logger
 import shared_validators as val
 import shared_variables as sv
 from shared_functions import get_stnd_date, print_date_time_duration
