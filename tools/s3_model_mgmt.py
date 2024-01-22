@@ -9,17 +9,15 @@ import traceback
 import numpy as np
 import pandas as pd
 
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import s3_shared_functions as s3_sf
 
-import ras2fim_logger
 import shared_variables as sv
 from shared_functions import get_date_with_milli, get_stnd_date, print_date_time_duration
 
 
 # Global Variables
-RLOG = ras2fim_logger.R2F_LOG
+RLOG = sv.R2F_LOG
 
 """
 This tool does some reconsilation and validation of both the master s3 models catalog and it's

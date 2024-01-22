@@ -8,18 +8,7 @@
 #
 # Use the HEC-RAS Command line interface to convert the TIF to HEC-RAS
 # hdf5 terrains per directions from Cam Ackerman - 2021.03.31
-#
-# Created by: Andy Carter, PE
-# Created: 2021.08.05
-# Last revised - 2021.10.24
-#
-# Sample:  RasProcess.exe CreateTerrain
-# units=feet stitch=true
-# prj="C:\Path\file.prj"
-# out="C:\Path\Terrain.hdf"
-# "C:\inputs\file1.tif" "C:\inputs\file2.tif" [...]
-#
-# ras2fim - Fourth pre-processing script
+
 # Uses the 'ras2fim' conda environment
 
 import argparse
@@ -94,7 +83,7 @@ def fn_convert_tif_to_ras_hdf5(
 
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
-    RLOG.lprint("|       CONVERT TERRAIN GEOTIFFS TO HEC-RAS TERRAINS (HDF5)       |")
+    RLOG.notice("|       CONVERT TERRAIN GEOTIFFS TO HEC-RAS TERRAINS (HDF5)       |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     # path to the directory that contains RasProcess and associated dll

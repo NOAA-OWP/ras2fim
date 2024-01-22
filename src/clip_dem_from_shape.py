@@ -21,16 +21,11 @@ import shared_functions as sf
 import shared_variables as sv
 
 
-RLOG = sv.R2F_LOG
-
-
-pd.options.mode.chained_assignment = None
-
-# ************************************************************
-
 # Global Variables
 # null value in the exported DEMs
 INT_NO_DATA_VAL = -9999
+RLOG = sv.R2F_LOG
+pd.options.mode.chained_assignment = None
 
 
 # -------------------------------------------------
@@ -57,7 +52,7 @@ def fn_cut_dems_from_shapes(
 
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
-    RLOG.lprint("|         CUT DEMs FROM LARGER DEM PER POLYGON SHAPEFILE          |")
+    RLOG.notice("|         CUT DEMs FROM LARGER DEM PER POLYGON SHAPEFILE          |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     RLOG.lprint("  ---(i) HUC12s SHAPEFILE PATH: " + str_huc12_path)
@@ -76,6 +71,7 @@ def fn_cut_dems_from_shapes(
     gdf_xs_lines = gpd.read_file(str_cross_sections_path)
 
     # read HUC12s
+    RLOG.lprint("Reading HUC12 polygons for the entire CONUS...this may take 3 minutes")
     gdf_huc12s = gpd.read_file(str_huc12_path)
 
     # important to reproject to model crs especially if the inputs

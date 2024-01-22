@@ -25,6 +25,7 @@ import traceback
 
 import pyproj
 
+
 import shared_functions as sf
 import shared_validators as val
 import shared_variables as sv
@@ -36,6 +37,7 @@ from create_fim_rasters import fn_create_fim_rasters
 from create_geocurves import manage_geo_rating_curves_production
 from create_model_domain_polygons import fn_make_domain_polygons
 from create_shapes_from_hecras import fn_create_shapes_from_hecras
+from create_src_fimrasters_4fids import fn_create_src_feature_ids
 from get_usgs_dem_from_shape import fn_get_usgs_dem_from_shape
 from reformat_ras_rating_curve import dir_reformat_ras_rc
 from simplify_fim_rasters import fn_simplify_fim_rasters
@@ -80,10 +82,9 @@ def init_and_run_ras2fim(
 
     # -------------------
     # -w   (ie 12090301)
-    if len(str_huc8_arg) != 8:
-        raise ValueError("the -w flag (HUC8) is not 8 characters long")
-    if str_huc8_arg.isnumeric() is False:  # can handle leading zeros
-        raise ValueError("the -w flag (HUC8) does not appear to be a HUC8")
+    huc_valid, err_msg = val.is_valid_huc(str_huc8_arg)
+    if huc_valid is False:
+        raise ValueError(err_msg)
 
     # -------------------
     # -i  (ie OWP_ras_models\models) (HECRAS models)
@@ -174,6 +175,7 @@ def init_and_run_ras2fim(
 
     RLOG.lprint("Sample lprint (console and log file)")
     RLOG.debug("Sample debug (console and log file)")
+    RLOG.notice("Sample notice (console and log file but differnt color to stand out more))
     RLOG.success("Sample success (console and log file)")
     RLOG.warning("Sample warning (console, log file and warning file)")
     RLOG.error("Sample error (console, log file, and error file)")
@@ -393,15 +395,18 @@ def fn_run_ras2fim(
     # ==============================================
 
     if int_step <= 5:
-        fn_create_fim_rasters(
-            str_huc8_arg,
-            str_shapes_from_conflation_dir,
-            str_hecras_out_dir,
-            str_projection_path,
-            str_hecras_terrain_dir,
-            flt_interval,
-            B_TERRAIN_CHECK_ONLY,
-        )
+        fn_create_fim_rasters(str_huc8_arg, output_folder_path, model_unit)
+
+    # -------------------------------------------
+
+    # --- Step 6: create_src_depthgrids_for_fids ---
+
+    RLOG.lprint("")
+    RLOG.notice("+++ Processing: STEP 6 (create src and fim rasters per fid) +++")
+    RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+
+    if int_step <= 6:
+        fn_create_src_feature_ids(str_huc8_arg, output_folder_path)
 
     # -------------------------------------------
     flt_resolution_depth_grid = int(output_resolution)
@@ -469,22 +474,15 @@ def fn_run_ras2fim(
         RLOG.lprint("")
         RLOG.notice("+++++++ Processing: STEP: Producing Geocurves +++++++")
 
-        create_polys = os.getenv("PRODUCE_GEOCURVE_POLYGONS") == "True"
-        if create_polys is True:
-            RLOG.notice("+++ (Including creating geocurve polygons) +++++++")
-        else:
-            RLOG.notice("++++ (Skipping creating geocurve polygon) +++++++")
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
         # Produce geocurves
         job_number = os.cpu_count() - 2
         manage_geo_rating_curves_production(
             ras2fim_output_dir=output_folder_path,
-            version=os.path.join(os.path.dirname(os.path.dirname(__file__)), "doc", "CHANGELOG.md"),
             job_number=job_number,
             output_folder=r2f_final_dir,
             overwrite=False,
-            produce_polys=create_polys,
         )
 
     # -------------------------------------------------
