@@ -1,5 +1,5 @@
-import boto3
 from evaluate_ras2fim_model import evaluate_model_results
+from s3_shared_functions import get_folder_list, is_valid_s3_file
 from tqdm import tqdm
 
 
@@ -23,77 +23,6 @@ BENCHMARK_URIS = {
     # format args: benchmark source, huc, nws station, stage
     "nws": 's3://ras2fim-dev/gval/benchmark_data/{0}/{1}/{2}/{3}/ahps_{2}_huc_{1}_extent_{3}.tif'
 }
-
-
-def s3_list_objects(bucket: str, path: str, max_keys=1) -> dict:
-    """ Lists all s3 folders and files (to be replaced by existing functions)
-
-    Parameters
-    ----------
-    bucket: str
-        Name of s3 bucket
-    path: str
-        s3 directory to list objects
-    max_keys: int
-        Maximum amount of keys to list
-
-    Returns
-    -------
-    dict
-        A dictionary of objects within the s3 bucket folder
-
-    """
-    s3 = boto3.client('s3')
-    if not path.endswith('/'):
-        path = path+'/'
-    return s3.list_objects(Bucket=bucket, Prefix=path, Delimiter='/', MaxKeys=max_keys)
-
-
-def folder_exists_and_not_empty(bucket: str, path: str) -> bool:
-    """ Checks whether a folder exists and is not empty
-
-    Parameters
-    ----------
-    bucket: str
-        Name of s3 bucket
-    path: str
-        s3 directory to list objects
-
-    Returns
-    -------
-    bool
-        Whether the folder exists and is not empty or not
-
-    """
-    resp = s3_list_objects(bucket=bucket, path=path, max_keys=1)
-    return 'Contents' in resp or "CommonPrefixes" in resp
-
-
-def file_exists(bucket: str, path: str) -> bool:
-    """ Check if the file exists in the s3 bucket
-
-    Parameters
-    ----------
-    bucket: str
-        Name of s3 bucket
-    path: str
-        s3 directory to list objects
-
-    Returns
-    -------
-    bool
-        Whether the file exists in the s3 bucket or not
-
-    """
-    file = path.split('/')[-1]
-    path = '/'.join(path.split('/')[:-1])
-
-    resp = s3_list_objects(bucket=bucket, path=path, max_keys=9999)
-
-    if "Contents" in resp:
-        return file in [x["Key"].split('/')[-1] for x in resp["Contents"]]
-    else:
-        return False
 
 
 def get_benchmark_uri(spatial_proc_unit: str, benchmark_source: str, stage: str, nws_station: str) -> str:
@@ -149,9 +78,7 @@ def get_nws_stations(huc: str) -> list:
         NWS stations available for HUC
 
     """
-    client = boto3.client('s3')
-    result = client.list_objects(Bucket=BUCKET_DEV, Prefix=NWS_BENCHMARK_PREFIX.format(huc), Delimiter='/')
-    return [s_unit['Prefix'].split('/')[-2] for s_unit in result.get('CommonPrefixes', [])]
+    return [s_unit['key'] for s_unit in get_folder_list(BUCKET_DEV, NWS_BENCHMARK_PREFIX.format(huc), False)]
 
 
 def check_necessary_files_exist(spatial_proc_unit: str,
@@ -182,9 +109,9 @@ def check_necessary_files_exist(spatial_proc_unit: str,
              'model_domain_polygons': MODEL_DOMAIN_URL.format(spatial_proc_unit),
              'benchmark_raster': get_benchmark_uri(spatial_proc_unit, benchmark_source, stage, nws_station)}
 
-    exists = [file_exists(BUCKET, '/'.join(files['inundation_polygons'].split('/')[3:])),
-              file_exists(BUCKET, '/'.join(files['model_domain_polygons'].split('/')[3:])),
-              file_exists(BUCKET_DEV, '/'.join(files['benchmark_raster'].split('/')[3:]))]
+    exists = [is_valid_s3_file(files['inundation_polygons']),
+              is_valid_s3_file(files['model_domain_polygons']),
+              is_valid_s3_file(files['benchmark_raster'])]
 
     if sum(exists) == 3:
         return files
@@ -249,12 +176,11 @@ def run_batch_evaluations(spatial_units: list = None,
          Directory to save output evaluation files
 
     """
-    client = boto3.client('s3')
-    result = client.list_objects(Bucket=BUCKET, Prefix=PREFIX, Delimiter='/')
+
     eval_args = []
 
-    for s_unit in result.get('CommonPrefixes'):
-        spatial_proc_unit = s_unit.get('Prefix').split('/')[1]
+    for s_unit in get_folder_list(BUCKET, PREFIX, False):
+        spatial_proc_unit = s_unit.get('key')
 
         # Check if directory is in desired spatial_units list if provided
         if spatial_units is None or spatial_proc_unit in spatial_units:
@@ -283,8 +209,8 @@ def run_batch_evaluations(spatial_units: list = None,
                                 )
 
     # Run ras2fim model evaluation
-    for args in tqdm(eval_args):
-        evaluate_model_results(**args)
+    for kwargs in tqdm(eval_args):
+        evaluate_model_results(**kwargs)
 
 
 if __name__ == '__main__':
@@ -328,5 +254,7 @@ if __name__ == '__main__':
         args['stages'] = args['stages']
 
     run_batch_evaluations(**args)
+
+
 
 
