@@ -1175,7 +1175,7 @@ def create_hecras_files(huc8_num, int_fn_starting_flow, int_number_of_steps, uni
 # -------------------------------------------------
 # Runs HEC-RAS
 # For One RAS Model ~ 3 min
-# -------------------------------------------------
+# -------------------------------------------------    
 def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
     try:
         hec = None
@@ -1210,8 +1210,8 @@ def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
         int_max_depth_id, int_node_chan_length, int_water_surface_elev, int_q_total = (4, 42, 2, 9)
 
         # -------------------------------------------------
-        # Saving information for all profiles of all cross sections
-        # Water depths, WSE and flows for each XS
+        # Saving information for all profiles of each confalated 
+        # ras model: water depths, WSE and flows for each XS
         # -------------------------------------------------
         # make a list of unique ids using feature id and cross section name
         all_x_sections_info = pd.DataFrame()
