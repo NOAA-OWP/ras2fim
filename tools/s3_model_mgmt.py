@@ -383,6 +383,13 @@ def __validate_input(s3_master_csv_path, s3_models_path, output_folder_path):
 
 ####################################################################
 if __name__ == "__main__":
+
+    # ***********************
+    # This tool is intended for NOAA/OWP staff only as it requires access to an AWS S3 bucket with a
+    # specific folder structure.
+    # If you create your own S3 bucket in your own AWS account, you are free to use this tool.
+    # ***********************
+
     # ---- Samples Inputs
     # All arguments are defaulted, so this is the minimum
     #   python s3_model_mgmt.py
@@ -402,7 +409,7 @@ if __name__ == "__main__":
         "--s3_models_path",
         help="OPTIONAL: The full S3 path to the OWP_ras_models folder.\n"
         "ie) s3://ras2fim-dev/OWP_ras_models/my_models\n"
-        "Note: it is a case-sensitive value"
+        "Note: it is a case-sensitive value\n"
         f"Defaults to {sv.S3_OUTPUT_MODELS_FOLDER}",
         default=sv.S3_OUTPUT_MODELS_FOLDER,
         required=False,

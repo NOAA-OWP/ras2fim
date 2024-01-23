@@ -203,8 +203,8 @@ class Get_Models_By_Catalog:
                 " crs value (case-sensitive)\n"
                 "    - The records must match the source_code argument\n"
                 "    - Status has to be 'ready'\n"
-                "    - The final_name_key column must not start with the values of 1__, 2__ or 3__\n"
-                "  1__, 2__ and 3__ are filtered as required by the pre-processing team.\n"
+                "    - The final_name_key column must not start with the values of 1_, 2_ or 3_\n"
+                "  1_, 2_ and 3_ are filtered as required by the pre-processing team.\n"
             )
 
             # ***** FILTERS  ******
@@ -469,8 +469,7 @@ if __name__ == "__main__":
         help="REQUIRED: Please enter the crs value. Example: EPSG:2277 (case sensitive).\n"
         " All model folders have an applicable crs value, but one HUC might have some"
         " models in one crs and another set of models in a different crs. This results in one HUC having"
-        " to be processed twice (one per crs)."
-        ,
+        " to be processed twice (one per crs).",
         required=True,
         metavar="",
         type=str,

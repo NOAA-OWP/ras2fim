@@ -36,7 +36,7 @@ find that you only need to setup yoru machine once with 'aws configure' and not 
 
 Overall logic flow:
 
-    - Selecting a single output (unit)(huc/crs) folder (ie. 12090301_2277_0821) to be selected to
+    - Selecting a single output (unit)(huc/crs/source code) folder (ie. 12090301_2277_ble_0821) to be selected to
       S3. The bucket is definable but not the pathing inside the bucket. It assumes
       the folders of output_ras2fim and output_ras2fim_archive exist at the root repo.
 
@@ -66,42 +66,44 @@ Overall logic flow:
 
 
 ####################################################################
-def unit_to_s3(src_unit_dir_path, s3_bucket_name, is_verbose):
+def unit_to_s3(src_unit_output_path, s3_models_path, is_verbose):
     start_time = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
     RLOG.lprint("")
     RLOG.lprint("=================================================================")
     RLOG.notice("          RUN ras_unit_to_s3 ")
-    RLOG.lprint(f"  (-s): Source unit folder {src_unit_dir_path} ")
-    RLOG.lprint(f"  (-b): s3 bucket name {s3_bucket_name}")
+    RLOG.lprint(f"  (-s): Source unit folder {src_unit_output_path} ")
+    RLOG.lprint(f"  (-b): s3 models folder path {s3_models_path}")
     RLOG.lprint("")
     RLOG.lprint(f" --- Saving unit folder to S3 start: {dt_string} (UTC time) ")
 
     # --------------------
     # validate input variables and setup key variables
-    varibles_dict = __validate_input(src_unit_dir_path, s3_bucket_name)
+    varibles_dict = __validate_input(src_unit_output_path, s3_models_path)
 
-    # why have this come in from variables_dict? the src_unit_dir_path can come in not
-    # fully pathed, just the unit folder in the default folder path
-    src_path = varibles_dict["src_unit_full_path"]
-    # eg. c:\ras2fim_data\output_ras2fim\12030202_102739_230810
-    unit_folder_name = varibles_dict["src_unit_dir"]
     # eg. 12030202_102739_230810
-    s3_full_output_path = varibles_dict["s3_full_output_path"]
+    unit_folder_name = varibles_dict["unit_folder_name"]
+
     # e.g. s3://xyz/output_ras2fim
+    s3_full_output_path = varibles_dict["s3_full_output_path"]
+
+    # e.g. s3://xyz/output_ras2fim_archive    
     s3_full_archive_path = varibles_dict["s3_full_archive_path"]
-    # e.g. s3://xyz/output_ras2fim_archive
-    s3_full_unit_path = f"{s3_full_output_path}/{unit_folder_name}"
+
+
+
     # Note: Generally speaking most values starting with with "s3://xyz" are used for display purposes only
     # as generaly logic for S3 needs to do it in parts (bucket, and folder). We usually change the
     # folder values to add in the phrase "output_ras2fim" or "output_ras2fim_archive"
+    s3_full_unit_path = f"{s3_full_output_path}/{unit_folder_name}"
+
+
 
     # We don't want to try upload current active log files (for this script)
     # and the temp local tracker file
-
     global TRACKER_SRC_LOCAL_PATH
-    TRACKER_SRC_LOCAL_PATH = os.path.join(src_unit_dir_path, sv.S3_OUTPUT_TRACKER_FILE)
+    TRACKER_SRC_LOCAL_PATH = os.path.join(src_unit_output_path, sv.S3_OUTPUT_TRACKER_FILE)
 
     # These are files that will not be uploaded to S3
     # Note: Will upload log files from original process such as ras2fim files
@@ -817,7 +819,7 @@ def __add_record_to_tracker(
 
 ####################################################################
 ####  Some validation of input, but also creating key variables ######
-def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
+def __validate_input(unit_output_path, s3_models_path):
     # Some variables need to be adjusted and some new derived variables are created
     # dictionary (key / pair) will be returned
 
@@ -825,21 +827,16 @@ def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
 
     # ---------------
     # why is this here? might not come in via __main__
-    if src_path_to_unit_output_dir == "":
-        raise ValueError("Source src_path_to_unit_output_dir parameter value can not be empty")
+    if unit_output_path == "":
+        raise ValueError("The source unit output folder parameter value can not be empty")
 
-    if not os.path.exists(src_path_to_unit_output_dir):
-        raise ValueError(f"Source unit folder not found at {src_path_to_unit_output_dir}")
+    if not os.path.exists(unit_output_path):
+        raise ValueError(f"The source unit output folder not found at {unit_output_path}")
 
-    if s3_bucket_name == "":
-        raise ValueError("Bucket name parameter value can not be empty")
+    bucket_name, s3_folder_path = s3_sf.is_valid_s3_folder(s3_models_path)
+    rtn_varibles_dict["bucket_name"] = bucket_name
+    rtn_varibles_dict["s3_folder_path"] = s3_folder_path
 
-    if ("/" in s3_bucket_name) or ("\\" in s3_bucket_name) or ("s3:" in s3_bucket_name):
-        raise ValueError(
-            "Bucket name parameter value invalid. It needs to be a single word"
-            " or phrase such as my_xyz or r2f-dev. It can not contain values such as"
-            " s3: or forward or back slashes"
-        )
 
     # ---------------
     # we need to split this to seperate variables.
@@ -848,13 +845,13 @@ def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
     # "src_unit_dir" becomes (if not already) 12030202_102739_230810
     # "src_unit_full_path" becomes (if not already) c:\ras2fim_data\output_ras2fim\12030202_102739_230810
     # remembering that the path or folder name might be different.
-    src_path_to_unit_output_dir = src_path_to_unit_output_dir.replace("/", "\\")
-    src_path_segs = src_path_to_unit_output_dir.split("\\")
+    unit_output_path = unit_output_path.replace("/", "\\")
+    src_path_segs = unit_output_path.split("\\")
 
     # We need the source huc_crs folder name for later and the full path
     rtn_varibles_dict["src_unit_dir"] = src_path_segs[-1]
     # strip of the parent path
-    rtn_varibles_dict["src_unit_full_path"] = src_path_to_unit_output_dir
+    rtn_varibles_dict["src_unit_full_path"] = unit_output_path
 
     # --------------------
     # make sure it has a "final" folder and has some contents
@@ -872,24 +869,7 @@ def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
             f"Source unit 'final' folder at {final_dir} does not appear to have any files or folders."
         )
 
-    # --------------------
-    # check ras2fim output bucket exists
-    print()
-    msg = f"    Validating that the s3 bucket of {s3_bucket_name} exists"
-    if s3_sf.does_s3_bucket_exist(s3_bucket_name) is False:
-        raise ValueError(f"{msg} ... does not exist")
-    else:
-        RLOG.lprint(f"{msg} ... found")
 
-    # --------------------
-    # check ras2fim output folder exists
-    s3_full_output_path = f"s3://{s3_bucket_name}/{sv.S3_OUTPUT_RAS2FIM_FOLDER}"
-    msg = f"    Validating that the S3 output folder of {s3_full_output_path} exists"
-    if s3_sf.is_valid_s3_folder(s3_full_output_path) is False:
-        raise ValueError(f"{msg} ... does not exist")
-    else:
-        RLOG.lprint(f"{msg} ... found")
-    rtn_varibles_dict["s3_full_output_path"] = s3_full_output_path
 
     # --------------------
     # check ras2fim archive folder exists
@@ -907,8 +887,15 @@ def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
 
 ####################################################################
 if __name__ == "__main__":
+
+    # ***********************
+    # This tool is intended for NOAA/OWP staff only as it requires access to an AWS S3 bucket with a
+    # specific folder structure.
+    # If you create your own S3 bucket in your own AWS account, you are free to use this tool.
+    # ***********************
+
     # ---- Samples Inputs
-    #    python /tools/ras_unit_to_s3.py -s c:\my_ras\output\12030202_102739_230810 -b xyz_bucket
+    #    python /tools/ras_unit_to_s3.py -s c:\my_ras\output\12030202_102739_230810
 
     # NOTE: pathing inside the bucket can not be changed.
     # The root folder (prefix) is hardcoded to output_ras2fim and the archive folder is
@@ -923,20 +910,22 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-s",
-        "--src_unit_dir_path",
-        help="REQUIRED: A full defined path including output unit folder\n"
-        " ie) c:\my_ras\output\\12030202_102739_230810",
+        "--src_unit_output_path",
+        help="REQUIRED: A full defined path including output unit folder.\n"
+        r" ie) c:\my_ras\output\12030202_102739_230810",
         required=True,
         metavar="",
     )
 
-    # s3 bucket name. Can't default S3 paths due to security.  ie) xyz  of (s3://xyz)
     parser.add_argument(
-        "-b",
-        "--s3_bucket_name",
-        help="REQUIRED: S3 bucket where output ras2fim folders are placed.\n"
-        "eg) xyz_bucket from s3://xyz_bucket",
-        required=True,
+        "-mp",
+        "--s3_models_path",
+        help="OPTIONAL: The full S3 path to the OWP_ras_models folder.\n"
+        "ie) s3://ras2fim-dev/OWP_ras_models/my_models\n"
+        "Note: it is a case-sensitive value.\n "
+        f"Defaults to {sv.S3_OUTPUT_MODELS_FOLDER}",
+        default=sv.S3_OUTPUT_MODELS_FOLDER,
+        required=False,
         metavar="",
     )
 

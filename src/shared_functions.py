@@ -433,15 +433,16 @@ def print_date_time_duration(start_dt, end_dt):
 
 
 # -------------------------------------------------
-def get_stnd_r2f_output_folder_name(huc_number, crs):
+def get_stnd_r2f_output_folder_name(huc_number, crs, source_code):
     """
     Inputs:
         - huc (str)
         - crs (str):  ie) ESPG:2277 or ESRI:107239. Note, must start with ESRI or EPSG (non case-sensitive)
+        - source_code (str) ie. ble. Must match values in the config/source_codes.csv
 
     """
 
-    # returns pattern of {HUC}_{CRS_number}_{stnd date}. e.g 12090301_2277_230725
+    # returns pattern of {HUC}_{CRS_number}_{source_code)_{stnd date}. e.g 12090301_2277_ble_230725
 
     # -------------------
     if len(str(huc_number)) != 8:
@@ -456,10 +457,15 @@ def get_stnd_r2f_output_folder_name(huc_number, crs):
 
     if is_valid_crs is False:
         raise ValueError(err_msg)
+    
+    # -------------------
+    source_name = get_source_info(source_code)
+    if source_name == "":
+        raise ValueError("Source code is invalid or does not exist")
 
     std_date = get_stnd_date(False)
 
-    folder_name = f"{huc_number}_{crs_number}_{std_date}"
+    folder_name = f"{huc_number}_{crs_number}_{source_code}_{std_date}"
 
     return folder_name
 
@@ -478,7 +484,6 @@ def progress_bar_handler(executor_dict, verbose, desc):
             future.result()
         except Exception as exc:
             print("{}, {}, {}".format(executor_dict[future], exc.__class__.__name__, exc))
-
 
 #
 # -------------------------------------------------
@@ -518,6 +523,9 @@ def get_source_info(source_code):
         - source_name (long form name of the model source data)
         - If record not found, an empty value will be returned.
     """
+
+    if source_code == "":
+        raise Exception(f"source code value of {source_code} appears to be empty")
 
     referential_path = os.path.join(os.path.dirname(__file__), "..", "config", "source_codes.csv")
     source_code_file = os.path.abspath(referential_path)
