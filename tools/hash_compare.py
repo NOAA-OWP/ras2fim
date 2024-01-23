@@ -223,8 +223,8 @@ if __name__ == "__main__":
 
     # Sample usage for files (file names need not match, but extensions do)
     # python ./tools/hash_compare.py
-    # -src1 C:\ras2fim_data\output_ras2fim\12030105_2276_230913_dev\06_metric\all_rating_curves.csv
-    # -src2 C:\ras2fim_data\output_ras2fim\12030105_2276_230913\06_metric\rating_curves_test.csv
+    # -src1 C:\ras2fim_data\output_ras2fim\12090301_2277_ble_240122\05_hecras_output\all_rating_curves.csv
+    # -src2 C:\ras2fim_data\output_ras2fim\12090301_2277_ble_240122\05_hecras_output\rating_curves_test.csv
 
     # NOTE: it will show you if a file exists in src1 and is not in src2, but the opposite is not true
     # eg. No warning if extra files in src2.

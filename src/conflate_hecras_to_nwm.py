@@ -410,6 +410,11 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     RLOG.lprint("start of creating gdf of points")
 
     # -------------------------------------------------
+    # A "partial" just extends the original function to add extra params on the fly
+    # e.g. The original mp_create_gdf_of_points has only sorted_list_points_aggregate being
+    # passed in. Now, but adding a partial, the args beign passed into mp_create_gdf_of_points
+    # are RLOG.LOG_DEFAULT_FOLDER, log_file_prefix, sorted_list_points_aggregate
+    # Notice.. the partial gets a temp name that gets passed into the function in the pool
     log_file_prefix = "mp_create_gdf_of_points"
     fn_create_gdf_of_points_partial = partial(
         mp_create_gdf_of_points, RLOG.LOG_DEFAULT_FOLDER, log_file_prefix

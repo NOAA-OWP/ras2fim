@@ -225,11 +225,9 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, job_number, output_f
 
     # Define paths outputs
     simplified_depth_grid_parent_dir = os.path.join(
-        ras2fim_output_dir, sv.R2F_OUTPUT_DIR_METRIC, sv.R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS
+        ras2fim_output_dir, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES, sv.R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS
     )
-    rating_curve_parent_dir = os.path.join(
-        ras2fim_output_dir, sv.R2F_OUTPUT_DIR_METRIC, sv.R2F_OUTPUT_DIR_METRIC_RATING_CURVES
-    )
+    rating_curve_parent_dir = os.path.join(ras2fim_output_dir, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES)
 
     # Create dictionary of files to process
     proc_dictionary = {}

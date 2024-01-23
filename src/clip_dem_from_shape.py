@@ -135,9 +135,6 @@ def fn_cut_dems_from_shapes(
     conflated_models = pd.read_csv(conflated_models_file_path)
     conflated_model_ids = conflated_models['model_id'].unique().tolist()
 
-    for model_id in conflated_model_ids:
-        RLOG.trace(f"Processing {model_id} from conflated_model_ids")
-
     gdf_xs_lines = gdf_xs_lines.merge(
         conflated_models, on='ras_path', how='inner'
     )  # this filters conflated xsections
