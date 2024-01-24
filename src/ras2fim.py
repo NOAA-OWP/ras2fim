@@ -287,7 +287,7 @@ def fn_run_ras2fim(
 
     # run the first script (create_shapes_from_hecras)
     if int_step <= 1:
-        fn_create_shapes_from_hecras(input_models_path, dir_shapes_from_hecras, projection, unit_output_path)
+        fn_create_shapes_from_hecras(input_models_path, dir_shapes_from_hecras, projection)
     # -------------------------------------------
 
     # ------ Step 2: conflate_hecras_to_nwm -----
@@ -370,10 +370,6 @@ def fn_run_ras2fim(
 
     fn_create_rating_curves(huc8, unit_output_path)
 
-    # TODO: Temp abort until other modules come online
-    print("Processing Stopped. Further modules not complete")
-    sys.exit(0)
-
     # Use rating curve data from Step 6
     # TODO: Jan 22, 2024 - While mostly plugged in, it needs adjustments.
     RLOG.lprint("")
@@ -395,47 +391,6 @@ def fn_run_ras2fim(
     #    unit_output_path, flt_resolution_depth_grid, sv.DEFAULT_RASTER_OUTPUT_CRS,
     #    model_unit, unit_output_path
     # )
-
-    # -------------------------------------------------
-    if os.getenv("RUN_RAS2CALIBRATION") == "True":
-        RLOG.lprint("")
-        RLOG.notice("+++++++ Processing: STEP: Running ras2calibration +++++++")
-        RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-
-        dir_reformat_ras_rc(
-            unit_output_path,
-            sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
-            sv.R2F_OUTPUT_FILE_RAS2CAL_CSV,
-            sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG,
-            sv.R2F_OUTPUT_FILE_RAS2CAL_LOG,
-            "",
-            "",
-            False,
-            sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF,
-            sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS,
-            sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES,
-        )
-
-        # Copy outputs into the ras2calibration subdirectory of the /final folder
-        r2f_final_ras2cal_subdir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
-        os.mkdir(r2f_final_ras2cal_subdir)
-
-        shutil.copy2(
-            os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_CSV),
-            r2f_final_ras2cal_subdir,
-        )
-        shutil.copy2(
-            os.path.join(
-                unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG
-            ),
-            r2f_final_ras2cal_subdir,
-        )
-        shutil.copy2(
-            os.path.join(
-                unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, "README_reformat_ras_rating_curve.txt"
-            ),
-            r2f_final_ras2cal_subdir,
-        )
 
     # -------------------------------------------------
     if os.getenv("PRODUCE_GEOCURVES") == "True":
@@ -486,6 +441,47 @@ def fn_run_ras2fim(
             "ras_path",
             model_huc_catalog_path,
             conflation_csv_path,
+        )
+
+    # -------------------------------------------------
+    if os.getenv("RUN_RAS2CALIBRATION") == "True":
+        RLOG.lprint("")
+        RLOG.notice("+++++++ Processing: STEP: Running ras2calibration +++++++")
+        RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+
+        dir_reformat_ras_rc(
+            unit_output_path,
+            sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
+            sv.R2F_OUTPUT_FILE_RAS2CAL_CSV,
+            sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG,
+            sv.R2F_OUTPUT_FILE_RAS2CAL_LOG,
+            "",
+            "",
+            False,
+            sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF,
+            sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS,
+            sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES,
+        )
+
+        # Copy outputs into the ras2calibration subdirectory of the /final folder
+        r2f_final_ras2cal_subdir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
+        os.mkdir(r2f_final_ras2cal_subdir)
+
+        shutil.copy2(
+            os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_CSV),
+            r2f_final_ras2cal_subdir,
+        )
+        shutil.copy2(
+            os.path.join(
+                unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG
+            ),
+            r2f_final_ras2cal_subdir,
+        )
+        shutil.copy2(
+            os.path.join(
+                unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, "README_reformat_ras_rating_curve.txt"
+            ),
+            r2f_final_ras2cal_subdir,
         )
 
     # -------------------------------------------------

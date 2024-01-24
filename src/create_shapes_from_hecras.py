@@ -642,7 +642,7 @@ def fn_print_progress_bar(
 
 
 # -------------------------------------------------
-def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, projection, unit_output_path):
+def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, projection):
     # INPUT
     flt_start_create_shapes_from_hecras = time.time()
 
@@ -653,7 +653,6 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
     RLOG.lprint(f"  ---(i) INPUT PATH: {input_models_path}")
     RLOG.lprint(f"  ---(o) OUTPUT PATH: {output_shp_files_path}")
     RLOG.lprint(f"  ---(p) MODEL PROJECTION: {projection}")
-    RLOG.lprint(f"  ---(u) UNIT OUTPUT PATH: {unit_output_path}")
     RLOG.lprint(f"  --- Module Started: {sf.get_stnd_date()}")
 
     str_path_to_output_streams = os.path.join(output_shp_files_path, "stream_LN_from_ras.shp")
@@ -806,8 +805,7 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
 if __name__ == "__main__":
     # Sample:
     # python create_shapes_from_hecras.py -i C:\ras2fim_data\OWP_ras_models\models-12030105-small
-    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\01_shapes_from_hecras
-    #  -p EPSG:2276 -u c:\ras2fim_data\output_ras2fim\12030105_2276_231024
+    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\01_shapes_from_hecras -p EPSG:2276
 
     parser = argparse.ArgumentParser(
         description="============ SHAPEFILES FROM HEC-RAS DIRECTORY ============"
@@ -841,19 +839,11 @@ if __name__ == "__main__":
         type=str,
     )
 
-    parser.add_argument(
-        "-u",
-        dest="unit_output_path",
-        help="REQUIRED: Directory containing model catalog for HUC8:"
-        r" Example: C:\ras2fim_data\output_ras2fim\12090301_2277_240122",
-        required=True,
-        metavar="DIR",
-        type=str,
-    )
-
     args = vars(parser.parse_args())
 
-    log_file_folder = args["input_models_path"]
+    referential_path = os.path.join(os.path.dirname(__file__), "..", args["output_shp_files_path"])
+    config_file = os.path.abspath(referential_path)
+    log_file_folder = os.path.join(config_file, "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
