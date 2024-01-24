@@ -23,7 +23,7 @@ import xarray as xr
 from fiona import collection
 from geopandas.tools import sjoin
 from shapely import wkt
-from shapely.geometry import LineString, Point, mapping
+from shapely.geometry import Point, mapping
 
 import ras2fim_logger
 import shared_functions as sf
@@ -106,7 +106,6 @@ def mp_create_gdf_of_points(rlog_file_path, rlog_file_prefix, tpl_request):
 
 # -------------------------------------------------
 def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nation_arg, path_unit_folder):
-    
     # -------------------------------------------------
     # INPUT
     start_dt = dt.datetime.utcnow()
@@ -387,7 +386,7 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     gdf_points_snap_to_ble = gdf_points_snap_to_ble.set_crs(gdf_segments.crs)
 
     # write the shapefile
-    str_filepath_ble_points = os.path.join(shp_out_path, f"{str_huc8}_ble_snap_points_PT.shp")
+    # str_filepath_ble_points = os.path.join(shp_out_path, f"{str_huc8}_ble_snap_points_PT.shp")
 
     # TODO: Nov 1, 2023. Somewhere in here is a bug?
     # gdf_points_snap_to_ble.to_file(str_filepath_ble_points)
@@ -462,7 +461,6 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     # National Water Model stream shapefile
     int_count = len(gdf_nwm_stream_raspath)
     for i in range(int_count):
-
         str_feature_id = gdf_nwm_stream_raspath.loc[[i], "feature_id"].values[0]
         str_ras_path = gdf_nwm_stream_raspath.loc[[i], "ras_path"].values[0]
 
