@@ -247,7 +247,6 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     # Create points at desired interval along each
     # national water model stream
     # -------------------------------------------------
-
     # TODO - 2021.09.21 - this should be 50 if meters and 150 if feet
     # too small a value creates long buffering times
     int_distance_delta = 150  # distance between points in hec-ras projection units
@@ -561,15 +560,28 @@ def fn_conflate_hecras_to_nwm(str_huc8, str_shp_in_arg, str_shp_out_arg, str_nat
     df_conflated_ras_models.index = range(len(conflated_model_names_id_df))
     df_conflated_ras_models_path = pd.concat([df_conflated_ras_models, conflated_model_names_id_df], axis=1)
 
-    conflated_radmodels_path = os.path.join(str_shp_out_arg, "conflated_ras_models.csv")
-    df_conflated_ras_models_path.to_csv(conflated_radmodels_path)
+    
 
-    RLOG.lprint("")
-    RLOG.success("COMPLETE")
+    if len(df_conflated_ras_models_path)>0:
+        conflated_rasmodels_path = os.path.join(str_shp_out_arg, "conflated_ras_models.csv")
+        df_conflated_ras_models_path.to_csv(conflated_rasmodels_path)
 
-    dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
-    RLOG.lprint(dur_msg)
-    RLOG.lprint("+=================================================================+")
+        RLOG.lprint("")
+        RLOG.success("COMPLETE")
+
+        dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
+        RLOG.lprint(dur_msg)
+        RLOG.lprint("+=================================================================+")
+
+    else: 
+        RLOG.lprint("")
+        RLOG.critical("NO CONFLATED RAS MODEL FOUND")
+
+        dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
+        RLOG.lprint(dur_msg)
+        RLOG.lprint("+=================================================================+")
+
+        sys.exit(1)
 
 
 # -------------------------------------------------
