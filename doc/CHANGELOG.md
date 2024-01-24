@@ -1,6 +1,44 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.x - 2024-01-23 - [PR#263](https://github.com/NOAA-OWP/ras2fim/pull/263)
+
+Most the primary logic stages (Steps 1 to 6) are near completion. As we continue development on further modules, which rely on folder pathing from previous steps, folder names and pathing needed to be updates.  Step 6 in V1 was named "06_metric". For V2 up to this point, it was named `06_src_depthgrids`. This is now renamed to `06_create_rating_curves` to be more descriptive.  Various files were changed to make the folder names and flow match the code direction.
+
+A decision was made to rename the related 06 code file name from `create_src_fimrasters_4fids.py` to `create_rating_curves.py`. 
+
+Other misc fixes:
+- Fixing a small handful of variable names to be more descriptive, intuitive and at least a bit more PEP-8 compliant.
+- `create_shapes_from_hecras.py` was working but multi-proc logs was failing and not set up.
+- `run_ras2rem.py` was removed as it is no longer relevant at this time. It exists in V1 branches if needed again.
+
+Note: modules past Step 6 are still WIP but have more accurate folder names to help with mapping of data.
+
+### Renamed Files
+
+- `src`
+    - `create_rating_curves.py`: renamed from `src/create_src_fimrasters_4fids.py`
+
+### Changes 
+- `src`
+    - `calculate_all_terrain_stats.py`: Update some variable names and text; fix a folder creation timing and style; updated some text. (Note: still WIP)
+    - `clip_dem_from_shape.py`: removed unnecessary output.
+    - `conflate_hecras_to_nwm.py`: Added text to developers about how the `partial` python keyword works.
+    - `create_fim_rasters.py`: Updated a bit of output.
+    - `create_geocurves.py`: Updated for new Step 6 folder name variable. (Note: still WIP)
+    - `create_rating_curves.py`: Updated for new Step 6 folder variable; file name updated to be more reflective of process. File name was `create_src_fimrasters_4fids.py`; updated some variable names.
+    - `create_shapes_from_hecras.py`: It was showing errors due to incomplete setup of MP_LOG when running multi-proc. Multi-Proc has now been fully enabled. This required a new input variable to `fn_open_hecras` function.
+    - `ras2fim.py`: Updates for the new file/function name from `create_rating_curves.py`; made some partial changes to setup processing flow from Step 6 (create rating curves) and farther. More changes will be made to code here as each module come online.
+    - `ras2fim_logger.py`: minor console output change.
+    - `reformat_ras_rating_curve.py`:  Updated for new Step 6 folder variable. (Note: still WIP)
+    - `shared_variables.py`: Updates related to new step 6 folder name, create_rating_curves.py; also removed variable no longer needed from a module removed in previous releases.
+    - `simplify_fim_rasters.py`:  Updated for new Step 6 folder name variable; small correction about how/when folders are created.  (Note: still WIP)
+- `tools`
+    - `hash_compare.py`: Update to sample text.
+
+<br/><br/>
+
+
 ## v2.0.beta.18 - 2024-01-19 - [PR#256](https://github.com/NOAA-OWP/ras2fim/pull/256)
 
 Update Step 3 to remove the option of getting DEMs (terrain files) from USGS on demand and now use only pre-cut `ras2fim DEMS`.  The new required terrain DEMs are optional as they can be defaulted in.
