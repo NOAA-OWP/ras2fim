@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 import rasterio
 from dotenv import load_dotenv
+from rasterio.warp import Resampling, calculate_default_transform, reproject
 from tqdm import tqdm
 
 import shared_validators as val
@@ -176,7 +177,6 @@ def convert_rating_curve_to_metric(ras2rem_dir):
 
 # -------------------------------------------------
 def load_config_enviro_path(config_file=sv.DEFAULT_CONFIG_FILE_PATH):
-    ####################################################################
     # Load the enviroment file
 
     # The sv.DEFAULT_CONFIG_FILE_PATH comes in relative to the root and not to src/ras2fim
@@ -478,3 +478,31 @@ def progress_bar_handler(executor_dict, verbose, desc):
             future.result()
         except Exception as exc:
             print("{}, {}, {}".format(executor_dict[future], exc.__class__.__name__, exc))
+
+
+#
+# -------------------------------------------------
+def reproject_raster(temp_dem_file_path, output_dem_file_path, new_proj_wkt, resolution=10):
+    with rasterio.open(temp_dem_file_path) as src:
+        transform, width, height = calculate_default_transform(
+            src.crs, new_proj_wkt, src.width, src.height, *src.bounds
+        )
+        kwargs = src.meta.copy()
+        kwargs.update(
+            {'crs': new_proj_wkt, 'transform': transform, 'width': width, 'height': height, 'compress': 'lzw'}
+        )
+
+        with rasterio.open(
+            output_dem_file_path, 'w', **kwargs, tiled=True, blockxsize=1024, blockysize=1024, BIGTIFF='YES'
+        ) as dst:
+            # for i in range(1, src.count + 1):
+            reproject(
+                source=rasterio.band(src, 1),
+                destination=rasterio.band(dst, 1),
+                src_transform=src.transform,
+                src_crs=src.crs,
+                dst_transform=transform,
+                dst_crs=new_proj_wkt,
+                resampling=Resampling.nearest,
+                dst_resolution=resolution,
+            )

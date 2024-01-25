@@ -11,6 +11,14 @@ import colored as cl
 # Careful... You might not put shared_functions here as it can create circular references,
 #  so shared_functions is put inside functions only/as is need
 
+# Why does this class exist instead of useing standard python logging tools or other python packes?
+# Some of those loggers cache the log file output until the end which can be a problem for crashes.
+# Also, none of them are very good at handling multi-processing including file collisions and mixed
+# multi-proc output data into the log file.
+# Our answer.. A bit weird, but highly effective. Write to the log file as it goes along.
+# For multi-processing, create a temp log for each process, then when the total process is done, merge
+# those outputs in the master log file.
+
 
 class RAS2FIM_logger:
     CUSTOM_LOG_FILES_PATHS = {}
@@ -28,6 +36,7 @@ class RAS2FIM_logger:
     Levels available for use
       trace - does not show in console but goes to the default log file
       lprint - goes to console and default log file
+      notice - goes to console and default log file but is blue to help it stand out more.
       success - goes to console and default log file
       warning - goes to console, log file and warning log file
       error - goes to console, log file and error log file. Normally used when the error

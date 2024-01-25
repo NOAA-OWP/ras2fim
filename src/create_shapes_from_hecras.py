@@ -549,17 +549,32 @@ def fn_cut_stream_downstream(gdf_return_stream_fn, df_xs_fn):
     # flt_ds_xs = df_xs_fn["stream_stn"].min()
     # gdf_ds_xs = df_xs_fn.query("stream_stn==@flt_ds_xs")
     flt_ds_xs = df_xs_fn["stream_stn"].min()
-    gdf_ds_xs = df_xs_fn.query("stream_stn==@flt_ds_xs")
+    gdf_ds_xs = df_xs_fn[df_xs_fn['stream_stn'] == flt_ds_xs]
 
     # reset the index of the sampled cross section
     gdf_ds_xs = gdf_ds_xs.reset_index()
 
     # grab the first lines - assumes that the stream is the first stream
     stream_line = gdf_return_stream_fn["geometry"][0]
-    xs_line = gdf_ds_xs["geometry"][0]
+    ds_xs_line = gdf_ds_xs["geometry"][0]
+
+    # first make sure the stream have been digitized from upstream to downstream.
+    # To do that, split the stream at the last xsection and see if the
+    # first splitted segment intersect the most upstream xsection or not
+
+    flt_us_xs = df_xs_fn["stream_stn"].max()
+    gdf_us_xs = df_xs_fn[df_xs_fn['stream_stn'] == flt_us_xs]
+
+    result = split(stream_line, ds_xs_line)
+
+    # if the first return of above split does not intersects most upstream xs, reverse the order
+    if not result.geoms[0].intersects(gdf_us_xs["geometry"][0]):
+        stream_line = LineString(list(stream_line.coords)[::-1])
+
+    # now continue to shorten the streamline
 
     # split and return a GeoCollection
-    result = split(stream_line, xs_line)
+    result = split(stream_line, ds_xs_line)
 
     # the last cross section may be at the last stream point - 2021.10.27
     # get a list of items in the returned GeoCollection
@@ -701,13 +716,9 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
 
         # create a pool of processors
         num_processors = mp.cpu_count() - 2
-        p = Pool(processes=num_processors)
-
-        # multi-process the HEC-RAS calculation of these models
-        p.map(fn_open_hecras, list_models_to_compute)
-
-        p.close()
-        p.join()
+        with Pool(processes=num_processors) as executor:
+            # multi-process the HEC-RAS calculation of these models
+            executor.map(fn_open_hecras, list_models_to_compute)
     # -----
 
     list_geodataframes_stream = []

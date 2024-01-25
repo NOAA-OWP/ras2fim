@@ -2,6 +2,7 @@ import sys
 
 import shared_variables as sv
 
+
 # Global Variables
 RLOG = sv.R2F_LOG
 

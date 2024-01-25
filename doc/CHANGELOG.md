@@ -1,6 +1,185 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.18 - 2024-01-19 - [PR#256](https://github.com/NOAA-OWP/ras2fim/pull/256)
+
+Update Step 3 to remove the option of getting DEMs (terrain files) from USGS on demand and now use only pre-cut `ras2fim DEMS`.  The new required terrain DEMs are optional as they can be defaulted in.
+
+Other misc fixes:
+- cleanup some variable names which were misleading, confusing or using non PEP-8 standards. Most of this cleanup was in ras2fim.py.
+- A bit of linting cleanup from previous files that existed in the dev.
+
+#### CRITICAL NOTE:
+ - For NOAA/OWP staff: 
+      _Make sure you are using the new ras2fim DEMs files and not the earlier FIM DEMs which have different margins._  
+ - For non NOAA/OWS staff:
+     _You can run the `extend_huc8_domain.py` script to make the new ras2fim DEMs that are required._
+
+### Removals 
+- `src`
+    - `get_usgs_dem_from_shape.py`
+
+### Changes  
+- `src`
+    - `clip_dem_from_shape.py`: Rebuild for new creating individual DEMs for each model.
+    - `conflate_hecras_to_nwm.py`:  Added a missing tag to stop adding an unnecessary index column to an output csv.
+    - `create_fim_rasters.py`: Linting fixes and misc comment fixes.
+    - `create_src_fimrasters_4fids.py`: Small linting fix.
+    - `ras2fim.py`
+         - Rename most variables to be misleading, confusing or using non PEP-8 standards.
+         - Adjustments related to Step 3 (clip dem from shape)
+    - `ras2fim_logger.py`:  Added a message to other developers.
+    - `shared_functions.py`: Small styling fix.
+    - `shared_variables.py`: Adjustments for Step 3 changes (clip dem from shape)
+    - `worker_fim_rasters.py`:  Linting fix.
+- `tools`
+    - `extend_huc8_domain.py`: Linting fix.
+    - `s3_model_mgmt.py`:  Linting fix.
+
+<br/><br/>
+
+
+## v2.0.beta.17 - 2024-01-12 - [PR#247](https://github.com/NOAA-OWP/ras2fim/pull/247)
+
+The main goals of this PR are to re-add the multiprocessing module to `create_fim_rasters.py`, reconnect `create_fim_rasters.py` to `worker_fim_rasters.py`, and make `ras2fim.py` work in step 5 and step 6. 
+
+### Changes
+- `src'
+   - `shared_variables.py`: "R2F_OUTPUT_DIR_SRC_DEPTHGRIDS" variable was added to this script
+   - `worker_fim_rasters.py`
+      1. Reformatting the paths which are hard-coded in the script
+      2. Bug: When there were no parent models with WSE BC, the script would not run and give us an error. This bug was fixed in this PR. 
+      3. This script was connected to create_fim_rasters.py to bring in the multi-processing tool.
+   - `create_fim_rasters.py`: Updated to connect to worker_fim_rasters.py and get the multi-processing tool working
+   - `create_src_depthgrids_4fids.py`: 
+      1. Reformatting the paths which are hard-coded in the script
+      2. Connected to ras2fim.py
+   - `ras2fim.py`: updated to connect to `create_src_depthgrids_4fids.py`
+  
+
+<br/><br/>
+
+
+## v2.0.beta.16 - 2024-01-12 - [PR#253](https://github.com/NOAA-OWP/ras2fim/pull/253)
+
+This PR closes the issues  #219 and #246 and fixes a bug in ras2fim Step 1 as elaborated in #219 . 
+
+### Background
+To improve the conflation accuracy in Step 2, the streamlines are cut in Step 1 by shortening the portion of the streams that are downstream of the most downstream cross section. The current code is valid only if a HEC-RAS model streamline has been digitized from upstream to downstream. However, there are many HEC-RAS models that the streamlines have been digitized from downstream to upstream (this will not impact the integrity of these 1D HEC-RAS models though). 
+
+This bug fix will evaluate if a stream has been digitized from upstream to downstream. If not, the stream linestring is reversed and then the current algorithm to shorten the streamline is applied. 
+
+### Changes  
+- `src/create_shapes_from_hecras.py`
+
+<br/><br/>
+
+
+## v2.0.beta.15 - 2024-01-09 - [PR#250](https://github.com/NOAA-OWP/ras2fim/pull/250)
+
+With most V2 development being focused on figuring out the logic, we have let linting and code standards lapse. This get the files caught up for linting and moving forward, all PR's will be fully linted, styled, logging included.
+
+### Changes  
+- `src`
+    - `calculate_all_terrain_stats.py`: Linting updates and minor multi-proc style updates.
+    - `clip_dem_from_shapes.py`: Linting updates.
+    - `conflate_hecras_to_nwm.py`: Linting updates and minor multi-proc style updates.
+    - `convert_tif_to_ras_hdf5.py`: Linting updates.
+    - `convert_fim_rasters.py`:  Linting updates.
+    - `create_geocurves.py`:  Linting updates.
+    - `create_model_domain_polygons.py: Linting updates.
+    - `create_shapes_from_hecras.py`: Linting updates and minor multi-proc style updates.
+    - `create_src_depthgrids_4fids.py`: Linting updates.
+    - `simplify_fim_rasters.py`: Just minor multi-proc style update.  Note; considering it is work in progress, not all linting was completed.
+    - `worker_fim_rasters.py`: Just a few minor linting updates. Note; considering it is work in progress, not all linting was completed.
+- `tools`
+    - `acquire_and_preprocess_3dep_dems.py`: Linting updates.
+    - `ras2inundation.py`: Linting updates.
+    - `s3_model_mgmt.py`: Linting updates.
+
+<br/><br/>
+
+
+## v2.0.beta.14 - 2024-01-05 - [PR#233](https://github.com/NOAA-OWP/ras2fim/pull/233)
+
+This PR merges create_src_depthgrids_4fids.py python script that creates synthetic rating curves (SRC) for each nwm feature id in a HUC8 domain. To create the SRCs, it needs information on water depths in each cross-section per flow value (step 5 output) and upstream and downstream cross-sections of each feature-id (step 2 output). Therefore, this PR also requests changes in step 2 Python script (conflate_hecras_to_nwm.py).
+
+Note: At this point in the current V2 rebuild, ras2fim.py should work up to the end of Step 4 and break on Step 5. However, Step 5 
+and Step 6 work independently.
+
+### Additions  
+
+- `src`
+  - `conflate_hecras_to_nwm.py`: Some changes were added to this script to provide upstream and downstream cross-sections of each feature-id in a CSV file. 
+
+### Changes 
+
+- `src`
+  - `create_src_depthgrids_4fids.py`: This script creates synthetic rating curves (SRC) for each nwm feature-id in a HUC8 domain
+  - `worker_fim_rasters.py`: Changed a few variable names and add temp test for missing elevation boundary condition.
+
+<br/><br/>
+
+
+## v2.0.beta.13 - 2024-01-05 - [PR#212](https://github.com/NOAA-OWP/ras2fim/pull/232)
+
+A new tool was needed to support V2, where ras2fim has it's own custom made DEM files. Using the WBD_National.gpkg, we extract a given HUC8, then find all of it's neighboring HUC12, and make a single dissolved poly. This becomes the extent file we need to go against the USGS 1/3 arc (10m) remote VRT. The new DEM is now clipped against our domain poly.  Further, tool allows you to optionally load it to an S3 bucket.  
+
+Note: The defaulted S3 bucket is for NOAA/OWP use only and requires NOAA/OWP aws credentials. You are welcome to use this tool against your own S3 bucket with your own credentials. Adding the `-skips3` will drop attempts to upload it to S3. 
+
+Other minor adjustments:
+ - adding the huc8 validation script to a few which were doing their own duplicate HUC8 input validation.
+ - A few style, linting and text updates to some files.
+ - a small input and logic change to `s3_shared_functions.py`
+
+### Additions  
+- `src`
+    - `acquire_and_preprocess_3dep_dems.py`: As described above. Also includes a feature to detect if files already exist on the file system or S3 and confirm if you want to stop or overwrite them. As the output DEMs are a key part of V2, we do not want accident overwrites.
+    - `extend_huc8_domain.py`:  The DEMs that ras2fim wants are based on any given HUC8 plus all neighboring HUC12 and this tool makes that domain file.
+
+### Changes  
+
+- `pyproject.toml`: As all files in the `tools` directory have a import pathing problem to files in the `src` directory, it triggers a linting error on all files in the `tools` folder. A simplification to this toml file now covers that type of error for all files in that directory.
+- `src`
+    - `ras2fim.py`:  HUC8 input validation now centralized and re-usable from the HUC8 validator function added to `shared_validators.py`
+    - `ras2fim_logger.py`:  Style (linting) updates and minor text fixes.
+    - `shared_functions.py`: Added a new function for re-projecting rasters.
+    - `shared_validators.py`: A new function added to simplify and re-use huc value validation. ie) added `is_valid_huc`.
+    - `shared_variables.py`:  Moved a few variables to other parts of the page, added a few new ones for the new tool, and other minor adjustments.
+- `tools`
+    - `get_models_by_catalog.py`: A couple small style fixes plus added the new centralized HUC8 validator.
+    - `ras_unit_to_s3.py`: Changed the function arguments into `s3_shared_functions.py` for uploading a file to s3. 
+    - `s3_shared_functions.py`: Some style changes; Also changed the function arguments for `upload_file_to_s3.py` to make it more flexible (needed by the new acquire system); Added a new function to see if a file exists already in S3.
+
+<br/><br/>
+
+
+## v2.0.beta.12 - 2024-01-05 - [PR#231](https://github.com/NOAA-OWP/ras2fim/pull/231)
+This PR is the ras2fim V2 version of the PR #230. This PR solves issue #229 and performs:
+
+1. Removes the option of making gpkg files in `create_geocurves.py`. The geometry info is only saved in 'geometry' column of geocurves csv files.
+2. Fixes a bug in `ras2inundation.py` to make sure all geometry info can be read from 'geometry' column of geocurves csv files. Also, because geocurve gpkg polygon files are not available anymore as the input, `ras2inundation.py` now reads ras2fim version number and `stage_m` value (corresponding to the `discharge_cms`) from geocurve csv files. Also, removed "overwrite" argument for this file. 
+3. Improved the performance of `ras2inundation.py` (e.g., by vectorizing a for loop)
+4. Moves the `ras2inundation.py` file from `src` to `tools` folder. 
+
+
+### Changes  
+- `src/create_geocurves.py`  ... see above
+-  `config/r2f_config.env`  ... removed the PRODUCE_GEOCURVE_POLYGONS flag
+- `src/ras2fim.py` ... adjusted/removed the arguments used to call "create_geocurve.py" from ras2fim.py
+- `src/clip_dem_from_shape.py` ... added logging on one line
+
+### Additions  
+
+- `tools/ras2inundation.py`
+
+### Removals 
+
+- `src/ras2inundation.py`
+
+<br/><br/>
+
+
 ## v2.0.beta.11 - 2023-12-18 - [PR#227](https://github.com/NOAA-OWP/ras2fim/pull/227)
 
 In today's, Dec 15, 2023, merge from [PR 225](https://github.com/NOAA-OWP/ras2fim/pull/225) into Dev, there was some merge conflicts which were fixed on the fly.  During post merge testing, it appears some of the merging was not 100% successful and will be fixed as part of this card.
@@ -18,6 +197,7 @@ Note: At this point in the current V2 rebuild, ras2fim.py should work up to the 
     - `worker_fim_rasters.py`: Minor linting fixes.
 
 <br/><br/>
+
 
 ## v2.0.beta.10 - 2023-12-15 - [PR#225](https://github.com/NOAA-OWP/ras2fim/pull/225)
 
