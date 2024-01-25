@@ -314,15 +314,15 @@ def fn_calculate_all_terrain_stats(unit_output_path):
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     # create a converted terrain folder
-    hecras_output_dir = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-    if os.path.exists(hecras_output_dir):
+    #hecras_output_dir = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    #if os.path.exists(hecras_output_dir):
         # then remove it so it can be rebuilt
-        shutil.rmtree(hecras_output_dir)
+    #    shutil.rmtree(hecras_output_dir)
         # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
         # so sometimes mkdir can fail if rmtree isn't done
-        time.sleep(1)  # 1 seconds
+    #    time.sleep(1)  # 1 seconds
 
-    os.mkdir(hecras_output_dir)
+    #os.mkdir(hecras_output_dir)
 
     list_of_list_processed = fn_get_list_of_lists_to_compute(hecras_output_dir)
 

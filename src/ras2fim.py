@@ -374,8 +374,9 @@ def fn_run_ras2fim(
     # TODO: Jan 22, 2024 - While mostly plugged in, it needs adjustments.
     RLOG.lprint("")
     RLOG.notice("+++++++ Processing: STEP 6.b (create rating curve stats) +++++++")
-    RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-    fn_calculate_all_terrain_stats(unit_output_path)
+    #RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+    RLOG.lprint(f"Module temporarily disabled.: {sf.get_stnd_date()}")
+    #fn_calculate_all_terrain_stats(unit_output_path)
 
     # -------------------------------------------------
     # TODO: Still to be done for v2
