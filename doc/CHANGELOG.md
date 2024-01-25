@@ -11,6 +11,8 @@ The main goal of this PR is to change the conflation approach and use only snap 
       - Also, a piece of code was added to stop the ras2fim code if there is no conflated RAS model (https://github.com/NOAA-OWP/ras2fim/issues/265).
       - The run time was too long in a for loop in step 2 which was optimized (https://github.com/NOAA-OWP/ras2fim/issues/224). 
    - `create_rating_curves.py`: Rating curves were missing for some models. This bug was fixed.
+   - `ras2fim.py`:  Minor linting fix.
+   - `worker_fim_rasters.py`:  minor text update.
   
 
 <br/><br/>
