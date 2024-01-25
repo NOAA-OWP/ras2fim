@@ -115,7 +115,7 @@ def init_and_run_ras2fim(
         )
 
     # -------------------
-    unit_folder_name = sf.get_stnd_r2f_output_folder_name(huc8, projection, source_code)
+    unit_folder_name = sf.get_stnd_unit_output_folder_name(huc8, projection, source_code)
     unit_output_path = os.path.join(r2f_output_dir, unit_folder_name)
 
     if os.path.exists(unit_output_path) is True:

@@ -69,12 +69,13 @@ R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_rating_curve_points.gpkg"
 R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt"
 
 # S3 PATHS
+S3_DEFAULT_BUCKET_NAME = "ras2fim"
 S3_DEFAULT_BUCKET_PATH = "s3://ras2fim/"
-S3_OUTPUT_RAS2FIM_FOLDER = "output_ras2fim"
-S3_OUTPUT_MODELS_FOLDER = S3_DEFAULT_BUCKET_PATH + "OWP_ras_models/models"
-S3_DEFAULT_MODELS_CATALOG_PATH = S3_DEFAULT_BUCKET_PATH + "OWP_ras_models/OWP_ras_models_catalog.csv"
-S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER = "output_ras2fim_archive"
+S3_RAS_UNITS_OUTPUT_FOLDER = "output_ras2fim"
+S3_RAS_UNITS_ARCHIVE_FOLDER = "output_ras2fim_archive"
 S3_OUTPUT_TRACKER_FILE = "ras_output_tracker.csv"
+S3_OWP_RAS_MODELS_FOLDER = S3_DEFAULT_BUCKET_PATH + "OWP_ras_models/models"
+S3_DEFAULT_MODELS_CATALOG_PATH = S3_DEFAULT_BUCKET_PATH + "OWP_ras_models/OWP_ras_models_catalog.csv"
 S3_INPUTS_3DEP_DEMS = S3_DEFAULT_BUCKET_PATH + "inputs/dems/ras_3dep_HUC8_10m"
 
 # NODATA VALUE

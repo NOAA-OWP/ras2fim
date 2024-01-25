@@ -286,8 +286,8 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
 
     Input:
         - bucket_name: e.g mys3bucket_name
-        - s3_src_folder_path: e.g. output_ras2fim/12030105_2276_230810
-        - s3_target_folder_path: e.g.  output_ras2fim_archive/12030105_2276_230810
+        - s3_src_folder_path: e.g. output_ras2fim/12030105_2276_ble_230810
+        - s3_target_folder_path: e.g.  output_ras2fim_archive/12030105_2276_ble_230810
     """
 
     # nested function
@@ -894,8 +894,8 @@ def is_valid_s3_folder(s3_full_folder_path):
         # print(s3_objs)
         if s3_objs["KeyCount"] == 0:
             raise ValueError(
-                "S3 bucket exists but the folder path does not exist and is required. "
-                "Path is case-sensitive"
+                f"S3 bucket exists but the required folder path of {s3_full_folder_path} does not exist."
+                " Please create that folder in S3. Path is case-sensitive"
             )
 
     except ValueError:
@@ -987,18 +987,18 @@ def parse_unit_folder_name(unit_folder_name):
         an exception. Sometimes it doesn't, it just want to check to see if the key is a huc crs key.
 
     Input:
-        unit_folder_name: migth be a full s3 string, or a s3 key or just the folder name
-           e.g.  s3://xzy/output_ras2fim/12090301_2277_230811
-              or output_ras2fim/12090301_2277_230811
-              or 12090301_2277_230811
+        unit_folder_name: migth be a full s3 string, or full local the folder name
+           e.g.  s3://xzy/output_ras2fim/12090301_2277_ble_230811
+           or c://my_ras_data/output_ras2fim/12090301_2277_ble_230811
 
     Output:
         A dictionary with records of:
                        key_huc,
                        key_crs_number,
+                       key_source_code,
                        key_date_as_str (date string eg: 230811),
                        key_date_as_dt  (date obj for 230811)
-                       unit_folder_name (12090301_2277_230811) (cleaned version)
+                       unit_folder_name (12090301_2277_ble_230811) (cleaned version)
         OR
         If in error, dictionary will have only one key of "error", saying why it the
            reason for the error. It lets the calling code to decide if it wants to raise
@@ -1027,38 +1027,36 @@ def parse_unit_folder_name(unit_folder_name):
         unit_folder_name = unit_folder_segs[-1]
 
     # The best see if it has an underscore in it, split if based on that, then
-    # see the first chars are an 8 digit number and that it has two underscores (3 segs)
+    # see the first chars are an 8 digit number and that it has three underscores (4 segs)
     # and will split it to a list of tuples
-    if "_" not in unit_folder_name or len(unit_folder_name) < 9:
-        rtn_varibles_dict["error"] = "Does not contain any underscores or the folder name too short"
-        return rtn_varibles_dict
-
     segs = unit_folder_name.split("_")
-    if len(segs) != 3:
+    if len(segs) != 4:
         rtn_varibles_dict[
             "error"
-        ] = "Expected three segments split by two underscores e.g. 12090301_2277_230811"
+        ] = "Expected four segments split by three underscores e.g. 12090301_2277_ble_230811"
         return rtn_varibles_dict
 
     key_huc = segs[0]
     key_crs = segs[1]
-    key_date = segs[2]
+    key_source_code = segs[2]
+    key_date = segs[3]
 
     if (not key_huc.isnumeric()) or (not key_crs.isnumeric()) or (not key_date.isnumeric()):
-        rtn_varibles_dict["error"] = "All three segments are expected to be numeric"
+        rtn_varibles_dict["error"] = f"The unit folder name of {unit_folder_name} is invalid."
+        " The pattern should look like '12090301_2277_ble_230811' for example."
         return rtn_varibles_dict
 
     if len(key_huc) != 8:
-        rtn_varibles_dict["error"] = "First part of the three segments (huc) is not 8 digits long"
+        rtn_varibles_dict["error"] = "The first part of the four segments (huc), is not 8 digits long"
         return rtn_varibles_dict
 
     if (len(key_crs) < 4) or (len(key_crs) > 6):
-        rtn_varibles_dict["error"] = "Second part of the three segments (crs) is not"
+        rtn_varibles_dict["error"] = "Second part of the four segments (crs) is not"
         " between 4 and 6 digits long"
         return rtn_varibles_dict
 
     if len(key_date) != 6:
-        rtn_varibles_dict["error"] = "Last part of the three segments (date) is not 6 digits long"
+        rtn_varibles_dict["error"] = "Last part of the four segments (date) is not 6 digits long"
         return rtn_varibles_dict
 
     # test date format
@@ -1070,13 +1068,14 @@ def parse_unit_folder_name(unit_folder_name):
     except Exception:
         # don't log it
         rtn_varibles_dict["error"] = (
-            "Last part of the three segments (date) does not appear"
+            "Last part of the four segments (date) does not appear"
             " to be in the pattern of yymmdd eg 230812"
         )
         return rtn_varibles_dict
 
     rtn_varibles_dict["key_huc"] = key_huc
     rtn_varibles_dict["key_crs_number"] = key_crs
+    rtn_varibles_dict["key_source_code"] = key_source_code
     rtn_varibles_dict["key_date_as_str"] = key_date
     rtn_varibles_dict["key_date_as_dt"] = dt_key_date
     rtn_varibles_dict["unit_folder_name"] = unit_folder_name  # cleaned version

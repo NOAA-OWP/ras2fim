@@ -433,7 +433,7 @@ def print_date_time_duration(start_dt, end_dt):
 
 
 # -------------------------------------------------
-def get_stnd_r2f_output_folder_name(huc_number, crs, source_code):
+def get_stnd_unit_output_folder_name(huc_number, crs, source_code):
     """
     Inputs:
         - huc (str)

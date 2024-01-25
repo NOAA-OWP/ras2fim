@@ -420,10 +420,10 @@ if __name__ == "__main__":
 
     # ----------------------------
     # Sample Usage (min required args) (also downloads related folders)
-    # python3 ./tools/get_ras_models_by_catalog.py -u 12090301 -p ESRI:102739 -sc ble
+    # python3 ./tools/get_ras_models_by_catalog.py -u 12090301 -p EPSG:2277 -sc ble
 
     # Sample Usage with most params
-    # python3 ./tools/get_ras_models_by_catalog.py -u 12090301 -p ESRI:102739 -sc ble
+    # python3 ./tools/get_ras_models_by_catalog.py -u 12090301 -p EPSG:2277 -sc ble
     #  -s s3://xyz/OWP_ras_models/OWP_ras_models_catalog.csv -v
     #  -tm c:\\ras2fim\\ras_models -tcsv c:\\ras2fim\ras_models\12090301_models_catalog.csv
 
