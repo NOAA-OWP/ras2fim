@@ -227,7 +227,7 @@ def init_and_run_ras2fim(
     # Now call the processing function
     fn_run_ras2fim(
         huc8,
-        projection,        
+        projection,
         source_code,
         input_models_path,
         unit_output_path,
@@ -246,7 +246,7 @@ def init_and_run_ras2fim(
 # Call the init_and_run_ras2fim function as it validates inputs and sets up other key variables.
 def fn_run_ras2fim(
     huc8,
-    projection,    
+    projection,
     source_code,
     input_models_path,
     unit_output_path,
@@ -564,7 +564,7 @@ if __name__ == "__main__":
     #            -n E:\X-NWS\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.3"
     #
     #    But any and all optional arguments can be overridden, so let's try this version:
-    #    ie) python ras2fim.py -w 12090301 -p EPSG:2277 -sc ble -i C:\HEC\input_folder 
+    #    ie) python ras2fim.py -w 12090301 -p EPSG:2277 -sc ble -i C:\HEC\input_folder
     #                          -o c:/users/my_user/desktop/ras2fim_outputs
     #                          -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif
     #                          -n E:\X-NWS\X-National_Datasets

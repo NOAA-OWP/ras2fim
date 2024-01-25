@@ -383,7 +383,6 @@ def __validate_input(s3_master_csv_path, s3_models_path, output_folder_path):
 
 ####################################################################
 if __name__ == "__main__":
-
     # ***********************
     # This tool is intended for NOAA/OWP staff only as it requires access to an AWS S3 bucket with a
     # specific folder structure.

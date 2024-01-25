@@ -18,7 +18,7 @@ import s3_shared_functions as s3_sf
 
 import shared_validators as val
 import shared_variables as sv
-from shared_functions import get_stnd_date, print_date_time_duration, get_source_info
+from shared_functions import get_source_info, get_stnd_date, print_date_time_duration
 
 
 # Global Variables
@@ -83,7 +83,7 @@ class Get_Models_By_Catalog:
         projection,
         source_code,
         list_only=False,
-        s3_path_to_catalog_file=sv.S3_DEFAULT_MODELS_CATALOG_PATH,        
+        s3_path_to_catalog_file=sv.S3_DEFAULT_MODELS_CATALOG_PATH,
         target_owp_ras_models_path=sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
         target_owp_ras_models_csv_file=sv.DEFAULT_RSF_MODELS_CATALOG_FILE,
         is_verbose=False,
@@ -151,7 +151,7 @@ class Get_Models_By_Catalog:
             huc_number,
             projection,
             source_code,
-            s3_path_to_catalog_file,            
+            s3_path_to_catalog_file,
             target_owp_ras_models_path,
             target_owp_ras_models_csv_file,
             list_only,
@@ -170,7 +170,7 @@ class Get_Models_By_Catalog:
         RLOG.lprint(f" Started (UTC): {get_stnd_date()}")
         RLOG.lprint(f" -- HUC: {huc_number}")
         RLOG.lprint(f" -- CRS: {projection}")
-        RLOG.lprint(f" -- Source Code: {source_code}")        
+        RLOG.lprint(f" -- Source Code: {source_code}")
         RLOG.lprint("")
         RLOG.lprint(f" -- Source path for models catalog: {self.s3_path_to_catalog_file}")
         RLOG.lprint(f" -- Source download path for models: {self.src_owp_model_folder_path}")
@@ -271,7 +271,7 @@ class Get_Models_By_Catalog:
                 )
 
                 RLOG.lprint("--------------------------------------")
-                RLOG.notice(f"Number of models attempted for downloaded: {num_recs_attempted_download}")                
+                RLOG.notice(f"Number of models attempted for downloaded: {num_recs_attempted_download}")
                 cnt = self.df_filtered[sv.COL_NAME_DOWNLOAD_SUCCESS].value_counts()[True]
                 self.num_success_downloads = cnt
 
@@ -287,8 +287,10 @@ class Get_Models_By_Catalog:
                             f"Number of models folders skipped / errored during download: {num_skips}."
                             " Please review the output logs or the filtered csv for skip/error details."
                         )
-                        RLOG.warning("Number of models folders successfully"
-                                    f" downloaded: {self.num_success_downloads}")
+                        RLOG.warning(
+                            "Number of models folders successfully"
+                            f" downloaded: {self.num_success_downloads}"
+                        )
 
                     RLOG.notice(
                         f"Number of models folders successfully downloaded: {self.num_success_downloads}"
@@ -318,7 +320,7 @@ class Get_Models_By_Catalog:
         huc_number,
         projection,
         source_code,
-        s3_path_to_catalog_file,        
+        s3_path_to_catalog_file,
         target_owp_ras_models_path,
         target_owp_ras_models_csv_file,
         list_only,
@@ -490,7 +492,7 @@ if __name__ == "__main__":
         "-s",
         "--s3_path_to_catalog_file",
         help="OPTIONAL: S3 path and file name of models_catalog."
-         F" Defaulted to {sv.S3_DEFAULT_MODELS_CATALOG_PATH}",
+        F" Defaulted to {sv.S3_DEFAULT_MODELS_CATALOG_PATH}",
         required=False,
         default=sv.S3_DEFAULT_MODELS_CATALOG_PATH,
         metavar="",

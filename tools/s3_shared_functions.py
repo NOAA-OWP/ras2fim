@@ -442,7 +442,6 @@ def download_folders(
             return result
 
         try:
-
             for s3_item in s3_items:
                 # need to make the src file to be the full url minus the s:// and bucket name
                 src_file = f"{s3_src_folder}/{s3_item['key']}"

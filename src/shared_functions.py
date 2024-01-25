@@ -457,7 +457,7 @@ def get_stnd_unit_output_folder_name(huc_number, crs, source_code):
 
     if is_valid_crs is False:
         raise ValueError(err_msg)
-    
+
     # -------------------
     source_name = get_source_info(source_code)
     if source_name == "":
@@ -484,6 +484,7 @@ def progress_bar_handler(executor_dict, verbose, desc):
             future.result()
         except Exception as exc:
             print("{}, {}, {}".format(executor_dict[future], exc.__class__.__name__, exc))
+
 
 #
 # -------------------------------------------------
@@ -512,6 +513,7 @@ def reproject_raster(temp_dem_file_path, output_dem_file_path, new_proj_wkt, res
                 dst_resolution=resolution,
             )
 
+
 # -------------------------------------------------
 def get_source_info(source_code):
     """
@@ -532,19 +534,16 @@ def get_source_info(source_code):
 
     if os.path.exists(source_code_file) is False:
         raise FileNotFoundError(f"sources code file not found as {source_code_file}")
-    
+
     df_sources = pd.read_csv(source_code_file, sep=",", header=None, names=["source_code", "source_name"])
     if df_sources.empty:
         raise Exception(f"{source_code_file} appears to be empty")
-    
+
     df_source = df_sources.loc[(df_sources["source_code"] == source_code)]
     if df_source.empty:
         return ""
-    
+
     if len(df_source) > 1:
         raise Exception(f"{source_code_file} has more than one record with the source code of {source_code}")
-    
+
     return df_source["source_name"].iloc[0]
-
-
-
