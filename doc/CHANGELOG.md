@@ -1,6 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+
 ## v2.0.beta.xx - 2024-01-26 - [PR#264](https://github.com/NOAA-OWP/ras2fim/pull/264)
 
 During some design reviewing it was discovered that we have a need to know and use a code to identify the source.  At this point, we have only one source provider which is BLE. We will use the `source_code` of `ble` for the first records. The code is needed for a number of reasons including helping with merging when multiple runs of ras2fm.py for one HUC are created and also HydroVIS wants this value as well. 
@@ -44,6 +45,10 @@ Closes Issue [254](https://github.com/NOAA-OWP/ras2fim/issues/254)
 - `tools`
     - `convert_ras2fim_to_recurr_validation_datasets.py`
     - All files starting with `nws_`
+
+<br/><br/>
+
+
 ## v2.0.beta.20 - 2024-01-26 - [PR#263](https://github.com/NOAA-OWP/ras2fim/pull/263)
 
 Most the primary logic stages (Steps 1 to 6) are near completion. As we continue development on further modules, which rely on folder pathing from previous steps, folder names and pathing needed to be updates.  Step 6 in V1 was named "06_metric". For V2 up to this point, it was named `06_src_depthgrids`. This is now renamed to `06_create_rating_curves` to be more descriptive.  Various files were changed to make the folder names and flow match the code direction.
