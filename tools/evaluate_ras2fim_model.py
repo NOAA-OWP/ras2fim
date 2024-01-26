@@ -1,5 +1,7 @@
+import argparse
 import os
 import sys
+import traceback
 from datetime import datetime
 
 import geopandas as gpd
@@ -39,6 +41,8 @@ def evaluate_model_results(inundation_polygons,
     output_dir: str
         Directory to save output evaluation files
     """
+
+    RLOG.lprint(f"GVAL evaluation beginning for {spatial_unit}")
 
     # Load benchmark, inundation polygon, and model_domain polygon datasets
     benchmark = rxr.open_rasterio(benchmark_raster, mask_and_scale=True)
@@ -119,10 +123,10 @@ def evaluate_model_results(inundation_polygons,
     metric_table.to_csv(f"{output_dir}/{spatial_unit}/metrics.csv", index=None)
     metadata_csv.to_csv(f"{output_dir}/{spatial_unit}/meta_data.csv", index=None)
 
+    RLOG.lprint(f"GVAL evaluation for {spatial_unit} complete")
+
 
 if __name__ == '__main__':
-
-    import argparse
 
     """
     Example Usage:
@@ -157,7 +161,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "-st",
         "--spatial_unit",
-        help='Spatial unit associated with ras2fim output',
+        help='Tag name that refers to a ras2fim run',
         required=True,
     )
     parser.add_argument(
@@ -169,9 +173,22 @@ if __name__ == '__main__':
 
     args = vars(parser.parse_args())
 
-    # creates the log file name as the script name
-    script_file_name = os.path.basename(__file__).split('.')[0] + datetime.now().strftime('%Y-%m-%d_%H:%M')
-    # assumes RLOG has been added as a global var.
-    RLOG.setup(os.path.join(args['output_dir'], script_file_name + ".log"))
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
 
-    evaluate_model_results(**args)
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0] + \
+                           datetime.now().strftime('%Y-%m-%d_%H:%M')
+        # assumes RLOG has been added as a global var.
+        RLOG.setup(os.path.join(args['output_dir'], script_file_name + ".log"))
+
+        evaluate_model_results(**args)
+
+    except Exception:
+        RLOG.critical(traceback.format_exc())
+
+

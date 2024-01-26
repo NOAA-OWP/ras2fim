@@ -1,5 +1,9 @@
+import argparse
 import os
 import sys
+import traceback
+from datetime import datetime
+from glob import glob
 
 from evaluate_ras2fim_model import evaluate_model_results
 from s3_shared_functions import get_folder_list, is_valid_s3_file
@@ -161,8 +165,65 @@ def add_input_arguments(eval_args: list,
         input_files['output_dir'] = output_dir
         input_files['spatial_unit'] = f"{spatial_proc_unit}_{stage}"
         eval_args.append(input_files)
+    else:
+        RLOG.trace(f"Spatial Unit {spatial_proc_unit}, benchmark_source {benchmark_source}, "
+                   f"stage {stage} nws_station {nws_station} inputs do not exist")
 
     return eval_args
+
+
+def report_missing_ouput(spatial_units: list = None,
+                         benchmark_sources: list = None,
+                         stages: list = None,
+                         output_dir: str = './'):
+    """ Method to report missing output that was provided
+
+    Parameters
+    ----------
+    spatial_units: list, default=None
+        Array of strings representing all spatial processing units to run, (runs all if None)
+    benchmark_sources: list, default=None
+        Array of strings representing all benchmark sources to run, (runs all if None)
+    stages: list, default=None
+        Array of strings representing all stages to run, (runs all if None)
+    output_dir: str
+         Directory to save output evaluation files
+
+    """
+
+    report_missing = {"spatial_units": [], "benchmark_sources": [], "stages": []}
+
+    # Remove forward slash if exists as last character in output_dir
+    if output_dir[-1] == '/':
+        output_dir = output_dir[:-1]
+
+    def glob_check(search, search_type, report_missing):
+        """Check if search term exists in output_dir or not"""
+        if glob(f"{output_dir}/*{search}*") == []:
+            report_missing[search_type].append(search)
+        return report_missing
+
+    if spatial_units is not None:
+        for sp in spatial_units:
+            report_missing = glob_check(sp, "spatial_units", report_missing)
+
+    if benchmark_sources is not None:
+        for be in benchmark_sources:
+            report_missing = glob_check(be, "benchmark_sources", report_missing)
+
+    if stages is not None:
+        for st in stages:
+            report_missing = glob_check(st, "stages", report_missing)
+
+    # If any missing outputs exist report
+    if sum([
+        len(report_missing['spatial_units']),
+        len(report_missing['benchmark_sources']),
+        len(report_missing['stages'])
+    ]) > 0:
+
+        RLOG.lprint(f"The following provided args have no or incomplete inputs existing on s3: "
+                    f"\n {report_missing}")
 
 
 def run_batch_evaluations(spatial_units: list = None,
@@ -184,6 +245,7 @@ def run_batch_evaluations(spatial_units: list = None,
 
     """
 
+    RLOG.lprint("Begin s3 batch evaluation")
     eval_args = []
 
     for s_unit in get_folder_list(BUCKET, PREFIX, False):
@@ -220,20 +282,28 @@ def run_batch_evaluations(spatial_units: list = None,
         RLOG.lprint(f"Processing evaluation for spatial processing unit {kwargs['spatial_unit']}")
         evaluate_model_results(**kwargs)
 
+    if not eval_args:
+        RLOG.lprint("No valid combinations found, check inputs and try again.")
+    else:
+        report_missing_ouput(
+            spatial_units,
+            benchmark_sources,
+            stages,
+            output_dir
+        )
+
+    RLOG.lprint("End s3 batch evaluation")
+
 
 if __name__ == '__main__':
-
-    import argparse
-    import os
-    from datetime import datetime
 
     """
     Example Usage:
 
     python s3_batch_evaluation.py
-    -su "12030105_2276_ble_230923,12040101_102739_ble_230922"
-    -b "ble,nws"
-    -st "100yr,500yr,moderate"
+    -su "12030105_2276_ble_230923" "12040101_102739_ble_230922"
+    -b "ble" "nws"
+    -st "100yr" "500yr" "moderate"
     -o "./test_batch_eval"
     """
 
@@ -242,19 +312,23 @@ if __name__ == '__main__':
     parser.add_argument(
         "-su",
         "--spatial_units",
-        help="Comma delimited str representing list of spatial units to run (if not provided run all)",
+        nargs='*',
+        help="Argument/s representing list of tag names that refer to ras2fim runs "
+             "(if not provided run all existing)",
         required=False
     )
     parser.add_argument(
         "-b",
         "--benchmark_sources",
-        help="Comma delimited str representing list of benchmark sources to run (if not provided run all)",
+        nargs='*',
+        help="Argument/s epresenting list of benchmark sources to run (if not provided run all existing)",
         required=False
     )
     parser.add_argument(
         "-st",
         "--stages",
-        help="Comma delimited str representing list of stages to run (if not provided run all)",
+        nargs='*',
+        help="Argument/s representing list of stages to run (if not provided run all existing)",
         required=False
     )
     parser.add_argument(
@@ -266,19 +340,26 @@ if __name__ == '__main__':
 
     args = vars(parser.parse_args())
 
-    if args['spatial_units']:
-        args['spatial_units'] = args['spatial_units'].split(',')
-    if args['benchmark_sources']:
-        args['benchmark_sources'] = args['benchmark_sources'].split(',')
-    if args['stages']:
-        args['stages'] = args['stages']
+    try:
+        # Catch all exceptions through the script if it came
+        # from command line.
+        # Note.. this code block is only needed here if you are calling from command line.
+        # Otherwise, the script calling one of the functions in here is assumed
+        # to have setup the logger.
 
-    # creates the log file name as the script name
-    script_file_name = os.path.basename(__file__).split('.')[0] + datetime.now().strftime('%Y-%m-%d_%H:%M')
-    # assumes RLOG has been added as a global var.
-    RLOG.setup(os.path.join(args['output_dir'], script_file_name + ".log"))
+        # creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0] + \
+                           datetime.now().strftime('%Y-%m-%d_%H:%M')
+        # assumes RLOG has been added as a global var.
+        RLOG.setup(os.path.join(args['output_dir'], script_file_name + ".log"))
 
-    run_batch_evaluations(**args)
+        run_batch_evaluations(**args)
+
+    except Exception:
+        RLOG.critical(traceback.format_exc())
+
+
+
 
 
 
