@@ -100,11 +100,10 @@ def cast_to_int(x):
 
 
 # -------------------------------------------------
-def fn_create_src_feature_ids(huc8_num, path_unit_folder):
+def fn_create_rating_curves(huc8, path_unit_folder):
     int_number_of_steps = 76
     model_unit = 'feet'
 
-    RLOG.lprint("===================================================================")
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
     RLOG.notice("|               CREATING SYNTHETIC RATING CURVES                  |")
@@ -112,7 +111,7 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
 
     # Reading data_summary from step 2
     str_path_to_fid_xs = os.path.join(
-        path_unit_folder, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc8_num}_stream_qc_fid_xs.csv"
+        path_unit_folder, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc8}_stream_qc_fid_xs.csv"
     )
 
     fid_xs_huc8 = pd.read_csv(str_path_to_fid_xs)
@@ -122,7 +121,7 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
 
     # -------------------------------------------------
     # Reading model_catalog to add model_ids to data_summary
-    path_model_catalog2 = os.path.join(path_unit_folder, f"OWP_ras_models_catalog_{huc8_num}.csv")
+    path_model_catalog2 = os.path.join(path_unit_folder, f"OWP_ras_models_catalog_{huc8}.csv")
 
     model_catalog = pd.read_csv(path_model_catalog2)
     models_name_id = pd.concat([model_catalog["final_name_key"], model_catalog["model_id"]], axis=1)
@@ -301,7 +300,7 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
             # Create a Rating Curve folder
             str_rating_path_to_create = os.path.join(
                 path_unit_folder,
-                sv.R2F_OUTPUT_DIR_SRC_DEPTHGRIDS,
+                sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES,
                 created_ras_models_folders[infoind],
                 "Rating_Curve",
             )
@@ -355,13 +354,11 @@ if __name__ == "__main__":
     # python create_rating_curves.py -w 12090301
     # -p 'C:\\ras2fimv2.0\\ras2fim_v2_output_12090301'
 
-    parser = argparse.ArgumentParser(
-        description="== CREATES SYNTHETIC RATING CURVES AND DEPTH GRIDS FOR FEATURE-IDS =="
-    )
+    parser = argparse.ArgumentParser(description="== CREATES SYNTHETIC RATING CURVES FOR FEATURE-IDS ==")
 
     parser.add_argument(
         "-w",
-        dest="str_huc8",
+        dest="huc8",
         help="REQUIRED: HUC-8 watershed that is being evaluated: Example: 12090301",
         required=True,
         metavar="STRING",
@@ -379,7 +376,7 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    str_huc8 = args["str_huc8"]
+    huc8 = args["huc8"]
     path_unit_folder = args["path_unit_folder"]
 
     log_file_folder = os.path.join(path_unit_folder, "logs")
@@ -396,7 +393,7 @@ if __name__ == "__main__":
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
-        fn_create_src_feature_ids(str_huc8, path_unit_folder)
+        fn_create_rating_curves(huc8, path_unit_folder)
 
     except Exception:
         RLOG.critical(traceback.format_exc())
