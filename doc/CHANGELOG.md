@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.20 - 2024-01-28 - [PR#264](https://github.com/NOAA-OWP/ras2fim/pull/264)
+## v2.0.beta.20 - 2024-01-26 - [PR#264](https://github.com/NOAA-OWP/ras2fim/pull/264)
 
 During some design reviewing it was discovered that we have a need to know and use a code to identify the source.  At this point, we have only one source provider which is BLE. We will use the `source_code` of `ble` for the first records. The code is needed for a number of reasons including helping with merging when multiple runs of ras2fm.py for one HUC are created and also HydroVIS wants this value as well. 
 
