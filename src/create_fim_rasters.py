@@ -52,7 +52,6 @@ def fn_create_fim_rasters(
     # Constant - Starting flow for the first pass of the HEC-RAS simulation
     int_number_of_steps = 76
 
-    RLOG.lprint("===================================================================")
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
     RLOG.notice("|               CREATING CONFLATED HEC-RAS MODELS                 |")
@@ -115,7 +114,7 @@ def fn_create_fim_rasters(
     RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
 
     RLOG.lprint("")
-    RLOG.success(" STEP 5 COMPLETE ")
+    RLOG.success(" COMPLETE ")
 
     dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)

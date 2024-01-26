@@ -275,6 +275,11 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
     RLOG.lprint("start of creating gdf of points")
 
     # -------------------------------------------------
+    # A "partial" just extends the original function to add extra params on the fly
+    # e.g. The original mp_create_gdf_of_points has only sorted_list_points_aggregate being
+    # passed in. Now, but adding a partial, the args beign passed into mp_create_gdf_of_points
+    # are RLOG.LOG_DEFAULT_FOLDER, log_file_prefix, sorted_list_points_aggregate
+    # Notice.. the partial gets a temp name that gets passed into the function in the pool
     log_file_prefix = "mp_create_gdf_of_points"
     fn_create_gdf_of_points_partial = partial(
         mp_create_gdf_of_points, RLOG.LOG_DEFAULT_FOLDER, log_file_prefix
@@ -533,6 +538,9 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
 
     path_model_catalog = os.path.join(path_unit_folder, "OWP_ras_models_catalog_" + huc8 + ".csv")
 
+    if os.path.exists(path_model_catalog) == False:
+        raise ValueError(f"The unit model catalog of {path_model_catalog} does not exist and is required")
+
     model_catalog = pd.read_csv(path_model_catalog)
 
     models_name_id = pd.concat([model_catalog["final_name_key"], model_catalog["model_id"]], axis=1)
@@ -543,6 +551,11 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
 
     conflated_model_names_id = []
     for nms in conflated_model_names:
+
+        if nms not in final_name_key:
+            raise Exception(f"Model name of {nms} not found in the models catalog of"
+                            f" {path_model_catalog}.")
+
         indx = final_name_key.index(nms)
 
         name_id = list(models_name_id.iloc[indx])

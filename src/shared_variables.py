@@ -45,13 +45,15 @@ R2F_OUTPUT_DIR_SHAPES_FROM_CONF = "02_csv_shapes_from_conflation"
 R2F_OUTPUT_DIR_TERRAIN = "03_terrain"
 R2F_OUTPUT_DIR_HECRAS_TERRAIN = "04_hecras_terrain"
 R2F_OUTPUT_DIR_HECRAS_OUTPUT = "05_hecras_output"
-R2F_OUTPUT_DIR_SRC_DEPTHGRIDS = "06_src_depthgrids"
-R2F_OUTPUT_DIR_METRIC = "06_metric"
+R2F_OUTPUT_DIR_CREATE_RATING_CURVES = "06_create_rating_curves"
+
+# TODO: Jan 22, 2024: These next three variables are likely no longer needed
 R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS = "Depth_Grid"
 R2F_OUTPUT_DIR_METRIC_RATING_CURVES = "Rating_Curve"
 R2F_OUTPUT_DIR_METRIC_CROSS_SECTIONS = "Cross_Sections"
+
+
 R2F_OUTPUT_DIR_RAS2REM = "ras2rem"
-R2F_OUTPUT_DIR_CATCHMENTS = "ras2catchments"
 R2F_OUTPUT_DIR_RAS2CALIBRATION = "ras2calibration"
 R2F_OUTPUT_DIR_FINAL = "final"
 R2F_OUTPUT_DIR_DOMAIN_POLYGONS = "models_domain"

@@ -17,6 +17,7 @@ import re
 import sys
 import time
 import traceback
+from functools import partial
 from multiprocessing import Pool
 from os import path
 
@@ -28,6 +29,7 @@ import win32com.client
 from shapely.geometry import LineString
 from shapely.ops import linemerge, split
 
+import ras2fim_logger
 import shared_functions as sf
 import shared_variables as sv
 
@@ -40,18 +42,28 @@ import shared_variables as sv
 
 # Global Variables
 RLOG = sv.R2F_LOG
+MP_LOG = ras2fim_logger.RAS2FIM_logger()  # the mp version
 
 
 # -------------------------------------------------
-def fn_open_hecras(str_ras_project_path):
+def fn_open_hecras(rlog_file_path, rlog_file_prefix, str_ras_project_path):
     # Function - runs HEC-RAS (active plan) and closes the file
+
+    # This function is included as part of a multiproc so each process needs to have
+    # it's own instance of ras2fim logger.
+    # WHY? this stops file open concurrency as each proc has its own.
+    # We attempt to keep them somewhat sorted by using YYMMDD_HHMMSECMillecond)
 
     hec = None
     has_exception = False
 
     try:
+        file_id = sf.get_date_with_milli()
+        log_file_name = f"{rlog_file_prefix}-{file_id}.log"
+        MP_LOG.setup(os.path.join(rlog_file_path, log_file_name))
+
         # opening HEC-RAS
-        RLOG.debug(f"ras project path is {str_ras_project_path}")
+        MP_LOG.trace(f"ras project path is {str_ras_project_path}")
 
         if os.path.exists(str_ras_project_path) is False:
             raise Exception(f"str_ras_project_path value of {str_ras_project_path} does not exist")
@@ -75,10 +87,10 @@ def fn_open_hecras(str_ras_project_path):
         # re-raise it as error handling is farther up the chain
         # but I do need the finally to ensure the hec.QuitRas() is run
         print("")
-        RLOG.critical("++++++++++++++++++++++++")
-        RLOG.critical("An exception occurred with the HEC-RAS engine or its parameters.")
-        RLOG.critical(f"str_ras_project_path is {str_ras_project_path}")
-        RLOG.critical(traceback.format_exc())
+        MP_LOG.critical("++++++++++++++++++++++++")
+        MP_LOG.critical("An exception occurred with the HEC-RAS engine or its parameters.")
+        MP_LOG.critical(f"str_ras_project_path is {str_ras_project_path}")
+        MP_LOG.critical(traceback.format_exc())
         print("")
         has_exception = True
 
@@ -92,10 +104,10 @@ def fn_open_hecras(str_ras_project_path):
             try:
                 hec.QuitRas()  # close HEC-RAS no matter watch
             except Exception as ex2:
-                RLOG.warning("--- An error occured trying to close the HEC-RAS window process")
-                RLOG.warning(f"str_ras_project_path is {str_ras_project_path}")
-                RLOG.warning(f"--- Details: {ex2}")
-                RLOG.warning("")
+                MP_LOG.warning("--- An error occured trying to close the HEC-RAS window process")
+                MP_LOG.warning(f"str_ras_project_path is {str_ras_project_path}")
+                MP_LOG.warning(f"--- Details: {ex2}")
+                MP_LOG.warning("")
                 # do nothing
         if has_exception:
             sys.exit(1)
@@ -149,7 +161,7 @@ def fn_geodataframe_cross_sections(str_path_hecras_project_fn, STR_CRS_MODEL):
     # Fuction - Creates a GeoDataFrame of the cross sections for the
     # HEC-RAS geometry file in the active plan
 
-    RLOG.debug(f"Creating gdf of cross sections for {str_path_hecras_project_fn}" f" and {STR_CRS_MODEL}")
+    RLOG.trace(f"Creating gdf of cross sections for {str_path_hecras_project_fn}" f" and {STR_CRS_MODEL}")
 
     str_path_to_geom_hdf = (fn_get_active_geom(str_path_hecras_project_fn)) + ".hdf"
 
@@ -630,7 +642,7 @@ def fn_print_progress_bar(
 
 
 # -------------------------------------------------
-def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg):
+def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, projection):
     # INPUT
     flt_start_create_shapes_from_hecras = time.time()
 
@@ -638,20 +650,13 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     RLOG.lprint("+=================================================================+")
     RLOG.lprint("|    STREAM AND CROSS SECTION SHAPEFILES FROM HEC-RAS DIRECTORY   |")
     RLOG.lprint("+-----------------------------------------------------------------+")
-    path_ras_files = str_ras_path_arg
-    RLOG.lprint("  ---(i) INPUT PATH: " + str_ras_path_arg)
-
-    path_to_output = str_shp_out_arg
-    RLOG.lprint("  ---(o) OUTPUT PATH: " + path_to_output)
-    path_to_output += "\\"
-
-    crs_model = str_crs_arg
-    RLOG.lprint("  ---(p) MODEL PROJECTION: " + crs_model)
+    RLOG.lprint(f"  ---(i) INPUT PATH: {input_models_path}")
+    RLOG.lprint(f"  ---(o) OUTPUT PATH: {output_shp_files_path}")
+    RLOG.lprint(f"  ---(p) MODEL PROJECTION: {projection}")
     RLOG.lprint(f"  --- Module Started: {sf.get_stnd_date()}")
 
-    str_path_to_output_streams = path_to_output + "stream_LN_from_ras.shp"
-
-    str_path_to_output_cross_sections = path_to_output + "cross_section_LN_from_ras.shp"
+    str_path_to_output_streams = os.path.join(output_shp_files_path, "stream_LN_from_ras.shp")
+    str_path_to_output_cross_sections = os.path.join(output_shp_files_path, "cross_section_LN_from_ras.shp")
 
     RLOG.lprint("+-----------------------------------------------------------------+")
 
@@ -660,7 +665,7 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
 
     list_files = []
 
-    for root, dirs, files in os.walk(path_ras_files):
+    for root, dirs, files in os.walk(input_models_path):
         for file in files:
             if file.endswith(".prj") or file.endswith(".PRJ"):
                 # Note the case sensitive issue
@@ -714,11 +719,23 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
     if len(list_models_to_compute) > 0:
         RLOG.lprint("Compute HEC-RAS Models: " + str(len(list_models_to_compute)))
 
+        # -------------------------------------------------
+        # A "partial" just extends the original function to add extra params on the fly
+        # e.g. The original fn_open_hecras has only list_models_to_compute being
+        # passed in. Now, but adding a partial, the args beign passed into fn_open_hecras
+        # are RLOG.LOG_DEFAULT_FOLDER, log_file_prefix, list_models_to_compute
+        # Notice.. the partial gets a temp name that gets passed into the function in the pool
+        log_file_prefix = "fn_open_hecras"
+        fn_open_hecras_partial = partial(fn_open_hecras, RLOG.LOG_DEFAULT_FOLDER, log_file_prefix)
         # create a pool of processors
         num_processors = mp.cpu_count() - 2
         with Pool(processes=num_processors) as executor:
             # multi-process the HEC-RAS calculation of these models
-            executor.map(fn_open_hecras, list_models_to_compute)
+            executor.map(fn_open_hecras_partial, list_models_to_compute)
+
+        # Now that multi-proc is done, lets merge all of the independent log file from each
+        RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
+
     # -----
 
     list_geodataframes_stream = []
@@ -732,10 +749,10 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
 
     for ras_path in list_files_valid_prj:
         # print(ras_path)
-        gdf_return_stream = fn_geodataframe_stream_centerline(ras_path, crs_model)
+        gdf_return_stream = fn_geodataframe_stream_centerline(ras_path, projection)
 
         df_flows = fn_get_flow_dataframe(fn_get_active_flow(ras_path))
-        df_xs = fn_geodataframe_cross_sections(ras_path, crs_model)
+        df_xs = fn_geodataframe_cross_sections(ras_path, projection)
         if df_xs.empty:
             RLOG.warning("Empty geometry in " + ras_path)
             continue
@@ -787,9 +804,8 @@ def fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == "__main__":
     # Sample:
-    # python create_shapes_from_hecras.py -i C:\ras2fim_data\OWP_ras_models\models-12030105 -small
-    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\01_shapes_from_hecras
-    #  -p EPSG:2276
+    # python create_shapes_from_hecras.py -i C:\ras2fim_data\OWP_ras_models\models-12030105-small
+    #  -o c:\ras2fim_data\output_ras2fim\12030105_2276_231024\01_shapes_from_hecras -p EPSG:2276
 
     parser = argparse.ArgumentParser(
         description="============ SHAPEFILES FROM HEC-RAS DIRECTORY ============"
@@ -797,8 +813,8 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-i",
-        dest="str_ras_path_arg",
-        help=r"REQUIRED: path containing the HEC-RAS files: Example C:\HEC\ras_folder",
+        dest="input_models_path",
+        help=r"REQUIRED: path containing the HEC-RAS files: Example C:\ras2fim_data\OWP_ras_models\models",
         required=True,
         metavar="DIR",
         type=str,
@@ -806,8 +822,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-o",
-        dest="str_shp_out_arg",
-        help=r"REQUIRED: path to write shapefile: Example C:\HEC\ras2fim_precrocess",
+        dest="output_shp_files_path",
+        help="REQUIRED: path to write shapefile:"
+        r" Example c:\ras2fim_data\output_ras2fim\12030105_2276_231024\01_shapes_from_hecras",
         required=True,
         metavar="DIR",
         type=str,
@@ -815,7 +832,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-p",
-        dest="str_crs_arg",
+        dest="projection",
         help="REQUIRED: projection of HEC-RAS models: Example EPSG:26915",
         required=True,
         metavar="STRING",
@@ -824,11 +841,9 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    str_ras_path_arg = args["str_ras_path_arg"]
-    str_shp_out_arg = args["str_shp_out_arg"]
-    str_crs_arg = args["str_crs_arg"]
-
-    log_file_folder = args["str_shp_out_arg"]
+    referential_path = os.path.join(os.path.dirname(__file__), "..", args["output_shp_files_path"])
+    config_file = os.path.abspath(referential_path)
+    log_file_folder = os.path.join(config_file, "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -842,7 +857,7 @@ if __name__ == "__main__":
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
-        fn_create_shapes_from_hecras(str_ras_path_arg, str_shp_out_arg, str_crs_arg)
+        fn_create_shapes_from_hecras(**args)
 
     except Exception:
         RLOG.critical(traceback.format_exc())
