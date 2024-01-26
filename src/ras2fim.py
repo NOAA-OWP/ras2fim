@@ -31,8 +31,8 @@ from convert_tif_to_ras_hdf5 import fn_convert_tif_to_ras_hdf5
 from create_fim_rasters import fn_create_fim_rasters
 from create_geocurves import manage_geo_rating_curves_production
 from create_model_domain_polygons import fn_make_domain_polygons
+from create_rating_curves import fn_create_src_feature_ids
 from create_shapes_from_hecras import fn_create_shapes_from_hecras
-from create_src_fimrasters_4fids import fn_create_src_feature_ids
 from reformat_ras_rating_curve import dir_reformat_ras_rc
 from simplify_fim_rasters import fn_simplify_fim_rasters
 
@@ -354,13 +354,7 @@ def fn_run_ras2fim(
         )
 
     # -------------------------------------------
-
     # ------ Step 5: create_fim_rasters -----
-    # create a converted terrain folder
-    dir_hecras_output = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-    if not os.path.exists(dir_hecras_output):
-        os.mkdir(dir_hecras_output)
-
     RLOG.lprint("")
     RLOG.notice("+++++++ Processing: STEP 5 (create fim rasters) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
@@ -369,77 +363,35 @@ def fn_run_ras2fim(
         fn_create_fim_rasters(huc8, unit_output_path, model_unit)
 
     # -------------------------------------------
-
-    # --- Step 6: create_src_depthgrids_for_fids ---
+    # --- Step 6: create_rating_curves_for_fids ---
     RLOG.lprint("")
-    RLOG.notice("+++ Processing: STEP 6 (create src and fim rasters per fid) +++")
+    RLOG.notice("+++++++ Processing: STEP 6 (create rating curves per fid) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
-    if int_step <= 6:
-        fn_create_src_feature_ids(huc8, unit_output_path)
+    fn_create_src_feature_ids(huc8, unit_output_path)
 
-    # -------------------------------------------
+    # Use rating curve data from Step 6
+    # TODO: Jan 22, 2024 - While mostly plugged in, it needs adjustments.
+    RLOG.lprint("")
+    RLOG.notice("+++++++ Processing: STEP 6.b (create rating curve stats) +++++++")
+    #RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+    RLOG.lprint(f"Module temporarily disabled.: {sf.get_stnd_date()}")
+    #fn_calculate_all_terrain_stats(unit_output_path)
+
+    # -------------------------------------------------
+    # TODO: Still to be done for v2
     flt_resolution_depth_grid = int(output_resolution)
 
     RLOG.lprint("")
-    RLOG.notice("+++++++ Processing: Step 7 (simplifying fim rasters and create metrics) +++++++")
+    RLOG.notice("+++++++ Processing: Step ???? (simplifying fim rasters and create metrics) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
-    fn_simplify_fim_rasters(
-        dir_hecras_output, flt_resolution_depth_grid, sv.DEFAULT_RASTER_OUTPUT_CRS, model_unit
-    )
-
-    # ----------------------------------------
-    RLOG.lprint("")
-    RLOG.notice("+++++++ Processing: STEP 8 (calculate terrain statistics) +++++++")
-    RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-
-    fn_calculate_all_terrain_stats(dir_hecras_output)
-
-    # TODO:
-    # Jan 2024, sv.R2F_OUTPUT_DIR_METRIC might be deprecated in favour of R2F_OUTPUT_DIR_SRC_DEPTHGRIDS
-    #   Research required as next steps continue to evolve
-
-    # -------------------------------------------------
-    if os.getenv("RUN_RAS2CALIBRATION") == "True":
-        RLOG.lprint("")
-        RLOG.notice("+++++++ Processing: STEP: Running ras2calibration +++++++")
-        RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-
-        dir_reformat_ras_rc(
-            unit_output_path,
-            sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
-            sv.R2F_OUTPUT_FILE_RAS2CAL_CSV,
-            sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG,
-            sv.R2F_OUTPUT_FILE_RAS2CAL_LOG,
-            "",
-            "",
-            False,
-            sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF,
-            sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS,
-            sv.R2F_OUTPUT_DIR_METRIC,
-        )
-
-        # Copy outputs into the ras2calibration subdirectory of the /final folder
-        r2f_final_ras2cal_subdir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
-        os.mkdir(r2f_final_ras2cal_subdir)
-
-        shutil.copy2(
-            os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_CSV),
-            r2f_final_ras2cal_subdir,
-        )
-        shutil.copy2(
-            os.path.join(
-                unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG
-            ),
-            r2f_final_ras2cal_subdir,
-        )
-        shutil.copy2(
-            os.path.join(
-                unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, "README_reformat_ras_rating_curve.txt"
-            ),
-            r2f_final_ras2cal_subdir,
-        )
+    # Note: Was pasing in 05 hecras output dir, but should now be the unit_output_path
+    # , it can add the subfolders it needs as it goes.
+    # fn_simplify_fim_rasters(
+    #    unit_output_path, flt_resolution_depth_grid, sv.DEFAULT_RASTER_OUTPUT_CRS,
+    #    model_unit, unit_output_path
+    # )
 
     # -------------------------------------------------
     if os.getenv("PRODUCE_GEOCURVES") == "True":
@@ -459,6 +411,11 @@ def fn_run_ras2fim(
 
     # -------------------------------------------------
     if os.getenv("CREATE_RAS_DOMAIN_POLYGONS") == "True":
+        # TODO:
+        # V2: Jan 22, 2024: All we need is one big poly that cover the max extent of all features.
+        # This is required for GVAL.
+        # We might already have this covered by earlier steps now. Research required here.
+
         RLOG.lprint("")
         RLOG.notice("+++++++ Processing: STEP: Create polygons for HEC-RAS models domains +++++++")
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
@@ -485,6 +442,47 @@ def fn_run_ras2fim(
             "ras_path",
             model_huc_catalog_path,
             conflation_csv_path,
+        )
+
+    # -------------------------------------------------
+    if os.getenv("RUN_RAS2CALIBRATION") == "True":
+        RLOG.lprint("")
+        RLOG.notice("+++++++ Processing: STEP: Running ras2calibration +++++++")
+        RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+
+        dir_reformat_ras_rc(
+            unit_output_path,
+            sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
+            sv.R2F_OUTPUT_FILE_RAS2CAL_CSV,
+            sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG,
+            sv.R2F_OUTPUT_FILE_RAS2CAL_LOG,
+            "",
+            "",
+            False,
+            sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF,
+            sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS,
+            sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES,
+        )
+
+        # Copy outputs into the ras2calibration subdirectory of the /final folder
+        r2f_final_ras2cal_subdir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
+        os.mkdir(r2f_final_ras2cal_subdir)
+
+        shutil.copy2(
+            os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_CSV),
+            r2f_final_ras2cal_subdir,
+        )
+        shutil.copy2(
+            os.path.join(
+                unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG
+            ),
+            r2f_final_ras2cal_subdir,
+        )
+        shutil.copy2(
+            os.path.join(
+                unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, "README_reformat_ras_rating_curve.txt"
+            ),
+            r2f_final_ras2cal_subdir,
         )
 
     # -------------------------------------------------

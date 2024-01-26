@@ -158,6 +158,9 @@ def fn_create_grid(list_of_df_row):
 def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_crs, model_unit):
     flt_start_simplify_fim = time.time()
 
+    # TODO: Jan 22, 2024. pathing logic is very unstable and needs to be reviewed and fixed
+    # and clean up variable names.
+
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
     RLOG.lprint("|                SIMPLIFIED GEOTIFFS FOR RAS2FIM                  |")
@@ -177,10 +180,12 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
 
     RLOG.lprint("===================================================================")
 
-    # create the base 06_metric path
+    # create the base 06_src_depthgrids path
     # change the 05 path to the 06 path and make it
-    metric_folder = STR_MAP_OUTPUT.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, sv.R2F_OUTPUT_DIR_METRIC)
-    os.makedirs(metric_folder, exist_ok=True)
+    src_depthgrids_folder = STR_MAP_OUTPUT.replace(
+        sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES
+    )
+    os.makedirs(src_depthgrids_folder, exist_ok=True)
 
     # get a list of all tifs in the provided input directory
     list_raster_dem = fn_filelist(STR_MAP_OUTPUT, (".TIF", ".tif"))
@@ -229,7 +234,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
             str_folder_to_create = (
                 first_part
                 + "\\"
-                + sv.R2F_OUTPUT_DIR_METRIC
+                + sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES
                 + "\\"
                 + sv.R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS
                 + "\\"
@@ -322,7 +327,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
             )
 
     RLOG.lprint("+-----------------------------------------------------------------+")
-    RLOG.lprint("Making metric rating curve files")
+    RLOG.lprint("Making feature id rating curve files")
     all_rating_files = list(pathlib.Path(r2f_hecras_outputs_dir).rglob("*rating_curve.csv"))
     all_rating_curve_df = pd.DataFrame()
     for file in all_rating_files:
@@ -333,19 +338,13 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
         this_file_df["feature_id"] = featureid
 
         # build the new path to folder 06_metric
+        # TODO: Jan 22, 2024 this logic is very unstable, please review
+
         list_path_parts = str(file).split(os.sep)
         file_name = list_path_parts[-1]
         first_part = "\\".join(list_path_parts[:-5])
         last_part = "\\".join(list_path_parts[-4:-2])
-        str_folder_to_create = (
-            first_part
-            + "\\"
-            + sv.R2F_OUTPUT_DIR_METRIC
-            + "\\"
-            + sv.R2F_OUTPUT_DIR_METRIC_RATING_CURVES
-            + "\\"
-            + last_part
-        )
+        str_folder_to_create = first_part + "\\" + sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES + "\\" + last_part
 
         # first make a folder and then save the csv file inside that
         os.makedirs(str_folder_to_create, exist_ok=True)
@@ -354,7 +353,9 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
         # also combine all files into a single file
         all_rating_curve_df = pd.concat([all_rating_curve_df, this_file_df])
 
-    r2f_metric_dir = r2f_hecras_outputs_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, sv.R2F_OUTPUT_DIR_METRIC)
+    r2f_metric_dir = r2f_hecras_outputs_dir.replace(
+        sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES
+    )
     all_rating_curve_df.to_csv(os.path.join(r2f_metric_dir, "all_rating_curves.csv"), index=False)
 
     RLOG.lprint("Making metric wse for cross sections")
@@ -365,7 +366,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
         # files already have feature id.
         this_file_df = pd.read_csv(file)
 
-        # build the new path to folder 06_metric
+        # build the new path to folder 06_ folder
         list_path_parts = str(file).split(os.sep)
         file_name = list_path_parts[-1]
         first_part = "\\".join(list_path_parts[:-5])
@@ -373,7 +374,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
         str_folder_to_create = (
             first_part
             + "\\"
-            + sv.R2F_OUTPUT_DIR_METRIC
+            + sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES
             + "\\"
             + sv.R2F_OUTPUT_DIR_METRIC_CROSS_SECTIONS
             + "\\"
@@ -387,7 +388,9 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
         # also combine all files into a single file
         all_xs_df = pd.concat([all_xs_df, this_file_df])
 
-    r2f_metric_dir = r2f_hecras_outputs_dir.replace(sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, sv.R2F_OUTPUT_DIR_METRIC)
+    r2f_metric_dir = r2f_hecras_outputs_dir.replace(
+        sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES
+    )
     all_xs_df.to_csv(os.path.join(r2f_metric_dir, "all_cross_sections.csv"), index=False)
 
     RLOG.success("COMPLETE")
