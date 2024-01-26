@@ -9,15 +9,11 @@ from datetime import date
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tick
-
-# import numpy as np
 import pandas as pd
 
 # import ras2fim_logger
 import shared_variables as sv
 
-
-# import shared_functions as sf
 
 # Global Variables
 RLOG = sv.R2F_LOG  # the non mp version
@@ -96,6 +92,14 @@ def plot_src(
 
 
 # -------------------------------------------------
+def cast_to_int(x):
+    if str(x).endswith("*"):
+        x = x[:-1]
+    x = int(float(x))
+    return x
+
+
+# -------------------------------------------------
 def fn_create_rating_curves(huc8, path_unit_folder):
     int_number_of_steps = 76
     model_unit = 'feet'
@@ -126,6 +130,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
 
     # -------------------------------------------------
     # Assigning model_ids to data_summary
+    # -------------------------------------------------
     conflated_model_names_id = []
     for nms in conflated_model_names:
         indx = final_name_key.index(nms)
@@ -154,7 +159,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
 
     # -------------------------------------------------
     # Assigning feature_ids from df_fid_xs_huc8 to all_x_sections_info
-
+    # -------------------------------------------------
     # Creating a for loop going through all all_x_sections_info
     # for each confalted stream (step 5 results)
     for infoind in range(len(path_to_all_x_sections_info)):
@@ -180,9 +185,28 @@ def fn_create_rating_curves(huc8, path_unit_folder):
         # Discussed in our ras2fim meeting (2023-12-28). Conclusion:
         # Inclusion of upstreams XS that are not part of the nwm
         # feature_ids in average depth per feature_if.
-        maxind = 0  # df_fid_xs_mid["us_xs"].astype(float).idxmax()
 
-        df_XS_name = pd.DataFrame(mid_x_sections_info['Xsection_name'])
+        df_XS_name = pd.DataFrame(mid_x_sections_info['Xsection_name'].apply(cast_to_int))
+
+        # TODO: will be removed in the next PR
+        # if type(mid_x_sections_info['Xsection_name'][0]) == str:
+
+        #     df_XS_name0 = pd.DataFrame(mid_x_sections_info['Xsection_name'])
+        #     xs_name = []
+        #     for indx_xs in range(len(df_XS_name0)):
+
+        #         if df_XS_name0['Xsection_name'][indx_xs][-1] == "*":
+
+        #             xs_name.append(np.int64(float(df_XS_name0['Xsection_name'][indx_xs][0:-1])))
+
+        #         else: xs_name.append(np.int64(df_XS_name0['Xsection_name'][indx_xs]))
+
+        #     df_XS_name = pd.DataFrame(xs_name, columns = ['Xsection_name'])
+
+        # else:
+        #     df_XS_name = pd.DataFrame(mid_x_sections_info['Xsection_name'])
+
+        maxind = 0  # df_fid_xs_mid["us_xs"].astype(float).idxmax()
         mid_fid = {
             (indxh, rowh['Xsection_name']): [maxind, df_fid_xs_mid['feature_id'][maxind]]
             for indxh, rowh in df_XS_name.iterrows()
@@ -197,9 +221,17 @@ def fn_create_rating_curves(huc8, path_unit_folder):
         df_mid_fid = pd.DataFrame(mid_fid).T
         df_mid_fid.index = range(len(df_mid_fid))
         df_mid_fid.columns = ['fidindx', 'feature_id']
-        mid_x_sections_info_fid = pd.concat([mid_x_sections_info, df_mid_fid], axis=1)
 
-        mid_x_sections_info_fid = mid_x_sections_info_fid.rename(columns={'Unnamed: 0': 'xs_counter'})
+        mid_x_sections_info = mid_x_sections_info.rename(columns={'Unnamed: 0': 'xs_counter'})
+        mid_x_sections_info_fid = pd.concat(
+            [
+                mid_x_sections_info[["mid_xs", "model_id", "xs_counter"]],
+                df_XS_name["Xsection_name"],
+                mid_x_sections_info[["wse", "discharge"]],
+                df_mid_fid,
+            ],
+            axis=1,
+        )
 
         mid_xs_info_fid = mid_x_sections_info_fid[
             ['model_id', 'feature_id', 'xs_counter', 'Xsection_name', 'wse', 'discharge']
@@ -220,7 +252,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             columns=['profile_num'],
         )
 
-        mid_xs_info_fid = pd.concat([mid_xs_info_fid, profile_num_col], axis=1)  # profile_names_col
+        mid_xs_info_fid = pd.concat([mid_xs_info_fid, profile_num_col], axis=1)
 
         # -------------------------------------------------
         # Grouped and averaged by 'profile_num', 'feature_id'
@@ -277,7 +309,6 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             # -------------------------------------------------
             # Saving all cross sections info per feature_id
             # TODO: add meter units of feet and meter
-            # TODO: add xs_counter
             x_sections_info_fid = mid_x_sections_info_fid[mid_x_sections_info_fid['feature_id'] == fids]
             path_to_all_xs_info_fid = os.path.join(str_rating_path_to_create, f"all_xs_info_fid_{fids}.csv")
 
