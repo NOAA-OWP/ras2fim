@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.X - 2024-01-24 - [PR#266](https://github.com/NOAA-OWP/ras2fim/pull/266)
+## v2.0.beta.19 - 2024-01-26 - [PR#266](https://github.com/NOAA-OWP/ras2fim/pull/266)
 
 The main goal of this PR is to change the conflation approach and use only snap points (Andy's approach) in ras2fim v2. So a lot of changes have been made in step 2 (`conflate_hecras_to_nwm.py`). However, in this approach, we will be missing some RAS models which is ok. Also, A small bug in step 6 `create_rating_curves.py` that did not create rating curves for a few models was fixed. 
 
