@@ -66,7 +66,7 @@ def fn_make_domain_polygons(
         os.path.join(os.path.dirname(__file__), os.pardir, 'doc', 'CHANGELOG.md')
     )
     version = sf.get_changelog_version(changelog_path)
-    RLOG.lprint("Version found: " + version)
+    #RLOG.lprint("Version found: " + version)
 
     RLOG.lprint("")
     RLOG.notice("+++++++ Create polygons for HEC-RAS models domains +++++++")
