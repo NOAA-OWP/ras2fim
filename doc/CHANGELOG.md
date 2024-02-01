@@ -1,6 +1,17 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.21 - 2024-02-01 - [PR#272](https://github.com/NOAA-OWP/ras2fim/pull/272)
+
+This PR closes the issue #268.
+Compared with ras2fim V1 code, the only part of create_model_domain_polygons.py that needed an update is the path to qc conflation file, which now should be 02_shapes_from_conflation\***_stream_qc_fid_xs.csv
+
+### Changes
+- `src/create_model_domain_polygons.py`
+
+<br/><br/>
+
+
 ## v2.0.beta.20 - 2024-01-26 - [PR#263](https://github.com/NOAA-OWP/ras2fim/pull/263)
 
 Most the primary logic stages (Steps 1 to 6) are near completion. As we continue development on further modules, which rely on folder pathing from previous steps, folder names and pathing needed to be updates.  Step 6 in V1 was named "06_metric". For V2 up to this point, it was named `06_src_depthgrids`. This is now renamed to `06_create_rating_curves` to be more descriptive.  Various files were changed to make the folder names and flow match the code direction.
