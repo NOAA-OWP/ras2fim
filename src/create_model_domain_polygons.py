@@ -3,6 +3,7 @@ import datetime
 import os
 import time
 import traceback
+from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -55,6 +56,10 @@ def fn_make_domain_polygons(
         # Alternatively, we could reverse order of points of last cross section and upper edge.
 
     """
+
+    # check that output file name has extension of gpkg
+    if not Path(polygons_output_file_path).suffix == '.gpkg':
+        raise TypeError("The output file must have gpkg extension.")
 
     # get the version
     changelog_path = os.path.abspath(
@@ -151,7 +156,7 @@ def fn_make_domain_polygons(
         )
 
         # also add HUC8 number
-        models_polygons_gdf["HUC8"] = os.path.basename(conflation_qc_path).split("_stream_qc.csv")[0]
+        models_polygons_gdf["HUC8"] = os.path.basename(conflation_qc_path).split("_stream_qc_fid_xs.csv")[0]
 
     models_polygons_gdf["version"] = version
     models_polygons_gdf.crs = Xsections.crs
@@ -219,8 +224,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-conflate",
         dest="conflation_qc_path",
-        help='Optional: path to the conflation qc file in "02_shapes_from_conflation"'
-        " folder. Default=no_qc",
+        help='Optional: path to the conflation qc file '
+        'of 02_shapes_from_conflation\***_stream_qc_fid_xs.csv. Default=no_qc',
         required=False,
         default="no_qc",
         metavar="STRING",
