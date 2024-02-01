@@ -66,7 +66,7 @@ def fn_make_domain_polygons(
         os.path.join(os.path.dirname(__file__), os.pardir, 'doc', 'CHANGELOG.md')
     )
     version = sf.get_changelog_version(changelog_path)
-    #RLOG.lprint("Version found: " + version)
+    # RLOG.lprint("Version found: " + version)
 
     RLOG.lprint("")
     RLOG.notice("+++++++ Create polygons for HEC-RAS models domains +++++++")
@@ -172,11 +172,13 @@ def fn_make_domain_polygons(
 if __name__ == "__main__":
     # Sample:
     # python create_model_domain_polygons.py
-    #  -i "12090301_2277_240201\01_shapes_from_hecras\cross_section_LN_from_ras.shp"
-    #  -o "12090301_2277_240201\final\models_domain\models_domain.gpkg"
+    #  -i "C:\ras2fim_data\output_ras2fim\12090301_2277_240201\...
+    #          01_shapes_from_hecras\cross_section_LN_from_ras.shp"
+    #  -o "C:\ras2fim_data\output_ras2fim\12090301_2277_240201\final\models_domain\models_domain.gpkg"
     #  -name ras_path
-    #  -catalog c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_12090301.csv
-    #  -conflate "12090301_2277_240201\02_csv_shapes_from_conflation\12090301_stream_qc_fid_xs.csv"
+    #  -catalog "C:\ras2fim_data\output_ras2fim\12090301_2277_240201\OWP_ras_models_catalog_12090301.csv"
+    #  -conflate "C:\ras2fim_data\output_ras2fim\12090301_2277_240201\...
+    #        02_csv_shapes_from_conflation\12090301_stream_qc_fid_xs.csv"
 
     parser = argparse.ArgumentParser(description="==== Make polygons for HEC-RAS models domains ===")
 
@@ -193,7 +195,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-o",
         dest="polygons_output_file_path",
-        help=r"REQUIRED: path to the output GPKG file",
+        help="REQUIRED: path to the output GPKG file.\n"
+        r" e.g. C:\ras2fim_data\output_ras2fim\12090301_2277_240201\final\models_domain\models_domain.gpkg",
         required=True,
         metavar="DIR",
         type=str,
@@ -213,7 +216,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-catalog",
         dest="model_catalog_path",
-        help=r"Optional: path to the model catalog. Default=no_catalog",
+        help="Optional: path to the model catalog. Default=no_catalog"
+        r" e.g. C:\ras2fim_data\output_ras2fim\12090301_2277_240201\OWP_ras_models_catalog_12090301.csv",
         required=False,
         default="no_catalog",
         metavar="STRING",
@@ -223,8 +227,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "-conflate",
         dest="conflation_qc_path",
-        help='Optional: path to the conflation qc file '
-        'of 02_shapes_from_conflation\***_stream_qc_fid_xs.csv. Default=no_qc',
+        help='Optional: path to the conflation qc file.\n'
+        'e.g: C:\ras2fim_data\output_ras2fim\12090301_2277_240201\...'
+        '      02_shapes_from_conflation\***_stream_qc_fid_xs.csv.\n'
+        ' Default=no_qc',
         required=False,
         default="no_qc",
         metavar="STRING",
