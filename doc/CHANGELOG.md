@@ -1,6 +1,54 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+
+## v2.0.beta.24 - 2024-02-02 - [PR#264](https://github.com/NOAA-OWP/ras2fim/pull/264)
+
+During some design reviewing it was discovered that we have a need to know and use a code to identify the source.  At this point, we have only one source provider which is BLE. We will use the `source_code` of `ble` for the first records. The code is needed for a number of reasons including helping with merging when multiple runs of ras2fm.py for one HUC are created and also HydroVIS wants this value as well. 
+
+The unit file name will add the code in the folder name. What was `{huc8}_{crs number}_{date}`, ie) 12090301_2276_240126, will now become `{huc8}_{crs number}_{source code}_{date}`, ie) 12090301_2276_ble_240126.
+
+This triggered the addition of a new system to know a source code value such as "ble" and get a human friendly value which HydroVIS also wants. ie) ble = FEMA Base Level Engineering (BLE). This has to be done at this level as HV won't know the source so can not translate it as other sources come online. These value will be added to the unit output rating curves for HV.
+
+A number of files are also be removed from the tools folder that are no longer used.
+
+**NOTE: `tools\get_models_by_catalog.py` has been renamed here to `tools\s3_get_models.py`**
+
+Closes Issue [254](https://github.com/NOAA-OWP/ras2fim/issues/254)
+
+### Additions  
+
+- `config`
+    - `source_codes.csv`
+
+### Renamed Files
+- `tools`
+    -  Was `get_models_by_catalog.py`, now `s3_get_models.py`
+
+### Changes  
+
+- `pyproject.toml`: minor changes due to file renamed.
+- `src`
+    - `ras2fim.py`: Addition of code in support of the new `source_code` parameter.
+    - `ras2fim_logger.py`: Fix bug were it would creating a full path instead of just the last folder.
+    - `shared_functions.py`: Addition of code in support of the new `source_code` parameter.
+    - `shared_variables.py`: Renamed some variables related to S3 objects.
+- `tools`
+    - `ras_unit_to_s3.py`: Addition of code in support of the new `source_code` parameter. Some variable names and text adjustments.
+    - `s3_get_models.py`: Addition of code in support of the new `source_code` parameter. Some variable names and text adjustments.
+    - `s3_model_mgmt.py`: Text changes.
+    - `s3_search_tool.py`: Text changes.
+    - `s3_shared_functions.py`: Addition of code in support of the new `source_code` parameter.
+
+### Removals 
+
+- `tools`
+    - `convert_ras2fim_to_recurr_validation_datasets.py`
+    - All files starting with `nws_`
+
+<br/><br/>
+
+
 ## v2.0.beta.23 - 2024-02-02 - [PR#259](https://github.com/NOAA-OWP/ras2fim/pull/259)
 
 This PR addresses issue #200.  Added evaluation functionality to the tools directory in order to assess the ras2fim output model performance i
@@ -16,6 +64,7 @@ reference to benchmark datasets.  Also included functionality for s3 batch evalu
     - `ras2inundation.py`: Changes to formatting
 
 <br/><br/>
+
 
 ## v2.0.beta.22 - 2024-02-02 - [PR#272](https://github.com/NOAA-OWP/ras2fim/pull/272)
 

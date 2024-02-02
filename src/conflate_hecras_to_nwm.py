@@ -538,7 +538,7 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
 
     path_model_catalog = os.path.join(path_unit_folder, "OWP_ras_models_catalog_" + huc8 + ".csv")
 
-    if os.path.exists(path_model_catalog) == False:
+    if os.path.exists(path_model_catalog) is False:
         raise ValueError(f"The unit model catalog of {path_model_catalog} does not exist and is required")
 
     model_catalog = pd.read_csv(path_model_catalog)

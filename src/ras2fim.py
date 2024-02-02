@@ -52,6 +52,7 @@ RLOG = sv.R2F_LOG
 def init_and_run_ras2fim(
     huc8,
     projection,
+    source_code,
     r2f_output_dir=sv.R2F_DEFAULT_OUTPUT_MODELS,
     hecras_engine_path=sv.DEFAULT_HECRAS_ENGINE_PATH,
     input_models_path=sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
@@ -80,11 +81,6 @@ def init_and_run_ras2fim(
     # Read RAS models units from both prj file and given EPSG code through -p
     # Functions below check for a series of exceptions
 
-    # I don't need the crs_number for now
-    is_valid, err_msg, crs_number = val.is_valid_crs(projection)
-    if is_valid is False:
-        raise ValueError(err_msg)
-
     # -------------------
     # -w   (ie 12090301)
     huc_valid, err_msg = val.is_valid_huc(huc8)
@@ -92,12 +88,23 @@ def init_and_run_ras2fim(
         raise ValueError(err_msg)
 
     # -------------------
+    # I don't need the crs_number for now
+    is_valid, err_msg, crs_number = val.is_valid_crs(projection)
+    if is_valid is False:
+        raise ValueError(err_msg)
+    proj_crs = pyproj.CRS.from_string(projection)
+
+    # ---------------
+    if source_code == "":
+        raise ValueError("Source code value can not be empty")
+    source_name = sf.get_source_info(source_code)
+    if source_name == "":
+        raise ValueError(f"Source code value of {source_code} is not a known valid code")
+
+    # -------------------
     # -i  (ie OWP_ras_models\models) (HECRAS models)
     if os.path.exists(input_models_path) is False:
         raise ValueError(f"the -i arg ({input_models_path}) does not appear to be a valid folder.")
-
-    # -------------------
-    proj_crs = pyproj.CRS.from_string(projection)
     model_unit = sf.confirm_models_unit(proj_crs, input_models_path)
 
     # -------------------
@@ -108,7 +115,7 @@ def init_and_run_ras2fim(
         )
 
     # -------------------
-    unit_folder_name = sf.get_stnd_r2f_output_folder_name(huc8, projection)
+    unit_folder_name = sf.get_stnd_unit_output_folder_name(huc8, projection, source_code)
     unit_output_path = os.path.join(r2f_output_dir, unit_folder_name)
 
     if os.path.exists(unit_output_path) is True:
@@ -220,9 +227,10 @@ def init_and_run_ras2fim(
     # Now call the processing function
     fn_run_ras2fim(
         huc8,
+        projection,
+        source_code,
         input_models_path,
         unit_output_path,
-        projection,
         dir_datasets,
         hecras_engine_path,
         terrain_file_path,
@@ -238,9 +246,10 @@ def init_and_run_ras2fim(
 # Call the init_and_run_ras2fim function as it validates inputs and sets up other key variables.
 def fn_run_ras2fim(
     huc8,
+    projection,
+    source_code,
     input_models_path,
     unit_output_path,
-    projection,
     dir_datasets,
     hecras_engine_path,
     terrain_file_path,
@@ -258,6 +267,7 @@ def fn_run_ras2fim(
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     RLOG.lprint(f"  ---(r) HUC 8 WATERSHED: {huc8}")
+    RLOG.lprint(f"  ---(sc) SOURCE CODE (SOURCE OF MODELS): {source_code}")
     RLOG.lprint(f"  ---(i) PATH TO INPUT MODELS: {input_models_path}")
     RLOG.lprint(f"  ---(o) UNIT OUTPUT DIRECTORY: {unit_output_path}")
     RLOG.lprint(f"  ---(p) PROJECTION OF HEC-RAS MODELS: {projection}")
@@ -546,7 +556,7 @@ def create_input_args_log(**kwargs):
 if __name__ == "__main__":
     # Sample usage:
     # Using all defaults:
-    #     python ras2fim.py -w 12090301 -p EPSG:2277
+    #     python ras2fim.py -w 12090301 -p EPSG:2277 -sc ble
     #           -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif
 
     # There are a number of ways to use arguments:
@@ -559,8 +569,8 @@ if __name__ == "__main__":
     #            -n E:\X-NWS\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.3"
     #
     #    But any and all optional arguments can be overridden, so let's try this version:
-    #    ie) python ras2fim.py -w 12090301 -i C:\HEC\input_folder
-    #                          -o c:/users/my_user/desktop/ras2fim_outputs -p EPSG:2277
+    #    ie) python ras2fim.py -w 12090301 -p EPSG:2277 -sc ble -i C:\HEC\input_folder
+    #                          -o c:/users/my_user/desktop/ras2fim_outputs
     #                          -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif
     #                          -n E:\X-NWS\X-National_Datasets
     #
@@ -572,7 +582,7 @@ if __name__ == "__main__":
     #
     # When ras2fim.py is run, it will automatically create an output folder name with the output files
     #     and some subfolders. The folder name will be based on the pattern of
-    #     {HUC number}_{CRS}_{DATE (YYMMDD)}. e.g.  12090301_2277_230725
+    #     {HUC number}_{CRS}_{source_code}_{DATE (YYMMDD)}. e.g.  12090301_2277_ble_230725
 
     # ++++ Config file notes ++++++
 
@@ -603,6 +613,18 @@ if __name__ == "__main__":
         "-p",
         dest="projection",
         help="REQUIRED: projection of HEC-RAS models: Example EPSG:2277",
+        required=True,
+        metavar="",
+        type=str,
+    )
+
+    # Note: As of Jan 2024, 'ble' is the only acceptable value but this could change at any time.
+    # Validated against config/source_codes.csv
+    parser.add_argument(
+        "-sc",
+        "--source_code",
+        help="REQUIRED: Enter the source code value to be applied to output folder names."
+        " e.g. ble  [case-sensitive].",
         required=True,
         metavar="",
         type=str,
