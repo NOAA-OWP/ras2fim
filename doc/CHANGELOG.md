@@ -48,6 +48,53 @@ Closes Issue [254](https://github.com/NOAA-OWP/ras2fim/issues/254)
 
 <br/><br/>
 
+## v2.0.beta.23 - 2024-02-02 - [PR#259](https://github.com/NOAA-OWP/ras2fim/pull/259)
+
+This PR addresses issue #200.  Added evaluation functionality to the tools directory in order to assess the ras2fim output model performance i
+reference to benchmark datasets.  Also included functionality for s3 batch evaluations.
+
+### Additions
+- `tools`
+  - `evaluate_ras2fim_model.py`: Method for using gval to run an evaluation of model performance
+  - `s3_batch_evaluation.py`: Module to facilitate batch processing evaluations using s3
+
+### Changes  
+- `tools`
+    - `ras2inundation.py`: Changes to formatting
+
+<br/><br/>
+
+## v2.0.beta.22 - 2024-02-02 - [PR#272](https://github.com/NOAA-OWP/ras2fim/pull/272)
+
+This PR closes the issue #268.
+Compared with ras2fim V1 code, the only part of create_model_domain_polygons.py that needed an update is the path to qc conflation file, which now should be 02_shapes_from_conflation\***_stream_qc_fid_xs.csv
+
+This PR closes the issue #268. 
+Compared with ras2fim V1 code, the only part of `create_model_domain_polygons.py` that needed an update is the path to qc conflation file, which now should be `02_shapes_from_conflation\***_stream_qc_fid_xs.csv`
+
+Also a few linting fixes
+
+### Changes  
+- `src`
+     - `create_model_domain_polygons.py`: as described
+     - `calculate_all_terrain_stats.py`: Linting adjustments
+     - `conflate_hecras_to_nwm.py`: Linting adjustments
+     - `ras2fim.py`: Adjusted for a bad class name (create rating curves), also ensure `create_model_domain_polygons.py` worked with the ras2fim.py flow. 
+     
+<br/><br/>
+
+
+## v2.0.beta.21 - 2024-02-02 - [PR#271](https://github.com/NOAA-OWP/ras2fim/pull/271)
+
+An error for a reference was made during the last build merge for a portion that was manually merged.
+
+### Changes  
+
+- `src`
+    - `ras2fim.py`: Fix for an incorrect reference.
+ 
+<br/><br/>
+
 
 ## v2.0.beta.20 - 2024-01-26 - [PR#263](https://github.com/NOAA-OWP/ras2fim/pull/263)
 
