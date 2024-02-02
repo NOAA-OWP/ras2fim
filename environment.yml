@@ -193,6 +193,7 @@ dependencies:
     - distlib==0.3.7
     - filelock==3.12.3
     - flake8==6.0.0
+    - gval==0.2.5
     - identify==2.5.27
     - isort==5.12.0
     - keepachangelog==1.0.0
