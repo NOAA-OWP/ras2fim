@@ -69,7 +69,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
 
     RLOG.lprint("Completed creating a dictionary of available feature_ids and geocurve files.")
 
-    # get ras2fom version from just one of the geocurve files
+    # get ras2fim version from just one of the geocurve files
     ras2fim_version = None
     for _, geocurve_file_path in geocurve_path_dictionary.items():
         sample_geocurve_data = pd.read_csv(geocurve_file_path["path"])
@@ -89,6 +89,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
     # compile each feature id info (discharge, stage, and geometry) into a dictionary
     RLOG.lprint("Compiling feature_ids info (discharge, stage, geometry) ... ")
     feature_id_polygon_path_dict = {}
+
     for feature_id in available_feature_id_list:
         # Get discharge and path to geometry file
         try:

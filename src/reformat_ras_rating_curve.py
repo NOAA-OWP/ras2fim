@@ -668,7 +668,9 @@ def compile_ras_rating_curves(
 
     nwm_shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF  # "02_shapes_from_conflation"
     hecras_shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS  # "01_shapes_from_hecras"
-    metric_file = sv.R2F_OUTPUT_DIR_METRIC  # "06_metric"
+
+    # This needs to be rethought (which folder and why)
+    metric_file = sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES  # "06_xxx folder"
 
     # ------------------------------------------------------------------------------------------------
     # Create a process pool and run dir_reformat_ras_rc() for each directory

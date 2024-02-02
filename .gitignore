@@ -88,6 +88,7 @@ dist/
 config/**
 !config/r2f_config.env
 !config/*.lst
+!config/source_codes.csv
 
 # Base data #
 #############

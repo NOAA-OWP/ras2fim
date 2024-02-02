@@ -9,15 +9,11 @@ from datetime import date
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tick
-
-# import numpy as np
 import pandas as pd
 
 # import ras2fim_logger
 import shared_variables as sv
 
-
-# import shared_functions as sf
 
 # Global Variables
 RLOG = sv.R2F_LOG  # the non mp version
@@ -96,11 +92,18 @@ def plot_src(
 
 
 # -------------------------------------------------
-def fn_create_src_feature_ids(huc8_num, path_unit_folder):
+def cast_to_int(x):
+    if str(x).endswith("*"):
+        x = x[:-1]
+    x = int(float(x))
+    return x
+
+
+# -------------------------------------------------
+def fn_create_rating_curves(huc8, path_unit_folder):
     int_number_of_steps = 76
     model_unit = 'feet'
 
-    RLOG.lprint("===================================================================")
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
     RLOG.notice("|               CREATING SYNTHETIC RATING CURVES                  |")
@@ -108,7 +111,7 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
 
     # Reading data_summary from step 2
     str_path_to_fid_xs = os.path.join(
-        path_unit_folder, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc8_num}_stream_qc_fid_xs.csv"
+        path_unit_folder, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc8}_stream_qc_fid_xs.csv"
     )
 
     fid_xs_huc8 = pd.read_csv(str_path_to_fid_xs)
@@ -118,7 +121,7 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
 
     # -------------------------------------------------
     # Reading model_catalog to add model_ids to data_summary
-    path_model_catalog2 = os.path.join(path_unit_folder, f"OWP_ras_models_catalog_{huc8_num}.csv")
+    path_model_catalog2 = os.path.join(path_unit_folder, f"OWP_ras_models_catalog_{huc8}.csv")
 
     model_catalog = pd.read_csv(path_model_catalog2)
     models_name_id = pd.concat([model_catalog["final_name_key"], model_catalog["model_id"]], axis=1)
@@ -127,6 +130,7 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
 
     # -------------------------------------------------
     # Assigning model_ids to data_summary
+    # -------------------------------------------------
     conflated_model_names_id = []
     for nms in conflated_model_names:
         indx = final_name_key.index(nms)
@@ -155,7 +159,7 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
 
     # -------------------------------------------------
     # Assigning feature_ids from df_fid_xs_huc8 to all_x_sections_info
-
+    # -------------------------------------------------
     # Creating a for loop going through all all_x_sections_info
     # for each confalted stream (step 5 results)
     for infoind in range(len(path_to_all_x_sections_info)):
@@ -181,9 +185,28 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
         # Discussed in our ras2fim meeting (2023-12-28). Conclusion:
         # Inclusion of upstreams XS that are not part of the nwm
         # feature_ids in average depth per feature_if.
-        maxind = 0  # df_fid_xs_mid["us_xs"].astype(float).idxmax()
 
-        df_XS_name = pd.DataFrame(mid_x_sections_info['Xsection_name'])
+        df_XS_name = pd.DataFrame(mid_x_sections_info['Xsection_name'].apply(cast_to_int))
+
+        # TODO: will be removed in the next PR
+        # if type(mid_x_sections_info['Xsection_name'][0]) == str:
+
+        #     df_XS_name0 = pd.DataFrame(mid_x_sections_info['Xsection_name'])
+        #     xs_name = []
+        #     for indx_xs in range(len(df_XS_name0)):
+
+        #         if df_XS_name0['Xsection_name'][indx_xs][-1] == "*":
+
+        #             xs_name.append(np.int64(float(df_XS_name0['Xsection_name'][indx_xs][0:-1])))
+
+        #         else: xs_name.append(np.int64(df_XS_name0['Xsection_name'][indx_xs]))
+
+        #     df_XS_name = pd.DataFrame(xs_name, columns = ['Xsection_name'])
+
+        # else:
+        #     df_XS_name = pd.DataFrame(mid_x_sections_info['Xsection_name'])
+
+        maxind = 0  # df_fid_xs_mid["us_xs"].astype(float).idxmax()
         mid_fid = {
             (indxh, rowh['Xsection_name']): [maxind, df_fid_xs_mid['feature_id'][maxind]]
             for indxh, rowh in df_XS_name.iterrows()
@@ -198,9 +221,17 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
         df_mid_fid = pd.DataFrame(mid_fid).T
         df_mid_fid.index = range(len(df_mid_fid))
         df_mid_fid.columns = ['fidindx', 'feature_id']
-        mid_x_sections_info_fid = pd.concat([mid_x_sections_info, df_mid_fid], axis=1)
 
-        mid_x_sections_info_fid = mid_x_sections_info_fid.rename(columns={'Unnamed: 0': 'xs_counter'})
+        mid_x_sections_info = mid_x_sections_info.rename(columns={'Unnamed: 0': 'xs_counter'})
+        mid_x_sections_info_fid = pd.concat(
+            [
+                mid_x_sections_info[["mid_xs", "model_id", "xs_counter"]],
+                df_XS_name["Xsection_name"],
+                mid_x_sections_info[["wse", "discharge"]],
+                df_mid_fid,
+            ],
+            axis=1,
+        )
 
         mid_xs_info_fid = mid_x_sections_info_fid[
             ['model_id', 'feature_id', 'xs_counter', 'Xsection_name', 'wse', 'discharge']
@@ -221,7 +252,7 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
             columns=['profile_num'],
         )
 
-        mid_xs_info_fid = pd.concat([mid_xs_info_fid, profile_num_col], axis=1)  # profile_names_col
+        mid_xs_info_fid = pd.concat([mid_xs_info_fid, profile_num_col], axis=1)
 
         # -------------------------------------------------
         # Grouped and averaged by 'profile_num', 'feature_id'
@@ -269,7 +300,7 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
             # Create a Rating Curve folder
             str_rating_path_to_create = os.path.join(
                 path_unit_folder,
-                sv.R2F_OUTPUT_DIR_SRC_DEPTHGRIDS,
+                sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES,
                 created_ras_models_folders[infoind],
                 "Rating_Curve",
             )
@@ -278,7 +309,6 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
             # -------------------------------------------------
             # Saving all cross sections info per feature_id
             # TODO: add meter units of feet and meter
-            # TODO: add xs_counter
             x_sections_info_fid = mid_x_sections_info_fid[mid_x_sections_info_fid['feature_id'] == fids]
             path_to_all_xs_info_fid = os.path.join(str_rating_path_to_create, f"all_xs_info_fid_{fids}.csv")
 
@@ -318,24 +348,17 @@ def fn_create_src_feature_ids(huc8_num, path_unit_folder):
     RLOG.success("Complete")
 
 
-# huc8_num = '12090301'
-# path_to_step6 = path_model_catalog + '\\06_src_depthgrids'
-
-# create_src_feature_ids(huc8_num,path_to_step2_fid_xs_info,path_to_ras_output,path_model_catalog,path_to_step6)
-
 # -------------------------------------------------
 if __name__ == "__main__":
     # Sample:
-    # python create_src_depthgrids_4fids.py -w 12090301
+    # python create_rating_curves.py -w 12090301
     # -p 'C:\\ras2fimv2.0\\ras2fim_v2_output_12090301'
 
-    parser = argparse.ArgumentParser(
-        description="== CREATES SYNTHETIC RATING CURVES AND DEPTH GRIDS FOR FEATURE-IDS =="
-    )
+    parser = argparse.ArgumentParser(description="== CREATES SYNTHETIC RATING CURVES FOR FEATURE-IDS ==")
 
     parser.add_argument(
         "-w",
-        dest="str_huc8",
+        dest="huc8",
         help="REQUIRED: HUC-8 watershed that is being evaluated: Example: 12090301",
         required=True,
         metavar="STRING",
@@ -353,7 +376,7 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    str_huc8 = args["str_huc8"]
+    huc8 = args["huc8"]
     path_unit_folder = args["path_unit_folder"]
 
     log_file_folder = os.path.join(path_unit_folder, "logs")
@@ -370,7 +393,7 @@ if __name__ == "__main__":
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
-        fn_create_src_feature_ids(str_huc8, path_unit_folder)
+        fn_create_rating_curves(huc8, path_unit_folder)
 
     except Exception:
         RLOG.critical(traceback.format_exc())

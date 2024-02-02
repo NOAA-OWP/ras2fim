@@ -31,8 +31,8 @@ from convert_tif_to_ras_hdf5 import fn_convert_tif_to_ras_hdf5
 from create_fim_rasters import fn_create_fim_rasters
 from create_geocurves import manage_geo_rating_curves_production
 from create_model_domain_polygons import fn_make_domain_polygons
+from create_rating_curves import fn_create_rating_curves
 from create_shapes_from_hecras import fn_create_shapes_from_hecras
-from create_src_fimrasters_4fids import fn_create_src_feature_ids
 from reformat_ras_rating_curve import dir_reformat_ras_rc
 from simplify_fim_rasters import fn_simplify_fim_rasters
 
@@ -52,6 +52,7 @@ RLOG = sv.R2F_LOG
 def init_and_run_ras2fim(
     huc8,
     projection,
+    source_code,
     r2f_output_dir=sv.R2F_DEFAULT_OUTPUT_MODELS,
     hecras_engine_path=sv.DEFAULT_HECRAS_ENGINE_PATH,
     input_models_path=sv.DEFAULT_OWP_RAS_MODELS_MODEL_PATH,
@@ -80,11 +81,6 @@ def init_and_run_ras2fim(
     # Read RAS models units from both prj file and given EPSG code through -p
     # Functions below check for a series of exceptions
 
-    # I don't need the crs_number for now
-    is_valid, err_msg, crs_number = val.is_valid_crs(projection)
-    if is_valid is False:
-        raise ValueError(err_msg)
-
     # -------------------
     # -w   (ie 12090301)
     huc_valid, err_msg = val.is_valid_huc(huc8)
@@ -92,12 +88,23 @@ def init_and_run_ras2fim(
         raise ValueError(err_msg)
 
     # -------------------
+    # I don't need the crs_number for now
+    is_valid, err_msg, crs_number = val.is_valid_crs(projection)
+    if is_valid is False:
+        raise ValueError(err_msg)
+    proj_crs = pyproj.CRS.from_string(projection)
+
+    # ---------------
+    if source_code == "":
+        raise ValueError("Source code value can not be empty")
+    source_name = sf.get_source_info(source_code)
+    if source_name == "":
+        raise ValueError(f"Source code value of {source_code} is not a known valid code")
+
+    # -------------------
     # -i  (ie OWP_ras_models\models) (HECRAS models)
     if os.path.exists(input_models_path) is False:
         raise ValueError(f"the -i arg ({input_models_path}) does not appear to be a valid folder.")
-
-    # -------------------
-    proj_crs = pyproj.CRS.from_string(projection)
     model_unit = sf.confirm_models_unit(proj_crs, input_models_path)
 
     # -------------------
@@ -108,7 +115,7 @@ def init_and_run_ras2fim(
         )
 
     # -------------------
-    unit_folder_name = sf.get_stnd_r2f_output_folder_name(huc8, projection)
+    unit_folder_name = sf.get_stnd_unit_output_folder_name(huc8, projection, source_code)
     unit_output_path = os.path.join(r2f_output_dir, unit_folder_name)
 
     if os.path.exists(unit_output_path) is True:
@@ -220,9 +227,10 @@ def init_and_run_ras2fim(
     # Now call the processing function
     fn_run_ras2fim(
         huc8,
+        projection,
+        source_code,
         input_models_path,
         unit_output_path,
-        projection,
         dir_datasets,
         hecras_engine_path,
         terrain_file_path,
@@ -238,9 +246,10 @@ def init_and_run_ras2fim(
 # Call the init_and_run_ras2fim function as it validates inputs and sets up other key variables.
 def fn_run_ras2fim(
     huc8,
+    projection,
+    source_code,
     input_models_path,
     unit_output_path,
-    projection,
     dir_datasets,
     hecras_engine_path,
     terrain_file_path,
@@ -258,6 +267,7 @@ def fn_run_ras2fim(
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     RLOG.lprint(f"  ---(r) HUC 8 WATERSHED: {huc8}")
+    RLOG.lprint(f"  ---(sc) SOURCE CODE (SOURCE OF MODELS): {source_code}")
     RLOG.lprint(f"  ---(i) PATH TO INPUT MODELS: {input_models_path}")
     RLOG.lprint(f"  ---(o) UNIT OUTPUT DIRECTORY: {unit_output_path}")
     RLOG.lprint(f"  ---(p) PROJECTION OF HEC-RAS MODELS: {projection}")
@@ -354,13 +364,7 @@ def fn_run_ras2fim(
         )
 
     # -------------------------------------------
-
     # ------ Step 5: create_fim_rasters -----
-    # create a converted terrain folder
-    dir_hecras_output = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-    if not os.path.exists(dir_hecras_output):
-        os.mkdir(dir_hecras_output)
-
     RLOG.lprint("")
     RLOG.notice("+++++++ Processing: STEP 5 (create fim rasters) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
@@ -369,36 +373,90 @@ def fn_run_ras2fim(
         fn_create_fim_rasters(huc8, unit_output_path, model_unit)
 
     # -------------------------------------------
-
-    # --- Step 6: create_src_depthgrids_for_fids ---
+    # --- Step 6: create_rating_curves_for_fids ---
     RLOG.lprint("")
-    RLOG.notice("+++ Processing: STEP 6 (create src and fim rasters per fid) +++")
+    RLOG.notice("+++++++ Processing: STEP 6 (create rating curves per fid) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
-    if int_step <= 6:
-        fn_create_src_feature_ids(huc8, unit_output_path)
+    fn_create_rating_curves(huc8, unit_output_path)
 
-    # -------------------------------------------
+    # Use rating curve data from Step 6
+    # TODO: Jan 22, 2024 - While mostly plugged in, it needs adjustments.
+    RLOG.lprint("")
+    RLOG.notice("+++++++ Processing: STEP 6.b (create rating curve stats) +++++++")
+    # RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+    RLOG.lprint(f"Module temporarily disabled.: {sf.get_stnd_date()}")
+    # fn_calculate_all_terrain_stats(unit_output_path)
+
+    # -------------------------------------------------
+    # TODO: Still to be done for v2
     flt_resolution_depth_grid = int(output_resolution)
 
     RLOG.lprint("")
-    RLOG.notice("+++++++ Processing: Step 7 (simplifying fim rasters and create metrics) +++++++")
+    RLOG.notice("+++++++ Processing: Step ???? (simplifying fim rasters and create metrics) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
-    fn_simplify_fim_rasters(
-        dir_hecras_output, flt_resolution_depth_grid, sv.DEFAULT_RASTER_OUTPUT_CRS, model_unit
-    )
+    # Note: Was pasing in 05 hecras output dir, but should now be the unit_output_path
+    # , it can add the subfolders it needs as it goes.
+    # fn_simplify_fim_rasters(
+    #    unit_output_path, flt_resolution_depth_grid, sv.DEFAULT_RASTER_OUTPUT_CRS,
+    #    model_unit, unit_output_path
+    # )
 
-    # ----------------------------------------
-    RLOG.lprint("")
-    RLOG.notice("+++++++ Processing: STEP 8 (calculate terrain statistics) +++++++")
-    RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+    # -------------------------------------------------
+    if os.getenv("PRODUCE_GEOCURVES") == "True":
+        RLOG.lprint("")
+        RLOG.notice("+++++++ Processing: STEP: Producing Geocurves +++++++")
 
-    fn_calculate_all_terrain_stats(dir_hecras_output)
+        RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
-    # TODO:
-    # Jan 2024, sv.R2F_OUTPUT_DIR_METRIC might be deprecated in favour of R2F_OUTPUT_DIR_SRC_DEPTHGRIDS
-    #   Research required as next steps continue to evolve
+        # Produce geocurves
+
+        """
+        job_number = os.cpu_count() - 2
+        manage_geo_rating_curves_production(
+            ras2fim_output_dir=unit_output_path,
+            job_number=job_number,
+            output_folder=r2f_final_dir,
+            overwrite=False,
+        )
+        """
+        RLOG.lprint("Geocurves module not ready yet")
+
+    # -------------------------------------------------
+    if os.getenv("CREATE_RAS_DOMAIN_POLYGONS") == "True":
+        # TODO:
+        # V2: Jan 22, 2024: All we need is one big poly that cover the max extent of all features.
+        # This is required for GVAL.
+        # We might already have this covered by earlier steps now. Research required here.
+
+        RLOG.lprint("")
+        RLOG.notice("+++++++ Processing: STEP: Create polygons for HEC-RAS models domains +++++++")
+        RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+
+        # get the path to the shapefile containing cross sections of the parent HEC-RAS models
+        xsections_shp_file_path = os.path.join(dir_shapes_from_hecras, "cross_section_LN_from_ras.shp")
+
+        # provide conflation qc file to mark the parent models that conflated to NWM reaches
+        conflation_csv_path = os.path.join(dir_shapes_from_conflation, "%s_stream_qc_fid_xs.csv" % huc8)
+
+        # make output folder and build path to the output file
+        # TODO: Nov 3, 2023: The creation of the output_polygon_dir and polygons_output_file_path
+        # has to be done inside the fn_make_domain_polygons. Why? create_model_domain_polygons.py
+        # fails when being run from command line as the folder doesn't exist
+        # Also see note in __main__ of create_model_domain_polygons.py as a duplicate msg (more less)
+        #  But even after just manually adding that folder it still fails when run from command line.
+        output_polygon_dir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_DOMAIN_POLYGONS)
+        polygons_output_file_path = os.path.join(output_polygon_dir, "models_domain.gpkg")
+        os.mkdir(output_polygon_dir)
+
+        fn_make_domain_polygons(
+            xsections_shp_file_path,
+            polygons_output_file_path,
+            "ras_path",
+            model_huc_catalog_path,
+            conflation_csv_path,
+        )
 
     # -------------------------------------------------
     if os.getenv("RUN_RAS2CALIBRATION") == "True":
@@ -406,6 +464,7 @@ def fn_run_ras2fim(
         RLOG.notice("+++++++ Processing: STEP: Running ras2calibration +++++++")
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
+        """
         dir_reformat_ras_rc(
             unit_output_path,
             sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
@@ -417,7 +476,7 @@ def fn_run_ras2fim(
             False,
             sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF,
             sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS,
-            sv.R2F_OUTPUT_DIR_METRIC,
+            sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES,
         )
 
         # Copy outputs into the ras2calibration subdirectory of the /final folder
@@ -440,52 +499,8 @@ def fn_run_ras2fim(
             ),
             r2f_final_ras2cal_subdir,
         )
-
-    # -------------------------------------------------
-    if os.getenv("PRODUCE_GEOCURVES") == "True":
-        RLOG.lprint("")
-        RLOG.notice("+++++++ Processing: STEP: Producing Geocurves +++++++")
-
-        RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-
-        # Produce geocurves
-        job_number = os.cpu_count() - 2
-        manage_geo_rating_curves_production(
-            ras2fim_output_dir=unit_output_path,
-            job_number=job_number,
-            output_folder=r2f_final_dir,
-            overwrite=False,
-        )
-
-    # -------------------------------------------------
-    if os.getenv("CREATE_RAS_DOMAIN_POLYGONS") == "True":
-        RLOG.lprint("")
-        RLOG.notice("+++++++ Processing: STEP: Create polygons for HEC-RAS models domains +++++++")
-        RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-
-        # get the path to the shapefile containing cross sections of the parent HEC-RAS models
-        xsections_shp_file_path = os.path.join(dir_shapes_from_hecras, "cross_section_LN_from_ras.shp")
-
-        # provide conflation qc file to mark the parent models that conflated to NWM reaches
-        conflation_csv_path = os.path.join(dir_shapes_from_conflation, "%s_stream_qc.csv" % huc8)
-
-        # make output folder and build path to the output file
-        # TODO: Nov 3, 2023: The creation of the output_polygon_dir and polygons_output_file_path
-        # has to be done inside the fn_make_domain_polygons. Why? create_model_domain_polygons.py
-        # fails when being run from command line as the folder doesn't exist
-        # Also see note in __main__ of create_model_domain_polygons.py as a duplicate msg (more less)
-        #  But even after just manually adding that folder it still fails when run from command line.
-        output_polygon_dir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_DOMAIN_POLYGONS)
-        polygons_output_file_path = os.path.join(output_polygon_dir, "models_domain.gpkg")
-        os.mkdir(output_polygon_dir)
-
-        fn_make_domain_polygons(
-            xsections_shp_file_path,
-            polygons_output_file_path,
-            "ras_path",
-            model_huc_catalog_path,
-            conflation_csv_path,
-        )
+        """
+        RLOG.lprint("fim calibration module not ready yet")
 
     # -------------------------------------------------
     RLOG.lprint("")
@@ -541,7 +556,7 @@ def create_input_args_log(**kwargs):
 if __name__ == "__main__":
     # Sample usage:
     # Using all defaults:
-    #     python ras2fim.py -w 12090301 -p EPSG:2277
+    #     python ras2fim.py -w 12090301 -p EPSG:2277 -sc ble
     #           -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif
 
     # There are a number of ways to use arguments:
@@ -554,8 +569,8 @@ if __name__ == "__main__":
     #            -n E:\X-NWS\X-National_Datasets -r "C:\Program Files (x86)\HEC\HEC-RAS\6.3"
     #
     #    But any and all optional arguments can be overridden, so let's try this version:
-    #    ie) python ras2fim.py -w 12090301 -i C:\HEC\input_folder
-    #                          -o c:/users/my_user/desktop/ras2fim_outputs -p EPSG:2277
+    #    ie) python ras2fim.py -w 12090301 -p EPSG:2277 -sc ble -i C:\HEC\input_folder
+    #                          -o c:/users/my_user/desktop/ras2fim_outputs
     #                          -t C:\ras2fim_data\inputs\12090301_dem_meters_0_2277.tif
     #                          -n E:\X-NWS\X-National_Datasets
     #
@@ -567,7 +582,7 @@ if __name__ == "__main__":
     #
     # When ras2fim.py is run, it will automatically create an output folder name with the output files
     #     and some subfolders. The folder name will be based on the pattern of
-    #     {HUC number}_{CRS}_{DATE (YYMMDD)}. e.g.  12090301_2277_230725
+    #     {HUC number}_{CRS}_{source_code}_{DATE (YYMMDD)}. e.g.  12090301_2277_ble_230725
 
     # ++++ Config file notes ++++++
 
@@ -598,6 +613,18 @@ if __name__ == "__main__":
         "-p",
         dest="projection",
         help="REQUIRED: projection of HEC-RAS models: Example EPSG:2277",
+        required=True,
+        metavar="",
+        type=str,
+    )
+
+    # Note: As of Jan 2024, 'ble' is the only acceptable value but this could change at any time.
+    # Validated against config/source_codes.csv
+    parser.add_argument(
+        "-sc",
+        "--source_code",
+        help="REQUIRED: Enter the source code value to be applied to output folder names."
+        " e.g. ble  [case-sensitive].",
         required=True,
         metavar="",
         type=str,

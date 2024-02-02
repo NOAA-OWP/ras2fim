@@ -155,7 +155,7 @@ def get_changelog_version(changelog_path):
 # -------------------------------------------------
 def convert_rating_curve_to_metric(ras2rem_dir):
     src_path = os.path.join(ras2rem_dir, "rating_curve.csv")
-    df = pd.read_csv(src_path)
+    df = pd.read_csv(src_path, encoding="unicode_escape")
 
     # convert to metric if needed
     if "stage_m" not in df.columns:  # if no meters, then only Imperial units are in the file
@@ -433,15 +433,16 @@ def print_date_time_duration(start_dt, end_dt):
 
 
 # -------------------------------------------------
-def get_stnd_r2f_output_folder_name(huc_number, crs):
+def get_stnd_unit_output_folder_name(huc_number, crs, source_code):
     """
     Inputs:
         - huc (str)
         - crs (str):  ie) ESPG:2277 or ESRI:107239. Note, must start with ESRI or EPSG (non case-sensitive)
+        - source_code (str) ie. ble. Must match values in the config/source_codes.csv
 
     """
 
-    # returns pattern of {HUC}_{CRS_number}_{stnd date}. e.g 12090301_2277_230725
+    # returns pattern of {HUC}_{CRS_number}_{source_code)_{stnd date}. e.g 12090301_2277_ble_230725
 
     # -------------------
     if len(str(huc_number)) != 8:
@@ -457,9 +458,14 @@ def get_stnd_r2f_output_folder_name(huc_number, crs):
     if is_valid_crs is False:
         raise ValueError(err_msg)
 
+    # -------------------
+    source_name = get_source_info(source_code)
+    if source_name == "":
+        raise ValueError("Source code is invalid or does not exist")
+
     std_date = get_stnd_date(False)
 
-    folder_name = f"{huc_number}_{crs_number}_{std_date}"
+    folder_name = f"{huc_number}_{crs_number}_{source_code}_{std_date}"
 
     return folder_name
 
@@ -506,3 +512,38 @@ def reproject_raster(temp_dem_file_path, output_dem_file_path, new_proj_wkt, res
                 resampling=Resampling.nearest,
                 dst_resolution=resolution,
             )
+
+
+# -------------------------------------------------
+def get_source_info(source_code):
+    """
+    Overview:
+        - Loads the file /config/source_codes.csv which as two columns (source_code, source_info)
+    Input:
+        - source_code (str): e.g. ble
+    Output
+        - source_name (long form name of the model source data)
+        - If record not found, an empty value will be returned.
+    """
+
+    if source_code == "":
+        raise Exception(f"source code value of {source_code} appears to be empty")
+
+    referential_path = os.path.join(os.path.dirname(__file__), "..", "config", "source_codes.csv")
+    source_code_file = os.path.abspath(referential_path)
+
+    if os.path.exists(source_code_file) is False:
+        raise FileNotFoundError(f"sources code file not found as {source_code_file}")
+
+    df_sources = pd.read_csv(source_code_file, sep=",", header=None, names=["source_code", "source_name"])
+    if df_sources.empty:
+        raise Exception(f"{source_code_file} appears to be empty")
+
+    df_source = df_sources.loc[(df_sources["source_code"] == source_code)]
+    if df_source.empty:
+        return ""
+
+    if len(df_source) > 1:
+        raise Exception(f"{source_code_file} has more than one record with the source code of {source_code}")
+
+    return df_source["source_name"].iloc[0]

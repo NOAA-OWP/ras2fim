@@ -91,7 +91,7 @@ class RAS2FIM_logger:
         log_file_name = os.path.basename(log_file_path)
 
         if os.path.exists(folder_path) is False:
-            os.makedirs(folder_path, exist_ok=True)
+            os.mkdir(folder_path)
 
         self.LOG_DEFAULT_FOLDER = folder_path
 
@@ -221,7 +221,7 @@ class RAS2FIM_logger:
         if len(log_file_list) > 0:
             log_file_list.sort()
 
-            self.lprint(".. merging log files")
+            # self.lprint(".. merging log files")
 
             # open and write to the parent log
             # This will write all logs including errors and warning

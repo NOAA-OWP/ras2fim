@@ -23,50 +23,61 @@ TRACKER_ACTIONS = ["uploaded", "moved_to_arch", "overwriting_prev", "straight_to
 TRACKER_SRC_LOCAL_PATH = ""
 
 """
-
 NOTE: This script is primarily designed for NOAA/OWP use, but if you have access to your own
 S3, output_ras2fim (unit) and output_ras2fim_archive folders, you are welcome to use it.
 We can not grant access to our NOAA / OWP S3 bucket at this time.
 
-This tool also had assumes some very specific folder structure of having the output_ras2fim and
-output_ras2fim_archive at the root of your repo (deliberately not configurable at this time.)
-
 To run this tool, you must have already ran 'aws configure' and added creds to the S3 bucket. You should
 find that you only need to setup yoru machine once with 'aws configure' and not each time you use this tool.
+"""
 
-Overall logic flow:
 
-    - Selecting a single output (unit)(huc/crs) folder (ie. 12090301_2277_0821) to be selected to
-      S3. The bucket is definable but not the pathing inside the bucket. It assumes
+####################################################################
+def unit_to_s3(src_unit_dir_path, s3_bucket_name):
+    """
+    Overall logic flow:
+
+    - Using a single local unit output (huc/crs/source code) folder
+      (e.g. C:\ras2fim_data\output_ras2fim\12040101_102739_ble_230922), it will attempt to upload it to S3.
+      The bucket is definable but not the pathing inside the bucket. It assumes
       the folders of output_ras2fim and output_ras2fim_archive exist at the root repo.
 
     - The incoming folder will check output_ras2fim folder.
-        - If the exact unit folder name (inc huc_crs_date) exist, it will ask the user if they want to:
-            - abort
+        - If the exact unit folder name (inc huc_crs_source_code_date) already exists,
+          it will ask the user if they want to:
+            - abort using the tool
             - overwrite the one in output_ras2fim (likely a mistake or they are redoing it quickly)
-            - archive: move the existing folder to the archive folder, and upload the nw one .
+            - archive: move the existing folder to the archive folder, and upload the new one .
 
-        - If a folder matching the huc and crs exist (but not the date), it will tell the user if the
-          existing folder is older or newer then the incoming folder and ask if they want to:
-             - abort
-             - existing: the existing folder to output_ras2fim_archive, the upload the new one to
+        - If a src folder name matches the huc_crs_source codee exist (but not the date) in S3,
+          it will tell the user if the existing folder is older or newer then the incoming folder.
+          It will next ask if they want to:
+             - abort using the tool.
+             - existing: move the existing folder to output_ras2fim_archive, the upload the new one to
                output_ras2fim
              - incoming: Re-direct the incoming folder directly to output_ras2fim_archive.
 
-        - If there is no existing folder matching the huc and crs, just upload it to output_ras2fim
+        - If there is no existing folder matching the huc_crs_source_code, just upload it to output_ras2fim.
 
-    - If there happens to be more than one folder in S3 that match that huc and crs, the user will
-      be given the option to abort, or it will move existing ones to archive and upload the one one
+    - If there happens to be more than one folder in S3 that match that huc_crs_source_code, the user will
+      be given the option to abort, or it will move all existing ones to archive and upload the one one.
+      This can only happen if an error occurred on previous attempts, or someone uploaded directly to
+      S3.
 
     - A file named ras_output_tracker.csv in the S3:{bucket_name}/output_ras2fim folder will be updated
       to add a new record of what happened.  The ras_output_tracker.csv is the master and covers all
       transactions made in relation in uploading new unit folder.
 
-"""
+    Inputs:
+       - src_unit_dir_path: e.g. C:\ras2fim_data\output_ras2fim\12040101_102739_ble_230922
+       - s3_bucket_name:  e.g. ras2fim-dev
 
+    Note:
+        This tool also had assumes some very specific folder structure of having the output_ras2fim and
+        output_ras2fim_archive at the root of your repo (deliberately not configurable at this time.)
 
-####################################################################
-def unit_to_s3(src_unit_dir_path, s3_bucket_name, is_verbose):
+    """
+
     start_time = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
@@ -75,33 +86,24 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name, is_verbose):
     RLOG.notice("          RUN ras_unit_to_s3 ")
     RLOG.lprint(f"  (-s): Source unit folder {src_unit_dir_path} ")
     RLOG.lprint(f"  (-b): s3 bucket name {s3_bucket_name}")
-    RLOG.lprint("")
-    RLOG.lprint(f" --- Saving unit folder to S3 start: {dt_string} (UTC time) ")
 
     # --------------------
     # validate input variables and setup key variables
     varibles_dict = __validate_input(src_unit_dir_path, s3_bucket_name)
 
-    # why have this come in from variables_dict? the src_unit_dir_path can come in not
-    # fully pathed, just the unit folder in the default folder path
-    src_path = varibles_dict["src_unit_full_path"]
-    # eg. c:\ras2fim_data\output_ras2fim\12030202_102739_230810
-    unit_folder_name = varibles_dict["src_unit_dir"]
-    # eg. 12030202_102739_230810
-    s3_full_output_path = varibles_dict["s3_full_output_path"]
-    # e.g. s3://xyz/output_ras2fim
-    s3_full_archive_path = varibles_dict["s3_full_archive_path"]
+    unit_folder_name = varibles_dict["unit_folder_name"]
+    # eg. 12030202_102739_ble_230810
+    s3_output_path = varibles_dict["s3_output_path"]
+    # e.g. s3://ras2fim-dev/output_ras2fim
+    s3_archive_path = varibles_dict["s3_archive_path"]
     # e.g. s3://xyz/output_ras2fim_archive
-    s3_full_unit_path = f"{s3_full_output_path}/{unit_folder_name}"
-    # Note: Generally speaking most values starting with with "s3://xyz" are used for display purposes only
-    # as generaly logic for S3 needs to do it in parts (bucket, and folder). We usually change the
-    # folder values to add in the phrase "output_ras2fim" or "output_ras2fim_archive"
 
     # We don't want to try upload current active log files (for this script)
     # and the temp local tracker file
 
-    global TRACKER_SRC_LOCAL_PATH
+    global TRACKER_SRC_LOCAL_PATH, TRACKER_S3_PATH
     TRACKER_SRC_LOCAL_PATH = os.path.join(src_unit_dir_path, sv.S3_OUTPUT_TRACKER_FILE)
+    TRACKER_S3_PATH = f"{s3_output_path}/{sv.S3_OUTPUT_TRACKER_FILE}"
 
     # These are files that will not be uploaded to S3
     # Note: Will upload log files from original process such as ras2fim files
@@ -112,19 +114,19 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name, is_verbose):
         RLOG.LOG_WARNING_FILE_PATH,
         RLOG.LOG_ERROR_FILE_PATH,
     ]
-
-    RLOG.lprint(f" --- source unit full path is {src_path}")
-    RLOG.lprint(f" --- s3 folder target path is {s3_full_unit_path}")
-    RLOG.lprint(f" --- S3 archive folder path (if applicable) is {s3_full_archive_path}")
-    RLOG.lprint("")
+    print("")
+    RLOG.lprint(f" --- ras unit folder to S3 started at : {dt_string} (UTC time) ")
     RLOG.lprint("=================================================================")
+    print("")
 
     # --------------------
     # We need to see if the directory already exists in s3.
     # Depending on what we find will tell us where to uploading the incoming folder
     # and what to do with pre-existing if there are any pre-existing folders
     # matching the huc/crs.
-    __process_upload(s3_bucket_name, src_path, unit_folder_name, skip_files, is_verbose)
+    __process_upload(
+        s3_bucket_name, src_unit_dir_path, unit_folder_name, s3_output_path, s3_archive_path, skip_files
+    )
 
     # --------------------
     RLOG.lprint("")
@@ -142,79 +144,89 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name, is_verbose):
 
 
 ####################################################################
-def __process_upload(bucket_name, src_path, unit_folder_name, skip_files, is_verbose):
+def __process_upload(
+    bucket_name, src_unit_dir_path, unit_folder_name, s3_output_path, s3_archive_path, skip_files
+):
     """
     Processing Steps:
-      - Load all first level folder names from that folder. ie) output_ras2fim
+      - Load all first level folder names from that folder. ie) s3://{bucket_name}/output_ras2fim
 
-      - Get a list for any S3 folder names that match the huc and crs value
+      - Get a list for any S3 folder names that match the huc,crs, source code values
 
       - using the dates for each of the existing s3 unit:
           - If the incoming date is older or equal to than any pre-existing one, error out
           - If the incoming date is newer that all pre-existing ones, then move the pre-existing
             one (or ones) to the archive folder.
 
-        Net results: Only one folder with the HUC/CRS combo an exist in the s3 output folder name
+        Net results: Only one folder with the HUC/CRS/source_code combo an exist in the s3 output folder name
            and older ones (generally) are all in archives.
 
        - If we find some that need to be moved, ask the user to confirm before contining (or abort)
 
        - Any folder moved to archive, will have an addition text added to it, in the form of:
             _BK_yymmdd_hhmm  (24 hours time.)
-              eg) s3://xyz/output_ras2fim_archive/12030105_2276_230810_BK_230825_1406
+              eg) s3://xyz/output_ras2fim_archive/12030105_2276_ble_230810_BK_230825_1406
 
     Input
-        - bucket_name: e.g xyz
-        - src_path:  eg. c:\ras2fim_data\output_ras2fim\12030202_102739_230810
+        - bucket_name: e.g ras2fim-dev
+        - src_unit_dir_path:  eg. c:\ras2fim_data\output_ras2fim\12030202_102739_ble_230810
+        - unit_folder_name:  12030105_2276_ble_230810
         - skip_files: files that will not be uploaded to S3 (such as ras_unit_to_s3 log files)
-        - unit_folder_name:  12030105_2276_230810
+        - s3_output_path: s3://ras2fim-dev/output_ras2fim
+        - s3_archive_path: s3://ras2fim-dev/output_ras2fim_archive
 
     """
 
-    RLOG.lprint("Checking existing s3 folders for folders starting with same huc number and crs value")
-    RLOG.lprint("")
+    RLOG.lprint(
+        "Checking existing s3 folders for folders starting" " with same huc number, crs value and source code"
+    )
+    print()
 
     # yes.. print
     print(
-        f"{cl.fore.SPRING_GREEN_2B}"
-        "-- The intention is that only one unit (per huc/crs) output folder, usually the most current,"
-        " is kept in the offical output_ras2fim folder. All unit folders in the s3 output_ras2fim"
-        f" folder will be included for ras2releases.{cl.style.RESET}"
+        f"{cl.fore.DODGER_BLUE_1}"
+        "The intention is that only one unit (per huc/crs/source code) output folder,"
+        " usually the most current, is kept in the offical output_ras2fim folder."
+        " All unit folders in the s3://(bucket name)/output_ras2fim"
+        f" folder will be included for future ras2releases.{cl.style.RESET}"
     )
 
     # ---------------
-    # splits it a five part dictionary
+    # splits it a six part dictionary to be sent into __get_s3_unit_folder_list
     src_name_dict = s3_sf.parse_unit_folder_name(unit_folder_name)
     if "error" in src_name_dict:
         raise Exception(src_name_dict["error"])
 
     # ---------------
-    # We want only folders that match the huc and crs (don't worry about the date yet).
-    # In theory, it shoudl only find 0 or 1 match as there should only ever be
+    # We want only folders that match the huc, crs, and sourc_code (don't worry about the date yet).
+    # In theory, it should only find 0 or 1 match as there should only ever be
     # the latest unit version folder in outputs_ras2fim. But if there are more
     # than one... something went wrong or someone loaded one directly.
-    s3_unit_folder_names = __get_s3_unit_folder_list(bucket_name, src_name_dict, is_verbose)
+    s3_unit_folder_names = __get_s3_unit_folder_list(bucket_name, src_name_dict, s3_output_path)
 
+    # +++++++++++++++++++++++++++++++++++++++++++++++++++
+    # Exactly one other S3 unit folder already exists (might be a different date but might be the same date)
     if len(s3_unit_folder_names) == 1:
         # ---------------
         # Figure out the action (by asking the user)
 
-        # All of the s3_unit_folder_names items already share the huc and crs value
+        # The s3_unit_folder_names items already share the huc, crs and source code crs value
         # but not necessarily the date
         s3_existing_folder_name = s3_unit_folder_names[0]
 
         # Now we want the S3 path for the existing folder (without the bucket)
-        # existing_folder_path = f"{sv.S3_OUTPUT_RAS2FIM_FOLDER}/{s3_existing_folder_name}"
-        # eg. outputs_ras2fim/12030105_2276_230303
+        # existing_folder_path = f"{sv.S3_RAS_UNITS_OUTPUT_FOLDER}/{s3_existing_folder_name}"
+        # eg. outputs_ras2fim/12030105_2276_ble_230303
 
         existing_name_dict = s3_sf.parse_unit_folder_name(s3_existing_folder_name)
+        RLOG.trace(f"s3_existing_folder_name is {s3_existing_folder_name}")
 
         action = ""
 
-        if existing_name_dict["unit_folder_name"] == src_name_dict["unit_folder_name"]:
+        # Comparing the existing to the incoming unit folder
+        if existing_name_dict["unit_folder_name"] == unit_folder_name:
             # exact same folder name including date
-            action = __ask_user_about_dup_folder_name(s3_existing_folder_name, bucket_name)
-            # RLOG.debug(f"action is {action}")
+            action = __ask_user_about_dup_folder_name(unit_folder_name, bucket_name)
 
         # An existing s3_folder has a newer or older date
         else:
@@ -226,44 +238,39 @@ def __process_upload(bucket_name, src_path, unit_folder_name, skip_files, is_ver
             action = __ask_user_about_different_date_folder_name(
                 unit_folder_name, bucket_name, existing_name_dict["unit_folder_name"], is_existing_older
             )
-            # RLOG.debug(f"action is {action}")
 
         # --------------------------
         # Process the action  (aka we start the uploads to S3 and changes in S3)
-        if action == TRACKER_ACTIONS[1]:  # moved_to_arch
+        if action == TRACKER_ACTIONS[1]:  # moved_to_arch (archive)
             # existing moved to archive, new one to output
-            # RLOG.debug(f"action is {TRACKER_ACTIONS[1]}")
 
             # We will change the name to add on "_BK_yymmdd_hhmm".
-            #  eg) s3://xyz/output_ras2fim_archive/12030105_2276_230810_BK_230825_1406
+            #  eg) s3://xyz/output_ras2fim_archive/12030105_2276_ble_230810_BK_230825_1406
             # On the super rare that it was updated in the exact date hr and min, just overwrite it
 
             new_s3_folder_name = __adjust_folder_name_for_archive(s3_existing_folder_name)
 
-            # move existing to archive
+            # move pre-existing to archive
             __move_s3_folder_to_archive(
-                bucket_name, src_path, s3_existing_folder_name, new_s3_folder_name, is_verbose
+                bucket_name, src_unit_dir_path, existing_name_dict["unit_folder_name"], new_s3_folder_name
             )
 
-            # move new one to output
+            # upload new one to output (yes.. unit_folder_name is used twice)
             __upload_s3_folder(
                 bucket_name,
-                src_path,
+                src_unit_dir_path,
                 unit_folder_name,
-                TRACKER_ACTIONS[0],
-                sv.S3_OUTPUT_RAS2FIM_FOLDER,
                 unit_folder_name,
+                action,
+                sv.S3_RAS_UNITS_OUTPUT_FOLDER,
                 skip_files,
-                is_verbose,
             )
 
         elif action == TRACKER_ACTIONS[2]:  # (overwriting_prev)
-            # overwrite the pre-existing same named folder with the incoming
-            #  version, we need to delete the original folder so we don't leave junk it int.
+            # Overwrite the pre-existing same named folder with the incoming version.
+            # We need to delete the original folder so we don't leave junk it int.
             # RLOG.debug(f"action is {TRACKER_ACTIONS[2]}")
-            __overwrite_s3_existing_folder(
-                src_path, bucket_name, src_name_dict["unit_folder_name"], skip_files, is_verbose
-            )
+            __overwrite_s3_existing_folder(src_unit_dir_path, bucket_name, unit_folder_name, skip_files)
 
         elif action == TRACKER_ACTIONS[3]:  # straight_to_arch
             # RLOG.debug(f"action is {TRACKER_ACTIONS[3]}")
@@ -272,36 +279,38 @@ def __process_upload(bucket_name, src_path, unit_folder_name, skip_files, is_ver
             # new incoming goes straight to archive
             __upload_s3_folder(
                 bucket_name,
-                src_path,
+                src_unit_dir_path,
                 unit_folder_name,
-                TRACKER_ACTIONS[3],
-                sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER,
                 new_s3_folder_name,
+                action,
+                sv.S3_RAS_UNITS_ARCHIVE_FOLDER,
                 skip_files,
-                is_verbose,
             )
 
         else:
             raise Exception(f"Internal Error: Invalid action type of {action}")
 
+    # +++++++++++++++++++++++++++++++++++++++++++++++++++
+    # In theory, this should not happen, having two folders with the same huc/crs/source_code
+    # but it is possible. We address that here.
     elif len(s3_unit_folder_names) > 1:
         RLOG.lprint("+++++++++++++++++++++++++")
-        RLOG.lprint("")
+        print("")
         msg = (
             f"{cl.fore.SPRING_GREEN_2B}"
-            "We have detected multiple previously existing s3 folders with the same HUC and CRS "
-            f"as the new incoming folder name of {unit_folder_name} at "
-            f"s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_FOLDER}.\n\n"
-            "All previously existing folders with this HUC and CRS will be moved to the archive"
+            "We have detected multiple previously existing s3 folders with the same HUC, CRS and source code"
+            f" which match the new incoming folder name of {unit_folder_name} at "
+            f"s3://{bucket_name}/{sv.S3_RAS_UNITS_OUTPUT_FOLDER}.\n\n"
+            "All previously existing folders with this HUC, CRS and source code will be moved to the archive"
             f" folder, then the new incoming unit will be uploaded to outputs.\n\n{cl.style.RESET}"
-            f"{cl.fore.LIGHT_YELLOW}"
+            f"{cl.fore.SPRING_GREEN_2B}"
             " Do you want to continue?\n\n"
             f"{cl.style.RESET}"
             f"   -- Type {cl.fore.SPRING_GREEN_2B}'continue'{cl.style.RESET}"
             "  if you want to move existing s3 folder(s) and upload the new one.\n"
             f"   -- Type {cl.fore.SPRING_GREEN_2B}'abort'{cl.style.RESET}"
             " to stop the program.\n"
-            f"{cl.fore.LIGHT_YELLOW}  ?={cl.style.RESET}"
+            f"{cl.fore.SPRING_GREEN_2B}  ?={cl.style.RESET}"
         )
 
         resp = input(msg).lower()
@@ -319,41 +328,40 @@ def __process_upload(bucket_name, src_path, unit_folder_name, skip_files, is_ver
 
             new_s3_folder_name = __adjust_folder_name_for_archive(s3_existing_folder_name)
 
-            # move existing to archive
             __move_s3_folder_to_archive(
-                bucket_name, src_path, s3_existing_folder_name, new_s3_folder_name, is_verbose
+                bucket_name, src_unit_dir_path, s3_existing_folder_name, new_s3_folder_name
             )
-            RLOG.lprint("")
+            print("")
 
-        # Now we can upload the incoming
+        # upload new one to output (yes.. unit_folder_name is used twice)
         __upload_s3_folder(
             bucket_name,
-            src_path,
+            src_unit_dir_path,
+            unit_folder_name,
             unit_folder_name,
             TRACKER_ACTIONS[0],
-            sv.S3_OUTPUT_RAS2FIM_FOLDER,
-            unit_folder_name,
+            sv.S3_RAS_UNITS_OUTPUT_FOLDER,
             skip_files,
-            is_verbose,
         )
 
+    # +++++++++++++++++++++++++++++++++++++++++++++++++++
+    # folder with the same unit doesn't exist and we can load to the output folder
     else:
-        # folder with the same unit doesn't exist and we can load to the output folder
+        # upload new one to output (yes.. unit_folder_name is used twice)
         __upload_s3_folder(
             bucket_name,
-            src_path,
+            src_unit_dir_path,
+            unit_folder_name,
             unit_folder_name,
             TRACKER_ACTIONS[0],
-            sv.S3_OUTPUT_RAS2FIM_FOLDER,
-            unit_folder_name,
+            sv.S3_RAS_UNITS_OUTPUT_FOLDER,
             skip_files,
-            is_verbose,
         )
 
 
 ####################################################################
 # Unit folder already exists in outputs
-# Note: There is enough differnce that I wanted a seperate function for this scenario
+# Note: There is enough differences (mostly text) that I wanted a seperate function
 def __ask_user_about_dup_folder_name(unit_folder_name, bucket_name):
     print()
     print("*********************")
@@ -362,18 +370,17 @@ def __ask_user_about_dup_folder_name(unit_folder_name, bucket_name):
         f"{cl.fore.SPRING_GREEN_2B}"
         f"You have requested to upload a unit folder named {unit_folder_name}."
         " However, a unit folder of the exact same name already exists at"
-        f" s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_FOLDER}.\n"
-        "Ensure that you or other staff have not uploaded the same unit folder (huc_crs_date).\n\n"
-        f"{cl.style.RESET}"
-        f"   -- Type {cl.fore.SPRING_GREEN_2B}'overwrite'{cl.style.RESET}"
-        " if you want to overwrite the current folder.\n"
+        f" s3://{bucket_name}/{sv.S3_RAS_UNITS_OUTPUT_FOLDER}.\n\n"
+        " What would you like to do with incoming unit folder?"
+        f"{cl.style.RESET}\n\n"
+        f"   -- Type {cl.fore.SPRING_GREEN_2B}'overwrite'{cl.style.RESET}\n"
         "           Note: If you overwrite an existing folder, the s3 version will be deleted first,\n"
         "           then the new incoming folder will be loaded.\n"
         f"   -- Type {cl.fore.SPRING_GREEN_2B}'archive'{cl.style.RESET}"
         " if you want to move the existing folder in to the archive folder.\n"
         f"   -- Type {cl.fore.SPRING_GREEN_2B}'abort'{cl.style.RESET}"
         " to stop the program.\n"
-        f"{cl.fore.LIGHT_YELLOW}  ?={cl.style.RESET}"
+        f"{cl.fore.SPRING_GREEN_2B}  ?={cl.style.RESET}"
     )
 
     resp = input(msg).lower()
@@ -388,7 +395,7 @@ def __ask_user_about_dup_folder_name(unit_folder_name, bucket_name):
         action = TRACKER_ACTIONS[1]  # moved_to_arch
         RLOG.lprint(
             f"\n.. You have selected {resp}. Existing folder will be moved to "
-            f"s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER}.\n"
+            f"s3://{bucket_name}/{sv.S3_RAS_UNITS_ARCHIVE_FOLDER}.\n"
         )
     else:
         RLOG.lprint(f"\n.. You have entered an invalid value of '{resp}'. Program stopped.\n")
@@ -398,7 +405,7 @@ def __ask_user_about_dup_folder_name(unit_folder_name, bucket_name):
 
 
 ####################################################################
-# Note: There is enough differnce that I wanted a seperate function for this scenario
+# Note: There is enough differences that I wanted a seperate function for this scenario
 def __ask_user_about_different_date_folder_name(
     src_unit_folder_name, bucket_name, existing_folder_name, is_existing_older
 ):
@@ -412,8 +419,8 @@ def __ask_user_about_different_date_folder_name(
     msg = (
         f"{cl.fore.SPRING_GREEN_2B}"
         f"You have requested to upload a unit folder named {src_unit_folder_name}."
-        " However, a folder of the starting with the same huc and crs already exists as"
-        f" s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_FOLDER}/{existing_folder_name}.\n"
+        " However, a folder of the starting with the same huc, crs and source_code already exists as"
+        f" s3://{bucket_name}/{sv.S3_RAS_UNITS_OUTPUT_FOLDER}/{existing_folder_name}.\n"
     )
 
     if is_existing_older is True:
@@ -422,19 +429,19 @@ def __ask_user_about_different_date_folder_name(
         msg += "The incoming folder has a newer date than the existing folder.\n\n"
 
     msg += (
-        f"Only one can remain in the {sv.S3_OUTPUT_RAS2FIM_FOLDER} folder, the other can be moved"
+        f"Only one can remain in the {sv.S3_RAS_UNITS_OUTPUT_FOLDER} folder, the other must be moved"
         " to the archive folder.\n\n"
         f"{cl.style.RESET}"
-        f"{cl.fore.LIGHT_YELLOW}"
+        f"{cl.fore.SPRING_GREEN_2B}"
         "... Which of the two do you want to move to archive?\n"
         f"{cl.style.RESET}"
         f"   -- Type {cl.fore.SPRING_GREEN_2B}'incoming'{cl.style.RESET}"
-        "  to upload the incoming folder straight into archives and keep the existing in outputs.\n"
+        " to upload the incoming folder straight into archives and keep the existing in outputs.\n"
         f"   -- Type {cl.fore.SPRING_GREEN_2B}'existing'{cl.style.RESET}"
         " to move the existing one to the archive folder and upload the incoming folder to outputs.\n"
         f"   -- Type {cl.fore.SPRING_GREEN_2B}'abort'{cl.style.RESET}"
         " to stop the program.\n"
-        f"{cl.fore.LIGHT_YELLOW}  ?={cl.style.RESET}"
+        f"{cl.fore.SPRING_GREEN_2B}  ?={cl.style.RESET}"
     )
 
     print()
@@ -447,14 +454,14 @@ def __ask_user_about_different_date_folder_name(
         action = TRACKER_ACTIONS[3]  # incoming straight_to_arch
         RLOG.lprint(
             f"\n.. You have selected {resp}. The new incoming folder will be uploaded directly to the"
-            f" archive folder at s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER}.\n"
+            f" archive folder at s3://{bucket_name}/{sv.S3_RAS_UNITS_ARCHIVE_FOLDER}.\n"
         )
 
     elif resp == "existing":
         action = TRACKER_ACTIONS[1]  # existing moved_to_arch
         RLOG.lprint(
             f"\n.. You have selected {resp}. The pre-existing folder will be moved to the archive folder at"
-            f" s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER}.\n"
+            f" s3://{bucket_name}/{sv.S3_RAS_UNITS_ARCHIVE_FOLDER}.\n"
         )
 
     else:
@@ -467,13 +474,12 @@ def __ask_user_about_different_date_folder_name(
 ####################################################################
 def __upload_s3_folder(
     bucket_name,
-    src_path,
-    orig_folder_name,
+    src_unit_dir_path,
+    unit_orig_folder_name,
+    new_s3_unit_folder_name,
     action,
-    s3_folder_path,
-    new_s3_folder_name,
+    target_s3_folder,
     skip_files,
-    is_verbose,
 ):
     """
     Overview:
@@ -481,61 +487,70 @@ def __upload_s3_folder(
         or it might be uploaded directly into output_ras2fim_archive
     Input:
         - bucket_name:  eg. my_bucket_name  (as  in s3://my_bucket_name)
-        - src_path: serves as a temp place to adjust the s3 tracker csv before re-loading
+        - src_unit_dir_path: serves as a temp place to adjust the s3 tracker csv before re-loading
             eg. c:\ras2fim_data\output_ras2fim\12030202_102739_230810
-        - orig_folder_name: The original folder name as it started: generally just the
-             huc_crs_date:  eg. 12030202_102739_230810
-        - action: What is happening. Best to use TRACKER_ACTIONS dict (ugly but workable for now)
-        - s3_folder_path: eg. output_ras2fim  or output_ras2fim_archive
-        - new_s3_folder_name: eg. 12030202_102739_230810_BK_230825_1406 if going to archive.
+        - unit_orig_folder_name: The original folder name as it started: generally just the
+             huc_crs_date:  eg. 12030202_102739_230810 (used for tracking)
+        - new_s3_unit_folder_name: eg. 12030202_102739_230810_BK_230825_1406 if going to archive.
              It may or may not in the process of having a new folder names as it is being loaded,
              especially if an incoming upload folder is going straight to archives (which is an option)
+             This can also be the same value as the new_s3_unit_folder_name
+        - action: What is happening. Best to use TRACKER_ACTIONS dict
+        - target_s3_folder: eg. output_ras2fim  or output_ras2fim_archive
         - skip_files: Files that will not be uploaded. ie) the wip local tracker file,
              ras_unit_to_s3 log file
+
+        ***  unit_orig_folder_name, yes we have this one which sometimes might be the same value as
+             new_s3_unit_folder_name, but we use both values in the tracker (aka.. previous name, new name)
     """
 
-    s3_sf.upload_folder_to_s3(src_path, bucket_name, s3_folder_path, new_s3_folder_name, skip_files)
+    s3_sf.upload_folder_to_s3(
+        src_unit_dir_path, bucket_name, target_s3_folder, new_s3_unit_folder_name, skip_files
+    )
 
     __add_record_to_tracker(
-        bucket_name, src_path, orig_folder_name, action, new_s3_folder_name, s3_folder_path, is_verbose
+        bucket_name,
+        src_unit_dir_path,
+        unit_orig_folder_name,
+        action,
+        new_s3_unit_folder_name,
+        target_s3_folder,
     )
 
 
 ####################################################################
-def __move_s3_folder_to_archive(bucket_name, src_path, orig_folder_name, target_folder_name, is_verbose):
+def __move_s3_folder_to_archive(bucket_name, src_unit_dir_path, s3_existing_folder_name, new_s3_folder_name):
     """
     Overview:
         Just moving one S3 folder to another place.
     Input:
-        - bucket_name:  eg. my_bucket_name  (as  in s3://my_bucket_name)
-        - src_path: serves as a temp place to adjust the s3 tracker csv before re-loading
-            eg. c:\ras2fim_data\output_ras2fim\12030202_102739_230810
-        - orig_folder_name:  12030202_102739_230810
-        - target_folder_name: eg. 12030202_102739_230810_BK_230825_1406
+        - bucket_name:  eg. ras2fim-dev
+        - src_unit_dir_path: serves as a temp place to adjust the s3 tracker csv before re-loading
+            eg. c:\ras2fim_data\output_ras2fim\12030202_102739_ble_230810
+        - s3_existing_folder_name:  12030202_102739_ble_230810
+        - new_s3_folder_name: eg. 12030202_102739_ble_230810_BK_230825_1406
     """
 
-    s3_src_folder_path = f"{sv.S3_OUTPUT_RAS2FIM_FOLDER}/{orig_folder_name}"
-    s3_target_folder_path = f"{sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER}/{target_folder_name}"
+    s3_src_folder_path = f"{sv.S3_RAS_UNITS_OUTPUT_FOLDER}/{s3_existing_folder_name}"
+    s3_target_folder_path = f"{sv.S3_RAS_UNITS_ARCHIVE_FOLDER}/{new_s3_folder_name}"
 
     # s3 actually can't move files or folders, so we copy them then delete them.
     # move_s3_folder_in_bucket will take care of both
-    RLOG.debug(f"Moving {s3_src_folder_path} to {s3_target_folder_path}")
     s3_sf.move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_path)
 
     # TRACKER_ACTIONS[1] = moved_to_arch
     __add_record_to_tracker(
         bucket_name,
-        src_path,
-        orig_folder_name,
+        src_unit_dir_path,
+        s3_existing_folder_name,
         TRACKER_ACTIONS[1],
-        target_folder_name,
-        sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER,
-        is_verbose,
+        new_s3_folder_name,
+        sv.S3_RAS_UNITS_ARCHIVE_FOLDER,
     )
 
 
 ####################################################################
-def __overwrite_s3_existing_folder(src_path, bucket_name, unit_folder_name, skip_files, is_verbose):
+def __overwrite_s3_existing_folder(src_unit_dir_path, bucket_name, unit_folder_name, skip_files):
     """
     Overview:
         When the system sees the exact same S3 huc_crs_date combination in output_ras2fim,
@@ -545,17 +560,17 @@ def __overwrite_s3_existing_folder(src_path, bucket_name, unit_folder_name, skip
 
         So we need to delete the existing and reload the new one (same name of course)
     Inputs:
-        - src_path: eg. c:\ras2fim_data\output_ras2fim\12030202_102739_230810
+        - src_unit_dir_path: eg. c:\ras2fim_data\output_ras2fim\12030202_102739_230810
         - bucket_name: {your bucket name}
         - unit_folder_name: eg. 12030202_102739_230810
         - skip_files: Files not to be uploaded ie) the wip local tracker file, ras_unit_to_s3 log file.
     """
-    s3_folder_path = f"{sv.S3_OUTPUT_RAS2FIM_FOLDER}/{unit_folder_name}"
+    s3_folder_path = f"{sv.S3_RAS_UNITS_OUTPUT_FOLDER}/{unit_folder_name}"
 
     RLOG.notice("***  NOTE: we will delete the original directory, then upload the new unit")
     print()
 
-    RLOG.debug(f"Deleting {s3_folder_path}")
+    RLOG.lprint(f"Deleting {s3_folder_path}")
     s3_sf.delete_s3_folder(bucket_name, s3_folder_path)
 
     # Yes.. if it deletes but fails to upload the new one, we have a problem.
@@ -563,21 +578,20 @@ def __overwrite_s3_existing_folder(src_path, bucket_name, unit_folder_name, skip
     #  it from the original existing path, then load the new one, then delete the temp copy.
     # if upload fails, copy back from temp ??
 
-    RLOG.debug(f"Uploading {src_path} to {sv.S3_OUTPUT_RAS2FIM_FOLDER}")
+    RLOG.lprint(f"Uploading {src_unit_dir_path} to {sv.S3_RAS_UNITS_OUTPUT_FOLDER}")
 
     s3_sf.upload_folder_to_s3(
-        src_path, bucket_name, sv.S3_OUTPUT_RAS2FIM_FOLDER, unit_folder_name, skip_files
+        src_unit_dir_path, bucket_name, sv.S3_RAS_UNITS_OUTPUT_FOLDER, unit_folder_name, skip_files
     )
 
     # TRACKER_ACTIONS[2] = overwriting_prev
     __add_record_to_tracker(
         bucket_name,
-        src_path,
+        src_unit_dir_path,
         unit_folder_name,
         TRACKER_ACTIONS[2],
         unit_folder_name,
-        sv.S3_OUTPUT_RAS2FIM_FOLDER,
-        is_verbose,
+        sv.S3_RAS_UNITS_OUTPUT_FOLDER,
     )
     # eg, my_bucket_name c:\ras2fim_data\output_ras2fim\12030202_102739_230810,
     # 12030202_102739_230810, 'overwriting_prev', 12030202_102739_230810,
@@ -589,7 +603,7 @@ def __adjust_folder_name_for_archive(folder_name):
     # formatted to S3 convention for archiving
     # Takes the original name changes it to:
     # {fold_name}_BK_{utc current date (yymmdd)}_{utc time (HHmm)}
-    #   eg. 12030105_2276_230810_BK_230825_1406
+    #   eg. 12030105_2276_ble_230810_BK_230825_1406
     # all UTC
     # Why rename it for the archive folder? we can't have dup folder names
 
@@ -604,23 +618,26 @@ def __adjust_folder_name_for_archive(folder_name):
 
 
 ####################################################################
-def __get_s3_unit_folder_list(bucket_name, src_name_dict, is_verbose):
+def __get_s3_unit_folder_list(bucket_name, src_name_dict, s3_output_path):
     """
     Overview
         This will search the first level path of the s3_folder_path (prefix)
         for folders that start with the same huc and crs of the incoming target unit
         folder (target_name_segs).
 
-        It will filter folders to only ones that match the huc and crs
+        It will filter folders to only ones that match the huc, crs and source code
     Inputs
         - bucket_name: eg. mys3bucket_name
         - target_name_segs: a dictionary of the original src unit folder name, split into
-            five keys:
+            six keys:
                 key_huc,
                 key_crs_number,
+                key_source_code,
                 key_date_as_str (date string eg: 230811),
                 key_date_as_dt (date obj for 230811)
-                unit_folder_name (12090301_2277_230811) (cleaned version)
+                unit_folder_name (12090301_2277_ble_230811) (cleaned version)
+        - s3_output_path:
+
     Output
         - a list of s3 folders (just folder names not path) that match
           the starting huc and crs segments
@@ -631,13 +648,16 @@ def __get_s3_unit_folder_list(bucket_name, src_name_dict, is_verbose):
     try:
         s3 = boto3.client("s3")
 
+        # strip off the bucket name
+        # e.g. prefix becomes output_ras2fim
+        prefix = s3_output_path.replace("s3://", "")
+        prefix = prefix.replace(f"{bucket_name}/", "")
+
         # If the bucket is incorrect, it will throw an exception that already makes sense
-        s3_objs = s3.list_objects_v2(
-            Bucket=bucket_name, Prefix=sv.S3_OUTPUT_RAS2FIM_FOLDER + "/", Delimiter="/"
-        )
-        if is_verbose is True:
-            RLOG.debug("s3_objs is")
-            RLOG.debug(s3_objs)
+        s3_objs = s3.list_objects_v2(Bucket=bucket_name, Prefix=prefix + "/", Delimiter="/")
+
+        RLOG.trace("s3_objs is")
+        RLOG.trace(s3_objs)
 
         if s3_objs["KeyCount"] == 0:
             return s3_unit_folder_names  # means folder was empty
@@ -649,18 +669,16 @@ def __get_s3_unit_folder_list(bucket_name, src_name_dict, is_verbose):
             # strip of the prefix and last slash so we have straight folder names
             key = folder_name_key["Prefix"]
 
-            if is_verbose is True:
-                RLOG.debug("--------------------")
-                RLOG.debug(f"key is {key}")
+            RLOG.trace(f"key is {key}")
 
             # strip to the final folder names (but first occurance of the prefix only)
-            key_child_folder = key.replace(sv.S3_OUTPUT_RAS2FIM_FOLDER, "", 1)
+            key_child_folder = key.replace(sv.S3_RAS_UNITS_OUTPUT_FOLDER, "", 1)
 
             # strip off last folder slash (might be more than one in middle)
             if key_child_folder.endswith("/"):
                 key_child_folder = key_child_folder[:-1]
 
-            # strip off last folder slash (might be more than one in middle)
+            # strip off first folder slash (might be more than one in middle)
             if key_child_folder.startswith("/"):
                 key_child_folder = key_child_folder[1:]
 
@@ -675,12 +693,12 @@ def __get_s3_unit_folder_list(bucket_name, src_name_dict, is_verbose):
             # see if the huc and crs it matches the incoming huc number and crs
             if (existing_dic["key_huc"] == src_name_dict["key_huc"]) and (
                 existing_dic["key_crs_number"] == src_name_dict["key_crs_number"]
+                and (existing_dic["key_source_code"] == src_name_dict["key_source_code"])
             ):
                 s3_unit_folder_names.append(key_child_folder)
 
-        if is_verbose is True:
-            RLOG.debug("unit folders found are ...")
-            RLOG.debug(s3_unit_folder_names)
+        RLOG.trace("unit folders found are ...")
+        RLOG.trace(s3_unit_folder_names)
 
     except Exception:
         RLOG.critical("===================")
@@ -695,7 +713,7 @@ def __get_s3_unit_folder_list(bucket_name, src_name_dict, is_verbose):
 
 ####################################################################
 def __add_record_to_tracker(
-    bucket_name, src_unit_full_path, orig_folder_name, cur_action, cur_folder_name, s3_folder, is_verbose
+    bucket_name, src_unit_full_path, orig_folder_name, cur_action, adj_unit_folder_name, target_s3_folder
 ):
     """
     Overview:
@@ -710,33 +728,28 @@ def __add_record_to_tracker(
     Inputs:
         - bucket_name
         - src_unit_full_path: local folder of the huc_crs dir being saved up to s3.
-        - orig_folder_name:  eg. 12090301_2276_230815
+        - orig_folder_name:  eg. 12090301_2276_ble_230815
         - cur_action: initial_load, moved_to_arch, overwriting_prev  (see TRACKER_ACTIONS)
-        - cur_folder_name: When folders go to the archive directory, it gets a date and time stamp
-          added to the name
-        - s3_folder: the folder it is being moved into (output_ras2fim or output_ras2fim_archive)
+        - adj_unit_folder_name: When folders go to the archive directory, it gets a date and time stamp
+          added to the name. e.g. 12030202_102739_ble_230810_BK_230825_1406. If not going to archive,
+          it will look like: 12030202_102739_ble_230810, but can be empty
+        - target_s3_folder: the folder it is being moved into (output_ras2fim or output_ras2fim_archive)
             eg. output_ras2fim or output_ras2fim_archive
-
-        eg: (bucket_name), c:\ras2fim_data\output_ras2fim\12030202_102739_230810, 12030202,
-                102739, 12030202_102739_230810, 'overwriting_prev', 12030202_102739_230810,
-                output_ras2fim, False
-
-        or (bucket_name), c:\ras2fim_data\output_ras2fim\12030202_102739_230810, 12030202,
-                102739, 12030202_102739_230810, 'moved_to_arch', 12030202_102739_230810_BK_230625_1423,
-                output_ras2fim_archive, False
 
     Outputs:
         None
     """
 
     # it is in the s3 output_ras2fim
-    s3_path_to_tracker_file = f"s3://{bucket_name}/{sv.S3_OUTPUT_RAS2FIM_FOLDER}/{sv.S3_OUTPUT_TRACKER_FILE}"
+    s3_path_to_tracker_file = (
+        f"s3://{bucket_name}/{sv.S3_RAS_UNITS_OUTPUT_FOLDER}/{sv.S3_OUTPUT_TRACKER_FILE}"
+    )
 
     try:
         print()
-        RLOG.lprint(f"Updating the s3 tracker file at {s3_path_to_tracker_file}")
+        RLOG.trace(f"Updating the s3 output tracker file at {TRACKER_S3_PATH}")
 
-        huc_crs_folder_dict = s3_sf.parse_unit_folder_name(orig_folder_name)
+        orig_folder_dict = s3_sf.parse_unit_folder_name(orig_folder_name)
 
         # ----------
         # calls over to S3 using the aws creds file even though it doesn't use it directly
@@ -749,17 +762,21 @@ def __add_record_to_tracker(
             last_tracker_id = df_cur_tracker["tracker_id"].max()
             next_tracker_id = last_tracker_id + 1
 
+        dt_stamp = dt.datetime.utcnow().strftime("%m-%d-%Y %H:%M:%S")
+
+        if target_s3_folder == sv.S3_RAS_UNITS_OUTPUT_FOLDER:
+            adj_unit_folder_name = ""  # we don't need it
+
         new_rec = {}  # dictionary
         new_rec["tracker_id"] = next_tracker_id
-        new_rec["HUC"] = str(huc_crs_folder_dict["key_huc"])
-        new_rec["CRS"] = str(huc_crs_folder_dict["key_crs_number"])
+        new_rec["HUC"] = str(orig_folder_dict["key_huc"])
+        new_rec["CRS"] = str(orig_folder_dict["key_crs_number"])
+        new_rec["source_code"] = str(orig_folder_dict["key_source_code"])
         new_rec["orig_folder_name"] = orig_folder_name
-
-        dt_stamp = dt.datetime.utcnow().strftime("%m-%d-%Y %H:%M:%S")
-        new_rec["dt_action"] = dt_stamp
+        new_rec["adj_unit_folder_name"] = adj_unit_folder_name
         new_rec["action"] = cur_action
-        new_rec["cur_folder_name"] = cur_folder_name
-        new_rec["cur_s3_folder"] = s3_folder
+        new_rec["dt_action"] = dt_stamp
+        new_rec["target_s3_folder"] = target_s3_folder
 
         df_new_rec = pd.DataFrame.from_records([new_rec])
 
@@ -769,22 +786,15 @@ def __add_record_to_tracker(
         # we need to save it temporarily so we will put it in the source unit folder
         # then delete it once it gets to s3.
 
-        if is_verbose is True:
-            RLOG.debug(f"Saving tracker file to {TRACKER_SRC_LOCAL_PATH}")
-
         # concat original with new record df
         df_tracker = pd.concat([df_cur_tracker, df_new_rec], ignore_index=True)
 
         # temp save to file system
         df_tracker.to_csv(TRACKER_SRC_LOCAL_PATH, index=False)
 
-        if is_verbose is True:
-            RLOG.debug("Starting tracker file upload to s3")
+        s3_sf.upload_file_to_s3(TRACKER_SRC_LOCAL_PATH, TRACKER_S3_PATH)
 
-        s3_sf.upload_file_to_s3(TRACKER_SRC_LOCAL_PATH, s3_path_to_tracker_file)
-
-        if is_verbose is True:
-            RLOG.debug("Done upload, removing temp copy")
+        RLOG.lprint("Tracker file update complete")
 
         os.remove(TRACKER_SRC_LOCAL_PATH)
 
@@ -817,7 +827,7 @@ def __add_record_to_tracker(
 
 ####################################################################
 ####  Some validation of input, but also creating key variables ######
-def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
+def __validate_input(src_unit_dir_path, s3_bucket_name):
     # Some variables need to be adjusted and some new derived variables are created
     # dictionary (key / pair) will be returned
 
@@ -825,8 +835,8 @@ def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
 
     # ---------------
     # why is this here? might not come in via __main__
-    if src_path_to_unit_output_dir == "":
-        raise ValueError("Source src_path_to_unit_output_dir parameter value can not be empty")
+    if src_unit_dir_path == "":
+        raise ValueError("Source src_unit_dir_path parameter value can not be empty")
 
     if not os.path.exists(src_path_to_unit_output_dir):
         raise ValueError(f"Source unit folder not found at {src_path_to_unit_output_dir}")
@@ -873,27 +883,39 @@ def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
         )
 
     # --------------------
+    if s3_bucket_name == "":
+        raise ValueError("Bucket name parameter value can not be empty")
+
+    if "/" in s3_bucket_name:
+        raise ValueError(
+            "Bucket name parameter value invalid. It needs to be a single word"
+            " or phrase such as my_xyz or r2f-dev."
+        )
+
+    # clean up the raw bucket name in various combinations so we can re-create it exactly as required.
+    s3_bucket_name = s3_bucket_name.replace("\\", "")
+    s3_bucket_name = s3_bucket_name.replace("s3:", "")
+
+    # --------------------
     # check ras2fim output bucket exists
-    print()
-    msg = f"    Validating that the s3 bucket of {s3_bucket_name} exists"
     if s3_sf.does_s3_bucket_exist(s3_bucket_name) is False:
-        raise ValueError(f"{msg} ... does not exist")
-    else:
-        RLOG.lprint(f"{msg} ... found")
+        raise ValueError(f"s3 bucket of {s3_bucket_name} does not exist")
 
     # --------------------
     # check ras2fim output folder exists
-    s3_full_output_path = f"s3://{s3_bucket_name}/{sv.S3_OUTPUT_RAS2FIM_FOLDER}"
+    s3_full_output_path = f"s3://{s3_bucket_name}/{sv.S3_RAS_UNITS_OUTPUT_FOLDER}"
     msg = f"    Validating that the S3 output folder of {s3_full_output_path} exists"
     if s3_sf.is_valid_s3_folder(s3_full_output_path) is False:
         raise ValueError(f"{msg} ... does not exist")
     else:
         RLOG.lprint(f"{msg} ... found")
+
+    # e.g. s3://ras2fim-dev/output_ras2fim
     rtn_dict["s3_full_output_path"] = s3_full_output_path
 
     # --------------------
     # check ras2fim archive folder exists
-    s3_full_archive_path = f"s3://{s3_bucket_name}/{sv.S3_OUTPUT_RAS2FIM_ARCHIVE_FOLDER}"
+    s3_full_archive_path = f"s3://{s3_bucket_name}/{sv.S3_RAS_UNITS_ARCHIVE_FOLDER}"
     msg = f"    Validating that the S3 archive folder of {s3_full_archive_path} exists"
     if s3_sf.is_valid_s3_folder(s3_full_archive_path) is False:
         raise ValueError(f"{msg} ... does not exist")
@@ -907,14 +929,23 @@ def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
 
 ####################################################################
 if __name__ == "__main__":
+    # ***********************
+    # This tool is intended for NOAA/OWP staff only as it requires access to an AWS S3 bucket with a
+    # specific folder structure.
+    # If you create your own S3 bucket in your own AWS account, you are welcome to use this tool.
+    # ***********************
+
     # ---- Samples Inputs
-    #    python /tools/ras_unit_to_s3.py -s c:\my_ras\output\12030202_102739_230810 -b xyz_bucket
+    #    python ./tools/ras_unit_to_s3.py -s c:\my_ras\output\12030202_102739_ble_230810
+    # Ensure you add the -b (bucket name) flag if you don't want it to got to prod (ras2fim)
 
     # NOTE: pathing inside the bucket can not be changed.
-    # The root folder (prefix) is hardcoded to output_ras2fim and the archive folder is
-    # hardcoded to output_ras2fim_archive.
+    # The root folder (prefix) is hardcoded to 'output_ras2fim' and 'output_ras2fim_archive'.
     # This will help preserve other tools that are relying on specific s3 pathing.
+
     # The folder name from the source folder (not path) will automatically becomes the s3 folder name.
+    # e.g 12030202_102739_ble_230810 becomes
+    # s3://ras2fim (or overridden bucket name)/output_ras2fim/12030202_102739_ble_230810
 
     parser = argparse.ArgumentParser(
         description="Saving ras2fim unit output folders back to S3",
@@ -924,19 +955,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "-s",
         "--src_unit_dir_path",
-        help="REQUIRED: A full defined path including output unit folder\n"
-        " ie) c:\my_ras\output\\12030202_102739_230810",
+        help="REQUIRED: A full defined path including output unit folder.\n"
+        r" ie) c:\my_ras\output\12030202_102739_ble_230810",
         required=True,
         metavar="",
     )
 
-    # s3 bucket name. Can't default S3 paths due to security.  ie) xyz  of (s3://xyz)
     parser.add_argument(
         "-b",
         "--s3_bucket_name",
         help="REQUIRED: S3 bucket where output ras2fim folders are placed.\n"
-        "eg) xyz_bucket from s3://xyz_bucket",
-        required=True,
+        "e.g.) 'ras2fim-dev' from the phrase s3://ras2fim-dev\n"
+        f"Defaults to {sv.S3_DEFAULT_BUCKET_NAME}",
+        required=False,
         metavar="",
     )
 
@@ -944,7 +975,7 @@ if __name__ == "__main__":
         "-v",
         "--is_verbose",
         help="OPTIONAL: Adding this flag will give additional tracing output."
-        " Default = False (no extra output)",
+        "Default = False (no extra output)",
         required=False,
         default=False,
         action="store_true",
@@ -952,7 +983,9 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    log_file_folder = args["src_unit_dir_path"]  # don't put in logs dir in value
+    referential_path = os.path.join(args["src_unit_dir_path"], "..", "ras_unit_to_s3_logs")
+    log_file_folder = os.path.abspath(referential_path)
+
     try:
         # Catch all exceptions through the script if it came
         # from command line.

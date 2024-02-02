@@ -75,6 +75,6 @@ extend-ignore = """
 per-file-ignores = """
     src/create_shapes_from_hecras.py: F841, E731
     tools/*: E402    
-    tools/get_models_by_catalog.py: E402, E712
+    tools/s3_get_models.py: E402, E712
     tools/nws_ras2fim_terrain_Texas.py: E402, E501
     """
