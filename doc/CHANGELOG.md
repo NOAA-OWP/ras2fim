@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.xx - 2024-01-22 - [PR#259](https://github.com/NOAA-OWP/ras2fim/pull/259)
+## v2.0.beta.23 - 2024-02-02 - [PR#259](https://github.com/NOAA-OWP/ras2fim/pull/259)
 
 This PR addresses issue #200.  Added evaluation functionality to the tools directory in order to assess the ras2fim output model performance i
 reference to benchmark datasets.  Also included functionality for s3 batch evaluations.
@@ -14,6 +14,8 @@ reference to benchmark datasets.  Also included functionality for s3 batch evalu
 ### Changes  
 - `tools`
     - `ras2inundation.py`: Changes to formatting
+
+<br/><br/>
 
 ## v2.0.beta.22 - 2024-02-02 - [PR#272](https://github.com/NOAA-OWP/ras2fim/pull/272)
 
