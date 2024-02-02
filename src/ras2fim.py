@@ -401,6 +401,8 @@ def fn_run_ras2fim(
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
         # Produce geocurves
+
+        """
         job_number = os.cpu_count() - 2
         manage_geo_rating_curves_production(
             ras2fim_output_dir=unit_output_path,
@@ -408,6 +410,8 @@ def fn_run_ras2fim(
             output_folder=r2f_final_dir,
             overwrite=False,
         )
+        """
+        RLOG.lprint("Geocurves module not ready yet")
 
     # -------------------------------------------------
     if os.getenv("CREATE_RAS_DOMAIN_POLYGONS") == "True":
@@ -424,7 +428,7 @@ def fn_run_ras2fim(
         xsections_shp_file_path = os.path.join(dir_shapes_from_hecras, "cross_section_LN_from_ras.shp")
 
         # provide conflation qc file to mark the parent models that conflated to NWM reaches
-        conflation_csv_path = os.path.join(dir_shapes_from_conflation, "%s_stream_qc.csv" % huc8)
+        conflation_csv_path = os.path.join(dir_shapes_from_conflation, "%s_stream_qc_fid_xs.csv" % huc8)
 
         # make output folder and build path to the output file
         # TODO: Nov 3, 2023: The creation of the output_polygon_dir and polygons_output_file_path
@@ -450,6 +454,7 @@ def fn_run_ras2fim(
         RLOG.notice("+++++++ Processing: STEP: Running ras2calibration +++++++")
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
+        """
         dir_reformat_ras_rc(
             unit_output_path,
             sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
@@ -484,6 +489,8 @@ def fn_run_ras2fim(
             ),
             r2f_final_ras2cal_subdir,
         )
+        """
+        RLOG.lprint("fim calibration module not ready yet")
 
     # -------------------------------------------------
     RLOG.lprint("")
