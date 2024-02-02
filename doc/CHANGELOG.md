@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.xx - 2024-02-01 - [PR#272](https://github.com/NOAA-OWP/ras2fim/pull/272)
+## v2.0.beta.22 - 2024-02-01 - [PR#272](https://github.com/NOAA-OWP/ras2fim/pull/272)
 
 This PR closes the issue #268.
 Compared with ras2fim V1 code, the only part of create_model_domain_polygons.py that needed an update is the path to qc conflation file, which now should be 02_shapes_from_conflation\***_stream_qc_fid_xs.csv
