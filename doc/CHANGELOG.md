@@ -2,7 +2,7 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
-## v2.0.beta.xx - 2024-01-26 - [PR#264](https://github.com/NOAA-OWP/ras2fim/pull/264)
+## v2.0.beta.24 - 2024-02-02 - [PR#264](https://github.com/NOAA-OWP/ras2fim/pull/264)
 
 During some design reviewing it was discovered that we have a need to know and use a code to identify the source.  At this point, we have only one source provider which is BLE. We will use the `source_code` of `ble` for the first records. The code is needed for a number of reasons including helping with merging when multiple runs of ras2fm.py for one HUC are created and also HydroVIS wants this value as well. 
 
@@ -48,6 +48,7 @@ Closes Issue [254](https://github.com/NOAA-OWP/ras2fim/issues/254)
 
 <br/><br/>
 
+
 ## v2.0.beta.23 - 2024-02-02 - [PR#259](https://github.com/NOAA-OWP/ras2fim/pull/259)
 
 This PR addresses issue #200.  Added evaluation functionality to the tools directory in order to assess the ras2fim output model performance i
@@ -63,6 +64,7 @@ reference to benchmark datasets.  Also included functionality for s3 batch evalu
     - `ras2inundation.py`: Changes to formatting
 
 <br/><br/>
+
 
 ## v2.0.beta.22 - 2024-02-02 - [PR#272](https://github.com/NOAA-OWP/ras2fim/pull/272)
 
