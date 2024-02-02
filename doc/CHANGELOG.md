@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.xx - 2024-01-26 - [PR#271](https://github.com/NOAA-OWP/ras2fim/pull/271)
+## v2.0.beta.21 - 2024-02-02 - [PR#271](https://github.com/NOAA-OWP/ras2fim/pull/271)
 
 An error for a reference was made during the last build merge for a portion that was manually merged.
 
