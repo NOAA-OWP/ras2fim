@@ -31,7 +31,7 @@ from convert_tif_to_ras_hdf5 import fn_convert_tif_to_ras_hdf5
 from create_fim_rasters import fn_create_fim_rasters
 from create_geocurves import manage_geo_rating_curves_production
 from create_model_domain_polygons import fn_make_domain_polygons
-from create_rating_curves import fn_create_src_feature_ids
+from create_rating_curves import fn_create_rating_curves
 from create_shapes_from_hecras import fn_create_shapes_from_hecras
 from reformat_ras_rating_curve import dir_reformat_ras_rc
 from simplify_fim_rasters import fn_simplify_fim_rasters
@@ -368,15 +368,15 @@ def fn_run_ras2fim(
     RLOG.notice("+++++++ Processing: STEP 6 (create rating curves per fid) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
-    fn_create_src_feature_ids(huc8, unit_output_path)
+    fn_create_rating_curves(huc8, unit_output_path)
 
     # Use rating curve data from Step 6
     # TODO: Jan 22, 2024 - While mostly plugged in, it needs adjustments.
     RLOG.lprint("")
     RLOG.notice("+++++++ Processing: STEP 6.b (create rating curve stats) +++++++")
-    #RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+    # RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
     RLOG.lprint(f"Module temporarily disabled.: {sf.get_stnd_date()}")
-    #fn_calculate_all_terrain_stats(unit_output_path)
+    # fn_calculate_all_terrain_stats(unit_output_path)
 
     # -------------------------------------------------
     # TODO: Still to be done for v2
