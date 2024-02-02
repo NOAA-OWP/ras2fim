@@ -18,6 +18,15 @@ Also a few linting fixes
      - `conflate_hecras_to_nwm.py`: Linting adjustments
      - `ras2fim.py`: Adjusted for a bad class name (create rating curves), also ensure `create_model_domain_polygons.py` worked with the ras2fim.py flow. Also commented out a few modules that are not yet online.
 
+## v2.0.beta.21 - 2024-02-02 - [PR#271](https://github.com/NOAA-OWP/ras2fim/pull/271)
+
+An error for a reference was made during the last build merge for a portion that was manually merged.
+
+### Changes  
+
+- `src`
+    - `ras2fim.py`: Fix for an incorrect reference.
+ 
 <br/><br/>
 
 
