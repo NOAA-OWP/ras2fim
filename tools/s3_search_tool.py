@@ -50,7 +50,7 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
         - download all of the files and folder names recursively star
 
     Inputs:
-        - s3_path: full s3 base path: ie) s3://ras2fim-dev/OWP_ras_models/models-12030105-full
+        - s3_path: full s3 base path: ie) s3://ras2fim-dev/OWP_ras_models
         - search_key: Any word, letters, and most chars, with * meaning 0 to many matchs.
             Non-case sensitive.
             ie)
@@ -79,20 +79,20 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
     RLOG.lprint("=================================================================")
     RLOG.notice("          RUN s3 search tool ")
     RLOG.lprint(f"  (-s3): s3_path {s3_path} ")
-    RLOG.lprint(f"  (-key): s3 bucket name {search_key}")
+    RLOG.lprint(f"  (-key): s3 search value {search_key}")
     RLOG.lprint(f"  (-p): output results folder {output_folder_path}")
     RLOG.lprint(f" --- Start: {dt_string} (UTC time) ")
     RLOG.lprint("=================================================================")
 
     # --------------------
     # It will throw it's own exceptions if required
-    rtn_varibles_dict = __validate_input(s3_path, search_key, output_folder_path)
-    bucket_name = rtn_varibles_dict["bucket_name"]
-    s3_folder_path = rtn_varibles_dict["s3_folder_path"]
+    rtn_dict = __validate_input(s3_path, search_key, output_folder_path)
+    bucket_name = rtn_dict["bucket_name"]
+    s3_search_folder = rtn_dict["s3_search_folder"]
 
     # ----------
     # Call S3 for wildcard search (get list of keys and urls back)
-    s3_items = s3_sf.get_records_list(bucket_name, s3_folder_path, search_key)
+    s3_items = s3_sf.get_records_list(bucket_name, s3_search_folder, search_key, True)
     if len(s3_items) == 0:
         RLOG.error(f"No files or folders found in source folder of {s3_path}")
     else:
@@ -107,7 +107,7 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
         df = pd.DataFrame(s3_items)
         df.to_csv(output_file_path, index=False)
 
-        RLOG.notice(f"Output file as {output_file_path}")
+        RLOG.notice(f"Output search results report saved as {output_file_path}")
 
     # --------------------
     RLOG.lprint("")
@@ -129,7 +129,7 @@ def __validate_input(s3_path, search_key, output_folder_path):
     # Some variables need to be adjusted and some new derived variables are created
     # dictionary (key / pair) will be returned
 
-    rtn_varibles_dict = {}
+    rtn_dict = {}
 
     # ---------------
     # why is this here? might not come in via __main__
@@ -162,16 +162,26 @@ def __validate_input(s3_path, search_key, output_folder_path):
     if len(test_search_key) <= 3:
         raise ValueError("search key must be at least 3 chars not counting the wildcards")
 
-    # will raise it's own exceptions if needed
-    bucket_name, s3_folder_path = s3_sf.is_valid_s3_folder(s3_path)
-    rtn_varibles_dict["bucket_name"] = bucket_name
-    rtn_varibles_dict["s3_folder_path"] = s3_folder_path
+    # will raise some of it's own exceptions if needed
+    if s3_sf.is_valid_s3_folder(s3_path) is False:
+       raise ValueError(f"S3 search folder of {s3_path} ... does not exist")
+    
+    bucket_name, s3_search_folder = s3_sf.parse_bucket_and_folder_name(s3_path)
+    rtn_dict["bucket_name"] = bucket_name
+    rtn_dict["s3_search_folder"] = s3_search_folder    
 
-    return rtn_varibles_dict
+    return rtn_dict
 
 
 ####################################################################
 if __name__ == "__main__":
+
+    # ***********************
+    # This tool is intended for NOAA/OWP staff only as it requires access to an AWS S3 bucket with a
+    # specific folder structure.
+    # If you create your own S3 bucket in your own AWS account, you are free to use this tool.
+    # ***********************
+
     # ---- Samples Inputs
 
     # With min inputs

@@ -821,7 +821,7 @@ def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
     # Some variables need to be adjusted and some new derived variables are created
     # dictionary (key / pair) will be returned
 
-    rtn_varibles_dict = {}
+    rtn_dict = {}
 
     # ---------------
     # why is this here? might not come in via __main__
@@ -852,13 +852,13 @@ def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
     src_path_segs = src_path_to_unit_output_dir.split("\\")
 
     # We need the source huc_crs folder name for later and the full path
-    rtn_varibles_dict["src_unit_dir"] = src_path_segs[-1]
+    rtn_dict["src_unit_dir"] = src_path_segs[-1]
     # strip of the parent path
-    rtn_varibles_dict["src_unit_full_path"] = src_path_to_unit_output_dir
+    rtn_dict["src_unit_full_path"] = src_path_to_unit_output_dir
 
     # --------------------
     # make sure it has a "final" folder and has some contents
-    final_dir = os.path.join(rtn_varibles_dict["src_unit_full_path"], sv.R2F_OUTPUT_DIR_FINAL)
+    final_dir = os.path.join(rtn_dict["src_unit_full_path"], sv.R2F_OUTPUT_DIR_FINAL)
     if not os.path.exists(final_dir):
         raise ValueError(
             f"Source unit 'final' folder not found at {final_dir}."
@@ -889,7 +889,7 @@ def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
         raise ValueError(f"{msg} ... does not exist")
     else:
         RLOG.lprint(f"{msg} ... found")
-    rtn_varibles_dict["s3_full_output_path"] = s3_full_output_path
+    rtn_dict["s3_full_output_path"] = s3_full_output_path
 
     # --------------------
     # check ras2fim archive folder exists
@@ -899,10 +899,10 @@ def __validate_input(src_path_to_unit_output_dir, s3_bucket_name):
         raise ValueError(f"{msg} ... does not exist")
     else:
         RLOG.lprint(f"{msg} ... found")
-    rtn_varibles_dict["s3_full_archive_path"] = s3_full_archive_path
+    rtn_dict["s3_full_archive_path"] = s3_full_archive_path
     print()
 
-    return rtn_varibles_dict
+    return rtn_dict
 
 
 ####################################################################

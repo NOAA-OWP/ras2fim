@@ -81,9 +81,10 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
 
     # --------------------
     # It will throw it's own exceptions if required
-    rtn_varibles_dict = __validate_input(s3_master_csv_path, s3_models_path, output_folder_path)
-    bucket_name = rtn_varibles_dict["bucket_name"]
-    s3_folder_path = rtn_varibles_dict["s3_folder_path"]
+    rtn_dict = __validate_input(s3_master_csv_path, s3_models_path, output_folder_path)
+
+    bucket_name = rtn_dict["bucket_name"]
+    s3_folder_path = rtn_dict["s3_models_output_folder"]
     csv_file_name = f"s3_model_mgmt_report_{get_date_with_milli(False)}.csv"
     target_report_path = os.path.join(output_folder_path, csv_file_name)
 
@@ -353,10 +354,14 @@ def dup_check_initial_scrape_name(df_csv_report):
 ####################################################################
 ####  Some validation of input, but also creating key variables ######
 def __validate_input(s3_master_csv_path, s3_models_path, output_folder_path):
-    # Some variables need to be adjusted and some new derived variables are created
-    # dictionary (key / pair) will be returned
+        
+    """
+    Process:
+        Some variables need to be adjusted and some new derived variables are created
+        dictionary (key / pair) will be returned
+    """
 
-    rtn_varibles_dict = {}
+    rtn_dict = {}
 
     # ---------------
     # why is this here? might not come in via __main__
@@ -366,10 +371,12 @@ def __validate_input(s3_master_csv_path, s3_models_path, output_folder_path):
     # Skip tests for folder output path because logging for this script
     # already added it (same path as logs)
 
-    # will raise it's own exceptions if needed
-    bucket_name, s3_folder_path = s3_sf.is_valid_s3_folder(s3_models_path)
-    rtn_varibles_dict["bucket_name"] = bucket_name
-    rtn_varibles_dict["s3_folder_path"] = s3_folder_path
+    if s3_sf.is_valid_s3_folder(s3_models_path) is False:
+        raise ValueError(f"S3 models path ({s3_models_path}) does not exist")
+
+    bucket_name, s3_output_folder = s3_sf.parse_bucket_and_folder_name(s3_models_path)
+    rtn_dict["bucket_name"] = bucket_name
+    rtn_dict["s3_models_output_folder"] = s3_output_folder
 
     # see if the master csv exists
     if s3_sf.is_valid_s3_file(s3_master_csv_path) is False:
@@ -378,7 +385,7 @@ def __validate_input(s3_master_csv_path, s3_models_path, output_folder_path):
             " Note: the pathing is case-sensitive"
         )
 
-    return rtn_varibles_dict
+    return rtn_dict
 
 
 ####################################################################
