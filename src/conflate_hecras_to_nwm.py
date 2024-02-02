@@ -551,10 +551,10 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
 
     conflated_model_names_id = []
     for nms in conflated_model_names:
-
         if nms not in final_name_key:
-            raise Exception(f"Model name of {nms} not found in the models catalog of"
-                            f" {path_model_catalog}.")
+            raise Exception(
+                f"Model name of {nms} not found in the models catalog of" f" {path_model_catalog}."
+            )
 
         indx = final_name_key.index(nms)
 
