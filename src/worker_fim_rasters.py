@@ -14,6 +14,8 @@ import numpy as np
 import pandas as pd
 import win32com.client
 
+from scipy.interpolate import interp1d
+
 import ras2fim_logger
 import shared_functions as sf
 import shared_variables as sv
@@ -300,7 +302,7 @@ def compute_boundray_condition_wse(
             df_all_flow_values.columns = column_names
 
             all_flow_info_df = pd.concat([max_flow_df_wse, df_all_flow_values], axis=1)
-            target_xs = int(list(all_flow_info_df['start_xs'])[-1])  # last xs that flow changes in
+            target_xs = int(list(all_flow_info_df['start_xs'])[-1])  # last xs in which flow changes
             # str_target_xs = str(target_xs)
 
             # -------------------------------------------------
@@ -1267,11 +1269,15 @@ def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
             # add wse and q_total for xsections
             this_profile_x_section_info["wse"] = arr_water_surface_elev
             this_profile_x_section_info["discharge"] = arr_q_total
+            this_profile_x_section_info["max_depth"] = arr_max_depth
+            this_profile_x_section_info["channel_length"] = arr_channel_length
 
             all_x_sections_info = pd.concat([all_x_sections_info, this_profile_x_section_info])
 
             # Revise the last channel length to zero
             arr_channel_length[len(arr_channel_length) - 1] = 0
+
+        all_x_sections_info["channel_length"][all_x_sections_info["channel_length"]>1E20] = 0
 
         hec.QuitRas()  # close HEC-RAS
 
@@ -1301,6 +1307,432 @@ def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
                 # do nothng
 
     return all_x_sections_info
+
+
+# -------------------------------------------------
+# Creat 2nd-pass flow HEC-RAS files
+# For All RAS Models BC ~ 3 min
+# -------------------------------------------------
+huc8_num, model_unit, flt_interval = "12090301", "feet", 0.5
+unit_output_folder = "C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\v2_2ndpass_depthgrids\\12090301_2277_240202"
+ls_number_of_steps_2ndpass = create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_interval)
+
+
+def create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_interval):
+
+    path_to_1st_pass_output = os.path.join(unit_output_folder, "05_hecras_output") # TODO: sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT
+    
+    folder_1stpass_models = os.listdir(path_to_1st_pass_output)
+    # # TODO:  folder_1stpass_models = ["12129_BUCKNERS CREEK", "12365_COLORADO RIVER"]
+
+    ls_number_of_steps_2ndpass = []    
+    for folder in folder_1stpass_models:
+
+        path_all_x_sections_info = os.path.join(
+            path_to_1st_pass_output, 
+            folder, 
+            "all_x_sections_info_" + folder + ".csv"
+            )
+        all_x_sections_info = pd.read_csv(path_all_x_sections_info)
+
+        # Number of the cross sections on the river
+        num_xs_creek = len(
+            all_x_sections_info[all_x_sections_info.columns[0]].drop_duplicates(keep = 'first')
+            )
+        
+        # Index of peak flows (75th flow)
+        ind_xs_ds = len(all_x_sections_info)
+        ind_xs_us = len(all_x_sections_info) - num_xs_creek
+
+        # Peak depth in all cross sections
+        peak_depths_all_xss_info = all_x_sections_info.iloc[ind_xs_us:ind_xs_ds]
+        peak_flows_all_xss = all_x_sections_info["discharge"][ind_xs_us:ind_xs_ds]
+        all_xss = all_x_sections_info["Xsection_name"][ind_xs_us:ind_xs_ds]
+
+        # -------------------------------------------------
+        # Create a list of the simulated first pass flows at XS that has max depth
+        max_depth = max(peak_depths_all_xss_info["max_depth"])
+        cond_mdf = peak_depths_all_xss_info["max_depth"] == max_depth
+
+        # Cross sections that have the max depth # flow
+        target_xs = peak_depths_all_xss_info[cond_mdf]["Xsection_name"].iloc[0]
+
+        # Depth and WSE at XS with the max depth
+        cond_md_ar = all_x_sections_info["Xsection_name"] == target_xs
+        list_flow_steps = all_x_sections_info[cond_md_ar]["discharge"]
+        list_depth_steps = all_x_sections_info[cond_md_ar]["max_depth"]
+        list_wse_steps = all_x_sections_info[cond_md_ar]["wse"]
+
+        # -------------------------------------------------
+        # Use linear interpolator (f1) to find flows coresponding to half 
+        # a foot WSE intervals at Xss with the max flow (target reach)
+        f1 = interp1d(list_depth_steps,list_flow_steps)
+
+        # Get the max value of the Averge Depth List
+        int_max_depth = int(max(list_depth_steps) // flt_interval)
+        # Get the min value of Average Depth List
+        int_min_depth = int((min(list_depth_steps) // flt_interval) + 1)
+
+        # -------------------------------------------------
+        # Compute interpolated flow valuse at 0.5 foot interval depth
+        list_step_profiles = []
+
+        # Create a list of the profiles at desired increments
+        for i in range(int_max_depth - int_min_depth + 1):
+            int_depth_interval = (i + int_min_depth) * flt_interval
+
+            # round this to nearest 1/10th
+            int_depth_interval = round(int_depth_interval, 1)
+
+            list_step_profiles.append(int_depth_interval)
+
+        # get interpolated flow values of interval depths
+        arr_step_flows = f1(list_step_profiles)
+        list_step_flows = arr_step_flows.tolist()
+
+        # convert list of interpolated float values to integer list
+        list_int_step_flows = [int(i) for i in list_step_flows]
+
+        # -------------------------------------------------
+        # Corresponding wse at 0.5 foot interval to interpolated flow valuse
+        int_min_wse = int((min(list_wse_steps) // flt_interval) + 1)
+
+        list_step_profiles_wse = []
+        for i in range(int_max_depth - int_min_depth + 1):
+
+            int_wse_interval = (i + int_min_wse) * flt_interval
+
+            # round this to nearest 1/10th
+            int_wse_interval = round(int_wse_interval, 1)
+
+            list_step_profiles_wse.append(int_wse_interval)
+        
+        # -------------------------------------------------
+        # Generate 2nd-pass flow profiles for all XSs in which
+        # flow changes based on new number_of_steps_2ndpass
+        # -------------------------------------------------
+        int_number_of_steps_2ndpass = len(list_int_step_flows)
+        
+        # Peak flow in all cross sections in which flow changes
+        ls_peak_flows = peak_flows_all_xss.drop_duplicates(keep='first')
+        ind_targ_xs = ls_peak_flows.index
+        target_XSs_name = all_xss[ind_targ_xs]
+
+        df_peak_flows_xs = pd.concat([ls_peak_flows, target_XSs_name], axis = 1)
+        df_peak_flows_xs.index = range(len(df_peak_flows_xs))
+
+        # -------------------------------------------------
+        # Create second-pass flow dataframe for each xs where flow changes
+        # 2nd pass flow ratio
+        second_pass_ratio = [float(flows)/max(list_int_step_flows) for flows in list_int_step_flows]
+
+        ls_second_pass_flows_xs = []
+        for num_q in range(len(df_peak_flows_xs)):
+
+            int_max_flow2 = df_peak_flows_xs['discharge'][num_q]
+            list_2nd_pass_flows2 = [int(int_max_flow2 * ratio) for ratio in second_pass_ratio]
+            ls_second_pass_flows_xs.append(list_2nd_pass_flows2)
+
+        second_pass_flows_xs_df = pd.DataFrame(ls_second_pass_flows_xs).T
+        second_pass_flows_xs_df.columns = [int(k1) for k1 in df_peak_flows_xs['Xsection_name']]
+
+        ls_number_of_steps_2ndpass.append(int_number_of_steps_2ndpass)
+
+        # -------------------------------------------------
+        # Read boundary condition from 1st pass flow file
+        # and generate BC for the 2nd pass flow
+        # -------------------------------------------------
+        path_1stpass_flow_file = os.path.join(
+            path_to_1st_pass_output, 
+            folder, 
+            folder[6:] + ".f01"
+            )
+                
+        with open(path_1stpass_flow_file, 'r') as file_flow_1st:
+
+            lines_flow_1st = file_flow_1st.readlines()
+
+            for line_1st in lines_flow_1st:
+                
+                # When BC is WSE
+                if line_1st[:11] == "Dn Known WS": # if "Dn Known WS" in line_1st:
+                    
+                    # First Xs where flow changes on the last reach
+                    last_xs = second_pass_flows_xs_df.columns[-1]
+                    # 2nd pass flow profile at that Xs where flow changes
+                    last_xs_flow_prof = second_pass_flows_xs_df[last_xs]
+                    ls_last_xs_flow_prof = [fps for fps in last_xs_flow_prof]
+
+                    # -------------------------------------------------
+                    # Use a linear interpolater to estimate WSE BC for the 2nd pass flow
+                    # -------------------------------------------------
+                    # First pass flow and wse steps for the first Xs 
+                    # where flow changes on the last reach
+                    cond_flxs = all_x_sections_info["Xsection_name"]==last_xs
+
+                    flow_steps_1st_lastxs = all_x_sections_info[cond_flxs]["discharge"]
+                    ls_flow_steps_1st_lastxs = [fs1ls for fs1ls in flow_steps_1st_lastxs]
+
+                    wse_steps_1st_lastxs = all_x_sections_info[cond_flxs]["wse"]
+                    ls_wse_steps_1st_lastxs = [ws1ls for ws1ls in wse_steps_1st_lastxs]
+
+                    # -------------------------------------------------
+                    # Use a linear interpolator to estimate the WSE as a BC at the last reach
+                    # This is based on first pass flow hecras run
+                    f21 = interp1d(ls_flow_steps_1st_lastxs,ls_wse_steps_1st_lastxs)
+                    
+                    wse_2nd_last_xs = pd.DataFrame(f21(ls_last_xs_flow_prof), columns =['wse']) #bc_target_xs
+                    # delta_wse_last_xs = wse_2nd_last_xs.diff()
+
+                    break
+
+            file_flow_1st.close()
+            
+        with open(path_1stpass_flow_file, 'r') as file_flow_1st2:
+
+            lines_flow_1st2 = file_flow_1st2.readlines()
+
+            for line_1st2 in lines_flow_1st2:
+                
+                # When BC is slope
+                if line_1st2[:8] == "Dn Slope":
+                    slope_bc_nd = line_1st2[9:]
+                    break
+
+            file_flow_1st2.close()
+
+        # -------------------------------------------------
+        # Create second-pass flow file for conflated ras models
+        # -------------------------------------------------
+        # Get max flow for each xs in which flow changes in a dataframe format
+        max_flow_df = df_peak_flows_xs["discharge"]
+
+        # Number of XSs where flow changes for each ras model with normal depth BC
+        int_num_of_flow_change_xs = len(max_flow_df)
+
+        # Profile names for 2nd pass flows
+        list_profiles = range(int_number_of_steps_2ndpass)
+        str_suffix = "_ft"
+        profile_names = fn_create_profile_names(list_profiles, str_suffix)
+
+        # All text up to the first cross section - Header of the Flow File
+        with open(path_1stpass_flow_file) as file_flow_1st3:
+            flowfile_contents = file_flow_1st3.read()
+
+        # Get River, reach and Upstream XS for flow file
+        pattern_river = re.compile(r"River Rch & RM=.*")
+        matches_river = pattern_river.finditer(flowfile_contents)
+
+        for match in matches_river:
+            str_river_reach = flowfile_contents[match.start() : match.end()]
+            # split the data on the comma
+            list_river_reach_s = str_river_reach.split(",")
+            # Get from array - use strip to remove whitespace
+            str_river = list_river_reach_s[0].strip()
+            str_reach = list_river_reach_s[1].strip()
+
+        # -------------------------------------------------
+        # Write the flow file for normal depth BC
+        str_flowfile2 = "Flow Title="
+        str_flowfile2 += str_river[15:] + "\n"  # str_feature_id
+        str_flowfile2 += "Program Version=6.3" + "\n"
+        str_flowfile2 += "BEGIN FILE DESCRIPTION:" + "\n"
+        str_flowfile2 += "Flow File - Created from Base Level Engineering"
+        str_flowfile2 += " data for Flood Inundation Library" + "\n"
+        str_flowfile2 += "END FILE DESCRIPTION:" + "\n"
+        str_flowfile2 += "Number of Profiles= " + str(int_number_of_steps_2ndpass) + "\n"
+        str_flowfile2 += profile_names + "\n"
+
+        for fc2 in range(int_num_of_flow_change_xs):
+            # list of the second pass flows
+            list_firstflows2 = ls_second_pass_flows_xs[fc2] #[path_in]
+
+            str_xs_upstream_nd = str(int(df_peak_flows_xs['Xsection_name'][fc2]))
+            str_flowfile2 += str_river + "," + str_reach + "," + str_xs_upstream_nd + "\n"
+
+            str_flowfile2 += fn_format_flow_values(list_firstflows2) + "\n"
+
+        for m2 in range(int_number_of_steps_2ndpass):
+            str_flowfile2 += "Boundary for River Rch & Prof#="
+
+            str_flowfile2 += str_river[15:] + "," + str_reach + ", " + str(m2 + 1) + "\n"
+
+            str_flowfile2 += "Up Type= 0 " + "\n"
+
+            if 'Dn Known WS' in flowfile_contents:
+                str_flowfile2 += "Dn Type= 1 " + "\n"
+
+                str_known_ws = str(round(wse_2nd_last_xs['wse'][m2], 3))
+                str_flowfile2 += "Dn Known WS=" + str_known_ws + "\n"
+
+            else:         
+                str_flowfile2 += "Dn Type= 3 " + "\n"
+                str_flowfile2 += "Dn Slope=" + slope_bc_nd
+
+        str_flowfile2 += "DSS Import StartDate=" + "\n"
+        str_flowfile2 += "DSS Import StartTime=" + "\n"
+        str_flowfile2 += "DSS Import EndDate=" + "\n"
+        str_flowfile2 += "DSS Import EndTime=" + "\n"
+        str_flowfile2 += "DSS Import GetInterval= 0 " + "\n"
+        str_flowfile2 += "DSS Import Interval=" + "\n"
+        str_flowfile2 += "DSS Import GetPeak= 0 " + "\n"
+        str_flowfile2 += "DSS Import FillOption= 0 " + "\n"
+
+        new_flow_file_path_v2 = os.path.join(path_1stpass_flow_file)
+        with open(new_flow_file_path_v2, "w") as file2:
+            file2.write(str_flowfile2)
+            file2.close()
+
+            file_flow_1st3.close()
+
+        # -------------------------------------------------
+        # Create a second-pass rasmap file for conflated ras models
+        # -------------------------------------------------        
+        str_river_id_fn = folder[6:]
+        terrain_names = folder[:5]
+        
+        str_path_to_terrain = os.path.join(
+            unit_output_folder, 
+            "04_hecras_terrain" # TODO: sv.R2F_OUTPUT_DIR_HECRAS_TERRAIN
+            )
+        str_path_to_projection = os.path.join(
+            unit_output_folder,            
+            "02_csv_shapes_from_conflation", # TODO: sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, 
+            huc8_num + "_huc_12_ar.prj"
+            )
+        
+        # Name of 2nd-pass depth grids
+        list_step_profiles_xml_fn = ["flow_" + str(nms) for nms in range(int_number_of_steps_2ndpass)]
+        
+        # Writing the rasmapp file
+        str_ras_mapper_file = ""
+
+        str_ras_mapper_file = r"<RASMapper>" + "\n"
+        str_ras_mapper_file += r"  <Version>2.0.0</Version>" + "\n"
+
+        str_ras_mapper_file += (
+            r'  <RASProjectionFilename Filename="' + str_path_to_projection + r'" />' + "\n"
+        )
+
+        str_ras_mapper_file += r'  <Geometries Checked="True" Expanded="True">' + "\n"
+
+        str_ras_mapper_file += r'    <Layer Name="' + str_river_id_fn + '"'
+        str_ras_mapper_file += r' Type="RASGeometry" Checked="True" '
+        str_ras_mapper_file += r'Expanded="True" Filename="'
+
+        str_ras_mapper_file += r"." + "\\" + str_river_id_fn + '.g01.hdf">' + "\n"
+
+        str_ras_mapper_file += r'      <Layer Type="RAS'
+        str_ras_mapper_file += r'River" Checked="True" />' + "\n"
+        str_ras_mapper_file += r'      <Layer Type="RASXS" Checked'
+        str_ras_mapper_file += r'="True" />' + "\n"
+        str_ras_mapper_file += r"    </Layer>" + "\n"
+        str_ras_mapper_file += r"  </Geometries>" + "\n"
+
+        str_ras_mapper_file += r'  <Results Expanded="True">' + "\n"
+        str_ras_mapper_file += r'    <Layer Name="'
+        str_ras_mapper_file += str_river_id_fn + '" Type="RAS' + 'Results" Expanded="True" Filename=".'
+        str_ras_mapper_file += "\\" + str_river_id_fn + r'.p01.hdf">' + "\n"
+        str_ras_mapper_file += '      <Layer Type="RASGeometry" Filename=".'
+        str_ras_mapper_file += "\\" + str_river_id_fn + r'.p01.hdf" />' + "\n"
+
+        int_index = 0
+
+        # Loop through all profiles and create an XML request to map each depth
+        # grid in the list_step_profiles_xml_fn
+        for i in list_step_profiles_xml_fn: 
+            str_ras_mapper_file += '      <Layer Name="depth" Type="RAS'
+            str_ras_mapper_file += 'ResultsMap" Checked="True" Filename=".'
+
+            if model_unit == "meter":
+                str_ras_mapper_file += (
+                    "\\" + str_river_id_fn + "\\" + "Depth (" + str(i) + 'm).vrt">' + "\n"
+                )
+            else:
+                str_ras_mapper_file += (
+                    "\\" + str_river_id_fn + "\\" + "Depth (" + str(i) + 'ft).vrt">' + "\n"
+                )
+
+            str_ras_mapper_file += "        <LabelFeatures "
+            str_ras_mapper_file += 'Checked="True" Center="False" '
+            str_ras_mapper_file += 'rows="1" cols="1" r0c0="FID" '
+            str_ras_mapper_file += 'Position="5" Color="-16777216" />' + "\n"
+            str_ras_mapper_file += '        <MapParameters MapType="depth" Layer'
+            str_ras_mapper_file += 'Name="Depth" OutputMode="Stored Current '
+
+            if model_unit == "meter":
+                str_ras_mapper_file += (
+                    'Terrain" StoredFilename=".\\' + str_river_id_fn + "\\Depth (" + str(i) + 'm).vrt"'
+                )
+            else:
+                str_ras_mapper_file += (
+                    'Terrain" StoredFilename=".\\' + str_river_id_fn + "\\Depth (" + str(i) + 'ft).vrt"'
+                )
+
+            str_ras_mapper_file += (
+                ' Terrain="' + terrain_names + '" ProfileIndex="' + str(int_index) + '" '
+            )
+            str_ras_mapper_file += ' ProfileName="' + str(i) + 'm" ArrivalDepth="0" />' + "\n"
+            str_ras_mapper_file += "      </Layer>" + "\n"
+
+            int_index += 1
+
+        # Get the highest (last profile) flow innundation polygon
+        # --------------------
+        str_ras_mapper_file += '      <Layer Name="depth" Type="RAS'
+        str_ras_mapper_file += 'ResultsMap" Checked="True" Filename=".'
+
+        str_ras_mapper_file += (
+            "\\" + str_river_id_fn + "\\" + "Inundation Boundary (" + str(list_step_profiles_xml_fn[-1])
+        )
+
+        str_ras_mapper_file += 'ft Value_0.shp">' + "\n"
+        str_ras_mapper_file += '        <MapParameters MapType="depth" '
+        str_ras_mapper_file += 'LayerName="Inundation Boundary"'
+        str_ras_mapper_file += ' OutputMode="Stored Polygon'
+        str_ras_mapper_file += ' Specified Depth"  StoredFilename=".'
+        str_ras_mapper_file += (
+            "\\" + str_river_id_fn + "\\" + "Inundation Boundary (" + str(list_step_profiles_xml_fn[-1])
+        )
+        str_ras_mapper_file += (
+            'm Value_0).shp"  Terrain="'
+            + terrain_names
+            + '" ProfileIndex="'
+            + str(len(list_step_profiles_xml_fn) - 1)
+        )
+        str_ras_mapper_file += (
+            '"  ProfileName="' + str(list_step_profiles_xml_fn[-1]) + 'm"  ArrivalDepth="0" />' + "\n"
+        )
+        str_ras_mapper_file += "      </Layer>" + "\n"
+        # --------------------
+
+        str_ras_mapper_file += r"    </Layer>" + "\n"
+        str_ras_mapper_file += r"  </Results>" + "\n"
+
+        str_ras_mapper_file += r'  <Terrains Checked="True" Expanded="True">' + "\n"
+
+        str_ras_mapper_file += (
+            r'    <Layer Name="' + terrain_names + r'" Type="TerrainLayer" Checked="True" Filename="'
+        )
+
+        str_ras_mapper_file += str_path_to_terrain + "\\" + terrain_names + r'.hdf">' + "\n"
+
+        str_ras_mapper_file += r"    </Layer>" + "\n"
+        str_ras_mapper_file += r"  </Terrains>" + "\n"
+
+        str_ras_mapper_file += r"</RASMapper>"
+
+        path_1stpass_rasmap = os.path.join(
+            path_to_1st_pass_output, 
+            folder, 
+            folder[6:] + ".rasmap",
+            )
+        
+        with open(path_1stpass_rasmap, "w") as file:
+            file.write(str_ras_mapper_file)
+            file.close()
+
+    return(ls_number_of_steps_2ndpass)
 
 
 def fn_run_one_ras_model(
