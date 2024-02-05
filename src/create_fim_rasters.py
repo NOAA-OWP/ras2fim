@@ -68,6 +68,7 @@ def fn_create_fim_rasters(
     RLOG.lprint("+=================================================================+")
     RLOG.notice("|              PROCESSING CONFLATED HEC-RAS MODELS                |")
     RLOG.notice("|          AND CREATING DEPTH GRIDS FOR HEC-RAS STREAMS           |")
+    RLOG.notice("|                 (FIRST PASS FLOW HEC-RAS RUN)                   |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     names_created_ras_models = os.listdir(path_created_ras_models)
@@ -114,7 +115,90 @@ def fn_create_fim_rasters(
     RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
 
     RLOG.lprint("")
-    RLOG.success(" COMPLETE ")
+    RLOG.notice("|       PROCESSING FIRST-PASS FLOW HEC-RAS MODELS COMPLETED       |")
+    RLOG.lprint("")
+
+    # -------------------------------------------------
+    # Creating second-pass flow HEC-RAS files and
+    # Running created HEC-RAS models (multi-processing) 
+    # -------------------------------------------------
+
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.notice("|            CREATING SECOND-PASS FLOW HEC-RAS MODELS             |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
+    RLOG.lprint("  ---(w) HUC-8 WATERSHED: " + huc8_num)
+    RLOG.lprint("  ---(o) OUTPUT PATH: " + unit_output_folder)
+
+    flt_interval = 0.5 #feet
+
+    ls_number_of_steps_2ndpass = worker_fim_rasters.create_hecras_files_2ndpass(
+        huc8_num, model_unit, unit_output_folder, flt_interval
+    )
+    RLOG.lprint("*** All SECON-PASS FLOW HEC-RAS Models Created ***")
+    RLOG.lprint("")
+    RLOG.lprint("")
+    RLOG.lprint("+=================================================================+")
+    RLOG.notice("|           PROCESSING FIRST-PASS FLOW HEC-RAS MODELS             |")
+    RLOG.notice("|          AND CREATING DEPTH GRIDS FOR HEC-RAS STREAMS           |")
+    RLOG.lprint("+-----------------------------------------------------------------+")
+
+
+    log_file_prefix_2ndpass = "fn_run_hecras_2ndpass"
+
+    ls_run_hecras_inputs_2nd = []
+    ctr = 0
+    for mf2 in range(len(names_created_ras_models)):
+
+        model_folder2 = names_created_ras_models[mf2]
+
+        folder_mame_splt2 = model_folder2.split("_")
+        project_file_name2 = folder_mame_splt2[1]
+
+        str_ras_projectpath2 = os.path.join(
+            path_created_ras_models,
+            model_folder2,
+            project_file_name2 + ".prj"
+            )
+
+        run_hecras_inputs_2nd = {
+            'str_ras_projectpath': str_ras_projectpath2,
+            'int_number_of_steps': ls_number_of_steps_2ndpass[mf2], # TODO
+            'model_folder': model_folder2,
+            'unit_output_folder': unit_output_folder,
+            'log_default_folder': RLOG.LOG_DEFAULT_FOLDER,
+            'log_file_prefix_2ndpass': log_file_prefix_2ndpass,
+            'index_number': ctr,
+            'total_number_models': len(names_created_ras_models),
+        }
+
+        ls_run_hecras_inputs_2nd.append(run_hecras_inputs_2nd)
+        ctr += 1
+
+    # Remove 1st-pass flow hec-ras run depth grids    
+    for model_folder1 in names_created_ras_models:
+        folder_mame_splt1 = model_folder1.split("_")
+        depth_folder = folder_mame_splt1[1]
+        path_depth_1st = os.path.join(path_created_ras_models, model_folder1, depth_folder)
+        shutil.rmtree(path_depth_1st)
+
+    # Create a pool of processors
+    with ProcessPoolExecutor(max_workers=num_processors) as executor2:
+        executor_dict2 = {}
+        for dicts2 in ls_run_hecras_inputs_2nd:
+            try:
+                future2 = executor2.submit(worker_fim_rasters.fn_run_one_ras_model_2ndpass, **dicts2)
+                executor_dict2[future2] = dicts2['model_folder']
+            except Exception:
+                RLOG.critical(traceback.format_exc())
+                sys.exit(1)
+
+    # Now that multi-proc is done, lets merge all of the independent log file from each
+    RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
+
+
+    RLOG.lprint("")
+    RLOG.success(" COMPLETE: ALL HEC-RASS MODELS WERE PROCESSED ")
 
     dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)

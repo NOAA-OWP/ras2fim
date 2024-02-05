@@ -2,7 +2,6 @@
 # Uses the 'ras2fim' conda environment
 
 # -------------------------------------------------
-# import argparse
 import errno
 import os
 import pathlib
@@ -958,8 +957,7 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
     str_path_to_terrain = os.path.join(str_output_filepath_xml, sv.R2F_OUTPUT_DIR_HECRAS_TERRAIN)
 
     # -------------------------------------------------
-
-    # TODO: profile_names for second path flow
+    # Profile_names for first path flow
 
     list_step_profiles_xml_fn = ["flow_" + str(nms) for nms in range(int_number_of_steps)]
 
@@ -1309,21 +1307,58 @@ def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
     return all_x_sections_info
 
 
+def fn_run_one_ras_model(
+    str_ras_projectpath,
+    int_number_of_steps,
+    model_folder,
+    unit_output_folder,
+    log_default_folder,
+    log_file_prefix,
+    index_number,
+    total_number_models,
+):
+    try:
+        global MP_LOG
+
+        file_id = sf.get_date_with_milli()
+        log_file_name = f"{log_file_prefix}-{file_id}.log"
+        MP_LOG.setup(os.path.join(log_default_folder, log_file_name))
+
+        MP_LOG.lprint(f"Processing Model Number {index_number+1} Out Of {total_number_models}")
+        MP_LOG.lprint(f"Starting Processing {model_folder} Model")
+        MP_LOG.trace(str_ras_projectpath)
+
+        all_x_sections_info = fn_run_hecras(str_ras_projectpath, int_number_of_steps)
+
+        path_to_all_x_sections_info = os.path.join(
+            unit_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, model_folder
+        )
+        path_all_x_sections_info = os.path.join(
+            path_to_all_x_sections_info, "all_x_sections_info" + "_" + model_folder + ".csv"
+        )
+        all_x_sections_info.to_csv(path_all_x_sections_info)
+
+        MP_LOG.lprint(f"Processing {model_folder} Model Completed")
+
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            MP_LOG.error(traceback.format_exc())
+        else:
+            print(traceback.format_exc())
+
+
 # -------------------------------------------------
 # Creat 2nd-pass flow HEC-RAS files
 # For All RAS Models BC ~ 3 min
 # -------------------------------------------------
-huc8_num, model_unit, flt_interval = "12090301", "feet", 0.5
-unit_output_folder = "C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\v2_2ndpass_depthgrids\\12090301_2277_240202"
-ls_number_of_steps_2ndpass = create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_interval)
-
-
+# huc8_num, model_unit, flt_interval = "12090301", "feet", 0.5
+# unit_output_folder = "C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\v2_2ndpass_depthgrids\\12090301_2277_240202"
+# ls_number_of_steps_2ndpass = create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_interval)
 def create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_interval):
 
-    path_to_1st_pass_output = os.path.join(unit_output_folder, "05_hecras_output") # TODO: sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT
+    path_to_1st_pass_output = os.path.join(unit_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
     
     folder_1stpass_models = os.listdir(path_to_1st_pass_output)
-    # # TODO:  folder_1stpass_models = ["12129_BUCKNERS CREEK", "12365_COLORADO RIVER"]
 
     ls_number_of_steps_2ndpass = []    
     for folder in folder_1stpass_models:
@@ -1429,12 +1464,12 @@ def create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_in
         ls_second_pass_flows_xs = []
         for num_q in range(len(df_peak_flows_xs)):
 
-            int_max_flow2 = df_peak_flows_xs['discharge'][num_q]
+            int_max_flow2 = df_peak_flows_xs["discharge"][num_q]
             list_2nd_pass_flows2 = [int(int_max_flow2 * ratio) for ratio in second_pass_ratio]
             ls_second_pass_flows_xs.append(list_2nd_pass_flows2)
 
         second_pass_flows_xs_df = pd.DataFrame(ls_second_pass_flows_xs).T
-        second_pass_flows_xs_df.columns = [int(k1) for k1 in df_peak_flows_xs['Xsection_name']]
+        second_pass_flows_xs_df.columns = [int(k1) for k1 in df_peak_flows_xs["Xsection_name"]]
 
         ls_number_of_steps_2ndpass.append(int_number_of_steps_2ndpass)
 
@@ -1455,7 +1490,7 @@ def create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_in
             for line_1st in lines_flow_1st:
                 
                 # When BC is WSE
-                if line_1st[:11] == "Dn Known WS": # if "Dn Known WS" in line_1st:
+                if line_1st[:11] == "Dn Known WS":
                     
                     # First Xs where flow changes on the last reach
                     last_xs = second_pass_flows_xs_df.columns[-1]
@@ -1483,7 +1518,6 @@ def create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_in
                     
                     wse_2nd_last_xs = pd.DataFrame(f21(ls_last_xs_flow_prof), columns =['wse']) #bc_target_xs
                     # delta_wse_last_xs = wse_2nd_last_xs.diff()
-
                     break
 
             file_flow_1st.close()
@@ -1534,7 +1568,7 @@ def create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_in
         # -------------------------------------------------
         # Write the flow file for normal depth BC
         str_flowfile2 = "Flow Title="
-        str_flowfile2 += str_river[15:] + "\n"  # str_feature_id
+        str_flowfile2 += str_river[15:] + "\n"
         str_flowfile2 += "Program Version=6.3" + "\n"
         str_flowfile2 += "BEGIN FILE DESCRIPTION:" + "\n"
         str_flowfile2 += "Flow File - Created from Base Level Engineering"
@@ -1545,7 +1579,7 @@ def create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_in
 
         for fc2 in range(int_num_of_flow_change_xs):
             # list of the second pass flows
-            list_firstflows2 = ls_second_pass_flows_xs[fc2] #[path_in]
+            list_firstflows2 = ls_second_pass_flows_xs[fc2]
 
             str_xs_upstream_nd = str(int(df_peak_flows_xs['Xsection_name'][fc2]))
             str_flowfile2 += str_river + "," + str_reach + "," + str_xs_upstream_nd + "\n"
@@ -1593,11 +1627,11 @@ def create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_in
         
         str_path_to_terrain = os.path.join(
             unit_output_folder, 
-            "04_hecras_terrain" # TODO: sv.R2F_OUTPUT_DIR_HECRAS_TERRAIN
+            sv.R2F_OUTPUT_DIR_HECRAS_TERRAIN
             )
         str_path_to_projection = os.path.join(
             unit_output_folder,            
-            "02_csv_shapes_from_conflation", # TODO: sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, 
+            sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, 
             huc8_num + "_huc_12_ar.prj"
             )
         
@@ -1646,11 +1680,11 @@ def create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_in
 
             if model_unit == "meter":
                 str_ras_mapper_file += (
-                    "\\" + str_river_id_fn + "\\" + "Depth (" + str(i) + 'm).vrt">' + "\n"
+                    "\\" + str_river_id_fn + "_2nd" + "\\" + "Depth (" + str(i) + 'm).vrt">' + "\n"
                 )
             else:
                 str_ras_mapper_file += (
-                    "\\" + str_river_id_fn + "\\" + "Depth (" + str(i) + 'ft).vrt">' + "\n"
+                    "\\" + str_river_id_fn + "_2nd" + "\\" + "Depth (" + str(i) + 'ft).vrt">' + "\n"
                 )
 
             str_ras_mapper_file += "        <LabelFeatures "
@@ -1662,11 +1696,11 @@ def create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_in
 
             if model_unit == "meter":
                 str_ras_mapper_file += (
-                    'Terrain" StoredFilename=".\\' + str_river_id_fn + "\\Depth (" + str(i) + 'm).vrt"'
+                    'Terrain" StoredFilename=".\\' + str_river_id_fn + "_2nd" + "\\Depth (" + str(i) + 'm).vrt"'
                 )
             else:
                 str_ras_mapper_file += (
-                    'Terrain" StoredFilename=".\\' + str_river_id_fn + "\\Depth (" + str(i) + 'ft).vrt"'
+                    'Terrain" StoredFilename=".\\' + str_river_id_fn + "_2nd" + "\\Depth (" + str(i) + 'ft).vrt"'
                 )
 
             str_ras_mapper_file += (
@@ -1683,7 +1717,7 @@ def create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_in
         str_ras_mapper_file += 'ResultsMap" Checked="True" Filename=".'
 
         str_ras_mapper_file += (
-            "\\" + str_river_id_fn + "\\" + "Inundation Boundary (" + str(list_step_profiles_xml_fn[-1])
+            "\\" + str_river_id_fn + "_2nd" + "\\" + "Inundation Boundary (" + str(list_step_profiles_xml_fn[-1])
         )
 
         str_ras_mapper_file += 'ft Value_0.shp">' + "\n"
@@ -1692,7 +1726,7 @@ def create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_in
         str_ras_mapper_file += ' OutputMode="Stored Polygon'
         str_ras_mapper_file += ' Specified Depth"  StoredFilename=".'
         str_ras_mapper_file += (
-            "\\" + str_river_id_fn + "\\" + "Inundation Boundary (" + str(list_step_profiles_xml_fn[-1])
+            "\\" + str_river_id_fn + "_2nd" + "\\" + "Inundation Boundary (" + str(list_step_profiles_xml_fn[-1])
         )
         str_ras_mapper_file += (
             'm Value_0).shp"  Terrain="'
@@ -1735,9 +1769,9 @@ def create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_in
     return(ls_number_of_steps_2ndpass)
 
 
-def fn_run_one_ras_model(
+def fn_run_one_ras_model_2ndpass(
     str_ras_projectpath,
-    int_number_of_steps,
+    int_number_of_steps_2ndpass,
     model_folder,
     unit_output_folder,
     log_default_folder,
@@ -1756,13 +1790,13 @@ def fn_run_one_ras_model(
         MP_LOG.lprint(f"Starting Processing {model_folder} Model")
         MP_LOG.trace(str_ras_projectpath)
 
-        all_x_sections_info = fn_run_hecras(str_ras_projectpath, int_number_of_steps)
+        all_x_sections_info = fn_run_hecras(str_ras_projectpath, int_number_of_steps_2ndpass)
 
         path_to_all_x_sections_info = os.path.join(
             unit_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, model_folder
         )
         path_all_x_sections_info = os.path.join(
-            path_to_all_x_sections_info, "all_x_sections_info" + "_" + model_folder + ".csv"
+            path_to_all_x_sections_info, "all_x_sections_info_2ndpass" + "_" + model_folder + ".csv"
         )
         all_x_sections_info.to_csv(path_all_x_sections_info)
 
@@ -1773,5 +1807,4 @@ def fn_run_one_ras_model(
             MP_LOG.error(traceback.format_exc())
         else:
             print(traceback.format_exc())
-
         # sys.exit(1)
