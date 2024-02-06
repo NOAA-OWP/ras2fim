@@ -20,8 +20,8 @@ import pathlib
 import re
 import time
 import traceback
-from warnings import warn
 from time import sleep
+from warnings import warn
 
 import geopandas as gpd
 import numpy as np
@@ -177,7 +177,6 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
     warn('This is deprecated', DeprecationWarning, stacklevel=2)
 
     flt_start_simplify_fim = time.time()
-
 
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")

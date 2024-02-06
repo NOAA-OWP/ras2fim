@@ -387,7 +387,6 @@ def fn_run_ras2fim(
     RLOG.lprint(f"Module temporarily disabled.: {sf.get_stnd_date()}")
     # fn_calculate_all_terrain_stats(unit_output_path)
 
-
     # -------------------------------------------------
     if os.getenv("PRODUCE_GEOCURVES") == "True":
         RLOG.lprint("")
