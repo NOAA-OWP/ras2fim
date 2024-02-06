@@ -96,7 +96,8 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
 
     RLOG.lprint("===================================================================")
     print("")
-    RLOG.notice(f"Uploading folder from {src_path}  to  {s3_full_target_path}")
+    RLOG.notice(f"Uploading folder from {src_path}"
+                f"                  to  {s3_full_target_path}")
     print()
 
     # nested function
@@ -167,17 +168,6 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
                     RLOG.critical(traceback.format_exc())
                     sys.exit(1)
 
-        # TODO: We have better future handling in download_folder, replace this.
-        """
-        for future in futures.as_completed(executor_dict):
-            key = future_to_key[future]
-            exception = future.exception()
-
-            if not exception:
-                yield key, future.result()
-            else:
-                yield key, exception
-        """
         RLOG.lprint(" ... Uploading complete")
         print()
 
@@ -312,7 +302,8 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
     try:
         RLOG.lprint("===================================================================")
         print("")
-        RLOG.notice(f"Moving folder from {s3_src_folder_path}  to  {s3_target_folder_path}")
+        RLOG.notice(f"Moving folder from {s3_src_folder_path}"
+                    f"                to  {s3_target_folder_path}")
         print()
         print(
             f"{cl.fg('dodger_blue_1')}"

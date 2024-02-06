@@ -99,8 +99,10 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name):
 
     unit_folder_name = varibles_dict["unit_folder_name"]
     # eg. 12030202_102739_ble_230810
+
     s3_output_path = varibles_dict["s3_output_path"]
     # e.g. s3://ras2fim-dev/output_ras2fim
+
     s3_archive_path = varibles_dict["s3_archive_path"]
     # e.g. s3://xyz/output_ras2fim_archive
 
@@ -861,14 +863,14 @@ def __validate_input(src_unit_dir_path, s3_bucket_name):
     # we need to split this to seperate variables.
     # e.g src_unit_dir_path = c:\ras2fim_data\output_ras2fim\12030202_102739_230810
 
-    # "src_unit_dir" becomes (if not already) 12030202_102739_230810
+    # "unit_folder_name" becomes (if not already) 12030202_102739_230810
     # "src_unit_full_path" becomes (if not already) c:\ras2fim_data\output_ras2fim\12030202_102739_230810
     # remembering that the path or folder name might be different.
     src_unit_dir_path = src_unit_dir_path.replace("/", "\\")
     src_path_segs = src_unit_dir_path.split("\\")
 
     # We need the source huc_crs folder name for later and the full path
-    rtn_dict["src_unit_dir"] = src_path_segs[-1]
+    rtn_dict["unit_folder_name"] = src_path_segs[-1]
     # strip of the parent path
     rtn_dict["src_unit_full_path"] = src_unit_dir_path
 
@@ -917,7 +919,7 @@ def __validate_input(src_unit_dir_path, s3_bucket_name):
         RLOG.lprint(f"{msg} ... found")
 
     # e.g. s3://ras2fim-dev/output_ras2fim
-    rtn_dict["s3_full_output_path"] = s3_full_output_path
+    rtn_dict["s3_output_path"] = s3_full_output_path
 
     # --------------------
     # check ras2fim archive folder exists
@@ -927,7 +929,7 @@ def __validate_input(src_unit_dir_path, s3_bucket_name):
         raise ValueError(f"{msg} ... does not exist")
     else:
         RLOG.lprint(f"{msg} ... found")
-    rtn_dict["s3_full_archive_path"] = s3_full_archive_path
+    rtn_dict["s3_archive_path"] = s3_full_archive_path
     print()
 
     return rtn_dict
@@ -975,16 +977,6 @@ if __name__ == "__main__":
         f"Defaults to {sv.S3_DEFAULT_BUCKET_NAME}",
         required=False,
         metavar="",
-    )
-
-    parser.add_argument(
-        "-v",
-        "--is_verbose",
-        help="OPTIONAL: Adding this flag will give additional tracing output."
-        "Default = False (no extra output)",
-        required=False,
-        default=False,
-        action="store_true",
     )
 
     args = vars(parser.parse_args())

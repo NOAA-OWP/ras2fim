@@ -498,7 +498,7 @@ if __name__ == "__main__":
         help="OPTIONAL: By default, the results of creating a release folder"
         " will be saved to S3.\n"
         " Note: You may need to review the -t flag to ensure it is being saved"
-        f" to the S3 bucket and folder you wish.",
+        " to the S3 bucket and folder you wish.",
         required=False,
         default=False,
         action="store_true",

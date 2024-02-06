@@ -211,8 +211,8 @@ if __name__ == "__main__":
         help="OPTIONAL: This value starting s3 folder (full s3 path) where searching will be done.\n"
         "ie) s3://ras2fim-dev/OWP_ras_models/my_models.\n"
         "Note: This value IS case-sensitive\n"
-        f"Defaults to {sv.S3_OUTPUT_MODELS_FOLDER}",
-        default=sv.S3_OUTPUT_MODELS_FOLDER,
+        f"Defaults to {sv.S3_OWP_RAS_MODELS_FOLDER}",
+        default=sv.S3_OWP_RAS_MODELS_FOLDER,
         required=False,
         metavar="",
     )
