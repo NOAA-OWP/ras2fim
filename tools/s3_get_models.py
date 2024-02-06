@@ -18,7 +18,7 @@ import s3_shared_functions as s3_sf
 
 import shared_validators as val
 import shared_variables as sv
-from shared_functions import get_source_info, get_stnd_date, print_date_time_duration
+from shared_functions import get_date_time_duration_msg, get_source_info, get_stnd_date
 
 
 # Global Variables
@@ -70,6 +70,12 @@ Features for this tool include:
          be "OWP_ras_models_catalog_{HUC}.csv"
 
 """
+
+# TODO: Feb 5, 2024
+# Add a "quiet" system, so automation can just continue without any input to other steps
+# if required.  (aka.. part of a bigger pipeline process)
+# Also add an exit value (0 or 1) or something if the tool called not through command line, so the parent can
+# know to continue or not
 
 
 # -------------------------------------------------
@@ -272,9 +278,10 @@ class Get_Models_By_Catalog:
                 RLOG.lprint("--------------------------------------")
 
                 bucket_name, s3_download_folder = s3_sf.parse_bucket_and_folder_name(
-                    self.src_owp_model_folder_path)
+                    self.src_owp_model_folder_path
+                )
 
-               # See if the df already has the two download colums and add them if required.
+                # See if the df already has the two download colums and add them if required.
                 # We will update the values later.
 
                 # With each valid record found, we will add a dictionary record that can be passed
@@ -314,9 +321,8 @@ class Get_Models_By_Catalog:
 
                     list_folders.append(item)
 
-                # Perform the actual download
                 downloaded_items = s3_sf.download_folders(list_folders)
-                
+
                 # Update the original dataframe
                 for item in downloaded_items:
                     folder_id = item["folder_id"]
@@ -367,7 +373,7 @@ class Get_Models_By_Catalog:
         RLOG.success(f"Filtered model catalog saved to : {self.target_filtered_csv_path}")
         print(f"log files saved to {RLOG.LOG_FILE_PATH}")
 
-        dur_msg = print_date_time_duration(start_dt, dt.datetime.utcnow())
+        dur_msg = get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
         RLOG.lprint(dur_msg)
         print()
 

@@ -164,18 +164,17 @@ def __validate_input(s3_path, search_key, output_folder_path):
 
     # will raise some of it's own exceptions if needed
     if s3_sf.is_valid_s3_folder(s3_path) is False:
-       raise ValueError(f"S3 search folder of {s3_path} ... does not exist")
-    
+        raise ValueError(f"S3 search folder of {s3_path} ... does not exist")
+
     bucket_name, s3_search_folder = s3_sf.parse_bucket_and_folder_name(s3_path)
     rtn_dict["bucket_name"] = bucket_name
-    rtn_dict["s3_search_folder"] = s3_search_folder    
+    rtn_dict["s3_search_folder"] = s3_search_folder
 
     return rtn_dict
 
 
 ####################################################################
 if __name__ == "__main__":
-
     # ***********************
     # This tool is intended for NOAA/OWP staff only as it requires access to an AWS S3 bucket with a
     # specific folder structure.

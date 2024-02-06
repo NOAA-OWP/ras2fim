@@ -2,38 +2,47 @@
 
 import argparse
 import datetime as dt
-import glob
 import os
 import shutil
 import sys
 import traceback
 
 import colored as cl
-import geopandas as gpd
-import pandas as pd
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import s3_shared_functions as s3_sf
 
-import ras2fim_logger
 import shared_variables as sv
-from shared_functions import get_date_with_milli, get_stnd_date, print_date_time_duration
+from shared_functions import get_date_with_milli
+
 
 # Global Variables
 RLOG = sv.R2F_LOG
+__GEOCURVES = "geocurves"
+
+# TODO: Feb 5, 2024. This should be smarter eventually where we can have some sort of whitelist txt
+# file or something so that each package can read it to figure out what files/ folders it needs.
+# Alot of hardcoding of folders in here, but that is plenty good enough for now.
+
+
+# **********************
+# NOTE
+#   While V2 is WIP, we will use folder pathing from V1 and change it as V2 gets closer to completion.
+# **********************
 
 
 # -------------------------------------------------
-def create_ras2release(release_name, local_ras2release_path, s3_path_to_output_folder,
-                        s3_ras2release_path, skip_save_to_s3):
+def create_ras2release(
+    release_name, local_ras2release_path, s3_path_to_output_folder, s3_ras2release_path, skip_save_to_s3
+):
     """
     # TODO - WIP
     Processing:
         - load the config/ras2release_download_items.lst
             TODO: should we? we process most of them?
             AND: How do we know which folder to output, HydroVIS, FIM
-        - 
+        -
     Inputs:
         - release_name: e.g. r102
         - local_ras2release_path: e.g. c:/my_ras2fim_dir/releases/
@@ -46,45 +55,41 @@ def create_ras2release(release_name, local_ras2release_path, s3_path_to_output_f
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
     # Todo: migth need some validatation here first ??
-    #s3_release_path = s3_ras2release_path + "/" + rel_name
+    # s3_release_path = s3_ras2release_path + "/" + rel_name
 
     print("")
     RLOG.lprint("=================================================================")
     RLOG.notice("          RUN ras2release ")
     RLOG.lprint(f"  (-r): release path and folder name = {release_name} ")
-    RLOG.lprint(f"  (-l): local ras2release path  = {local_ras2release_path}")    
+    RLOG.lprint(f"  (-l): local ras2release path  = {local_ras2release_path}")
     RLOG.lprint(f"  (-s): s3 path to output folder name  = {s3_path_to_output_folder}")
     RLOG.lprint(f"  (-t): s3 ras2release path  = {s3_ras2release_path}/(rel_name)")
     RLOG.lprint(f"  (-ss): Skip saving release results to S3 = {skip_save_to_s3}")
 
     # validate input variables and setup key variables
     # rd = Variables Dictionary
-    rd = __validate_input(release_name, s3_path_to_output_folder, local_ras2release_path,
-                          s3_ras2release_path, skip_save_to_s3)
+    rd = __validate_input(
+        release_name, s3_path_to_output_folder, local_ras2release_path, s3_ras2release_path, skip_save_to_s3
+    )
 
     local_rel_folder = rd["local_target_rel_path"]
     local_rel_units_folder = os.path.join(local_rel_folder, "units")
     s3_unit_output_bucket_name = rd["s3_unit_output_bucket_name"]
     s3_unit_output_folder = rd["s3_unit_output_folder"]
 
-    if skip_save_to_s3 is False:
-        s3_release_bucket_name = rd["s3_rel_bucket_name"]
-        
     print()
     RLOG.lprint(f"Started (UTC): {dt_string}")
-    local_unit_folders = __download_units_from_s3 (s3_unit_output_bucket_name,
-                                                   s3_unit_output_folder, local_rel_units_folder) 
+    local_unit_folders = __download_units_from_s3(
+        s3_unit_output_bucket_name, s3_unit_output_folder, local_rel_units_folder
+    )
 
+    __create_hydrovis_package(local_rel_folder, local_unit_folders)
 
-    # __load_hydrovis_folder
-        # __process_geocurves()
-            # Just merge
+    __create_fim_package(local_rel_folder, local_unit_folders)
 
-    # __load_fim_folder
-        #__process_rating_curves(src_rel_unit_dirs, local_rel_folder)
-        
-    #if skip_save_to_s3 is True:
-    # __save_to_s3(local_wip_folder)
+    # if skip_save_to_s3 is True:
+    #    s3_release_bucket_name = rd["s3_rel_bucket_name"]
+    # __save_to_s3(s3_release_bucket_name, local_wip_folder... ?
 
     print()
     print("===================================================================")
@@ -101,7 +106,6 @@ def create_ras2release(release_name, local_ras2release_path, s3_path_to_output_f
 
 # -------------------------------------------------
 def __download_units_from_s3(bucket, s3_path_to_output_folder, local_rel_units_folder):
-
     """
     Process:
         - Get a list of the output units folder (without the "final" subfolder).
@@ -113,50 +117,63 @@ def __download_units_from_s3(bucket, s3_path_to_output_folder, local_rel_units_f
         - s3_path_to_output_folder: e.g. output_ras2fim
         - local_rel_units_folder: e.g. c:/my_ras2fim_dir/ras2fim_releases/r102-test/units
     Output:
-        - returns a list of full pathed local unit folders:
+        - returns a list of full pathed local unit folders that are still valid and have not failed:
           e.g c:/my_ras2fim_dir/ras2fim_releases/r102-test/units/12090301_2277_ble_230923
     """
 
+    # add a duration system
+    start_time = dt.datetime.utcnow()
+
     print()
-    RLOG.lprint("Downloading all s3 unit output folder, but just the 'final' directories")
+    print("------------------------------------------")
+    RLOG.notice("Downloading all s3 unit output folder (but just the 'final' directories)")
     print()
 
-    # Get list of output folders (not counting the "final") folders. 
+    # Get list of output folders (not counting the "final") folders.
     # We are looking for any output folders that are missing "final" folders are invalid
     # e.g. each item is : output_ras2fim\12090301_2277_ble_230923
     s3_output_unit_folders = s3_sf.get_folder_list(bucket, s3_path_to_output_folder, False)
     if len(s3_output_unit_folders) == 0:
         RLOG.critical(f"No output unit folders were found at {s3_path_to_output_folder}")
+        sys.exit(1)
 
     # Create a list of folder paths that have a "final" folder.
     s3_final_folders = []
+
     for unit_folder in s3_output_unit_folders:
         # we temp add the word "/final" of it so it directly compares to the unit file folder list.
         unit_folder_name = unit_folder["key"]
         full_unit_path = f"{unit_folder['url']}/final"
-        
+
         unit_final_folder = f"{s3_path_to_output_folder}/{unit_folder_name}/final"
 
         if s3_sf.is_valid_s3_folder(full_unit_path) is False:
-            RLOG.warning(f"{s3_path_to_output_folder}/{unit_folder_name} did not"
-                         " have a 'final' folder and was skipped.")
+            RLOG.warning(
+                f"{s3_path_to_output_folder}/{unit_folder_name} did not"
+                " have a 'final' folder and was skipped."
+            )
+            continue
 
         local_target_path = os.path.join(local_rel_units_folder, unit_folder_name)
 
-        item = {"bucket_name": bucket,
-                "folder_id": unit_folder_name,
-                "s3_src_folder": unit_final_folder,
-                "target_local_folder": local_target_path,
-            }
-        
+        item = {
+            "bucket_name": bucket,
+            "folder_id": unit_folder_name,
+            "s3_src_folder": unit_final_folder,
+            "target_local_folder": local_target_path,
+        }
+
         s3_final_folders.append(item)
-        
-    print(f"{cl.fg('light_yellow')}"
-          f"Downloading units to {local_rel_units_folder}\n\n"
-          f"Note: Downloading can be pretty slow based on the number of unit folders"
-           " and the amount of files in them.\n\nIt can take 3 - 10 minutes or more per unit.\n"
-           "Multi-threading is included to help download the files as fast as we reasonably can."
-          f"{cl.attr(0)}")
+
+    print(
+        f"{cl.fg('light_yellow')}"
+        f"Downloading units to {local_rel_units_folder}\n\n"
+        f"Note: Downloading can be pretty slow based on the number of unit folders"
+        " and the amount of files in them.\n\n"
+        "It can take 3 - 10 minutes or more per unit.\n"
+        "Multi-threading is included to help download the files as fast as we reasonably can."
+        f"{cl.attr(0)}"
+    )
     print()
 
     # returns a list of dictionaries, with the following schema
@@ -166,80 +183,135 @@ def __download_units_from_s3(bucket, s3_path_to_output_folder, local_rel_units_f
     # - "error_details" - why did it fail
     # For out situation here, it already logged and error and continued. We will not abort the set
     # We don't want to abort the set. But we do want to iterate to see who is still successfull
+    # is_small_folders = True means there could be very large folders (and its subfolders)
+    num_unit_final_folders = len(s3_final_folders)
     rtn_download_details = s3_sf.download_folders(s3_final_folders)
+
+    print()
+    # Calculate duration
+    end_time = dt.datetime.utcnow()
+    time_duration = end_time - start_time
+    RLOG.lprint(f"Unit downloads duration is {str(time_duration).split('.')[0]}")
+
+    # we only want to continue with units that are still valid
     rtn_unit_folders = []
+    count_fails = 0
     for item in rtn_download_details:
-        if item["download_success"] == "True": # yes.. string version
+        if item["download_success"] is True:
             rtn_unit_folders.append(os.path.join(local_rel_units_folder, item["folder_id"]))
+        else:
+            count_fails += 1
+
+    if count_fails > 0:
+        msg = (
+            f"{cl.fore.SPRING_GREEN_2B}"
+            f"The system record {count_fails} warnings and/or errors during downloading."
+            " Please review the logs more before details.\n\n"
+            "Would you like to continue building the release?"
+            f"{cl.style.RESET}\n\n"
+            f"   -- Type {cl.fore.SPRING_GREEN_2B}'continue'{cl.style.RESET}\n"
+            f"   -- Type {cl.fore.SPRING_GREEN_2B}'abort'{cl.style.RESET}"
+            " or really any key to stop the program.\n"
+            f"{cl.fore.SPRING_GREEN_2B}  ?={cl.style.RESET}"
+        )
+
+        resp = input(msg).lower()
+        if (resp) != "continue":
+            RLOG.lprint("\n.. Program stopped.\n")
+            sys.exit(0)
+
+    if len(rtn_download_details) == count_fails:
+        RLOG.critical(
+            f"All {num_unit_final_folders} non skipped unit folders had errors." " Program stopped.\n"
+        )
+        sys.exit(1)
+
+    print("------------------------------------------")
 
     return rtn_unit_folders
 
 
 # -------------------------------------------------
-####  Some validation of input, but also creating key variables ######
-def __validate_input(rel_name, s3_path_to_output_folder, local_working_folder_path,
-                      s3_ras2release_path, skip_save_to_s3):
+def __create_hydrovis_package(local_rel_folder, local_unit_folders):
     """
-    Summary: Will raise Exception if some are found
-
+    Process: We may not have all of the unit folders we started with, but we want to continue
+       to process what still exists.
+       For HydroVIS, they just need one folder of all of the geocurves from each of the units
+       pulled together into one folder.
     Inputs:
-        - release_name: e.g. r102
-        - local_ras2release_path: e.g. c:/my_ras2fim_dir/releases/
-        - s3_path_to_output_folder: e.g. s3://my_ras2fim_bucket/output_ras2fim
-        - s3_ras2release_path: e.g. s3://my_ras2fim_bucket/ras2release/
+        - local_rel_folder: e.g. c:/ras2fim_data/ras2release/temp/r200
+        - local_unit_folders (list of valid local unit folders)
+            - e.g c:/my_ras2fim_dir/ras2fim_releases/r102-test/units/12090301_2277_ble_230923
+              and c:/my_ras2fim_dir/ras2fim_releases/r102-test/units/12030202_102739_ble_230924
 
-    Output: dictionary
     """
 
-    # Some variables need to be adjusted and some new derived variables are created
-    # dictionary (key / pair) will be returned
+    if len(local_unit_folders) == 0:
+        RLOG.critical("No valid unit folders to merge into a HydroVIS package. Program Stopped.")
+        sys.exit(1)
 
-    rtn_dict = {}
+    __HYDROVIS_FOLDER = "HydroVIS"
 
-    # ----------------
-    if rel_name == "":
-        raise ValueError("rel_name (-r) can not be empty")
+    print()
+    print("------------------------------------------")
+    RLOG.notice("Creating / Loading the HydroVIS release folder")
+    print()
 
-    # ----------------
-    # test s3 bucket and paths (it will automatically throw exceptions)
-    if s3_sf.is_valid_s3_folder(s3_path_to_output_folder) is False:
-        raise ValueError(f"S3 path to outputs ({s3_path_to_output_folder}) does not exist")
+    full_hv_folder = os.path.join(local_rel_folder, __HYDROVIS_FOLDER)
+    full_hv_gc_folder = os.path.join(full_hv_folder, __GEOCURVES)
 
-    
-    bucket_name, s3_output_folder = s3_sf.parse_bucket_and_folder_name(s3_path_to_output_folder)
-    rtn_dict["s3_unit_output_bucket_name"] = bucket_name
-    rtn_dict["s3_unit_output_folder"] = s3_output_folder
+    if os.path.exists(__HYDROVIS_FOLDER):
+        shutil.rmtree(__HYDROVIS_FOLDER, ignore_errors=True)
 
-    if skip_save_to_s3 is False:
-        if s3_sf.is_valid_s3_folder(s3_ras2release_path) is False:
-            raise ValueError(f"S3 path to releases ({s3_ras2release_path}) does not exist")
+    os.mkdir(full_hv_folder)
+    os.mkdir(full_hv_gc_folder)
 
-        bucket_name, s3_output_folder = s3_sf.parse_bucket_and_folder_name(s3_ras2release_path)
-        rtn_dict["s3_rel_bucket_name"] = bucket_name
-        rtn_dict["s3_rel_folder"] = s3_output_folder
+    for unit_folder in local_unit_folders:
+        unit_gc_folder = os.path.join(unit_folder, __GEOCURVES)
+        if os.path.exists(unit_gc_folder):
+            shutil.copytree(unit_gc_folder, full_hv_gc_folder, dirs_exist_ok=True)
+        else:
+            RLOG.warning(f"{__GEOCURVES} folder not found for folder {unit_folder}")
 
-    # ----------------
-    # ie) c:/ras2fim_data/ras2release/temp/r200
-    local_target_rel_path = os.path.join(local_working_folder_path, rel_name)
-    rtn_dict["local_target_rel_path"] = local_target_rel_path
-
-    if os.path.exists(local_target_rel_path):
-
-        # TODO: Ask.. it exists, overwrite?
-
-        shutil.rmtree(local_target_rel_path, ignore_errors=True)
-    else:
-        os.makedirs(local_target_rel_path, exist_ok=True)
-
-    return rtn_dict
+    RLOG.lprint("Completed - Creating / loading the HydroVIS release folder")
+    print("------------------------------------------")
 
 
 # -------------------------------------------------
-# def __process_geocurves():
+def __create_fim_package(local_rel_folder, local_unit_folders):
+    # process_rating_curves (reformat files ... (src_rel_unit_dirs, local_rel_folder):
+    # TODO: WIP
+
+    # not sure yet, if we will call a merging tool that takes care of the logic for merging
+    # rating curves or do it here.
+
+    # create FIM folder (like HV above)
+
+    print()
+    print("------------------------------------------")
+    RLOG.notice("Creating / Loading the FIM release folder")
+    print()
+
+    print("this function is WIP\n\n")
+
+    print(
+        "This is where setup files for FIM are at."
+        "At this point, it might just be stripping of the front HUC number of"
+        " each of the unit folders."
+    )
+
+    # Do this first.
+    # Using each of the incoming local unit_folder names, strip off the huc number off
+    # the front. See if there are any duplicates. If there are, we have to stop.
+    # We don't have other logic workign in various places yet for duplicate HUCs from units
+
+    # If we don't have dups, no we can process them. FIM now wants seperate HUC folders which for
+    # now are a one-to-one case (unit to HUC)
 
 
+"""
 # -------------------------------------------------
-def __process_domain_models(local_src_unit_paths, local_wip_folder):
+# def __process_domain_models(local_rel_folder, local_wip_folder):
 
     # TODO: WIP
 
@@ -279,99 +351,76 @@ def __process_domain_models(local_src_unit_paths, local_wip_folder):
             merged_gkpg = pd.concat([merged_gkpg, gkpg_adj], ignore_index=True)
 
     merged_gkpg.to_file(merged_domain_model_file, driver="GPKG")
-
+"""
 
 # -------------------------------------------------
 # def __process_models_used():
+#   not sure if we will need this. Likely not
 
 
 # -------------------------------------------------
-def __process_rating_curves(src_rel_unit_dirs, local_rel_folder):
-    # TODO: WIP
+# def __save_to_s3(local_rel_folder):
 
+
+# -------------------------------------------------
+#  Some validation of input, but also creating key variables
+def __validate_input(
+    rel_name, s3_path_to_output_folder, local_working_folder_path, s3_ras2release_path, skip_save_to_s3
+):
     """
-    Summary:
+    Summary: Will raise Exception if some are found
+
     Inputs:
-        - src_rel_unit_dirs: A list of all of the downloaded unit "final" folders
-        - local_rel_folder: The new parent rel folder
+        - release_name: e.g. r102
+        - local_ras2release_path: e.g. c:/my_ras2fim_dir/releases/
+        - s3_path_to_output_folder: e.g. s3://my_ras2fim_bucket/output_ras2fim
+        - s3_ras2release_path: e.g. s3://my_ras2fim_bucket/ras2release/
+
+    Output: dictionary
     """
 
-    print()
-    print("*** processing rating curves")
+    # Some variables need to be adjusted and some new derived variables are created
+    # dictionary (key / pair) will be returned
 
-    output_folder = os.path.join(local_rel_folder, "calibration_rating_curves")
-
-    # TODO: Add rel version name into file?
-    merged_rc_table_file = os.path.join(output_folder, "reformat_ras_rating_curve_table.csv")
-    merged_rc_points_file = os.path.join(output_folder, "reformat_ras_rating_curve_points.gpkg")
-
-    if os.path.exists(output_folder):
-        shutil.rmtree(output_folder)
-
-    os.mkdir(output_folder)
+    rtn_dict = {}
 
     # ----------------
-    # Iterate and join the table files
-    calib_dir_name = "ras2calibration"
-    print(f"calibration rating curve output folder is {output_folder}")
-
-    rc_table_files = []
-    for unit_dir, full_src_unit_path in src_rel_unit_dirs.items():
-        src_rc_table_file = os.path.join(full_src_unit_path, calib_dir_name,
-                                         "ras2calibration_rating_curve_table.csv")
-        if os.path.isfile(src_rc_table_file):
-            rc_table_files.append(src_rc_table_file)
-
-    if len(rc_table_files) == 0:
-        raise Exception("Error: No ras2calibration_rating_curve_table.csv files found.")
-
-    # append the CSV files
-    # TODO: Make this a loop and tdqm manually in place (not multi thread or multi proc)
-    # but manual tdqm so we can watch progress.
-    # what memory sizes
-    df_tables = pd.concat([pd.read_csv(file) for file in rc_table_files], ignore_index=True)
-    df_tables.to_csv(merged_rc_table_file, index=False)
-
-    print(f"rating curve table files merged to {merged_rc_table_file}")
+    if rel_name == "":
+        raise ValueError("rel_name (-r) can not be empty")
 
     # ----------------
-    # Iterate and join the point files
-    rc_points_files = []
-    for unit_dir, full_src_unit_path in src_rel_unit_dirs.items():
-        src_rc_point_file = os.path.join(full_src_unit_path, calib_dir_name,
-                                         "ras2calibration_rating_curve_points.gpkg")
-        if os.path.isfile(src_rc_point_file):
-            rc_points_files.append(src_rc_point_file)
+    # test s3 bucket and paths (it will automatically throw exceptions)
+    if s3_sf.is_valid_s3_folder(s3_path_to_output_folder) is False:
+        raise ValueError(f"S3 path to outputs ({s3_path_to_output_folder}) does not exist")
 
-    if len(rc_points_files) == 0:
-        raise Exception("Error: No ras2calibration_rating_curve_points.gpkg files found.")
+    bucket_name, s3_output_folder = s3_sf.parse_bucket_and_folder_name(s3_path_to_output_folder)
+    rtn_dict["s3_unit_output_bucket_name"] = bucket_name
+    rtn_dict["s3_unit_output_folder"] = s3_output_folder
 
-    compiled_geopackage = None
+    if skip_save_to_s3 is False:
+        if s3_sf.is_valid_s3_folder(s3_ras2release_path) is False:
+            raise ValueError(f"S3 path to releases ({s3_ras2release_path}) does not exist")
 
-    # Add manual tqdm (not multi proc or multi thread)
-    # Iterate through input geopackages and compile them
-    for i in range(len(rc_points_files)):
-        print(f"We are at rc_point_files index of {i}")
-        if i == 0:
-            # we have to load the first gkpg directly then concat more after.
-            # Create an empty GeoDataFrame to store the compiled data
-            compiled_geopackage = gpd.read_file(rc_points_files[i])
-        else:
-            data = gpd.read_file(rc_points_files[i])
-            compiled_geopackage = pd.concat([compiled_geopackage, data], ignore_index=True)
+        bucket_name, s3_output_folder = s3_sf.parse_bucket_and_folder_name(s3_ras2release_path)
+        rtn_dict["s3_rel_bucket_name"] = bucket_name
+        rtn_dict["s3_rel_folder"] = s3_output_folder
 
-    compiled_geopackage.to_file(merged_rc_points_file, driver="GPKG")
+    # ----------------
+    # ie) c:/ras2fim_data/ras2release/temp/r200
+    local_target_rel_path = os.path.join(local_working_folder_path, rel_name)
+    rtn_dict["local_target_rel_path"] = local_target_rel_path
 
-    print(f"rating curve point files merged to {merged_rc_points_file}")
+    if os.path.exists(local_target_rel_path):
+        # TODO: Ask.. it exists, overwrite?
+        shutil.rmtree(local_target_rel_path, ignore_errors=True)
 
+    os.makedirs(local_target_rel_path, exist_ok=True)
 
-# -------------------------------------------------
-# def __save_to_s3(local_wip_folder):
+    return rtn_dict
 
 
 # -------------------------------------------------
 if __name__ == "__main__":
-
     # ***********************
     # This tool is intended for NOAA/OWP staff only as it requires access to an AWS S3 bucket with a
     # specific folder structure.
@@ -381,7 +430,7 @@ if __name__ == "__main__":
     # ---- Samples Inputs
     # Min args:
     #  python ./tools/ras2release.py -r r121
-    #  
+    #
 
     # Max args:
     #  python ./tools/ras2release.py -r r121 -w c:/my_release_folder
@@ -392,7 +441,6 @@ if __name__ == "__main__":
     #   e.g. c:/my_release_folder/r121
     #   Same is true when we upload the results back to S3 (if applicable)
     #   e.g. s3://my_ras2fim_bucket/ras2release/r121
-    
 
     parser = argparse.ArgumentParser(
         description="Creating a ras2release package", formatter_class=argparse.RawTextHelpFormatter
@@ -414,7 +462,7 @@ if __name__ == "__main__":
         "-w",
         "--local_ras2release_path",
         help="OPTIONAL: local folder where the files/folders will be created."
-         " eg. c:/my_ras2fim_dir/releases/ (we add the -r name as a folder)\n"
+        " eg. c:/my_ras2fim_dir/releases/ (we add the -r name as a folder)\n"
         f" Defaults to {sv.R2F_OUTPUT_DIR_RELEASES}",
         required=False,
         default=sv.R2F_OUTPUT_DIR_RELEASES,
@@ -425,8 +473,8 @@ if __name__ == "__main__":
         "-s",
         "--s3_path_to_output_folder",
         help=f"OPTIONAL (case-sensitive): full s3 path to all of the ras2fim unit output folders are at."
-         " eg. s3://my_ras2fim_bucket/output_ras2fim/\n"
-         f" Defaults to {sv.S3_RAS_UNITS_OUTPUT_PATH}",
+        " eg. s3://my_ras2fim_bucket/output_ras2fim/\n"
+        f" Defaults to {sv.S3_RAS_UNITS_OUTPUT_PATH}",
         required=False,
         default=sv.S3_RAS_UNITS_OUTPUT_PATH,
         metavar="",
@@ -436,8 +484,8 @@ if __name__ == "__main__":
         "-t",
         "--s3_ras2release_path",
         help="OPTIONAL (case-sensitive): S3 path to ras2release folder."
-         " Note: the -r (rel_name) will be added as a s3 folder name automatically.\n"
-         " eg. s3://my_ras2fim_bucket/ras2release/ (we add the -r name as a folder)\n"
+        " Note: the -r (rel_name) will be added as a s3 folder name automatically.\n"
+        " eg. s3://my_ras2fim_bucket/ras2release/ (we add the -r name as a folder)\n"
         f" Defaults to {sv.S3_DEFAULT_RAS2RELEASE_FOLDER}/(given -r rel name)",
         required=False,
         default=sv.S3_DEFAULT_RAS2RELEASE_FOLDER,
@@ -448,12 +496,13 @@ if __name__ == "__main__":
         "-ss",
         "--skip_save_to_s3",
         help="OPTIONAL: By default, the results of creating a release folder"
-         " will be saved to S3.\n"
-         " Note: You may need to review the -t flag to ensure it is being saved"
+        " will be saved to S3.\n"
+        " Note: You may need to review the -t flag to ensure it is being saved"
         f" to the S3 bucket and folder you wish.",
         required=False,
         default=False,
-        action="store_true")
+        action="store_true",
+    )
 
     args = vars(parser.parse_args())
 
@@ -476,4 +525,3 @@ if __name__ == "__main__":
 
     except Exception:
         RLOG.critical(traceback.format_exc())
-    

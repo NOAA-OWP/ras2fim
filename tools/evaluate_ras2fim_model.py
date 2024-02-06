@@ -21,12 +21,10 @@ RLOG = sv.R2F_LOG
 adjust_memory_strategy("normal")
 
 
-def evaluate_model_results(inundation_polygons,
-                           model_domain_polygons,
-                           benchmark_raster,
-                           spatial_unit,
-                           output_dir):
-    """ Method to evaluate the model performance of ras2fim output using benchmark data
+def evaluate_model_results(
+    inundation_polygons, model_domain_polygons, benchmark_raster, spatial_unit, output_dir
+):
+    """Method to evaluate the model performance of ras2fim output using benchmark data
 
     Parameters
     ----------
@@ -53,19 +51,13 @@ def evaluate_model_results(inundation_polygons,
     model_results_df['extent'] = 1
 
     model_result_raster = make_geocube(
-        vector_data=model_results_df,
-        measurements=["extent"],
-        resolution=10,
-        output_crs=model_results_df.crs
+        vector_data=model_results_df, measurements=["extent"], resolution=10, output_crs=model_results_df.crs
     )
 
     model_result_raster = model_result_raster.fillna(0)
 
     model_result_raster = model_result_raster.rio.clip(
-        model_domain_df['geometry'].values,
-        model_domain_df.crs,
-        drop=True,
-        invert=False
+        model_domain_df['geometry'].values, model_domain_df.crs, drop=True, invert=False
     )
 
     # Convert from xr.Dataset to xr.DataArray
@@ -99,7 +91,7 @@ def evaluate_model_results(inundation_polygons,
         positive_categories=[1],
         negative_categories=[0],
         comparison_function="pairing_dict",
-        pairing_dict=pairing_dict
+        pairing_dict=pairing_dict,
     )
 
     # Write nodata
@@ -127,7 +119,6 @@ def evaluate_model_results(inundation_polygons,
 
 
 if __name__ == '__main__':
-
     """
     Example Usage:
 
@@ -141,35 +132,16 @@ if __name__ == '__main__':
     # Parse arguments
     parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.")
     parser.add_argument(
-        "-i",
-        "--inundation_polygons",
-        help="Inundation polygons file from ras2fim",
-        required=True
+        "-i", "--inundation_polygons", help="Inundation polygons file from ras2fim", required=True
     )
     parser.add_argument(
-        "-m",
-        "--model_domain_polygons",
-        help="Model domain polygon from ras2fim",
-        required=True
+        "-m", "--model_domain_polygons", help="Model domain polygon from ras2fim", required=True
     )
     parser.add_argument(
-        "-b",
-        "--benchmark_raster",
-        help="Benchmark raster from respective source",
-        required=True
+        "-b", "--benchmark_raster", help="Benchmark raster from respective source", required=True
     )
-    parser.add_argument(
-        "-st",
-        "--spatial_unit",
-        help='Tag name that refers to a ras2fim run',
-        required=True,
-    )
-    parser.add_argument(
-        "-o",
-        "--output_dir",
-        help='Directory to save output evaluation files',
-        required=True,
-    )
+    parser.add_argument("-st", "--spatial_unit", help='Tag name that refers to a ras2fim run', required=True)
+    parser.add_argument("-o", "--output_dir", help='Directory to save output evaluation files', required=True)
 
     args = vars(parser.parse_args())
 
@@ -181,8 +153,9 @@ if __name__ == '__main__':
         # to have setup the logger.
 
         # creates the log file name as the script name
-        script_file_name = os.path.basename(__file__).split('.')[0] + \
-                           datetime.now().strftime('%Y-%m-%d_%H:%M')
+        script_file_name = os.path.basename(__file__).split('.')[0] + datetime.now().strftime(
+            '%Y-%m-%d_%H:%M'
+        )
         # assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(args['output_dir'], script_file_name + ".log"))
 
@@ -190,5 +163,3 @@ if __name__ == '__main__':
 
     except Exception:
         RLOG.critical(traceback.format_exc())
-
-

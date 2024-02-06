@@ -31,6 +31,12 @@ To run this tool, you must have already ran 'aws configure' and added creds to t
 find that you only need to setup yoru machine once with 'aws configure' and not each time you use this tool.
 """
 
+# TODO: Feb 5, 2024
+# Add a "quiet" system, so automation can just continue without any input to other steps
+# if required.  (aka.. part of a bigger pipeline process)
+# Also add an exit value (0 or 1) or something if the tool called not through command line, so the parent can
+# know to continue or not
+
 
 ####################################################################
 def unit_to_s3(src_unit_dir_path, s3_bucket_name):
@@ -838,8 +844,8 @@ def __validate_input(src_unit_dir_path, s3_bucket_name):
     if src_unit_dir_path == "":
         raise ValueError("Source src_unit_dir_path parameter value can not be empty")
 
-    if not os.path.exists(src_path_to_unit_output_dir):
-        raise ValueError(f"Source unit folder not found at {src_path_to_unit_output_dir}")
+    if not os.path.exists(src_unit_dir_path):
+        raise ValueError(f"Source unit folder not found at {src_unit_dir_path}")
 
     if s3_bucket_name == "":
         raise ValueError("Bucket name parameter value can not be empty")
@@ -853,18 +859,18 @@ def __validate_input(src_unit_dir_path, s3_bucket_name):
 
     # ---------------
     # we need to split this to seperate variables.
-    # e.g src_path_to_unit_output_dir = c:\ras2fim_data\output_ras2fim\12030202_102739_230810
+    # e.g src_unit_dir_path = c:\ras2fim_data\output_ras2fim\12030202_102739_230810
 
     # "src_unit_dir" becomes (if not already) 12030202_102739_230810
     # "src_unit_full_path" becomes (if not already) c:\ras2fim_data\output_ras2fim\12030202_102739_230810
     # remembering that the path or folder name might be different.
-    src_path_to_unit_output_dir = src_path_to_unit_output_dir.replace("/", "\\")
-    src_path_segs = src_path_to_unit_output_dir.split("\\")
+    src_unit_dir_path = src_unit_dir_path.replace("/", "\\")
+    src_path_segs = src_unit_dir_path.split("\\")
 
     # We need the source huc_crs folder name for later and the full path
     rtn_dict["src_unit_dir"] = src_path_segs[-1]
     # strip of the parent path
-    rtn_dict["src_unit_full_path"] = src_path_to_unit_output_dir
+    rtn_dict["src_unit_full_path"] = src_unit_dir_path
 
     # --------------------
     # make sure it has a "final" folder and has some contents

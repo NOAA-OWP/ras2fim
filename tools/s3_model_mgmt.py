@@ -12,9 +12,8 @@ import pandas as pd
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import s3_shared_functions as s3_sf
-
 import shared_variables as sv
-from shared_functions import get_date_with_milli, get_stnd_date, print_date_time_duration
+from shared_functions import get_date_with_milli, get_stnd_date
 
 
 # Global Variables
@@ -201,7 +200,7 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
     print()
     RLOG.lprint("--------------------------------------")
     RLOG.success(f"Process completed: {get_stnd_date()}")
-    RLOG.success(f"  - Report csv saved to: {target_report_path}")
+    RLOG.success(f"Report csv saved to: {target_report_path}")
     print()
     dur_msg = print_date_time_duration(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
@@ -354,7 +353,6 @@ def dup_check_initial_scrape_name(df_csv_report):
 ####################################################################
 ####  Some validation of input, but also creating key variables ######
 def __validate_input(s3_master_csv_path, s3_models_path, output_folder_path):
-        
     """
     Process:
         Some variables need to be adjusted and some new derived variables are created
@@ -416,8 +414,8 @@ if __name__ == "__main__":
         help="OPTIONAL: The full S3 path to the OWP_ras_models folder.\n"
         "ie) s3://ras2fim-dev/OWP_ras_models/my_models\n"
         "Note: it is a case-sensitive value\n"
-        f"Defaults to {sv.S3_OUTPUT_MODELS_FOLDER}",
-        default=sv.S3_OUTPUT_MODELS_FOLDER,
+        f"Defaults to {sv.S3_OWP_RAS_MODELS_FOLDER}",
+        default=sv.S3_OWP_RAS_MODELS_FOLDER,
         required=False,
         metavar="",
     )
