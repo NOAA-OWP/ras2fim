@@ -13,12 +13,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src'
 import shared_variables as sv
 
 
-# TODO: Feb 5, 2024
-# Add a "quiet" system, so automation can just continue without any input to other steps
-# if required.  (aka.. part of a bigger pipeline process)
-# Also add an exit value (0 or 1) or something if the tool called not through command line, so the parent can
-# know to continue or not
-
 RLOG = sv.R2F_LOG
 BUCKET = 'ras2fim'
 BUCKET_DEV = "ras2fim-dev"

@@ -43,13 +43,6 @@ ARG_LOG_FILE_NAME = "run_arguments.txt"
 RLOG = sv.R2F_LOG
 
 
-# TODO: Feb 5, 2024
-# Add a "quiet" system, so automation can just continue without any input to other steps
-# if required.  (aka.. part of a bigger pipeline process)
-# Also add an exit value (0 or 1) or something if the tool called not through command line, so the parent can
-# know to continue or not
-
-
 # -------------------------------------------------
 # If you are calling this function from an another python file, please just call this function
 # as it validates inputs and sets up other key variables.

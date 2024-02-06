@@ -32,10 +32,9 @@ find that you only need to setup yoru machine once with 'aws configure' and not 
 """
 
 # TODO: Feb 5, 2024
-# Add a "quiet" system, so automation can just continue without any input to other steps
-# if required.  (aka.. part of a bigger pipeline process)
-# Also add an exit value (0 or 1) or something if the tool called not through command line, so the parent can
-# know to continue or not
+# As this tool asks for user input as it progresses, it needs an "auto" mode, which 
+# will default all answer so none are asked of the user. This is need for automation or 
+# larger "pipeline modes".
 
 
 ####################################################################

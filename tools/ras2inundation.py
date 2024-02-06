@@ -20,13 +20,6 @@ import shared_variables as sv
 # Global Variables
 RLOG = sv.R2F_LOG
 
-# TODO: Feb 5, 2024
-# Add a "quiet" system, so automation can just continue without any input to other steps
-# if required.  (aka.. part of a bigger pipeline process)
-# Also add an exit value (0 or 1) or something if the tool called not through command line, so the parent can
-# know to continue or not
-
-
 # -------------------------------------------------
 def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundation_poly):
     """

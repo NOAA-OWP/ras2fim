@@ -71,12 +71,6 @@ Features for this tool include:
 
 """
 
-# TODO: Feb 5, 2024
-# Add a "quiet" system, so automation can just continue without any input to other steps
-# if required.  (aka.. part of a bigger pipeline process)
-# Also add an exit value (0 or 1) or something if the tool called not through command line, so the parent can
-# know to continue or not
-
 
 # -------------------------------------------------
 class Get_Models_By_Catalog:
