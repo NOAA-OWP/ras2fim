@@ -2,6 +2,20 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
+## v2.0.beta.x - 2024-02-06 - [PR#278](https://github.com/NOAA-OWP/ras2fim/pull/278)
+
+The Simplify Fim Rasters module is no longer needed in V2. We removed the calls from ras2fim.py and added notes to the `simplify_fim_rasters.py` file to say it is deprecated. We are going to keep it for a while.
+
+### Changes  
+
+- `src`
+    - `ras2fim.py`: as mentioned
+    - `shared_variables.py`: as mentioned
+    - `simplify_fim_rasters.py`: as mentioned
+
+<br/><br/>
+
+
 ## v2.0.beta.24 - 2024-02-02 - [PR#264](https://github.com/NOAA-OWP/ras2fim/pull/264)
 
 During some design reviewing it was discovered that we have a need to know and use a code to identify the source.  At this point, we have only one source provider which is BLE. We will use the `source_code` of `ble` for the first records. The code is needed for a number of reasons including helping with merging when multiple runs of ras2fm.py for one HUC are created and also HydroVIS wants this value as well. 
