@@ -1102,6 +1102,7 @@ def create_ras_mapper_xml(huc8_num, int_number_of_steps, str_output_filepath, mo
 # For All RAS Models BC ~ 3 min
 # -------------------------------------------------
 def create_hecras_files(huc8_num, int_fn_starting_flow, int_number_of_steps, unit_output_folder, model_unit):
+
     path_to_conflated_streams_csv = os.path.join(unit_output_folder, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
 
     # Reading original parent models flow and geometry files
@@ -1169,13 +1170,18 @@ def create_hecras_files(huc8_num, int_fn_starting_flow, int_number_of_steps, uni
     create_ras_project_file(unit_output_folder, model_unit)
 
     # Create the HEC-RAS mapper xml files ~ 5 s
-    create_ras_mapper_xml(huc8_num, int_number_of_steps, unit_output_folder, model_unit)
+    # create_ras_mapper_xml(huc8_num, int_number_of_steps, unit_output_folder, model_unit)
 
 
 # -------------------------------------------------
 # Runs HEC-RAS
 # For One RAS Model ~ 3 min
 # -------------------------------------------------
+    
+# str_ras_projectpath = "C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\v2_2ndpass_depthgrids\\10276_PINEY 168\\PINEY 168.prj"
+# int_number_of_steps = 76
+# aaa = fn_run_hecras(str_ras_projectpath, int_number_of_steps)
+# aaa.to_csv("C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\v2_2ndpass_depthgrids\\10276_PINEY 168\\PINEY 168.csv")
 def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
     try:
         hec = None
@@ -1426,7 +1432,14 @@ def create_hecras_files_2ndpass(huc8_num, model_unit, unit_output_folder, flt_in
         list_step_flows = arr_step_flows.tolist()
 
         # convert list of interpolated float values to integer list
-        list_int_step_flows = [int(i) for i in list_step_flows]
+        list_int_step_flows = []
+        for flow in list_step_flows:
+            flow_in = int(flow)
+            if flow_in == 0:
+                list_int_step_flows.append(1)
+            else:
+                list_int_step_flows.append(flow_in)
+
 
         # -------------------------------------------------
         # Corresponding wse at 0.5 foot interval to interpolated flow valuse

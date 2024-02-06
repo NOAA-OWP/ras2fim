@@ -68,7 +68,7 @@ def fn_create_fim_rasters(
     RLOG.lprint("+=================================================================+")
     RLOG.notice("|              PROCESSING CONFLATED HEC-RAS MODELS                |")
     RLOG.notice("|          AND CREATING DEPTH GRIDS FOR HEC-RAS STREAMS           |")
-    RLOG.notice("|                 (FIRST PASS FLOW HEC-RAS RUN)                   |")
+    RLOG.notice("|                 (FIRST-PASS FLOW HEC-RAS RUN)                   |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     names_created_ras_models = os.listdir(path_created_ras_models)
@@ -116,7 +116,6 @@ def fn_create_fim_rasters(
 
     RLOG.lprint("")
     RLOG.notice("|       PROCESSING FIRST-PASS FLOW HEC-RAS MODELS COMPLETED       |")
-    RLOG.lprint("")
 
     # -------------------------------------------------
     # Creating second-pass flow HEC-RAS files and
@@ -135,11 +134,11 @@ def fn_create_fim_rasters(
     ls_number_of_steps_2ndpass = worker_fim_rasters.create_hecras_files_2ndpass(
         huc8_num, model_unit, unit_output_folder, flt_interval
     )
-    RLOG.lprint("*** All SECON-PASS FLOW HEC-RAS Models Created ***")
+    RLOG.lprint("*** All SECOND-PASS FLOW HEC-RAS Models Created ***")
     RLOG.lprint("")
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
-    RLOG.notice("|           PROCESSING FIRST-PASS FLOW HEC-RAS MODELS             |")
+    RLOG.notice("|           PROCESSING SECOND-PASS FLOW HEC-RAS MODELS            |")
     RLOG.notice("|          AND CREATING DEPTH GRIDS FOR HEC-RAS STREAMS           |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
@@ -163,7 +162,7 @@ def fn_create_fim_rasters(
 
         run_hecras_inputs_2nd = {
             'str_ras_projectpath': str_ras_projectpath2,
-            'int_number_of_steps': ls_number_of_steps_2ndpass[mf2], # TODO
+            'int_number_of_steps': ls_number_of_steps_2ndpass[mf2],
             'model_folder': model_folder2,
             'unit_output_folder': unit_output_folder,
             'log_default_folder': RLOG.LOG_DEFAULT_FOLDER,
@@ -182,6 +181,7 @@ def fn_create_fim_rasters(
         path_depth_1st = os.path.join(path_created_ras_models, model_folder1, depth_folder)
         shutil.rmtree(path_depth_1st)
 
+    import sys
     # Create a pool of processors
     with ProcessPoolExecutor(max_workers=num_processors) as executor2:
         executor_dict2 = {}
@@ -194,7 +194,7 @@ def fn_create_fim_rasters(
                 sys.exit(1)
 
     # Now that multi-proc is done, lets merge all of the independent log file from each
-    RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
+    RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix_2ndpass)
 
 
     RLOG.lprint("")
