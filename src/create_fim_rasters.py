@@ -146,7 +146,7 @@ def fn_create_fim_rasters(
     log_file_prefix_2ndpass = "fn_run_hecras_2ndpass"
 
     ls_run_hecras_inputs_2nd = []
-    ctr = 0
+    ctr2 = 0
     for mf2 in range(len(names_created_ras_models)):
 
         model_folder2 = names_created_ras_models[mf2]
@@ -167,19 +167,19 @@ def fn_create_fim_rasters(
             'unit_output_folder': unit_output_folder,
             'log_default_folder': RLOG.LOG_DEFAULT_FOLDER,
             'log_file_prefix_2ndpass': log_file_prefix_2ndpass,
-            'index_number': ctr,
+            'index_number': ctr2,
             'total_number_models': len(names_created_ras_models),
         }
 
         ls_run_hecras_inputs_2nd.append(run_hecras_inputs_2nd)
-        ctr += 1
+        ctr2 += 1
 
-    # Remove 1st-pass flow hec-ras run depth grids    
-    for model_folder1 in names_created_ras_models:
-        folder_mame_splt1 = model_folder1.split("_")
-        depth_folder = folder_mame_splt1[1]
-        path_depth_1st = os.path.join(path_created_ras_models, model_folder1, depth_folder)
-        shutil.rmtree(path_depth_1st)
+    # # Remove 1st-pass flow hec-ras run depth grids    
+    # for model_folder1 in names_created_ras_models:
+    #     folder_mame_splt1 = model_folder1.split("_")
+    #     depth_folder = folder_mame_splt1[1]
+    #     path_depth_1st = os.path.join(path_created_ras_models, model_folder1, depth_folder)
+    #     shutil.rmtree(path_depth_1st)
 
     import sys
     # Create a pool of processors
