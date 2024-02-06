@@ -20,6 +20,7 @@ import pathlib
 import re
 import time
 import traceback
+from warnings import warn
 from time import sleep
 
 import geopandas as gpd
@@ -31,6 +32,15 @@ import tqdm
 import shared_functions as sf
 import shared_variables as sv
 
+
+"""
+************************************************
+Feb 6, 2024
+This script is deprecated and is no longer needed as part of the V2 system at this point.
+We have decided to keep it around for a bit
+************************************************
+"""
+warn('This is deprecated', DeprecationWarning, stacklevel=2)
 
 # -------------------------------------------------
 # Global Variables
@@ -156,10 +166,18 @@ def fn_create_grid(list_of_df_row):
 
 # -------------------------------------------------
 def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_crs, model_unit):
+    """
+    ************************************************
+    Feb 6, 2024
+    This script is deprecated and is no longer needed as part of the V2 system at this point.
+    We have decided to keep it around for a bit
+    ************************************************
+    """
+
+    warn('This is deprecated', DeprecationWarning, stacklevel=2)
+
     flt_start_simplify_fim = time.time()
 
-    # TODO: Jan 22, 2024. pathing logic is very unstable and needs to be reviewed and fixed
-    # and clean up variable names.
 
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
