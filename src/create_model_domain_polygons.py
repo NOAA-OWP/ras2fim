@@ -3,7 +3,6 @@ import datetime
 import os
 import time
 import traceback
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -21,22 +20,20 @@ RLOG = sv.R2F_LOG
 
 # -------------------------------------------------
 def fn_make_domain_polygons(
-    xsections_shp_file_path,
-    polygons_output_file_path,
-    model_name_field,
-    model_huc_catalog_path,
-    conflation_qc_path,
+    xsections_shp_file_path, output_polygon_dir, model_name_field, model_huc_catalog_path, conflation_qc_path
 ):
     """
     The function produces polygons representing the domain of each HEC-RAS model using its cross section
 
     Args:
         - xsections_shp_file_path: Path to the shapefile containing HEC-RAS models cross sections
-        - polygons_output_file_path: path to the output GPKG file containing models domain polygons
-        - model_name_field: column/field name of the input shapefile showing each HEC-RAS model name
-        - model_huc_catalog_path : path to the model catalog
+        - output_polygon_dir: directory to the output GPKG files that include:
+            1) all RAS models domain polygons, 2 )a dissolved polygon only for conflated models
         - conflation_qc_path :pth to conflation qc file with info for the RAS models which were
           successfully conflated to NWM reaches
+        - model_name_field: column/field name of the input shapefile showing each HEC-RAS model name
+        - model_huc_catalog_path : path to the model catalog
+
 
     Returns:
         a polygon GPKG for domain of each HEC-RAS model considering cross sections
@@ -57,10 +54,6 @@ def fn_make_domain_polygons(
 
     """
 
-    # check that output file name has extension of gpkg
-    if not Path(polygons_output_file_path).suffix == '.gpkg':
-        raise TypeError("The output file must have gpkg extension.")
-
     # get the version
     changelog_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), os.pardir, 'doc', 'CHANGELOG.md')
@@ -75,7 +68,7 @@ def fn_make_domain_polygons(
         "  --- (-i) Path to the shapefile containing HEC-RAS models cross sections: "
         + str(xsections_shp_file_path)
     )
-    RLOG.lprint("  --- (-o) path to the GPKG output file: " + str(polygons_output_file_path))
+    RLOG.lprint("  --- (-o) Directory to write output GPKG files: " + str(output_polygon_dir))
     RLOG.lprint(
         "  --- (-name) column/field name of the input shapefile having unique names for HEC-RAS models: "
         + str(model_name_field)
@@ -93,6 +86,7 @@ def fn_make_domain_polygons(
     ras_paths = []
     polygon_status = []
     for ras_path in Xsections[model_name_field].unique():
+        RLOG.trace(f"Processing ras_path: {ras_path}")
         this_river_xsections = Xsections[Xsections[model_name_field] == ras_path]
         this_river_xsections.reset_index(inplace=True)
 
@@ -142,6 +136,15 @@ def fn_make_domain_polygons(
     models_polygons_gdf["geometry"] = models_polygons
     models_polygons_gdf["poly_status"] = polygon_status
 
+    # add conflation info
+    conflate_qc_df = pd.read_csv(conflation_qc_path)
+    models_polygons_gdf["conflated"] = np.where(
+        models_polygons_gdf[model_name_field].isin(conflate_qc_df[model_name_field]).values, "yes", "no"
+    )
+
+    # also get HUC8 number from qc file name
+    models_polygons_gdf["HUC8"] = os.path.basename(conflation_qc_path).split("_stream_qc_fid_xs.csv")[0]
+
     if model_huc_catalog_path.lower() != "no_catalog":
         # get RRASSLER processing date...only get the first record date, since
         # RASSLER usually takes<24h to process
@@ -149,18 +152,19 @@ def fn_make_domain_polygons(
         rrassler_process_date = catalog_df.loc[0, "date"]
         models_polygons_gdf["rrassler_date"] = rrassler_process_date
 
-    if conflation_qc_path.lower() != "no_qc":
-        conflate_qc_df = pd.read_csv(conflation_qc_path)
-        models_polygons_gdf["conflated"] = np.where(
-            models_polygons_gdf[model_name_field].isin(conflate_qc_df[model_name_field]).values, "yes", "no"
-        )
-
-        # also add HUC8 number
-        models_polygons_gdf["HUC8"] = os.path.basename(conflation_qc_path).split("_stream_qc_fid_xs.csv")[0]
-
     models_polygons_gdf["version"] = version
     models_polygons_gdf.crs = Xsections.crs
-    models_polygons_gdf.to_file(polygons_output_file_path, driver="GPKG")
+    models_polygons_gdf.to_file(os.path.join(output_polygon_dir, 'models_domain.gpkg'), driver="GPKG")
+
+    # also make a single dissolved polygon only for conflated models
+    conflated_models = models_polygons_gdf[models_polygons_gdf['conflated'] == 'yes']
+    dissolved_conflated_models = conflated_models.dissolve(by='conflated').reset_index()
+    columns_to_keep = ['geometry', 'HUC8', 'version']
+    if model_huc_catalog_path.lower() != "no_catalog":
+        columns_to_keep.append('rrassler_date')
+    dissolved_conflated_models[columns_to_keep].to_file(
+        os.path.join(output_polygon_dir, 'dissolved_conflated_models.gpkg'), driver="GPKG"
+    )
 
     flt_end_domain = time.time()
     flt_time_pass_domain = (flt_end_domain - flt_start_domain) // 1
@@ -175,30 +179,40 @@ if __name__ == "__main__":
     #  -i "C:\ras2fim_data\output_ras2fim\12090301_2277_240201\...
     #          01_shapes_from_hecras\cross_section_LN_from_ras.shp"
     #  -o "C:\ras2fim_data\output_ras2fim\12090301_2277_240201\final\models_domain\models_domain.gpkg"
-    #  -name ras_path
-    #  -catalog "C:\ras2fim_data\output_ras2fim\12090301_2277_240201\OWP_ras_models_catalog_12090301.csv"
     #  -conflate "C:\ras2fim_data\output_ras2fim\12090301_2277_240201\...
     #        02_csv_shapes_from_conflation\12090301_stream_qc_fid_xs.csv"
+    #  -name ras_path
+    #  -catalog "C:\ras2fim_data\output_ras2fim\12090301_2277_240201\OWP_ras_models_catalog_12090301.csv"
 
     parser = argparse.ArgumentParser(description="==== Make polygons for HEC-RAS models domains ===")
 
     parser.add_argument(
         "-i",
         dest="xsections_shp_file_path",
-        help="REQUIRED: Path to shapefile containing HEC-RAS models cross sections:"
+        help="REQUIRED: path to shapefile containing HEC-RAS models cross sections:"
         r" Example: C:\ras2fim_12090301\01_shapes_from_hecras\cross_section_LN_from_ras.shp",
+        required=True,
+        metavar="FILE",
+        type=str,
+    )
+
+    parser.add_argument(
+        "-o",
+        dest="output_polygon_dir",
+        help="REQUIRED: directory to save output GPKG files."
+        r" Example: C:\ras2fim_12090301\final\models_domain",
         required=True,
         metavar="DIR",
         type=str,
     )
 
     parser.add_argument(
-        "-o",
-        dest="polygons_output_file_path",
-        help="REQUIRED: path to the output GPKG file.\n"
-        r" e.g. C:\ras2fim_data\output_ras2fim\12090301_2277_240201\final\models_domain\models_domain.gpkg",
+        "-conflate",
+        dest="conflation_qc_path",
+        help='REQUIRED: path to the conflation qc file.'
+        r" Example: C:\ras2fim_12090301\02_shapes_from_conflation\***_stream_qc_fid_xs.csv",
         required=True,
-        metavar="DIR",
+        metavar="FILE",
         type=str,
     )
 
@@ -216,36 +230,23 @@ if __name__ == "__main__":
     parser.add_argument(
         "-catalog",
         dest="model_catalog_path",
-        help="Optional: path to the model catalog. Default=no_catalog"
-        r" e.g. C:\ras2fim_data\output_ras2fim\12090301_2277_240201\OWP_ras_models_catalog_12090301.csv",
+        help="Optional: path to the models catalog file."
+        r" Example: C:\ras2fim_12090301\OWP_ras_models_catalog_12090301.csv. Default=no_catalog",
         required=False,
         default="no_catalog",
-        metavar="STRING",
-        type=str,
-    )
-
-    parser.add_argument(
-        "-conflate",
-        dest="conflation_qc_path",
-        help='Optional: path to the conflation qc file.\n'
-        'e.g: C:\ras2fim_data\output_ras2fim\12090301_2277_240201\...'
-        '      02_shapes_from_conflation\***_stream_qc_fid_xs.csv.\n'
-        ' Default=no_qc',
-        required=False,
-        default="no_qc",
-        metavar="STRING",
+        metavar="FILE",
         type=str,
     )
 
     args = vars(parser.parse_args())
 
     xsections_shp_file_path = args["xsections_shp_file_path"]
-    polygons_output_file_path = args["polygons_output_file_path"]
+    output_polygon_dir = args["output_polygon_dir"]
     model_name_field = args["model_name_field"]
     model_catalog_path = args["model_catalog_path"]
     conflation_qc_path = args["conflation_qc_path"]
 
-    log_file_folder = os.path.dirname(polygons_output_file_path)
+    log_file_folder = output_polygon_dir
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -261,7 +262,7 @@ if __name__ == "__main__":
         # call main program
         fn_make_domain_polygons(
             xsections_shp_file_path,
-            polygons_output_file_path,
+            output_polygon_dir,
             model_name_field,
             model_catalog_path,
             conflation_qc_path,

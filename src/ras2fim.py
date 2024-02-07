@@ -425,11 +425,6 @@ def fn_run_ras2fim(
 
     # -------------------------------------------------
     if os.getenv("CREATE_RAS_DOMAIN_POLYGONS") == "True":
-        # TODO:
-        # V2: Jan 22, 2024: All we need is one big poly that cover the max extent of all features.
-        # This is required for GVAL.
-        # We might already have this covered by earlier steps now. Research required here.
-
         RLOG.lprint("")
         RLOG.notice("+++++++ Processing: STEP: Create polygons for HEC-RAS models domains +++++++")
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
@@ -447,12 +442,11 @@ def fn_run_ras2fim(
         # Also see note in __main__ of create_model_domain_polygons.py as a duplicate msg (more less)
         #  But even after just manually adding that folder it still fails when run from command line.
         output_polygon_dir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_DOMAIN_POLYGONS)
-        polygons_output_file_path = os.path.join(output_polygon_dir, "models_domain.gpkg")
         os.mkdir(output_polygon_dir)
 
         fn_make_domain_polygons(
             xsections_shp_file_path,
-            polygons_output_file_path,
+            output_polygon_dir,
             "ras_path",
             model_huc_catalog_path,
             conflation_csv_path,
