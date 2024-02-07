@@ -1036,6 +1036,7 @@ def parse_unit_folder_name(unit_folder_name):
                        key_huc,
                        key_crs_number,
                        key_source_code,
+                       key_unit_id,  (12090301_2277_ble)
                        key_date_as_str (date string eg: 230811),
                        key_date_as_dt  (date obj for 230811)
                        unit_folder_name (12090301_2277_ble_230811) (cleaned version)
@@ -1114,7 +1115,9 @@ def parse_unit_folder_name(unit_folder_name):
     rtn_dict["key_huc"] = key_huc
     rtn_dict["key_crs_number"] = key_crs
     rtn_dict["key_source_code"] = key_source_code
+    rtn_dict["key_unit_id"] = f"{key_huc}_{key_crs}_{key_source_code}"
     rtn_dict["key_date_as_str"] = key_date
+
     rtn_dict["key_date_as_dt"] = dt_key_date
     rtn_dict["unit_folder_name"] = unit_folder_name  # cleaned version
 

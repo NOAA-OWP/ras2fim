@@ -14,35 +14,36 @@ import shared_variables as sv
 
 
 RLOG = sv.R2F_LOG
-BUCKET = 'ras2fim'
+BUCKET_PROD = 'ras2fim'
 BUCKET_DEV = "ras2fim-dev"
+BUCKET = ""
 RESOLUTION = 10
-PREFIX = 'output_ras2fim/'
 NWS_BENCHMARK_PREFIX = "gval/benchmark_data/nws/{0}/"  # format args: huc
 
 # format args: spatial processing unit, benchmark source, stage
-INUNDATION_URL = 's3://ras2fim/output_ras2fim/{0}/final/inundation_polys/{1}_{2}_inundation.gpkg'
+INUNDATION_URL = 's3://{0}/output_ras2fim/{1}/final/inundation_polys/{2}_{3}_inundation.gpkg'
 
 # format args: spatial processing unit
-MODEL_DOMAIN_URL = 's3://ras2fim/output_ras2fim/{0}/final/models_domain/models_domain.gpkg'
+MODEL_DOMAIN_URL = 's3://{0}/output_ras2fim/{1}/final/models_domain/models_domain.gpkg'
 
 VALID_BENCHMARK_STAGES = {"ble": ["100yr", "500yr"], "nws": ["minor", "moderate", "major", "action"]}
 
 # format args: benchmark source, huc, stage
 BENCHMARK_URIS = {
-    "ble": 's3://ras2fim-dev/gval/benchmark_data/{0}/{1}/{2}/{0}_huc_{1}_extent_{2}.tif',
+    "ble": 's3://{0}/gval/benchmark_data/{1}/{2}/{3}/{1}_huc_{2}_extent_{3}.tif',
     # format args: benchmark source, huc, nws station, stage
-    "nws": 's3://ras2fim-dev/gval/benchmark_data/{0}/{1}/{2}/{3}/ahps_{2}_huc_{1}_extent_{3}.tif',
+    "nws": 's3://{0}/gval/benchmark_data/{1}/{2}/{3}/{4}/ahps_{3}_huc_{2}_extent_{4}.tif',
 }
 
-
-def get_benchmark_uri(spatial_proc_unit: str, benchmark_source: str, stage: str, nws_station: str) -> str:
-    """Method to get the appropriate benchmark uri
+# -------------------------------------------------
+def get_benchmark_uri(unit_name: str, benchmark_source: str, stage: str, nws_station: str) -> str:
+    """
+    Method to get the appropriate benchmark uri
 
     Parameters
     ----------
-    spatial_proc_unit: str
-        Spatial processing unit assigned to ras2fim output
+    unit_name: str
+        The unit_name (folder name) from outputs_ras2fim
     benchmark_source: str
         What benchmark source to use in the URI
     stage: str
@@ -58,20 +59,26 @@ def get_benchmark_uri(spatial_proc_unit: str, benchmark_source: str, stage: str,
     """
 
     if benchmark_source == "ble":
-        return BENCHMARK_URIS["ble"].format(benchmark_source, spatial_proc_unit.split('_')[0], stage)
+        return BENCHMARK_URIS["ble"].format(BUCKET,
+                                            benchmark_source,
+                                            unit_name.split('_')[0],
+                                            stage)
 
     elif benchmark_source == "nws":
         if nws_station is None:
             raise ValueError("nws_station cannot be none when nws is chosen as a benchmark source")
 
-        return BENCHMARK_URIS["nws"].format(
-            benchmark_source, spatial_proc_unit.split('_')[0], nws_station, stage
-        )
+        return BENCHMARK_URIS["nws"].format(BUCKET,
+                                            benchmark_source,
+                                            unit_name.split('_')[0],
+                                            nws_station,
+                                            stage)
 
     else:
         raise ValueError("benchmark source is not available")
 
 
+# -------------------------------------------------
 def get_nws_stations(huc: str) -> list:
     """Get available NWS stations for a HUC
 
@@ -86,18 +93,19 @@ def get_nws_stations(huc: str) -> list:
         NWS stations available for HUC
 
     """
-    return [s_unit['key'] for s_unit in get_folder_list(BUCKET_DEV, NWS_BENCHMARK_PREFIX.format(huc), False)]
+    return [s_unit['key'] for s_unit in get_folder_list(BUCKET, NWS_BENCHMARK_PREFIX.format(huc), False)]
 
 
+# -------------------------------------------------
 def check_necessary_files_exist(
-    spatial_proc_unit: str, benchmark_source: str, stage: str, nws_station: str
+    unit: str, benchmark_source: str, stage: str, nws_station: str
 ) -> dict:
     """Checks whether the necessary inputs for evaluations exist in S3
 
     Parameters
     ----------
-    spatial_proc_unit: str
-        Spatial processing unit assigned to ras2fim output
+    unit: str
+        The name of the unit folder created and saved to ras2fim output
     benchmark_source: str
         What benchmark source to use in the URI
     stage: str
@@ -113,9 +121,12 @@ def check_necessary_files_exist(
     """
 
     files = {
-        'inundation_polygons': INUNDATION_URL.format(spatial_proc_unit, benchmark_source, stage),
-        'model_domain_polygons': MODEL_DOMAIN_URL.format(spatial_proc_unit),
-        'benchmark_raster': get_benchmark_uri(spatial_proc_unit, benchmark_source, stage, nws_station),
+        'inundation_polygons': INUNDATION_URL.format(BUCKET,
+                                                     unit,
+                                                     benchmark_source,
+                                                     stage),
+        'model_domain_polygons': MODEL_DOMAIN_URL.format(BUCKET, unit),
+        'benchmark_raster': get_benchmark_uri(unit, benchmark_source, stage, nws_station),
     }
 
     exists = [
@@ -130,9 +141,10 @@ def check_necessary_files_exist(
         return {}
 
 
+# -------------------------------------------------
 def add_input_arguments(
     eval_args: list,
-    spatial_proc_unit: str,
+    unit: str,
     benchmark_source: str,
     stage: str,
     nws_station: str,
@@ -144,8 +156,8 @@ def add_input_arguments(
     ----------
     eval_args: list
         Array of dictionaries representing input arguments for evaluations
-    spatial_proc_unit: str
-        Spatial processing unit assigned to ras2fim output
+    unit: str
+        The name of ras2fim unit created and stored in ras2fim output
     benchmark_source: str
         What benchmark source to use in the URI
     stage: str
@@ -162,29 +174,31 @@ def add_input_arguments(
 
     """
 
-    input_files = check_necessary_files_exist(spatial_proc_unit, benchmark_source, stage, nws_station)
+    input_files = check_necessary_files_exist(unit, benchmark_source, stage, nws_station)
     if input_files:
         input_files['output_dir'] = output_dir
-        input_files['spatial_unit'] = f"{spatial_proc_unit}_{stage}"
+        input_files['unit'] = f"{unit}_{stage}"
         eval_args.append(input_files)
     else:
         RLOG.trace(
-            f"Spatial Unit {spatial_proc_unit}, benchmark_source {benchmark_source}, "
+            f"ras2fim Unit Name {unit}, benchmark_source {benchmark_source}, "
             f"stage {stage} nws_station {nws_station} inputs do not exist"
         )
 
     return eval_args
 
 
+# -------------------------------------------------
 def report_missing_ouput(
-    spatial_units: list = None, benchmark_sources: list = None, stages: list = None, output_dir: str = './'
+    units: list = None, benchmark_sources: list = None, stages: list = None, output_dir: str = './'
 ):
-    """Method to report missing output that was provided
+    """
+    Method to report missing output that was provided
 
     Parameters
     ----------
-    spatial_units: list, default=None
-        Array of strings representing all spatial processing units to run, (runs all if None)
+    units: list, default=None
+        An array of the names of the units in the ras2fim output folder, (runs all if None)
     benchmark_sources: list, default=None
         Array of strings representing all benchmark sources to run, (runs all if None)
     stages: list, default=None
@@ -194,56 +208,58 @@ def report_missing_ouput(
 
     """
 
-    report_missing = {"spatial_units": [], "benchmark_sources": [], "stages": []}
+    report_missing = {"unit": [], "benchmark_sources": [], "stages": []}
 
     # Remove forward slash if exists as last character in output_dir
     if output_dir[-1] == '/':
         output_dir = output_dir[:-1]
 
-    def glob_check(search, search_type, report_missing):
+    def __glob_check(search, search_type, report_missing):
         """Check if search term exists in output_dir or not"""
         if glob(f"{output_dir}/*{search}*") == []:
             report_missing[search_type].append(search)
         return report_missing
 
-    if spatial_units is not None:
-        for sp in spatial_units:
-            report_missing = glob_check(sp, "spatial_units", report_missing)
+    if units is not None:
+        for sp in units:
+            report_missing = __glob_check(sp, "unit", report_missing)
 
     if benchmark_sources is not None:
         for be in benchmark_sources:
-            report_missing = glob_check(be, "benchmark_sources", report_missing)
+            report_missing = __glob_check(be, "benchmark_sources", report_missing)
 
     if stages is not None:
         for st in stages:
-            report_missing = glob_check(st, "stages", report_missing)
+            report_missing = __glob_check(st, "stages", report_missing)
 
     # If any missing outputs exist report
-    if (
-        sum(
+    if (sum(
             [
-                len(report_missing['spatial_units']),
+                len(report_missing['unit']),
                 len(report_missing['benchmark_sources']),
                 len(report_missing['stages']),
-            ]
-        )
-        > 0
-    ):
-        RLOG.lprint(
-            f"The following provided args have no or incomplete inputs existing on s3: "
-            f"\n {report_missing}"
-        )
+            ] ) > 0):
+    
+        RLOG.lprint("The following provided args have no or incomplete inputs existing on s3: "
+            f"\n {report_missing}")
 
 
+# -------------------------------------------------
 def run_batch_evaluations(
-    spatial_units: list = None, benchmark_sources: list = None, stages: list = None, output_dir: str = './'
+    environment: str, 
+    unit_names: list = None,
+    benchmark_sources: list = None, 
+    stages: list = None, 
+    output_dir: str = './'
 ):
-    """Run batch evaluations on s3 objects for every valid combination of desired sources
+    """
+    Run batch evaluations on s3 objects for every valid combination of desired sources
 
     Parameters
     ----------
-    spatial_units: list, default=None
+    unit_names: list, default=None
         Array of strings representing all spatial processing units to run, (runs all if None)
+        ie) 12090301_2277_ble_240206
     benchmark_sources: list, default=None
         Array of strings representing all benchmark sources to run, (runs all if None)
     stages: list, default=None
@@ -256,11 +272,20 @@ def run_batch_evaluations(
     RLOG.lprint("Begin s3 batch evaluation")
     eval_args = []
 
-    for s_unit in get_folder_list(BUCKET, PREFIX, False):
-        spatial_proc_unit = s_unit.get('key')
+    if environment != "PROD" and environment != "DEV":
+        raise ValueError("The -e (environment) value must be either the word 'PROD' or 'DEV'."
+                         " The value is case-sensitive")
+    global BUCKET
+    if environment == "PROD":
+        BUCKET = BUCKET_PROD
+    else:
+        BUCKET = BUCKET_DEV
 
-        # Check if directory is in desired spatial_units list if provided
-        if spatial_units is None or spatial_proc_unit in spatial_units:
+    for s_unit in get_folder_list(BUCKET, sv.S3_RAS_UNITS_OUTPUT_FOLDER, False):
+        s3_unit_name = s_unit.get('key')
+
+        # Check if directory is in desired ras2fim output units list if provided
+        if unit_names is None or s3_unit_name in unit_names:
             for key, val in VALID_BENCHMARK_STAGES.items():
                 # Check if benchmark source is in desired benchmark_sources list if provided
                 if benchmark_sources is None or key in benchmark_sources:
@@ -269,14 +294,14 @@ def run_batch_evaluations(
                         if stages is None or stage in stages:
                             if key == "nws":
                                 # Add arguments for each valid nws_station
-                                for nws_station in get_nws_stations(spatial_proc_unit.split('_')[0]):
+                                for nws_station in get_nws_stations(s3_unit_name.split('_')[0]):
                                     eval_args = add_input_arguments(
-                                        eval_args, spatial_proc_unit, key, stage, nws_station, output_dir
+                                        eval_args, s3_unit_name, key, stage, nws_station, output_dir
                                     )
 
                             else:
                                 eval_args = add_input_arguments(
-                                    eval_args, spatial_proc_unit, key, stage, None, output_dir
+                                    eval_args, s3_unit_name, key, stage, None, output_dir
                                 )
 
     # Run ras2fim model evaluation
@@ -287,47 +312,65 @@ def run_batch_evaluations(
     if not eval_args:
         RLOG.lprint("No valid combinations found, check inputs and try again.")
     else:
-        report_missing_ouput(spatial_units, benchmark_sources, stages, output_dir)
+        report_missing_ouput(unit_names, benchmark_sources, stages, output_dir)
 
     RLOG.lprint("End s3 batch evaluation")
 
 
+# -------------------------------------------------
 if __name__ == '__main__':
     """
     Example Usage:
 
     python s3_batch_evaluation.py
-    -su "12030105_2276_ble_230923" "12040101_102739_ble_230922"
+    -u "12030105_2276_ble_230923" "12040101_102739_ble_230922"
     -b "ble" "nws"
     -st "100yr" "500yr" "moderate"
     -o "./test_batch_eval"
+    -e PROD or DEV
     """
+
+    # TODO: While it can get files from S3, it can only save outputs locally and can not push
+    # them back to S3. Deliberately at this time, allows for review before going back to S3.
 
     # Parse arguments
     parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.")
+
+    parser.add_argument("-o", "--output_dir", 
+                        help='REQUIRED: Directory to save output evaluation files',
+                        required=True)
+    
+    parser.add_argument("-e", "--environment", 
+                        help="REQUIRED: Must be either the value of PROD meaning it is going to"
+                        " s3://ras2fim or DEV meaning pointing to s3://ras2fim-dev",
+                        required=True)
+
     parser.add_argument(
-        "-su",
-        "--spatial_units",
+        "-u",
+        "--unit_names",
         nargs='*',
-        help="Argument/s representing list of tag names that refer to ras2fim runs "
-        "(if not provided run all existing)",
+        help="OPTIONAL: Argument/s representing unit names that refer to ras2fim output runs"
+        " (if not provided run all existing)\n"
+        " ie): 12030105_2276_ble_230923",
         required=False,
     )
+
     parser.add_argument(
         "-b",
         "--benchmark_sources",
         nargs='*',
-        help="Argument/s epresenting list of benchmark sources to run (if not provided run all existing)",
+        help="OPTIONAL: Argument/s representing list of benchmark sources to run"
+        " (if not provided run all existing)",
         required=False,
     )
+
     parser.add_argument(
         "-st",
         "--stages",
         nargs='*',
-        help="Argument/s representing list of stages to run (if not provided run all existing)",
+        help="OPTIONAL: Argument/s representing list of stages to run (if not provided run all existing)",
         required=False,
     )
-    parser.add_argument("-o", "--output_dir", help='Directory to save output evaluation files', required=True)
 
     args = vars(parser.parse_args())
 

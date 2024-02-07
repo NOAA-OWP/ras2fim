@@ -16,6 +16,7 @@ R2F_LOG = rl.RAS2FIM_logger()
 # BASIC ROOT FOLDERS
 DEFAULT_BASE_DIR = r"c:\ras2fim_data"
 DEFAULT_HECRAS_ENGINE_PATH = r"C:\Program Files (x86)\HEC\HEC-RAS\6.3"
+R2F_OUTPUT_DIR_RELEASES = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
 
 # INPUT FOLDERS
 ROOT_DIR_INPUTS = os.path.join(DEFAULT_BASE_DIR, "inputs")
@@ -51,23 +52,17 @@ R2F_OUTPUT_DIR_CREATE_RATING_CURVES = "06_create_rating_curves"
 R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS = "Depth_Grid"
 R2F_OUTPUT_DIR_METRIC_RATING_CURVES = "Rating_Curve"
 R2F_OUTPUT_DIR_METRIC_CROSS_SECTIONS = "Cross_Sections"
-
-
-R2F_OUTPUT_DIR_RAS2REM = "ras2rem"
-R2F_OUTPUT_DIR_RAS2CALIBRATION = "ras2calibration"
 R2F_OUTPUT_DIR_FINAL = "final"
 R2F_OUTPUT_DIR_DOMAIN_POLYGONS = "models_domain"
-R2F_OUTPUT_DIR_RELEASES = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
+
+R2F_OUTPUT_DIR_RAS2CALIBRATION = "ras2calibration"
+R2F_OUTPUT_FILE_RAS2CAL_CSV = "ras2calibration_rating_curve_table.csv"
+R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_rating_curve_points.gpkg"
+R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt"
 
 # LOGS
 LOCAL_TOOLS_OUTPUT_PATH = os.path.join(DEFAULT_BASE_DIR, "tool_outputs")
 DEFAULT_LOG_FOLDER_PATH = os.path.join(LOCAL_TOOLS_OUTPUT_PATH, "logs")
-
-
-# OUTPUT FILES
-R2F_OUTPUT_FILE_RAS2CAL_CSV = "ras2calibration_rating_curve_table.csv"
-R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_rating_curve_points.gpkg"
-R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt"
 
 # S3 PATHS
 S3_DEFAULT_BUCKET_NAME = "ras2fim"
@@ -80,6 +75,14 @@ S3_OWP_RAS_MODELS_FOLDER = S3_DEFAULT_BUCKET_PATH + "OWP_ras_models/models"
 S3_DEFAULT_MODELS_CATALOG_PATH = S3_DEFAULT_BUCKET_PATH + "OWP_ras_models/OWP_ras_models_catalog.csv"
 S3_INPUTS_3DEP_DEMS = S3_DEFAULT_BUCKET_PATH + "inputs/dems/ras_3dep_HUC8_10m"
 S3_DEFAULT_RAS2RELEASE_FOLDER = S3_DEFAULT_BUCKET_PATH + "ras2fim_releases"
+
+# GVAL PATHS
+LOCAL_GVAL_BENCHMARK_DATA = os.path.join(DEFAULT_BASE_DIR, "gval", "benchmark_data")
+LOCAL_GVAL_EVALS = os.path.join(DEFAULT_BASE_DIR, "gval", "evaluation")
+S3_GVAL_BENCHMARK_FOLDER = "gval/benchmark_data"
+S3_GVAL_EVALS_FOLDER = "gval/evaluations"
+S3_GVAL_BENCHMARK_PATH = S3_DEFAULT_BUCKET_PATH + S3_GVAL_BENCHMARK_FOLDER
+S3_GVAL_EVALS_PATH = S3_DEFAULT_BUCKET_PATH + S3_GVAL_EVALS_FOLDER
 
 # NODATA VALUE
 DEFAULT_NODATA_VAL = 0 - 9999
