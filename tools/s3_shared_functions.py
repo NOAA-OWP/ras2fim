@@ -47,6 +47,8 @@ def upload_file_to_s3(src_path, full_s3_path_and_file_name):
         if full_s3_path_and_file_name == "":
             raise Exception("full s3 path and file name is not defined")
 
+        full_s3_path_and_file_name = full_s3_path_and_file_name.replace("\\", "/")
+
         # we need the "s3 part stripped off for now" (if it is even there)
         adj_s3_path = full_s3_path_and_file_name.replace("s3://", "")
         path_segs = adj_s3_path.split("/")
@@ -199,6 +201,8 @@ def delete_s3_folder(bucket_name, s3_folder_path):
         - s3_folder_path: e.g.  temp/rob/12030105_2276_230810  (or output_ras2fim)
     """
 
+    s3_folder_path = s3_folder_path.replace("\\", "/")
+
     s3_full_target_path = f"s3://{bucket_name}/{s3_folder_path}"
 
     RLOG.lprint("===================================================================")
@@ -295,11 +299,15 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         This is used for multi-threading.
         """
 
+        src_file_path = src_file_path.replace("\\", "/")
+        target_file_path = target_file_path.replace("\\", "/")
+
         # print(f"Copying __{src_file_path}")
         copy_source = {'Bucket': bucket_name, 'Key': src_file_path}
         s3_client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=target_file_path)
 
     try:
+
         RLOG.lprint("===================================================================")
         print("")
         RLOG.notice(f"Moving folder from {s3_src_folder_path}"
@@ -437,6 +445,9 @@ def download_folders(list_folders):
 
             num_completed = 0
             for download_args in list_folders:
+
+                download_args["s3_src_folder"] = download_args["s3_src_folder"].replace("\\", "/")
+
                 item = {
                     "bucket_name": download_args["bucket_name"],
                     "folder_id": download_args["folder_id"],
@@ -534,6 +545,8 @@ def download_single_folder(
 
     if num_of_workers <= 0:
         raise Exception("Invalid number of workers submitted")
+
+    s3_src_folder = s3_src_folder.replace("\\", "/")
 
     full_src_path = f"s3://{bucket_name}/{s3_src_folder}"
 
@@ -656,6 +669,7 @@ def download_one_file(bucket_name: str, trg_file: str, s3_client: boto3.client, 
             os.makedirs(trg_path, exist_ok=True)
 
         # raise Exception("Rob you goofer") Testing exceptions
+        s3_file = s3_file.replace("\\", "/")
 
         with open(trg_file, 'wb') as f:
             s3_client.download_fileobj(Bucket=bucket_name, Key=s3_file, Fileobj=f)
@@ -685,6 +699,10 @@ def get_records_list(bucket_name, s3_src_folder_path, search_key, is_verbose=Fal
     """
 
     try:
+
+        s3_src_folder_path = s3_src_folder_path.replace("\\", "/")
+        search_key = search_key.replace("\\", "/")
+
         if is_verbose is True:
             print("")
             RLOG.lprint(
@@ -778,6 +796,9 @@ def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
     """
 
     try:
+
+        s3_src_folder_path = s3_src_folder_path.replace("\\", "/")
+
         if is_verbose is True:
             print("")
             RLOG.lprint(
@@ -794,7 +815,7 @@ def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
         s3_client = boto3.client("s3")
         s3_items = []  # a list of dictionaries
 
-        default_kwargs = {"Bucket": bucket_name, "Prefix": s3_src_folder_path, "Delimiter": "/"}
+        default_kwargs = {"Bucket": bucket_name, "Prefix": s3_src_folder_path,  "Delimiter": "/"}
 
         next_token = ""
 
@@ -805,22 +826,23 @@ def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
 
             # will limit to 1000 objects - hence tokens
             response = s3_client.list_objects_v2(**updated_kwargs)
-            # print(response)
             if response.get("KeyCount") == 0:
-                return s3_items
+                next_token = response.get("NextContinuationToken")                
+                continue
 
             prefix_recs = response.get("CommonPrefixes")
             if prefix_recs is None:
-                raise Exception("s3 not did not load folders names correctly")
-
+                next_token = response.get("NextContinuationToken")                
+                continue
+            
             for result in prefix_recs:
                 prefix = result.get("Prefix")
                 prefix_adj = prefix.replace(s3_src_folder_path, "")
                 if prefix_adj.endswith("/"):
                     prefix_adj = prefix_adj[:-1]
-                item = {"key": prefix_adj, "url": f"s3://{bucket_name}/{s3_src_folder_path}{prefix_adj}"}
-                s3_items.append(item)
-
+                if prefix_adj != "": # empty.. likely the parent folder itself.
+                    item = {"key": prefix_adj, "url": f"s3://{bucket_name}/{s3_src_folder_path}{prefix_adj}"}
+                    s3_items.append(item)
             next_token = response.get("NextContinuationToken")
 
         return s3_items
@@ -856,6 +878,8 @@ def get_folder_size(bucket_name, s3_src_folder_path):
     """
 
     try:
+        s3_src_folder_path = s3_src_folder_path.replace("\\", "/")
+
         if not s3_src_folder_path.endswith("/"):
             s3_src_folder_path += "/"
 
@@ -913,6 +937,8 @@ def is_valid_s3_folder(s3_full_folder_path):
         - s3_full_folder_path: eg. s3://ras2fim/OWP_ras_models
     """
 
+    s3_full_folder_path = s3_full_folder_path.replace("\\", "/")
+
     if s3_full_folder_path.endswith("/"):
         s3_full_folder_path = s3_full_folder_path[:-1]
 
@@ -962,6 +988,8 @@ def is_valid_s3_file(s3_full_file_path):
     """
 
     file_exists = False
+
+    s3_full_file_path = s3_full_file_path.replace("\\", "/")
 
     if s3_full_file_path.endswith("/"):
         raise Exception("s3 file path is invalid as it ends with as forward slash")
@@ -1054,6 +1082,8 @@ def parse_unit_folder_name(unit_folder_name):
     if unit_folder_name == "":
         raise ValueError("unit_folder_name can not be empty")
 
+    unit_folder_name = unit_folder_name.replace("\\", "/")
+
     # cut off the s3 part if there is any.
     unit_folder_name = unit_folder_name.replace("s3://", "")
 
@@ -1130,6 +1160,8 @@ def parse_bucket_and_folder_name(s3_full_folder_path):
     Returns:
         A tuple:  bucket name, s3_folder_path
     """
+
+    s3_full_folder_path = s3_full_folder_path.replace("\\", "/")
 
     if s3_full_folder_path.endswith("/"):
         s3_full_folder_path = s3_full_folder_path[:-1]

@@ -390,6 +390,7 @@ def __validate_input(
 
     # ----------------
     # test s3 bucket and paths (it will automatically throw exceptions)
+    s3_path_to_output_folder = s3_path_to_output_folder.replace("\\", "/")
     if s3_sf.is_valid_s3_folder(s3_path_to_output_folder) is False:
         raise ValueError(f"S3 path to outputs ({s3_path_to_output_folder}) does not exist")
 
@@ -397,6 +398,7 @@ def __validate_input(
     rtn_dict["s3_unit_output_bucket_name"] = bucket_name
     rtn_dict["s3_unit_output_folder"] = s3_output_folder
 
+    s3_ras2release_path = s3_ras2release_path.replace("\\", "/")        
     if skip_save_to_s3 is False:
         if s3_sf.is_valid_s3_folder(s3_ras2release_path) is False:
             raise ValueError(f"S3 path to releases ({s3_ras2release_path}) does not exist")
