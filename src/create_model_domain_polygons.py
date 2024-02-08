@@ -178,7 +178,7 @@ if __name__ == "__main__":
     # python create_model_domain_polygons.py
     #  -i "C:\ras2fim_data\output_ras2fim\12090301_2277_240201\...
     #          01_shapes_from_hecras\cross_section_LN_from_ras.shp"
-    #  -o "C:\ras2fim_data\output_ras2fim\12090301_2277_240201\final\models_domain\ cool"
+    #  -o "C:\ras2fim_data\output_ras2fim\12090301_2277_240201\final\models_domain\"
     #  -conflate "C:\ras2fim_data\output_ras2fim\12090301_2277_240201\...
     #        02_csv_shapes_from_conflation\12090301_stream_qc_fid_xs.csv"
     #  -name ras_path
