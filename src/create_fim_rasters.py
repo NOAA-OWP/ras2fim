@@ -129,11 +129,12 @@ def fn_create_fim_rasters(
 
     flt_interval = 0.5 #feet
 
-    (ls_number_of_steps_2ndpass,
-     ls_ls_second_pass_flows_xs,
-     ls_slope_bc_nd,
-     ls_wse_2nd_last_xs) = worker_fim_rasters.create_datasets_2ndpass(unit_output_folder, flt_interval)
+    ls_number_of_steps_2ndpass,ls_ls_second_pass_flows_xs,ls_second_pass_flows_xs_df = worker_fim_rasters.create_datasets_2ndpass(
+        unit_output_folder, flt_interval)
 
+    ls_slope_bc_nd, ls_wse_2nd_last_xs = worker_fim_rasters.compute_boundray_condition_2ndpass(
+        unit_output_folder, ls_second_pass_flows_xs_df)
+    
     worker_fim_rasters.create_all_2ndpass_flow_files(
         unit_output_folder,
         ls_number_of_steps_2ndpass,

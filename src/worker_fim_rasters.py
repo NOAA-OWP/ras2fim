@@ -1308,142 +1308,6 @@ def fn_run_hecras(str_ras_projectpath, int_number_of_steps):
     return all_x_sections_info
 
 
-
-def create_2ndpass_rasmap_file(
-    model_unit, 
-    int_number_of_steps_2ndpass,
-    str_path_to_projection,
-    str_path_to_terrain,
-    str_river_id_fn,
-    terrain_names,
-    path_rasmap,
-    ):
-    # Name of 2nd-pass depth grids
-    list_step_profiles_xml_fn = ["flow_" + str(nms) for nms in range(int_number_of_steps_2ndpass)]
-    
-    # Writing the rasmapp file
-    str_ras_mapper_file = ""
-
-    str_ras_mapper_file = r"<RASMapper>" + "\n"
-    str_ras_mapper_file += r"  <Version>2.0.0</Version>" + "\n"
-
-    str_ras_mapper_file += (
-        r'  <RASProjectionFilename Filename="' + str_path_to_projection + r'" />' + "\n"
-    )
-
-    str_ras_mapper_file += r'  <Geometries Checked="True" Expanded="True">' + "\n"
-
-    str_ras_mapper_file += r'    <Layer Name="' + str_river_id_fn + '"'
-    str_ras_mapper_file += r' Type="RASGeometry" Checked="True" '
-    str_ras_mapper_file += r'Expanded="True" Filename="'
-
-    str_ras_mapper_file += r"." + "\\" + str_river_id_fn + '.g01.hdf">' + "\n"
-
-    str_ras_mapper_file += r'      <Layer Type="RAS'
-    str_ras_mapper_file += r'River" Checked="True" />' + "\n"
-    str_ras_mapper_file += r'      <Layer Type="RASXS" Checked'
-    str_ras_mapper_file += r'="True" />' + "\n"
-    str_ras_mapper_file += r"    </Layer>" + "\n"
-    str_ras_mapper_file += r"  </Geometries>" + "\n"
-
-    str_ras_mapper_file += r'  <Results Expanded="True">' + "\n"
-    str_ras_mapper_file += r'    <Layer Name="'
-    str_ras_mapper_file += str_river_id_fn + '" Type="RAS' + 'Results" Expanded="True" Filename=".'
-    str_ras_mapper_file += "\\" + str_river_id_fn + r'.p01.hdf">' + "\n"
-    str_ras_mapper_file += '      <Layer Type="RASGeometry" Filename=".'
-    str_ras_mapper_file += "\\" + str_river_id_fn + r'.p01.hdf" />' + "\n"
-
-    int_index = 0
-
-    # Loop through all profiles and create an XML request to map each depth
-    # grid in the list_step_profiles_xml_fn
-    for i in list_step_profiles_xml_fn: 
-        str_ras_mapper_file += '      <Layer Name="depth" Type="RAS'
-        str_ras_mapper_file += 'ResultsMap" Checked="True" Filename=".'
-
-        if model_unit == "meter":
-            str_ras_mapper_file += (
-                "\\" + str_river_id_fn + "_2nd" + "\\" + "Depth (" + str(i) + 'm).vrt">' + "\n"
-            )
-        else:
-            str_ras_mapper_file += (
-                "\\" + str_river_id_fn + "_2nd" + "\\" + "Depth (" + str(i) + 'ft).vrt">' + "\n"
-            )
-
-        str_ras_mapper_file += "        <LabelFeatures "
-        str_ras_mapper_file += 'Checked="True" Center="False" '
-        str_ras_mapper_file += 'rows="1" cols="1" r0c0="FID" '
-        str_ras_mapper_file += 'Position="5" Color="-16777216" />' + "\n"
-        str_ras_mapper_file += '        <MapParameters MapType="depth" Layer'
-        str_ras_mapper_file += 'Name="Depth" OutputMode="Stored Current '
-
-        if model_unit == "meter":
-            str_ras_mapper_file += (
-                'Terrain" StoredFilename=".\\' + str_river_id_fn + "_2nd" + "\\Depth (" + str(i) + 'm).vrt"'
-            )
-        else:
-            str_ras_mapper_file += (
-                'Terrain" StoredFilename=".\\' + str_river_id_fn + "_2nd" + "\\Depth (" + str(i) + 'ft).vrt"'
-            )
-
-        str_ras_mapper_file += (
-            ' Terrain="' + terrain_names + '" ProfileIndex="' + str(int_index) + '" '
-        )
-        str_ras_mapper_file += ' ProfileName="' + str(i) + 'm" ArrivalDepth="0" />' + "\n"
-        str_ras_mapper_file += "      </Layer>" + "\n"
-
-        int_index += 1
-
-    # Get the highest (last profile) flow innundation polygon
-    # --------------------
-    str_ras_mapper_file += '      <Layer Name="depth" Type="RAS'
-    str_ras_mapper_file += 'ResultsMap" Checked="True" Filename=".'
-
-    str_ras_mapper_file += (
-        "\\" + str_river_id_fn + "_2nd" + "\\" + "Inundation Boundary (" + str(list_step_profiles_xml_fn[-1])
-    )
-
-    str_ras_mapper_file += 'ft Value_0.shp">' + "\n"
-    str_ras_mapper_file += '        <MapParameters MapType="depth" '
-    str_ras_mapper_file += 'LayerName="Inundation Boundary"'
-    str_ras_mapper_file += ' OutputMode="Stored Polygon'
-    str_ras_mapper_file += ' Specified Depth"  StoredFilename=".'
-    str_ras_mapper_file += (
-        "\\" + str_river_id_fn + "_2nd" + "\\" + "Inundation Boundary (" + str(list_step_profiles_xml_fn[-1])
-    )
-    str_ras_mapper_file += (
-        'm Value_0).shp"  Terrain="'
-        + terrain_names
-        + '" ProfileIndex="'
-        + str(len(list_step_profiles_xml_fn) - 1)
-    )
-    str_ras_mapper_file += (
-        '"  ProfileName="' + str(list_step_profiles_xml_fn[-1]) + 'm"  ArrivalDepth="0" />' + "\n"
-    )
-    str_ras_mapper_file += "      </Layer>" + "\n"
-    # --------------------
-
-    str_ras_mapper_file += r"    </Layer>" + "\n"
-    str_ras_mapper_file += r"  </Results>" + "\n"
-
-    str_ras_mapper_file += r'  <Terrains Checked="True" Expanded="True">' + "\n"
-
-    str_ras_mapper_file += (
-        r'    <Layer Name="' + terrain_names + r'" Type="TerrainLayer" Checked="True" Filename="'
-    )
-
-    str_ras_mapper_file += str_path_to_terrain + "\\" + terrain_names + r'.hdf">' + "\n"
-
-    str_ras_mapper_file += r"    </Layer>" + "\n"
-    str_ras_mapper_file += r"  </Terrains>" + "\n"
-
-    str_ras_mapper_file += r"</RASMapper>"
-
-    with open(path_rasmap, "w") as file:
-        file.write(str_ras_mapper_file)
-        file.close()
-
-
 # -------------------------------------------------
 # Create all datasets required to create 2nd-pass  
 # flow and rasmaps HEC-RAS files
@@ -1456,11 +1320,11 @@ def create_datasets_2ndpass(unit_output_folder, flt_interval):
 
     ls_number_of_steps_2ndpass = [0]*len(folder_1stpass_models)
     ls_ls_second_pass_flows_xs = [0]*len(folder_1stpass_models)
+    ls_second_pass_flows_xs_df = [0]*len(folder_1stpass_models)
     nsindx = 0
-    ls_slope_bc_nd = []
-    ls_wse_2nd_last_xs = []
     for folder in folder_1stpass_models:
 
+        RLOG.lprint("Computing number of the steps and flow profiles for" + folder + "model")
         path_all_x_sections_info = os.path.join(
             path_to_1st_pass_output, 
             folder, 
@@ -1494,7 +1358,6 @@ def create_datasets_2ndpass(unit_output_folder, flt_interval):
         cond_md_ar = all_x_sections_info["Xsection_name"] == target_xs
         list_flow_steps = all_x_sections_info[cond_md_ar]["discharge"]
         list_depth_steps = all_x_sections_info[cond_md_ar]["max_depth"]
-        list_wse_steps = all_x_sections_info[cond_md_ar]["wse"]
 
         # -------------------------------------------------
         # Use linear interpolator (f1) to find flows coresponding to half 
@@ -1509,13 +1372,12 @@ def create_datasets_2ndpass(unit_output_folder, flt_interval):
         # -------------------------------------------------
         # Compute interpolated flow valuse at 0.5 foot interval depth
         list_step_profiles = []
-
         # Create a list of the profiles at desired increments
         for i in range(int_max_depth - int_min_depth + 1):
             int_depth_interval = (i + int_min_depth) * flt_interval
 
-            # round this to nearest 1/10th
-            int_depth_interval = round(int_depth_interval, 1)
+            # round this to nearest 1/100th
+            int_depth_interval = round(int_depth_interval, 2)
 
             list_step_profiles.append(int_depth_interval)
 
@@ -1524,28 +1386,8 @@ def create_datasets_2ndpass(unit_output_folder, flt_interval):
         list_step_flows = arr_step_flows.tolist()
 
         # convert list of interpolated float values to integer list
-        list_int_step_flows = []
-        for flow in list_step_flows:
-            flow_in = int(flow)
-            if flow_in == 0:
-                list_int_step_flows.append(1)
-            else:
-                list_int_step_flows.append(flow_in)
-
-        # -------------------------------------------------
-        # Corresponding wse at 0.5 foot interval to interpolated flow valuse
-        int_min_wse = int((min(list_wse_steps) // flt_interval) + 1)
-
-        list_step_profiles_wse = []
-        for i in range(int_max_depth - int_min_depth + 1):
-
-            int_wse_interval = (i + int_min_wse) * flt_interval
-
-            # round this to nearest 1/10th
-            int_wse_interval = round(int_wse_interval, 1)
-
-            list_step_profiles_wse.append(int_wse_interval)
-        
+        list_int_step_flows = [round(x1,3) for x1 in list_step_flows]
+    
         # -------------------------------------------------
         # Generate 2nd-pass flow profiles for all XSs in which
         # flow changes based on new number_of_steps_2ndpass
@@ -1569,27 +1411,47 @@ def create_datasets_2ndpass(unit_output_folder, flt_interval):
         for num_q in range(len(df_peak_flows_xs)):
 
             int_max_flow2 = df_peak_flows_xs["discharge"][num_q]
-            list_2nd_pass_flows2 = [int(int_max_flow2 * ratio) for ratio in second_pass_ratio]
-            list_2nd_pass_flows3 = []
-            for flows2 in list_2nd_pass_flows2:
-                if flows2 == 0:
-                    list_2nd_pass_flows3.append(1)
-                else: list_2nd_pass_flows3.append(flows2)
+            list_2nd_pass_flows2 = [int_max_flow2 * ratio for ratio in second_pass_ratio] #int()
 
-            ls_second_pass_flows_xs.append(list_2nd_pass_flows3)
-
-        second_pass_flows_xs_df = pd.DataFrame(ls_second_pass_flows_xs).T
-        second_pass_flows_xs_df.columns = [int(k1) for k1 in df_peak_flows_xs["Xsection_name"]]
+            ls_second_pass_flows_xs.append(list_2nd_pass_flows2)
 
         ls_ls_second_pass_flows_xs[nsindx] = ls_second_pass_flows_xs
         ls_number_of_steps_2ndpass[nsindx] = int_number_of_steps_2ndpass
 
+        second_pass_flows_xs_df = pd.DataFrame(ls_second_pass_flows_xs).T
+        second_pass_flows_xs_df.columns = [int(k1) for k1 in df_peak_flows_xs["Xsection_name"]]
+        ls_second_pass_flows_xs_df[nsindx] = second_pass_flows_xs_df
+
         nsindx += 1
 
+    return ls_number_of_steps_2ndpass, ls_ls_second_pass_flows_xs, ls_second_pass_flows_xs_df
+
+
+def compute_boundray_condition_2ndpass(unit_output_folder, ls_second_pass_flows_xs_df):
+
+    path_to_1st_pass_output = os.path.join(unit_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    folder_1stpass_models = os.listdir(path_to_1st_pass_output)
+    
+    ls_slope_bc_nd = []        
+    ls_wse_2nd_last_xs = []
+    for fldr in range(len(folder_1stpass_models)):
+
+        folder = folder_1stpass_models[fldr]
+        RLOG.lprint("Computing Boundray Conditions for" + folder + "model")
+
+        path_all_x_sections_info = os.path.join(
+            path_to_1st_pass_output, 
+            folder, 
+            "all_x_sections_info_" + folder + ".csv"
+            )
+        all_x_sections_info = pd.read_csv(path_all_x_sections_info)
+    
         # -------------------------------------------------
         # Read boundary condition from 1st pass flow file
         # and generate BC for the 2nd pass flow
         # -------------------------------------------------
+        second_pass_flows_xs_df = ls_second_pass_flows_xs_df[fldr]
+
         path_1stpass_flow_file = os.path.join(
             path_to_1st_pass_output, 
             folder, 
@@ -1653,11 +1515,11 @@ def create_datasets_2ndpass(unit_output_folder, flt_interval):
 
             file_flow_1st2.close()
 
-    return ls_number_of_steps_2ndpass, ls_ls_second_pass_flows_xs, ls_slope_bc_nd, ls_wse_2nd_last_xs
+    return ls_slope_bc_nd, ls_wse_2nd_last_xs
 
 
 # -------------------------------------------------
-# Create second-pass flow file for all conflated ras models
+# Create all second-pass flow files for conflated ras models
 # -------------------------------------------------
 def create_all_2ndpass_flow_files(
     unit_output_folder,
@@ -1802,6 +1664,144 @@ def create_all_2ndpass_flow_files(
 
 
 # -------------------------------------------------
+# Create second-pass rasmap file for a conflated ras model
+# -------------------------------------------------
+def create_2ndpass_rasmap_file(
+    model_unit, 
+    int_number_of_steps_2ndpass,
+    str_path_to_projection,
+    str_path_to_terrain,
+    str_river_id_fn,
+    terrain_names,
+    path_rasmap,
+    ):
+    # Name of 2nd-pass depth grids
+    list_step_profiles_xml_fn = ["flow_" + str(nms) for nms in range(int_number_of_steps_2ndpass)]
+    
+    # Writing the rasmapp file
+    str_ras_mapper_file = ""
+
+    str_ras_mapper_file = r"<RASMapper>" + "\n"
+    str_ras_mapper_file += r"  <Version>2.0.0</Version>" + "\n"
+
+    str_ras_mapper_file += (
+        r'  <RASProjectionFilename Filename="' + str_path_to_projection + r'" />' + "\n"
+    )
+
+    str_ras_mapper_file += r'  <Geometries Checked="True" Expanded="True">' + "\n"
+
+    str_ras_mapper_file += r'    <Layer Name="' + str_river_id_fn + '"'
+    str_ras_mapper_file += r' Type="RASGeometry" Checked="True" '
+    str_ras_mapper_file += r'Expanded="True" Filename="'
+
+    str_ras_mapper_file += r"." + "\\" + str_river_id_fn + '.g01.hdf">' + "\n"
+
+    str_ras_mapper_file += r'      <Layer Type="RAS'
+    str_ras_mapper_file += r'River" Checked="True" />' + "\n"
+    str_ras_mapper_file += r'      <Layer Type="RASXS" Checked'
+    str_ras_mapper_file += r'="True" />' + "\n"
+    str_ras_mapper_file += r"    </Layer>" + "\n"
+    str_ras_mapper_file += r"  </Geometries>" + "\n"
+
+    str_ras_mapper_file += r'  <Results Expanded="True">' + "\n"
+    str_ras_mapper_file += r'    <Layer Name="'
+    str_ras_mapper_file += str_river_id_fn + '" Type="RAS' + 'Results" Expanded="True" Filename=".'
+    str_ras_mapper_file += "\\" + str_river_id_fn + r'.p01.hdf">' + "\n"
+    str_ras_mapper_file += '      <Layer Type="RASGeometry" Filename=".'
+    str_ras_mapper_file += "\\" + str_river_id_fn + r'.p01.hdf" />' + "\n"
+
+    int_index = 0
+
+    # Loop through all profiles and create an XML request to map each depth
+    # grid in the list_step_profiles_xml_fn
+    for i in list_step_profiles_xml_fn: 
+        str_ras_mapper_file += '      <Layer Name="depth" Type="RAS'
+        str_ras_mapper_file += 'ResultsMap" Checked="True" Filename=".'
+
+        if model_unit == "meter":
+            str_ras_mapper_file += (
+                "\\" + str_river_id_fn + "_2nd" + "\\" + "Depth (" + str(i) + 'm).vrt">' + "\n"
+            )
+        else:
+            str_ras_mapper_file += (
+                "\\" + str_river_id_fn + "_2nd" + "\\" + "Depth (" + str(i) + 'ft).vrt">' + "\n"
+            )
+
+        str_ras_mapper_file += "        <LabelFeatures "
+        str_ras_mapper_file += 'Checked="True" Center="False" '
+        str_ras_mapper_file += 'rows="1" cols="1" r0c0="FID" '
+        str_ras_mapper_file += 'Position="5" Color="-16777216" />' + "\n"
+        str_ras_mapper_file += '        <MapParameters MapType="depth" Layer'
+        str_ras_mapper_file += 'Name="Depth" OutputMode="Stored Current '
+
+        if model_unit == "meter":
+            str_ras_mapper_file += (
+                'Terrain" StoredFilename=".\\' + str_river_id_fn + "_2nd" + "\\Depth (" + str(i) + 'm).vrt"'
+            )
+        else:
+            str_ras_mapper_file += (
+                'Terrain" StoredFilename=".\\' + str_river_id_fn + "_2nd" + "\\Depth (" + str(i) + 'ft).vrt"'
+            )
+
+        str_ras_mapper_file += (
+            ' Terrain="' + terrain_names + '" ProfileIndex="' + str(int_index) + '" '
+        )
+        str_ras_mapper_file += ' ProfileName="' + str(i) + 'm" ArrivalDepth="0" />' + "\n"
+        str_ras_mapper_file += "      </Layer>" + "\n"
+
+        int_index += 1
+
+    # Get the highest (last profile) flow innundation polygon
+    # --------------------
+    str_ras_mapper_file += '      <Layer Name="depth" Type="RAS'
+    str_ras_mapper_file += 'ResultsMap" Checked="True" Filename=".'
+
+    str_ras_mapper_file += (
+        "\\" + str_river_id_fn + "_2nd" + "\\" + "Inundation Boundary (" + str(list_step_profiles_xml_fn[-1])
+    )
+
+    str_ras_mapper_file += 'ft Value_0.shp">' + "\n"
+    str_ras_mapper_file += '        <MapParameters MapType="depth" '
+    str_ras_mapper_file += 'LayerName="Inundation Boundary"'
+    str_ras_mapper_file += ' OutputMode="Stored Polygon'
+    str_ras_mapper_file += ' Specified Depth"  StoredFilename=".'
+    str_ras_mapper_file += (
+        "\\" + str_river_id_fn + "_2nd" + "\\" + "Inundation Boundary (" + str(list_step_profiles_xml_fn[-1])
+    )
+    str_ras_mapper_file += (
+        'm Value_0).shp"  Terrain="'
+        + terrain_names
+        + '" ProfileIndex="'
+        + str(len(list_step_profiles_xml_fn) - 1)
+    )
+    str_ras_mapper_file += (
+        '"  ProfileName="' + str(list_step_profiles_xml_fn[-1]) + 'm"  ArrivalDepth="0" />' + "\n"
+    )
+    str_ras_mapper_file += "      </Layer>" + "\n"
+    # --------------------
+
+    str_ras_mapper_file += r"    </Layer>" + "\n"
+    str_ras_mapper_file += r"  </Results>" + "\n"
+
+    str_ras_mapper_file += r'  <Terrains Checked="True" Expanded="True">' + "\n"
+
+    str_ras_mapper_file += (
+        r'    <Layer Name="' + terrain_names + r'" Type="TerrainLayer" Checked="True" Filename="'
+    )
+
+    str_ras_mapper_file += str_path_to_terrain + "\\" + terrain_names + r'.hdf">' + "\n"
+
+    str_ras_mapper_file += r"    </Layer>" + "\n"
+    str_ras_mapper_file += r"  </Terrains>" + "\n"
+
+    str_ras_mapper_file += r"</RASMapper>"
+
+    with open(path_rasmap, "w") as file:
+        file.write(str_ras_mapper_file)
+        file.close()
+
+
+# -------------------------------------------------
 # Create a second-pass rasmap file for all conflated ras models
 # -------------------------------------------------
 def create_all_2ndpass_rasmap_files (unit_output_folder, huc8_num, model_unit, ls_number_of_steps_2ndpass):
@@ -1893,43 +1893,4 @@ def fn_run_one_ras_model(
             MP_LOG.error(traceback.format_exc())
         else:
             print(traceback.format_exc())
-
-# def fn_run_one_ras_model(
-#     str_ras_projectpath,
-#     int_number_of_steps,
-#     model_folder,
-#     unit_output_folder,
-#     log_default_folder,
-#     log_file_prefix,
-#     index_number,
-#     total_number_models,
-# ):
-#     try:
-#         global MP_LOG
-
-#         file_id = sf.get_date_with_milli()
-#         log_file_name = f"{log_file_prefix}-{file_id}.log"
-#         MP_LOG.setup(os.path.join(log_default_folder, log_file_name))
-
-#         MP_LOG.lprint(f"Processing Model Number {index_number+1} Out Of {total_number_models}")
-#         MP_LOG.lprint(f"Starting Processing {model_folder} Model")
-#         MP_LOG.trace(str_ras_projectpath)
-
-#         all_x_sections_info = fn_run_hecras(str_ras_projectpath, int_number_of_steps)
-
-#         path_to_all_x_sections_info = os.path.join(
-#             unit_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT, model_folder
-#         )
-#         path_all_x_sections_info = os.path.join(
-#             path_to_all_x_sections_info, "all_x_sections_info" + "_" + model_folder + ".csv"
-#         )
-#         all_x_sections_info.to_csv(path_all_x_sections_info)
-
-#         MP_LOG.lprint(f"Processing {model_folder} Model Completed")
-
-#     except Exception:
-#         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
-#             MP_LOG.error(traceback.format_exc())
-#         else:
-#             print(traceback.format_exc())
 
