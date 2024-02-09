@@ -1324,7 +1324,7 @@ def create_datasets_2ndpass(unit_output_folder, flt_interval):
     nsindx = 0
     for folder in folder_1stpass_models:
 
-        RLOG.lprint("Computing number of the steps and flow profiles for" + folder + "model")
+        RLOG.lprint("Computing number of the steps and flow profiles for " + folder + " model")
         path_all_x_sections_info = os.path.join(
             path_to_1st_pass_output, 
             folder, 
@@ -1435,9 +1435,8 @@ def compute_boundray_condition_2ndpass(unit_output_folder, ls_second_pass_flows_
     ls_slope_bc_nd = []        
     ls_wse_2nd_last_xs = []
     for fldr in range(len(folder_1stpass_models)):
-
         folder = folder_1stpass_models[fldr]
-        RLOG.lprint("Computing Boundray Conditions for" + folder + "model")
+        RLOG.lprint("Computing Boundray Conditions for " + folder + " model")
 
         path_all_x_sections_info = os.path.join(
             path_to_1st_pass_output, 
@@ -1615,7 +1614,11 @@ def create_all_2ndpass_flow_files(
 
         for fc2 in range(int_num_of_flow_change_xs):
             # list of the second pass flows
-            list_firstflows2 = ls_second_pass_flows_xs[fc2]
+            ls_second_pass_flows_xs2 = ls_second_pass_flows_xs[fc2]
+            ls_second_pass_flows_xs_int = [int(y1) for y1 in ls_second_pass_flows_xs2]
+            ls_second_pass_flows_xs_int = [1 if y2 == 0 else y2 for y2 in ls_second_pass_flows_xs_int]
+
+            list_firstflows2 = ls_second_pass_flows_xs_int
 
             str_xs_upstream_nd = str(int(df_peak_flows_xs['Xsection_name'][fc2]))
             str_flowfile2 += str_river + "," + str_reach + "," + str_xs_upstream_nd + "\n"
@@ -1632,7 +1635,7 @@ def create_all_2ndpass_flow_files(
             if 'Dn Known WS' in flowfile_contents:
                 wse_2nd_last_xs = ls_wse_2nd_last_xs[counter3]
                 str_flowfile2 += "Dn Type= 1 " + "\n"
-                str_known_ws = str(round(wse_2nd_last_xs['wse'][m2], 3))
+                str_known_ws = str(round(wse_2nd_last_xs['wse'][m2], 2))
                 str_flowfile2 += "Dn Known WS=" + str_known_ws + "\n"
             else:
                 slope_bc_nd = ls_slope_bc_nd[counter2]         

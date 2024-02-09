@@ -265,7 +265,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
 
             fid_mid_x_sections_info_avr = mid_xs_info_fid_avr.iloc[
                 mid_xs_info_fid_avr.index.get_level_values('feature_id') == fids
-            ]  # .astype(int)
+            ]
             fid_mid_x_sections_info_1st = mid_xs_info_fid_1st.iloc[
                 mid_xs_info_fid_1st.index.get_level_values('feature_id') == fids
             ]
@@ -299,8 +299,8 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             x_sections_info_fid = mid_x_sections_info_fid[mid_x_sections_info_fid['feature_id'] == fids]
             path_to_all_xs_info_fid = os.path.join(str_rating_path_to_create, f"all_xs_info_fid_{fids}.csv")
 
-            discharge = pd.DataFrame(x_sections_info_fid['discharge'].astype(int), columns=['discharge'])
-            wse = pd.DataFrame(x_sections_info_fid['wse'].astype(int), columns=['wse'])
+            discharge = pd.DataFrame(x_sections_info_fid['discharge'], columns=['discharge']).round(2)
+            wse = pd.DataFrame(x_sections_info_fid['wse'], columns=['wse']).round(2)
             discharge_wse = pd.concat([discharge, wse], axis=1)
 
             x_sections_info_fid = x_sections_info_fid.drop(['discharge', 'wse'], axis=1)
@@ -314,9 +314,9 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             str_xsection_path = os.path.join(str_rating_path_to_create, f"rating_curve_{fids}.csv")
 
             discharge2 = pd.DataFrame(
-                fid_mid_x_sections_info_src['discharge'].astype(int), columns=['discharge']
-            )
-            wse2 = pd.DataFrame(fid_mid_x_sections_info_src['wse'].astype(int), columns=['wse'])
+                fid_mid_x_sections_info_src['discharge'], columns=['discharge']
+            ).round(2)
+            wse2 = pd.DataFrame(fid_mid_x_sections_info_src['wse'], columns=['wse']).round(2)
             discharge_wse2 = pd.concat([discharge2, wse2], axis=1)
 
             fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.drop(['discharge', 'wse'], axis=1)
