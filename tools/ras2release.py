@@ -527,3 +527,5 @@ if __name__ == "__main__":
 
     except Exception:
         RLOG.critical(traceback.format_exc())
+        if RLOG.LOG_FILE_PATH != "":
+            print(f"log files saved to {RLOG.LOG_FILE_PATH}")
