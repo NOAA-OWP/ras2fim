@@ -101,7 +101,6 @@ def cast_to_int(x):
 
 # -------------------------------------------------
 def fn_create_rating_curves(huc8, path_unit_folder):
-
     model_unit = 'feet'
 
     RLOG.lprint("")
@@ -163,13 +162,12 @@ def fn_create_rating_curves(huc8, path_unit_folder):
     # Creating a for loop going through all all_x_sections_info
     # for each confalted stream (step 5 results)
     for infoind in range(len(path_to_all_x_sections_info)):
-
         mid_x_sections_info = pd.read_csv(path_to_all_x_sections_info[infoind])  #
         mid_x_sections_info = mid_x_sections_info.rename(columns={'fid_xs': 'mid_xs', 'modelid': 'model_id'})
 
-        # Determinig the number of steps 
+        # Determinig the number of steps
         xs_us1 = mid_x_sections_info["Xsection_name"][0]
-        int_number_of_steps = len(mid_x_sections_info[mid_x_sections_info["Xsection_name"]==xs_us1])
+        int_number_of_steps = len(mid_x_sections_info[mid_x_sections_info["Xsection_name"] == xs_us1])
 
         model_id = mid_x_sections_info['model_id'][0]
 
@@ -306,24 +304,26 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             x_sections_info_fid = x_sections_info_fid.drop(['discharge', 'wse'], axis=1)
             x_sections_info_fid = pd.concat([x_sections_info_fid, discharge_wse], axis=1)
             x_sections_info_fid = x_sections_info_fid.rename(
-                columns={'wse': 'WSE_Feet', 'discharge': 'Discharge_CFS'})
+                columns={'wse': 'WSE_Feet', 'discharge': 'Discharge_CFS'}
+            )
             x_sections_info_fid.to_csv(path_to_all_xs_info_fid)
 
             # -------------------------------------------------
             # Plotting and saving synthetic rating curves
             str_xsection_path = os.path.join(str_rating_path_to_create, f"rating_curve_{fids}.csv")
 
-            discharge2 = pd.DataFrame(
-                fid_mid_x_sections_info_src['discharge'], columns=['discharge']
-            ).round(2)
+            discharge2 = pd.DataFrame(fid_mid_x_sections_info_src['discharge'], columns=['discharge']).round(
+                2
+            )
             wse2 = pd.DataFrame(fid_mid_x_sections_info_src['wse'], columns=['wse']).round(2)
             discharge_wse2 = pd.concat([discharge2, wse2], axis=1)
 
             fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.drop(['discharge', 'wse'], axis=1)
             fid_mid_x_sections_info_src = pd.concat([fid_mid_x_sections_info_src, discharge_wse2], axis=1)
-            
+
             fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.rename(
-                columns={'wse': 'WSE_Feet', 'discharge': 'Discharge_CFS'})
+                columns={'wse': 'WSE_Feet', 'discharge': 'Discharge_CFS'}
+            )
             fid_mid_x_sections_info_src.to_csv(str_xsection_path, index=True)
 
             plot_src(

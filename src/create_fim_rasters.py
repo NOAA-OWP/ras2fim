@@ -117,7 +117,7 @@ def fn_create_fim_rasters(
 
     # -------------------------------------------------
     # Creating second-pass flow HEC-RAS files and
-    # Running created HEC-RAS models (multi-processing) 
+    # Running created HEC-RAS models (multi-processing)
     # -------------------------------------------------
 
     RLOG.lprint("")
@@ -127,29 +127,29 @@ def fn_create_fim_rasters(
     RLOG.lprint("  ---(w) HUC-8 WATERSHED: " + huc8_num)
     RLOG.lprint("  ---(o) OUTPUT PATH: " + unit_output_folder)
 
-    flt_interval = 0.5 #feet
+    flt_interval = 0.5  # feet
 
-    ls_number_of_steps_2ndpass,ls_ls_second_pass_flows_xs,ls_second_pass_flows_xs_df = worker_fim_rasters.create_datasets_2ndpass(
-        unit_output_folder, flt_interval)
+    (
+        ls_number_of_steps_2ndpass,
+        ls_ls_second_pass_flows_xs,
+        ls_second_pass_flows_xs_df,
+    ) = worker_fim_rasters.create_datasets_2ndpass(unit_output_folder, flt_interval)
 
     ls_slope_bc_nd, ls_wse_2nd_last_xs = worker_fim_rasters.compute_boundray_condition_2ndpass(
-        unit_output_folder, ls_second_pass_flows_xs_df)
-    
+        unit_output_folder, ls_second_pass_flows_xs_df
+    )
+
     worker_fim_rasters.create_all_2ndpass_flow_files(
         unit_output_folder,
         ls_number_of_steps_2ndpass,
         ls_ls_second_pass_flows_xs,
         ls_slope_bc_nd,
-        ls_wse_2nd_last_xs
-        )
-    
-    worker_fim_rasters.create_all_2ndpass_rasmap_files (
-        unit_output_folder,
-        huc8_num,
-        model_unit,
-        ls_number_of_steps_2ndpass
-        )
+        ls_wse_2nd_last_xs,
+    )
 
+    worker_fim_rasters.create_all_2ndpass_rasmap_files(
+        unit_output_folder, huc8_num, model_unit, ls_number_of_steps_2ndpass
+    )
 
     RLOG.lprint("*** All SECOND-PASS FLOW HEC-RAS Models Created ***")
     RLOG.lprint("")
@@ -162,17 +162,14 @@ def fn_create_fim_rasters(
     ls_run_hecras_inputs_2nd = []
     ctr2 = 0
     for mf2 in range(len(names_created_ras_models)):
-
         model_folder2 = names_created_ras_models[mf2]
 
         folder_mame_splt2 = model_folder2.split("_")
         project_file_name2 = folder_mame_splt2[1]
 
         str_ras_projectpath2 = os.path.join(
-            path_created_ras_models,
-            model_folder2,
-            project_file_name2 + ".prj"
-            )
+            path_created_ras_models, model_folder2, project_file_name2 + ".prj"
+        )
 
         run_hecras_inputs_2nd = {
             'str_ras_projectpath': str_ras_projectpath2,
@@ -190,6 +187,7 @@ def fn_create_fim_rasters(
         ctr2 += 1
 
     import sys
+
     # Create a pool of processors
     with ProcessPoolExecutor(max_workers=num_processors) as executor:
         executor_dict = {}
@@ -272,11 +270,7 @@ if __name__ == "__main__":
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
-        fn_create_fim_rasters(
-            str_huc8_arg,
-            unit_output_folder,
-            model_unit,
-        )
+        fn_create_fim_rasters(str_huc8_arg, unit_output_folder, model_unit)
 
     except Exception:
         RLOG.critical(traceback.format_exc())
