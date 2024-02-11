@@ -5,7 +5,7 @@ import traceback
 from datetime import datetime
 from glob import glob
 
-from evaluate_ras2fim_model import evaluate_model_results
+from ras2fim.tools.evaluate_ras2fim_unit import evaluate_unit_results
 from s3_shared_functions import get_folder_list, is_valid_s3_file
 
 
@@ -307,7 +307,7 @@ def run_batch_evaluations(
     # Run ras2fim model evaluation
     for kwargs in eval_args:
         RLOG.lprint(f"Processing evaluation for spatial processing unit {kwargs['spatial_unit']}")
-        evaluate_model_results(**kwargs)
+        evaluate_unit_results(**kwargs)
 
     if not eval_args:
         RLOG.lprint("No valid combinations found, check inputs and try again.")
@@ -315,10 +315,17 @@ def run_batch_evaluations(
         report_missing_ouput(unit_names, benchmark_sources, stages, output_dir)
 
     RLOG.lprint("End s3 batch evaluation")
+    print(f"log files saved to {RLOG.LOG_FILE_PATH}")
 
 
 # -------------------------------------------------
 if __name__ == '__main__':
+    # ***********************
+    # This tool is intended for NOAA/OWP staff only as it requires access to an AWS S3 bucket with a
+    # specific folder structure.
+    # It has hardcoded output pathing.
+    # ***********************
+
     """
     Example Usage:
 
@@ -334,36 +341,48 @@ if __name__ == '__main__':
     # them back to S3. Deliberately at this time, allows for review before going back to S3.
 
     # Parse arguments
-    parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.")
+    parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.\n"
+            " You must use known benchmark sources and stages. e.g ble:100yr, nws:moderate")
 
-    parser.add_argument("-o", "--output_dir", 
-                        help='REQUIRED: Directory to save output evaluation files',
-                        required=True)
+    parser.add_argument(
+        "-o",
+        "--output_dir", 
+        help='REQUIRED: Directory to save output evaluation files',
+        required=True)
     
-    parser.add_argument("-e", "--environment", 
-                        help="REQUIRED: Must be either the value of PROD meaning it is going to"
-                        " s3://ras2fim or DEV meaning pointing to s3://ras2fim-dev",
-                        required=True)
+    parser.add_argument(
+        "-e",
+        "--environment",
+        help="REQUIRED: Must be either the value of PROD meaning it is going to"
+        " s3://ras2fim  or  DEV meaning pointing to s3://ras2fim-dev",
+        required=True)
 
+    # TODO. Test pattern of cmd args and change e.g. here.
     parser.add_argument(
         "-u",
         "--unit_names",
         nargs='*',
         help="OPTIONAL: Argument/s representing unit names that refer to ras2fim output runs"
-        " (if not provided run all existing)\n"
-        " ie): 12030105_2276_ble_230923",
+        " (if not provided run all existing).\n"
+        " Note: The unit_names need to exist in either s3://ras2fim or s3://ras2fim-dev"
+        " depending on selected (-e) environment.\n"
+        " e.g. 12030105_2276_ble_230923",
         required=False,
     )
 
+    # TODO. Test pattern of cmd args and change ie here, also needs an e.g.
     parser.add_argument(
         "-b",
         "--benchmark_sources",
         nargs='*',
         help="OPTIONAL: Argument/s representing list of benchmark sources to run"
-        " (if not provided run all existing)",
+        " (if not provided run all existing)\n"
+        " Note: The unit_names need to exist in either s3://ras2fim or s3://ras2fim-dev"
+        " depending on selected (-e) environment.",        
         required=False,
     )
 
+    # TODO. Test pattern of cmd args and change ie here, also needs an e.g.
     parser.add_argument(
         "-st",
         "--stages",

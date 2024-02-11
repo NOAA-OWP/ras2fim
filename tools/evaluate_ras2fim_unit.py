@@ -21,7 +21,7 @@ RLOG = sv.R2F_LOG
 adjust_memory_strategy("normal")
 
 
-def evaluate_model_results(
+def evaluate_unit_results(
     inundation_polygons, model_domain_polygons, benchmark_raster, spatial_unit, output_dir
 ):
     """Method to evaluate the model performance of ras2fim output using benchmark data
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     """
     Example Usage:
 
-    python evaluate_ras2fim_model.py
+    python evaluate_ras2fim_unit.py
     -i "s3://ras2fim/output_ras2fim/12030105_2276_ble_230923/final/inundation_polys/ble_100yr_inundation.gpkg"
     -m "s3://ras2fim/output_ras2fim/12030105_2276_ble_230923/final/models_domain/models_domain.gpkg"
     -b "s3://ras2fim-dev/gval/benchmark_data/ble/12030105/100yr/ble_huc_12030105_extent_100yr.tif"
@@ -159,7 +159,7 @@ if __name__ == '__main__':
         # assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(args['output_dir'], script_file_name + ".log"))
 
-        evaluate_model_results(**args)
+        evaluate_unit_results(**args)
 
     except Exception:
         RLOG.critical(traceback.format_exc())

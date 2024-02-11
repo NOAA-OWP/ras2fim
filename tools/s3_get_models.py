@@ -144,18 +144,11 @@ class Get_Models_By_Catalog:
             The new OWP_ras_models_catalog_{HUC}.csv is required for ras2fim.py processing.
 
         """
+        arg_values = locals().copy()
 
         # ----------
         # Validate inputs
-        self.__validate_inputs(
-            huc_number,
-            projection,
-            source_code,
-            s3_path_to_catalog_file,
-            target_owp_ras_models_path,
-            target_owp_ras_models_csv_file,
-            list_only,
-        )
+        self.__validate_inputs(**arg_values)
 
         # NOTICE... logger setup after validation? might get logger errors
         # as the logger needs key values

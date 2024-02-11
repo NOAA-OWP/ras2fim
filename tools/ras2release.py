@@ -51,6 +51,8 @@ def create_ras2release(
     Outputs:
     """
 
+    arg_values = locals().copy()
+
     start_time = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
@@ -68,9 +70,7 @@ def create_ras2release(
 
     # validate input variables and setup key variables
     # rd = Variables Dictionary
-    rd = __validate_input(
-        release_name, s3_path_to_output_folder, local_ras2release_path, s3_ras2release_path, skip_save_to_s3
-    )
+    rd = __validate_input(**arg_values)
 
     local_rel_folder = rd["local_target_rel_path"]
     local_rel_units_folder = os.path.join(local_rel_folder, "units")
@@ -97,6 +97,7 @@ def create_ras2release(
     end_time = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
     print(f"Ended (UTC): {dt_string}")
+    print(f"log files saved to {RLOG.LOG_FILE_PATH}")    
 
     # Calculate duration
     time_duration = end_time - start_time

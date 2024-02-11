@@ -83,6 +83,8 @@ def unit_to_s3(src_unit_dir, s3_bucket_name):
 
     """
 
+    arg_values = locals().copy()
+
     start_time = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
@@ -94,15 +96,15 @@ def unit_to_s3(src_unit_dir, s3_bucket_name):
 
     # --------------------
     # validate input variables and setup key variables
-    varibles_dict = __validate_input(src_unit_dir, s3_bucket_name)
+    rd = __validate_input(**arg_values)
 
-    unit_folder_name = varibles_dict["unit_folder_name"]
+    unit_folder_name = rd["unit_folder_name"]
     # eg. 12030202_102739_ble_230810
 
-    s3_output_path = varibles_dict["s3_output_path"]
+    s3_output_path = rd["s3_output_path"]
     # e.g. s3://ras2fim-dev/output_ras2fim
 
-    s3_archive_path = varibles_dict["s3_archive_path"]
+    s3_archive_path = rd["s3_archive_path"]
     # e.g. s3://xyz/output_ras2fim_archive
 
     # We don't want to try upload current active log files (for this script)

@@ -65,6 +65,8 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
 
     """
 
+    arg_values = locals().copy()
+
     start_dt = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
@@ -80,10 +82,10 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
 
     # --------------------
     # It will throw it's own exceptions if required
-    rtn_dict = __validate_input(s3_master_csv_path, s3_models_path, output_folder_path)
+    rd = __validate_input(**arg_values)
 
-    bucket_name = rtn_dict["bucket_name"]
-    s3_folder_path = rtn_dict["s3_models_output_folder"]
+    bucket_name = rd["bucket_name"]
+    s3_folder_path = rd["s3_models_output_folder"]
     csv_file_name = f"s3_model_mgmt_report_{get_date_with_milli(False)}.csv"
     target_report_path = os.path.join(output_folder_path, csv_file_name)
 

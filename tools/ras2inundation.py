@@ -144,6 +144,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
     print()
     RLOG.lprint("--------------------------------------")
     RLOG.success(f"Process completed: {get_stnd_date()}")
+    print(f"log files saved to {RLOG.LOG_FILE_PATH}")
     print()
     dur_msg = get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)

@@ -15,10 +15,6 @@ import colored as cl
 import tqdm
 from botocore.client import ClientError
 
-
-# from math import round
-
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import shared_variables as sv
 from shared_functions import get_date_time_duration_msg
@@ -46,6 +42,8 @@ def upload_file_to_s3(src_path, full_s3_path_and_file_name):
     try:
         if full_s3_path_and_file_name == "":
             raise Exception("full s3 path and file name is not defined")
+
+        full_s3_path_and_file_name = full_s3_path_and_file_name.replace("S3://", "s3://")
 
         # we need the "s3 part stripped off for now" (if it is even there)
         adj_s3_path = full_s3_path_and_file_name.replace("s3://", "")
@@ -517,7 +515,7 @@ def download_single_folder(
         - num_of_workers: Number of concurrent multi-threads
         - bucket_name:  eg. ras2fim-dev
         - folder_id:  e.g 12090301_2277_ble_230923  (or really anything unique)
-        - src_s3_folder: e.g. output_ras2fim\\12090301_2277_ble_230923
+        - src_s3_folder: e.g. output_ras2fim/12090301_2277_ble_230923
         - target_local_folder: e.g . C:\\ras2fim_data\\output_ras2fim\\12090301_2277_ble_230923
             or something like: C:\\ras2fim_data\\ras2fim_releases\\r102-test\\units\\12090301_2277_ble_230923
 
@@ -540,7 +538,7 @@ def download_single_folder(
     # add a duration system
     start_time = dt.datetime.utcnow()
 
-    s3_items = get_records_list(bucket_name, s3_src_folder, "", False)
+    s3_items = get_file_list(bucket_name, s3_src_folder, "", False)
     num_s3_items = len(s3_items)
 
     if num_s3_items == 0:
@@ -633,6 +631,62 @@ def download_single_folder(
 
     return result
 
+# -------------------------------------------------
+def download_files_from_list(bucket_name, lst_files, is_verbose):
+    """
+    This will iterate over the incoming list of dictionaries to download
+    requested file to stated location.
+    This list is usually a filtered list with files in all sorts of locations.
+    e.g. specific benchmark files.
+
+    Input:
+        bucket_name:
+        lst_files: A list of dictionary items (e.g. ...
+            - "s3_file": "output_ras2fim/12090301_2277_ble_230923/run_arguments.txt"
+                (can't have the value of 's3://' or the bucket name)
+            - "trg_file: "C:\ras2fim_data\output_ras2fim\12090301_2277_ble_240206\run_arguments.txt"
+    Output:
+        - Same list of dictionaries returned with two new fields.
+            - "success": "True" / "False" (string version)
+            - "fail_reason": empty or whatever ever msg
+    """
+
+    if len(lst_files) == 0:
+        raise Exception("No files requested for download")
+
+    # so all calls share this client and it is much faster.
+    s3_client = boto3.client('s3')
+    for item in lst_files:
+        src_file = item["s3_file"]
+        trg_file = item["trg_file"]        
+
+        if src_file.startswith("/"):
+            src_file = src_file[1:] # cut off the front slash
+
+        # just catch them and log why they failed, we don't want to assume 
+        # the calling function wants to shut down the process
+        msg = f"Downloading s3://{bucket_name}/{src_file} to {trg_file}"
+        try:
+            download_one_file(bucket_name, trg_file, s3_client, src_file)
+            item["success"] = "True"
+            item["fail_reason"] = ""
+            msg = "Success : " + msg            
+            if is_verbose:
+                RLOG.lprint(msg)
+            else:
+                RLOG.trace(msg)
+                
+        except Exception:
+            err_msg = f"An error occurred while download {item['src_file']}\n"
+            err_msg += traceback.format_exc()
+            item["success"] = "False"
+            item["fail_reason"] = err_msg
+            if is_verbose:
+                RLOG.error(err_msg)
+            else:
+                RLOG.trace(msg)
+
+    return lst_files
 
 # -------------------------------------------------
 def download_one_file(bucket_name: str, trg_file: str, s3_client: boto3.client, s3_file: str):
@@ -641,9 +695,9 @@ def download_one_file(bucket_name: str, trg_file: str, s3_client: boto3.client, 
     Args:
         bucket_name (str):
         trg_file (str):
-        s3_client (boto3.client):
         s3_file (str): S3 object name (full s3 path less bucket name)
             e.g. output_ras2fim/12030101_2276_ble_230925/myfile.txt
+        s3_client (boto3.client):            
     """
     try:
         # Why extract the directory name? the key might have subfolder
@@ -668,21 +722,36 @@ def download_one_file(bucket_name: str, trg_file: str, s3_client: boto3.client, 
 
 
 # -------------------------------------------------
-def get_records_list(bucket_name, s3_src_folder_path, search_key, is_verbose=False):
+def get_file_list(bucket_name, s3_src_folder_path, search_key="", is_verbose=False):
     """
     Process:
         - uses a S3 paginator to recursively look for matches (non case-sensitive)
+        - You can optionally use a search key to filter records
     Inputs:
         - bucket_name: e.g mys3bucket_name
         - s3_src_folder_path: e.g. OWP_ras_models/models (case-sensitive)
-        - search_key: phrase (str) to be searched: e.g *Trinity River*
+        - search_key: OPTIONAL: phrase (str) to be searched: e.g *Trinity River*
+
     Output
         - A list of dictionary items matching records.
             - first value is the match "key":
                     ie) 1262811_UNT 213 in Village Cr Washd_g01_1689773310/UNT 213 in Village Cr Washd.r01
             - The second value is the full "url" of it
                 ie) s3://ras2fim-dev/OWP_ras_models/models-12030105-full/1262811_UNT...r01
+
     """
+
+    # Examples:
+    # search_key = "TRINITY*"  (none... only work if no chars in front of Trinity)
+    # search_key = "*TRINITY*"
+    # search_key = "*trinity river*"
+    # search_key = "*caney*.prj"
+    # search_key = "*caney*.g01"
+    # search_key = "*caney*.g01*"
+    # search_key = "*.g01*"
+    # search_key = "*.g01"
+    # search_key = "12611*"
+    # search_key = "*12090301*"
 
     try:
         if is_verbose is True:
@@ -703,17 +772,6 @@ def get_records_list(bucket_name, s3_src_folder_path, search_key, is_verbose=Fal
         s3_items = []  # a list of dictionaries
 
         default_kwargs = {"Bucket": bucket_name, "Prefix": s3_src_folder_path}
-
-        # Examples:
-        # search_key = "TRINITY*"  (none... only work if no chars in front of Trinity)
-        # search_key = "*TRINITY*"
-        # search_key = "*trinity river*"
-        # search_key = "*caney*.prj"
-        # search_key = "*caney*.g01"
-        # search_key = "*caney*.g01*"
-        # search_key = "*.g01*"
-        # search_key = "*.g01"
-        # search_key = "1262811*"
 
         next_token = ""
 
@@ -737,7 +795,7 @@ def get_records_list(bucket_name, s3_src_folder_path, search_key, is_verbose=Fal
                 if search_key == "":
                     item = {"key": key_adj, "url": f"s3://{bucket_name}/{s3_src_folder_path}{key_adj}"}
                     s3_items.append(item)
-                elif fnmatch.fnmatch(key_adj, search_key):
+                elif fnmatch.fnmatch(key_adj, search_key) is True:
                     item = {"key": key_adj, "url": f"s3://{bucket_name}/{s3_src_folder_path}{key_adj}"}
                     s3_items.append(item)
                 # no else needed
@@ -913,20 +971,8 @@ def is_valid_s3_folder(s3_full_folder_path):
         - s3_full_folder_path: eg. s3://ras2fim/OWP_ras_models
     """
 
-    if s3_full_folder_path.endswith("/"):
-        s3_full_folder_path = s3_full_folder_path[:-1]
-
-    # we need the "s3 part stripped off for now" (if it is even there)
-    adj_s3_path = s3_full_folder_path.replace("s3://", "")
-    path_segs = adj_s3_path.split("/")
-    bucket_name = path_segs[0]
-
-    # will throw it's own exceptions if in error
-    if does_s3_bucket_exist(bucket_name) is False:
-        raise Exception(f"S3 bucket name of '{bucket_name}' does not exist")
-
-    s3_folder_path = adj_s3_path.replace(bucket_name, "", 1)
-    s3_folder_path = s3_folder_path.lstrip("/")
+    s3_full_folder_path = s3_full_folder_path.replace("S3://", "s3://")
+    bucket_name, s3_folder_path = parse_bucket_and_folder_name(s3_full_folder_path)
 
     client = boto3.client("s3")
 
@@ -966,13 +1012,11 @@ def is_valid_s3_file(s3_full_file_path):
     if s3_full_file_path.endswith("/"):
         raise Exception("s3 file path is invalid as it ends with as forward slash")
 
+    s3_full_file_path = s3_full_file_path.replace("S3://", "s3://")
+
     RLOG.lprint(f"Validating s3 file of {s3_full_file_path}")
 
-    # we need the "s3 part stripped off for now" (if it is even there)
-    adj_s3_path = s3_full_file_path.replace("s3://", "")
-    path_segs = adj_s3_path.split("/")
-    bucket_name = path_segs[0]
-    s3_file_path = adj_s3_path.replace(bucket_name + "/", "", 1)
+    bucket_name, s3_file_path = parse_bucket_and_folder_name(s3_full_file_path)
 
     try:
         if does_s3_bucket_exist(bucket_name) is False:
@@ -1056,13 +1100,14 @@ def parse_unit_folder_name(unit_folder_name):
         raise ValueError("unit_folder_name can not be empty")
 
     # cut off the s3 part if there is any.
+    unit_folder_name = unit_folder_name.replace("S3://", "s3://")
     unit_folder_name = unit_folder_name.replace("s3://", "")
 
     # s3_folder_path and we want to strip the first one only. (can be deeper levels)
     if unit_folder_name.endswith("/"):
         unit_folder_name = unit_folder_name[:-1]  # strip the ending slash
 
-    # see if there / in it and split out based on the last one (migth not be one)
+    # see if there / in it and split out based on the last one (might not be one)
     unit_folder_segs = unit_folder_name.rsplit("/", 1)
     if len(unit_folder_segs) > 1:
         unit_folder_name = unit_folder_segs[-1]
@@ -1137,6 +1182,7 @@ def parse_bucket_and_folder_name(s3_full_folder_path):
     if s3_full_folder_path.endswith("/"):
         s3_full_folder_path = s3_full_folder_path[:-1]
 
+    s3_full_folder_path = s3_full_folder_path.replace("S3://", "s3://")  
     # we need the "s3 part stripped off for now" (if it is even there)
     adj_s3_path = s3_full_folder_path.replace("s3://", "")
     path_segs = adj_s3_path.split("/")
