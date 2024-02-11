@@ -97,7 +97,7 @@ def create_ras2release(
     end_time = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
     print(f"Ended (UTC): {dt_string}")
-    print(f"log files saved to {RLOG.LOG_FILE_PATH}")    
+    print(f"log files saved to {RLOG.LOG_FILE_PATH}")
 
     # Calculate duration
     time_duration = end_time - start_time

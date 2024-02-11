@@ -15,6 +15,7 @@ import colored as cl
 import tqdm
 from botocore.client import ClientError
 
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import shared_variables as sv
 from shared_functions import get_date_time_duration_msg
@@ -94,8 +95,7 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
 
     RLOG.lprint("===================================================================")
     print("")
-    RLOG.notice(f"Uploading folder from {src_path}"
-                f"                  to  {s3_full_target_path}")
+    RLOG.notice(f"Uploading folder from {src_path}" f"                  to  {s3_full_target_path}")
     print()
 
     # nested function
@@ -300,8 +300,7 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
     try:
         RLOG.lprint("===================================================================")
         print("")
-        RLOG.notice(f"Moving folder from {s3_src_folder_path}"
-                    f"                to  {s3_target_folder_path}")
+        RLOG.notice(f"Moving folder from {s3_src_folder_path}" f"                to  {s3_target_folder_path}")
         print()
         print(
             f"{cl.fg('dodger_blue_1')}"
@@ -631,6 +630,7 @@ def download_single_folder(
 
     return result
 
+
 # -------------------------------------------------
 def download_files_from_list(bucket_name, lst_files, is_verbose):
     """
@@ -658,24 +658,24 @@ def download_files_from_list(bucket_name, lst_files, is_verbose):
     s3_client = boto3.client('s3')
     for item in lst_files:
         src_file = item["s3_file"]
-        trg_file = item["trg_file"]        
+        trg_file = item["trg_file"]
 
         if src_file.startswith("/"):
-            src_file = src_file[1:] # cut off the front slash
+            src_file = src_file[1:]  # cut off the front slash
 
-        # just catch them and log why they failed, we don't want to assume 
+        # just catch them and log why they failed, we don't want to assume
         # the calling function wants to shut down the process
         msg = f"Downloading s3://{bucket_name}/{src_file} to {trg_file}"
         try:
             download_one_file(bucket_name, trg_file, s3_client, src_file)
             item["success"] = "True"
             item["fail_reason"] = ""
-            msg = "Success : " + msg            
+            msg = "Success : " + msg
             if is_verbose:
                 RLOG.lprint(msg)
             else:
                 RLOG.trace(msg)
-                
+
         except Exception:
             err_msg = f"An error occurred while download {item['src_file']}\n"
             err_msg += traceback.format_exc()
@@ -688,6 +688,7 @@ def download_files_from_list(bucket_name, lst_files, is_verbose):
 
     return lst_files
 
+
 # -------------------------------------------------
 def download_one_file(bucket_name: str, trg_file: str, s3_client: boto3.client, s3_file: str):
     """
@@ -697,7 +698,7 @@ def download_one_file(bucket_name: str, trg_file: str, s3_client: boto3.client, 
         trg_file (str):
         s3_file (str): S3 object name (full s3 path less bucket name)
             e.g. output_ras2fim/12030101_2276_ble_230925/myfile.txt
-        s3_client (boto3.client):            
+        s3_client (boto3.client):
     """
     try:
         # Why extract the directory name? the key might have subfolder
@@ -1182,7 +1183,7 @@ def parse_bucket_and_folder_name(s3_full_folder_path):
     if s3_full_folder_path.endswith("/"):
         s3_full_folder_path = s3_full_folder_path[:-1]
 
-    s3_full_folder_path = s3_full_folder_path.replace("S3://", "s3://")  
+    s3_full_folder_path = s3_full_folder_path.replace("S3://", "s3://")
     # we need the "s3 part stripped off for now" (if it is even there)
     adj_s3_path = s3_full_folder_path.replace("s3://", "")
     path_segs = adj_s3_path.split("/")

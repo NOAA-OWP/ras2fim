@@ -32,8 +32,8 @@ find that you only need to setup yoru machine once with 'aws configure' and not 
 """
 
 # TODO: Feb 5, 2024
-# As this tool asks for user input as it progresses, it needs an "auto" mode, which 
-# will default all answer so none are asked of the user. This is need for automation or 
+# As this tool asks for user input as it progresses, it needs an "auto" mode, which
+# will default all answer so none are asked of the user. This is need for automation or
 # larger "pipeline modes".
 
 
@@ -187,7 +187,8 @@ def __process_upload(
     """
 
     RLOG.lprint(
-        "Checking existing s3 folders for folders starting same unit ID (huc number, crs value and source code)"
+        "Checking existing s3 folders for folders starting same unit ID"
+        " (huc number, crs value and source code)"
     )
     print()
 
@@ -205,7 +206,7 @@ def __process_upload(
     src_name_dict = s3_sf.parse_unit_folder_name(unit_folder_name)
     if "error" in src_name_dict:
         raise Exception(src_name_dict["error"])
-    
+
     # unit_id = src_name_dict["key_unit_id"]
 
     # ---------------
@@ -522,12 +523,7 @@ def __upload_s3_folder(
     )
 
     __add_record_to_tracker(
-        bucket_name,
-        src_unit_dir,
-        unit_orig_folder_name,
-        action,
-        new_s3_unit_folder_name,
-        target_s3_folder,
+        bucket_name, src_unit_dir, unit_orig_folder_name, action, new_s3_unit_folder_name, target_s3_folder
     )
 
 

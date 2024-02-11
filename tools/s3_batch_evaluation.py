@@ -5,8 +5,9 @@ import traceback
 from datetime import datetime
 from glob import glob
 
-from ras2fim.tools.evaluate_ras2fim_unit import evaluate_unit_results
 from s3_shared_functions import get_folder_list, is_valid_s3_file
+
+from ras2fim.tools.evaluate_ras2fim_unit import evaluate_unit_results
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
@@ -35,6 +36,7 @@ BENCHMARK_URIS = {
     "nws": 's3://{0}/gval/benchmark_data/{1}/{2}/{3}/{4}/ahps_{3}_huc_{2}_extent_{4}.tif',
 }
 
+
 # -------------------------------------------------
 def get_benchmark_uri(unit_name: str, benchmark_source: str, stage: str, nws_station: str) -> str:
     """
@@ -59,20 +61,15 @@ def get_benchmark_uri(unit_name: str, benchmark_source: str, stage: str, nws_sta
     """
 
     if benchmark_source == "ble":
-        return BENCHMARK_URIS["ble"].format(BUCKET,
-                                            benchmark_source,
-                                            unit_name.split('_')[0],
-                                            stage)
+        return BENCHMARK_URIS["ble"].format(BUCKET, benchmark_source, unit_name.split('_')[0], stage)
 
     elif benchmark_source == "nws":
         if nws_station is None:
             raise ValueError("nws_station cannot be none when nws is chosen as a benchmark source")
 
-        return BENCHMARK_URIS["nws"].format(BUCKET,
-                                            benchmark_source,
-                                            unit_name.split('_')[0],
-                                            nws_station,
-                                            stage)
+        return BENCHMARK_URIS["nws"].format(
+            BUCKET, benchmark_source, unit_name.split('_')[0], nws_station, stage
+        )
 
     else:
         raise ValueError("benchmark source is not available")
@@ -97,9 +94,7 @@ def get_nws_stations(huc: str) -> list:
 
 
 # -------------------------------------------------
-def check_necessary_files_exist(
-    unit: str, benchmark_source: str, stage: str, nws_station: str
-) -> dict:
+def check_necessary_files_exist(unit: str, benchmark_source: str, stage: str, nws_station: str) -> dict:
     """Checks whether the necessary inputs for evaluations exist in S3
 
     Parameters
@@ -121,10 +116,7 @@ def check_necessary_files_exist(
     """
 
     files = {
-        'inundation_polygons': INUNDATION_URL.format(BUCKET,
-                                                     unit,
-                                                     benchmark_source,
-                                                     stage),
+        'inundation_polygons': INUNDATION_URL.format(BUCKET, unit, benchmark_source, stage),
         'model_domain_polygons': MODEL_DOMAIN_URL.format(BUCKET, unit),
         'benchmark_raster': get_benchmark_uri(unit, benchmark_source, stage, nws_station),
     }
@@ -143,12 +135,7 @@ def check_necessary_files_exist(
 
 # -------------------------------------------------
 def add_input_arguments(
-    eval_args: list,
-    unit: str,
-    benchmark_source: str,
-    stage: str,
-    nws_station: str,
-    output_dir: str,
+    eval_args: list, unit: str, benchmark_source: str, stage: str, nws_station: str, output_dir: str
 ) -> list:
     """Add input args if the files exists for use in evaluation function
 
@@ -233,24 +220,28 @@ def report_missing_ouput(
             report_missing = __glob_check(st, "stages", report_missing)
 
     # If any missing outputs exist report
-    if (sum(
+    if (
+        sum(
             [
                 len(report_missing['unit']),
                 len(report_missing['benchmark_sources']),
                 len(report_missing['stages']),
-            ] ) > 0):
-    
-        RLOG.lprint("The following provided args have no or incomplete inputs existing on s3: "
-            f"\n {report_missing}")
+            ]
+        )
+        > 0
+    ):
+        RLOG.lprint(
+            "The following provided args have no or incomplete inputs existing on s3: " f"\n {report_missing}"
+        )
 
 
 # -------------------------------------------------
 def run_batch_evaluations(
-    environment: str, 
+    environment: str,
     unit_names: list = None,
-    benchmark_sources: list = None, 
-    stages: list = None, 
-    output_dir: str = './'
+    benchmark_sources: list = None,
+    stages: list = None,
+    output_dir: str = './',
 ):
     """
     Run batch evaluations on s3 objects for every valid combination of desired sources
@@ -273,8 +264,10 @@ def run_batch_evaluations(
     eval_args = []
 
     if environment != "PROD" and environment != "DEV":
-        raise ValueError("The -e (environment) value must be either the word 'PROD' or 'DEV'."
-                         " The value is case-sensitive")
+        raise ValueError(
+            "The -e (environment) value must be either the word 'PROD' or 'DEV'."
+            " The value is case-sensitive"
+        )
     global BUCKET
     if environment == "PROD":
         BUCKET = BUCKET_PROD
@@ -341,21 +334,22 @@ if __name__ == '__main__':
     # them back to S3. Deliberately at this time, allows for review before going back to S3.
 
     # Parse arguments
-    parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.\n"
-            " You must use known benchmark sources and stages. e.g ble:100yr, nws:moderate")
+    parser = argparse.ArgumentParser(
+        description="Produce Inundation from RAS2FIM geocurves.\n"
+        " You must use known benchmark sources and stages. e.g ble:100yr, nws:moderate"
+    )
 
     parser.add_argument(
-        "-o",
-        "--output_dir", 
-        help='REQUIRED: Directory to save output evaluation files',
-        required=True)
-    
+        "-o", "--output_dir", help='REQUIRED: Directory to save output evaluation files', required=True
+    )
+
     parser.add_argument(
         "-e",
         "--environment",
         help="REQUIRED: Must be either the value of PROD meaning it is going to"
         " s3://ras2fim  or  DEV meaning pointing to s3://ras2fim-dev",
-        required=True)
+        required=True,
+    )
 
     # TODO. Test pattern of cmd args and change e.g. here.
     parser.add_argument(
@@ -378,7 +372,7 @@ if __name__ == '__main__':
         help="OPTIONAL: Argument/s representing list of benchmark sources to run"
         " (if not provided run all existing)\n"
         " Note: The unit_names need to exist in either s3://ras2fim or s3://ras2fim-dev"
-        " depending on selected (-e) environment.",        
+        " depending on selected (-e) environment.",
         required=False,
     )
 

@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
 import argparse
-import errno
 import datetime as dt
+import errno
 import os
 import sys
 import traceback
 from pathlib import Path
-from timeit import default_timer as timer
 
 import geopandas as gpd
 import pandas as pd
@@ -16,11 +15,12 @@ from shapely import wkt
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import shared_variables as sv
-from shared_functions import get_stnd_date, get_date_time_duration_msg, get_date_with_milli
+from shared_functions import get_date_time_duration_msg, get_date_with_milli, get_stnd_date
 
 
 # Global Variables
 RLOG = sv.R2F_LOG
+
 
 # -------------------------------------------------
 def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundation_poly):
@@ -32,7 +32,8 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
             e.g. C:\ras2fim_data\output_ras2fim\12030106_2276_ble_230926\final\geocurves
         - flow_file: Discharges in CMS as a CSV file. "feature_id" and "discharge" columns
             e.g. C:\ras2fim_data\inputs\X-National_Datasets\nwm21_17C_recurr_100_0_cms.csv
-        - output_inundation_poly_dir: C:\ras2fim_data\gval\evaluations\12030106_2276_ble\230926\inundation_polys
+        - output_inundation_poly_dir:
+            e.g. C:\ras2fim_data\gval\evaluations\12030106_2276_ble\230926\inundation_polys
     """
 
     start_dt = dt.datetime.utcnow()
@@ -170,18 +171,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.")
 
     parser.add_argument(
-        "-g", 
-        "--geocurves_dir", 
+        "-g",
+        "--geocurves_dir",
         help="REQUIRED: Path to directory containing RAS2FIM geocurve CSVs\n."
-        f"e.g. C:\ras2fim_data\output_ras2fim\12090301_2277_ble_230923\final\geocurves", 
-        required=True
+        r"e.g. C:\ras2fim_data\output_ras2fim\12090301_2277_ble_230923\final\geocurves",
+        required=True,
     )
 
     parser.add_argument(
         "-f",
         "--flow_file",
-        help="REQUIRED: Discharges in CMS as CSV file. 'feature_id' and 'discharge' columns MUST be supplied.\n"
-        "e.g. C:\ras2fim_data\inputs\X-National_Datasets\nwm21_17C_recurr_100_0_cms.csv",
+        help="REQUIRED: Discharges in CMS as CSV file."
+        " The 'feature_id' and 'discharge' columns MUST be supplied.\n"
+        r"e.g. C:\ras2fim_data\inputs\X-National_Datasets\nwm21_17C_recurr_100_0_cms.csv",
         required=True,
     )
 
@@ -212,7 +214,7 @@ if __name__ == "__main__":
         # creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
         # Assumes RLOG has been added as a global var.
-        log_file_name = f"{script_file_name}_{get_date_with_milli(False)}.log"        
+        log_file_name = f"{script_file_name}_{get_date_with_milli(False)}.log"
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
