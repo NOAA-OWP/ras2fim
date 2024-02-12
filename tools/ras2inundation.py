@@ -55,7 +55,6 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         RLOG.trace(f"  (-f): flow file {flow_file}")
         RLOG.trace(f"  (-t): output inundation gkpg {output_inundation_poly}")
 
-
     # -------------------------
     # Validation
     # Check that geocurves_dir exists
@@ -121,7 +120,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
     feature_id_polygon_path_dict = {}
 
     # -------------------------
-    for ind in df_merged.index:    
+    for ind in df_merged.index:
         # Get discharge and path to geometry file
         feature_id = df_merged.iloc[ind]["feature_id"]
         discharge_cms = df_merged.iloc[ind]["discharge"]
@@ -149,7 +148,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
     gdf.to_file(output_inundation_poly, driver="GPKG")
 
     dur_msg = get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
-    if verbose is True:    
+    if verbose is True:
         print()
         RLOG.lprint("--------------------------------------")
         RLOG.success(f"Process completed: {get_stnd_date()}")
@@ -160,6 +159,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
     else:
         RLOG.trace(f"Process completed: {get_stnd_date()}")
         RLOG.trace(dur_msg)
+
 
 # -------------------------------------------------
 if __name__ == "__main__":

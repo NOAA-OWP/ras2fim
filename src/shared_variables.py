@@ -88,8 +88,20 @@ S3_GVAL_EVALS_FOLDER = "gval/evaluations"
 S3_GVAL_BENCHMARK_PATH = S3_DEFAULT_BUCKET_PATH + S3_GVAL_BENCHMARK_FOLDER
 S3_GVAL_EVALS_PATH = S3_DEFAULT_BUCKET_PATH + S3_GVAL_EVALS_FOLDER
 
-GVAL_VALID_STAGES = ["2yr",",5yr","10yr","25yr","50y","100yr","200yr","500yr",
-                "action","minor","moderate","major"]
+GVAL_VALID_STAGES = [
+    "2yr",
+    ",5yr",
+    "10yr",
+    "25yr",
+    "50y",
+    "100yr",
+    "200yr",
+    "500yr",
+    "action",
+    "minor",
+    "moderate",
+    "major",
+]
 
 # NODATA VALUE
 DEFAULT_NODATA_VAL = 0 - 9999

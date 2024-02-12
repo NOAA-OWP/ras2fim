@@ -8,11 +8,12 @@ import sys
 import traceback
 from pathlib import Path
 
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import ras2inundation as ri
 import s3_shared_functions as s3_sf
-import shared_variables as sv
 
+import shared_variables as sv
 from shared_functions import get_date_time_duration_msg, get_date_with_milli, get_stnd_date
 
 
@@ -32,6 +33,7 @@ This tool can already work in auto mode. No runtime questions are asked.
 #        not been done. Testing has only be done against the default happy path with all defaults
 #        for optional args.
 # ***********************
+
 
 # -------------------------------------------------
 def inundate_unit(
@@ -75,33 +77,32 @@ def inundate_unit(
     # ----------------
     # validate input variables and setup key variables
     # rd = Return Variables Dictionary
-    # Not all inputs need to be returned from rd or reloaded.    
+    # Not all inputs need to be returned from rd or reloaded.
     rd = __validate_input(**arg_values)
 
     # ----------------
     # We might be downloaded from S3,
     # but we get a list of local huc applicable benchmark csv files
     if rd["is_s3_path"] is True:
-        lst_bench_files = get_s3_benchmark_data(rd["huc"],
-                                                rd["src_benchmark_data_path"],
-                                                rd["local_benchmark_data_path"])
+        lst_bench_files = get_s3_benchmark_data(
+            rd["huc"], rd["src_benchmark_data_path"], rd["local_benchmark_data_path"]
+        )
 
     else:  # get them locally (list of the huc applicable benchmark csv's)
         print(f"Looking for benchmark files for huc {rd['huc']}")
 
         # TODO: load local benchmark files fully pathed.
 
-        # GLOB 
+        # GLOB
 
         # lst_bench_files = (some function)
         # count
         # if 0
         # RLOG.
 
-        
     # ----------------
     # We need to keep just the csv for inundation at this point.
-    #bench_flow_files = [ i for i in lst_bench_files if Path(i).suffix == ".csv"]
+    # bench_flow_files = [ i for i in lst_bench_files if Path(i).suffix == ".csv"]
     # Now we iterate the bench_files to find the valid flow files we need.
     bench_flow_files = []
     for b_file in lst_bench_files:
@@ -111,14 +112,14 @@ def inundate_unit(
         parent_dir_name = parent_path.parent.name
         if parent_dir_name in sv.GVAL_VALID_STAGES:
             bench_flow_files.append(b_file)
-     
 
-    inundate_files(bench_flow_files,
-                   rd["huc"],
-                   rd["src_geocurves_path"],
-                   rd["trg_inun_file_path"],
-                   rd["local_benchmark_data_path"])
-        
+    inundate_files(
+        bench_flow_files,
+        rd["huc"],
+        rd["src_geocurves_path"],
+        rd["trg_inun_file_path"],
+        rd["local_benchmark_data_path"],
+    )
 
     print()
     print("===================================================================")
@@ -131,13 +132,9 @@ def inundate_unit(
     RLOG.lprint(dur_msg)
     print()
 
+
 # -------------------------------------------------
-def inundate_files(flow_files,
-                   huc,
-                   src_geocurves_path,
-                   trg_inun_file_path,
-                   local_benchmark_data_path):
-    
+def inundate_files(flow_files, huc, src_geocurves_path, trg_inun_file_path, local_benchmark_data_path):
     """
     Process: Iterates the incoming local benchmark files and run's inundatoin on them
     Input:
@@ -148,7 +145,7 @@ def inundate_files(flow_files,
         trg_inun_file_path:
             e.g. C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\230923
         local_benchmark_data_path: (we use this to re-calc pathing for the output folders)
-            e.g. C:\ras2fim_data\gval\benchmark_data. 
+            e.g. C:\ras2fim_data\gval\benchmark_data.
     """
 
     print("--------------------------")
@@ -157,13 +154,14 @@ def inundate_files(flow_files,
 
     # don't let if fail if one errors out, unless all fail.
     flow_files.sort()
-    lst_bench_sources = []    
+    lst_bench_sources = []
 
     for ind, b_file in enumerate(flow_files):
         # the key is that it is sort.
         # Figure out adjusted path
-        #   e.g. incoming C:\ras2fim_data\gval\benchmark_data\ble\12030105\100yr\ble_huc_12030105_flows_100yr.csv
-        #   becomes: ble\12030105\100yr\ which gets added to the inundation pathing so 
+        #   e.g. incoming C:\ras2fim_data\gval\benchmark_data\ble\
+        #        12030105\100yr\ble_huc_12030105_flows_100yr.csv
+        #   becomes: ble\12030105\100yr\ which gets added to the inundation pathing so
         #   the output pathing becomes C:\ras2fim_data\gval\evaluations\
         #      PROD\12030105_2276_ble\230923\**.gkpg
 
@@ -235,7 +233,7 @@ def get_s3_benchmark_data(huc, s3_src_benchmark_data_path, local_benchmark_data_
         sys.exit(1)
 
     down_items = []
-    #for s3_file in files_to_download:    
+    # for s3_file in files_to_download:
     for s3_file in bench_files:
         item = {}
         s3_key = s3_file["key"]
@@ -300,8 +298,7 @@ def __validate_input(
     # TODO: test perumations of the input args
     print()
     RLOG.notice("NOTE: Some of the testing for non-defaulted args has not yet been completed")
-    print()    
-
+    print()
 
     # Some variables need to be adjusted and some new derived variables are created
     # dictionary (key / pair) will be returned
@@ -362,11 +359,7 @@ def __validate_input(
         # e.g. C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\230923\inundation_files
         # trg_gval_root should be C:\ras2fim_data\gval or overrode value
         trg_inun_file_path = os.path.join(
-            trg_gval_root,
-            sv.LOCAL_GVAL_EVALS,
-            "PROD",
-            rtn_dict["unit_id"],
-            rtn_dict["version_date_as_str"]
+            trg_gval_root, sv.LOCAL_GVAL_EVALS, "PROD", rtn_dict["unit_id"], rtn_dict["version_date_as_str"]
         )
     else:  # DEV or override are fine
         if trg_output_override_path == "":
@@ -377,13 +370,13 @@ def __validate_input(
                 sv.LOCAL_GVAL_EVALS,
                 "DEV",
                 rtn_dict["unit_id"],
-                rtn_dict["version_date_as_str"]
+                rtn_dict["version_date_as_str"],
             )
         else:
             trg_inun_file_path = trg_output_override_path
 
     rtn_dict["trg_inun_file_path"] = trg_inun_file_path
-    if (os.path.exists(trg_inun_file_path)): # empty it
+    if os.path.exists(trg_inun_file_path):  # empty it
         shutil.rmtree(trg_inun_file_path)
 
     # ----------------

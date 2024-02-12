@@ -2,18 +2,14 @@ import argparse
 import os
 import sys
 import traceback
-from datetime import datetime
 from glob import glob
-
-from s3_shared_functions import get_folder_list, is_valid_s3_file
-
-from ras2fim.tools.evaluate_ras2fim_unit import evaluate_unit_results
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
-import shared_variables as sv
 import s3_shared_functions as s3_sf
 from evaluate_ras2fim_unit import evaluate_unit_results
+
+import shared_variables as sv
 
 
 RLOG = sv.R2F_LOG
@@ -37,6 +33,7 @@ BENCHMARK_URIS = {
     # format args: benchmark source, huc, nws station, stage
     "nws": 's3://{0}/gval/benchmark_data/{1}/{2}/{3}/{4}/ahps_{3}_huc_{2}_extent_{4}.tif',
 }
+
 
 # -------------------------------------------------
 def get_benchmark_uri(unit_name: str, benchmark_source: str, stage: str, nws_station: str) -> str:
@@ -91,7 +88,7 @@ def get_nws_stations(huc: str) -> list:
         NWS stations available for HUC
 
     """
-    return [s_unit['key'] for s_unit in get_folder_list(BUCKET, NWS_BENCHMARK_PREFIX.format(huc), False)]
+    return [s_unit['key'] for s_unit in s3_sf.get_folder_list(BUCKET, NWS_BENCHMARK_PREFIX.format(huc), False)]
 
 
 # -------------------------------------------------
@@ -123,9 +120,9 @@ def check_necessary_files_exist(unit: str, benchmark_source: str, stage: str, nw
     }
 
     exists = [
-        is_valid_s3_file(files['inundation_polygons']),
-        is_valid_s3_file(files['model_domain_polygons']),
-        is_valid_s3_file(files['benchmark_raster']),
+        s3_sf.is_valid_s3_file(files['inundation_polygons']),
+        s3_sf.is_valid_s3_file(files['model_domain_polygons']),
+        s3_sf.is_valid_s3_file(files['benchmark_raster']),
     ]
 
     if sum(exists) == 3:
@@ -177,8 +174,10 @@ def add_input_arguments(
 
 
 # -------------------------------------------------
-def report_missing_ouput(
-    units: list = None, benchmark_sources: list = None, stages: list = None, output_dir: str = './'
+def report_missing_ouput(units: list = None,
+                         benchmark_sources: list = None,
+                         stages: list = None,
+                         output_dir: str = 'c:\\ras2fim_data\\test_batch_eval'
 ):
     """
     Method to report missing output that was provided
@@ -242,7 +241,7 @@ def run_batch_evaluations(
     unit_names: list = None,
     benchmark_sources: list = None,
     stages: list = None,
-    output_dir: str = './',
+    output_dir: str = 'c:\\ras2fim_data\\test_batch_eval',
 ):
     """
     Run batch evaluations on s3 objects for every valid combination of desired sources
@@ -275,19 +274,16 @@ def run_batch_evaluations(
     else:
         BUCKET = BUCKET_DEV
 
-    for s_unit in get_folder_list(BUCKET, sv.S3_RAS_UNITS_OUTPUT_FOLDER, False):
+    for s_unit in s3_sf.get_folder_list(BUCKET, sv.S3_RAS_UNITS_OUTPUT_FOLDER, False):
         s3_unit_name = s_unit.get('key')
-
 
         rd = s3_sf.parse_unit_folder_name(s3_unit_name)
         # TODO: Upgrade this pathing.
         # figure out the output pathing.
-        output_dir = os.path.join(sv.LOCAL_GVAL_ROOT,
-                                  sv.LOCAL_GVAL_EVALS,
-                                  environment,
-                                  rd["key_unit_id"],
-                                  rd["key_date_as_str"])
-            # e.g: C:\ras2fim_data\gval\evaluations\DEV\12090301_2277_ble\230923
+        output_dir = os.path.join(
+            sv.LOCAL_GVAL_ROOT, sv.LOCAL_GVAL_EVALS, environment, rd["key_unit_id"], rd["key_date_as_str"]
+        )
+        # e.g: C:\ras2fim_data\gval\evaluations\DEV\12090301_2277_ble\230923
 
         # Check if directory is in desired ras2fim output units list if provided
         if unit_names is None or s3_unit_name in unit_names:
@@ -338,11 +334,11 @@ if __name__ == '__main__':
     -u "12030105_2276_ble_230923" "12040101_102739_ble_230922"
     -b "ble" "nws"
     -st "100yr" "500yr" "moderate"
-    -o "./test_batch_eval"
+    -o "c:\ras2fim_data\test_batch_eval"
     -e PROD or DEV
     """
 
-    # TODO: While it can get files from S3, it can only save outputs locally and can not push
+    # TODO: While it can get files from S3, it can only save outputs locally  and can not push
     # them back to S3. Deliberately at this time, allows for review before going back to S3.
     # Maybe add feature later to push back to s3.
 
