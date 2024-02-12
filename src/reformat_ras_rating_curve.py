@@ -585,7 +585,7 @@ def compile_ras_rating_curves(
 
     # Check for output folders
     if output_save_folder == "":  # Using the default filepath
-        output_save_folder = sv.R2F_OUTPUT_DIR_RELEASES
+        output_save_folder = sv.R2F_OUTPUT_DIR_RAS2RELEASE
         RLOG.lprint(f"Attempting to use default output save folder: {output_save_folder}")
 
         # Attempt to make default output folder if it doesn't exist, error out if it doesn't work.
@@ -601,7 +601,7 @@ def compile_ras_rating_curves(
                 sys.exit()
 
         # Assemble the output subfolder filepath
-        output_save_subfolder = os.path.join(sv.R2F_OUTPUT_DIR_RELEASES, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
+        output_save_subfolder = os.path.join(sv.R2F_OUTPUT_DIR_RAS2RELEASE, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
 
         # If the output subfolder already exists, remove it
         if os.path.exists(output_save_subfolder) is True:

@@ -57,7 +57,7 @@ R2F_OUTPUT_DIR_RAS2REM = "ras2rem"
 R2F_OUTPUT_DIR_RAS2CALIBRATION = "ras2calibration"
 R2F_OUTPUT_DIR_FINAL = "final"
 R2F_OUTPUT_DIR_DOMAIN_POLYGONS = "models_domain"
-R2F_OUTPUT_DIR_RELEASES = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
+R2F_OUTPUT_DIR_RAS2RELEASE = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
 
 # LOGS
 LOCAL_TOOLS_OUTPUT_PATH = os.path.join(DEFAULT_BASE_DIR, "tool_outputs")
