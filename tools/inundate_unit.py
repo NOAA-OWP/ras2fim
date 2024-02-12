@@ -3,15 +3,16 @@
 import argparse
 import datetime as dt
 import os
+import shutil
 import sys
 import traceback
 from pathlib import Path
 
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+import ras2inundation as ri
 import s3_shared_functions as s3_sf
-
 import shared_variables as sv
+
 from shared_functions import get_date_time_duration_msg, get_date_with_milli, get_stnd_date
 
 
@@ -19,11 +20,18 @@ from shared_functions import get_date_time_duration_msg, get_date_with_milli, ge
 RLOG = sv.R2F_LOG
 
 """
-This tool can take auto
 
-TODO:  explain how this works?
+TODO:  explain how this works
+
+This tool can already work in auto mode. No runtime questions are asked.
 """
 
+# ***********************
+# NOTICE:
+#    Feb 2024: Due to time constraints, most testings of combinations of input arguments have not yet
+#        not been done. Testing has only be done against the default happy path with all defaults
+#        for optional args.
+# ***********************
 
 # -------------------------------------------------
 def inundate_unit(
@@ -35,7 +43,15 @@ def inundate_unit(
     src_benchmark_data_path,
 ):
     """
-    TODO opening notes
+    TODO Processing notes (lots of permuations)
+
+    Inputs:
+        unit_folder_name: e.g. 12030101_2276_ble_230925
+        enviro: e.g. PROD or DEV
+        src_geocurves_path: e.g. C:\ras2fim_data\output_ras2fim\12030101_2276_ble_230925\final\geocurves
+        trg_gval_root: e.g. c:\ras2fim_data\gval
+        trg_output_override_path: e.g.(blank) or c:\my_ras\inundation_files
+        src_benchmark_data_path: e.g. C:\ras2fim_data\gval\benchmark_data
     """
 
     arg_values = locals().copy()
@@ -53,55 +69,132 @@ def inundate_unit(
     RLOG.lprint(f"  (-to): Local target output override path: {trg_output_override_path}")
     RLOG.lprint(f" Started (UTC): {get_stnd_date()}")
     print()
+    print("NOTE: All output inundation files will be overwritten")
+    print()
 
     # ----------------
     # validate input variables and setup key variables
     # rd = Return Variables Dictionary
+    # Not all inputs need to be returned from rd or reloaded.    
     rd = __validate_input(**arg_values)
-
-    # From unit_folder_name e.g. 12030101_2276_ble_230925
-    # remember.. the word "ble" or other inside the folder name is not
-    # about eval source, it is about original HECRAS source.
-    # Not all inputs need to be returned from rd or reloaded.
-    huc = rd["huc"]  # e.g. 12030101
-    unit_id = rd["unit_id"]  # e.g. 12030101_2276_ble
-    version_date_as_str = rd["version_date_as_str"]  # 231204
-    enviro = rd["enviro"]  # PROD / DEV (now upper)
-    src_geocurves_path = rd["src_geocurves_path"]
-    trg_inun_file_path = rd["trg_inun_file_path"]
-    src_benchmark_data_path = rd["src_benchmark_data_path"]  # could be S3 or local
-    is_s3_path = rd["is_s3_path"]
-    local_benchmark_data_path = rd["local_benchmark_data_path"]
 
     # ----------------
     # We might be downloaded from S3,
     # but we get a list of local huc applicable benchmark csv files
-    if is_s3_path is True:
-        lst_bench_files = get_s3_benchmark_data(huc, src_benchmark_data_path, local_benchmark_data_path)
+    if rd["is_s3_path"] is True:
+        lst_bench_files = get_s3_benchmark_data(rd["huc"],
+                                                rd["src_benchmark_data_path"],
+                                                rd["local_benchmark_data_path"])
 
     else:  # get them locally (list of the huc applicable benchmark csv's)
-        print(f"Looking for benchmark files for huc {huc}")
+        print(f"Looking for benchmark files for huc {rd['huc']}")
 
+        # TODO: load local benchmark files fully pathed.
+
+        # GLOB 
+
+        # lst_bench_files = (some function)
         # count
         # if 0
         # RLOG.
 
-    # calc benchmark sources.
-    # print out benchmark sources
-
+        
     # ----------------
-    # Check to see if inundation files already exist and ask of overwrite?
+    # We need to keep just the csv for inundation at this point.
+    #bench_flow_files = [ i for i in lst_bench_files if Path(i).suffix == ".csv"]
+    # Now we iterate the bench_files to find the valid flow files we need.
+    bench_flow_files = []
+    for b_file in lst_bench_files:
+        if Path(b_file).suffix != ".csv":
+            continue
+        parent_path = Path(b_file)
+        parent_dir_name = parent_path.parent.name
+        if parent_dir_name in sv.GVAL_VALID_STAGES:
+            bench_flow_files.append(b_file)
+     
+
+    inundate_files(bench_flow_files,
+                   rd["huc"],
+                   rd["src_geocurves_path"],
+                   rd["trg_inun_file_path"],
+                   rd["local_benchmark_data_path"])
+        
 
     print()
     print("===================================================================")
-    print("inundate unit processing complete")
+    RLOG.success("Inundate unit processing complete")
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
-    print(f"Ended (UTC): {dt_string}")
-    print(f"log files saved to {RLOG.LOG_FILE_PATH}")
+    RLOG.success(f"Ended (UTC): {dt_string}")
+    RLOG.success(f"log files saved to {RLOG.LOG_FILE_PATH}")
 
     dur_msg = get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
     print()
+
+# -------------------------------------------------
+def inundate_files(flow_files,
+                   huc,
+                   src_geocurves_path,
+                   trg_inun_file_path,
+                   local_benchmark_data_path):
+    
+    """
+    Process: Iterates the incoming local benchmark files and run's inundatoin on them
+    Input:
+        flow_files: simple list of all huc applicable benchmark csv.
+        src_geocurves_path = unit's geocurve files (usually from final/geocurves)
+            - e.g. C:\ras2fim_data\output_ras2fim\12090301_2277_ble_230923\final\geocurves
+        huc: 12090301
+        trg_inun_file_path:
+            e.g. C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\230923
+        local_benchmark_data_path: (we use this to re-calc pathing for the output folders)
+            e.g. C:\ras2fim_data\gval\benchmark_data. 
+    """
+
+    print("--------------------------")
+    RLOG.notice(f"Runnning inundation based on geocurves from {src_geocurves_path}")
+    RLOG.lprint(f"All output inundation files will created in {trg_inun_file_path}")
+
+    # don't let if fail if one errors out, unless all fail.
+    flow_files.sort()
+    lst_bench_sources = []    
+
+    for ind, b_file in enumerate(flow_files):
+        # the key is that it is sort.
+        # Figure out adjusted path
+        #   e.g. incoming C:\ras2fim_data\gval\benchmark_data\ble\12030105\100yr\ble_huc_12030105_flows_100yr.csv
+        #   becomes: ble\12030105\100yr\ which gets added to the inundation pathing so 
+        #   the output pathing becomes C:\ras2fim_data\gval\evaluations\
+        #      PROD\12030105_2276_ble\230923\**.gkpg
+
+        dir_to_ben_file = os.path.dirname(b_file)
+        ben_file_name = os.path.basename(b_file)
+        ref_bench_file_path = dir_to_ben_file.replace(local_benchmark_data_path + "\\", "")
+        ben_source = ref_bench_file_path.split("\\")[0]  # ie. ble, nws, ras2fim, etc
+        if ben_source not in lst_bench_sources:
+            lst_bench_sources.append(ben_source)
+            print()
+            RLOG.notice(f"----- Inundating files for {ben_source} ---------")
+
+        inun_file_name = ben_file_name.replace(".csv", "_inundation.gpkg")
+        # At this point the inun_file name are names such as:
+        #    ble_huc_12090301_flows_100yr_inundation.gpkg and
+        #    ahps_cbst2_huc_12090301_flows_major_inundation.gpkg
+        # We want them down to:
+        #    ble_100yr_inundation.gpkg and
+        #    ahps_cbst2_major_inundation.gpkg
+
+        # We also need to strip out the values before the phrases before the phrase "_huc",
+        # and the huc, and the word flows.
+
+        strip_pattern = f"_huc_{huc}_flows"
+        inun_file_name = inun_file_name.replace(strip_pattern, "")
+        trg_file_path = os.path.join(trg_inun_file_path, inun_file_name)
+
+        print(f"... Inundation Starting : {b_file}")
+        # it will display/log errors and critical errors
+        ri.produce_inundation_from_geocurves(src_geocurves_path, b_file, trg_file_path, False)
+        # print(f"... Inundation Complete : {b_file}")
 
 
 # -------------------------------------------------
@@ -112,11 +205,12 @@ def get_s3_benchmark_data(huc, s3_src_benchmark_data_path, local_benchmark_data_
     TODO: notes how this works
 
     Output:
-        bench_files: list of benchmark files.
+        bench_files: list of benchmark files. (simple list of full pathed .csv benchmark files)
 
     """
 
-    RLOG.lprint(f"Loading benchmark data from S3 for HUC {huc} from {s3_src_benchmark_data_path}")
+    print("--------------------------")
+    RLOG.notice(f"Loading benchmark data from S3 for HUC {huc} from {s3_src_benchmark_data_path}")
 
     # ----------------
     # Download benchmark if needed (just the ones for that HUC)
@@ -130,18 +224,19 @@ def get_s3_benchmark_data(huc, s3_src_benchmark_data_path, local_benchmark_data_
 
     bench_files = s3_sf.get_file_list(bucket_name, s3_folder_path, "*" + huc + "*", False)
 
-    # sort out to keep on the .csv files paths.
+    # sort out to keep the .csv
     files_to_download = []
     for bench_file in bench_files:  # Iterate dictionary items
         if bench_file["url"].endswith(".csv"):
             files_to_download.append(bench_file)
 
     if len(files_to_download) == 0:
-        RLOG.critical("There are no benchmark .csv files for the huc {huc} at {}")
+        RLOG.critical(f"There are no benchmark .csv files for the huc {huc}")
         sys.exit(1)
 
     down_items = []
-    for s3_file in files_to_download:
+    #for s3_file in files_to_download:    
+    for s3_file in bench_files:
         item = {}
         s3_key = s3_file["key"]
         s3_file_url = s3_file["url"].replace(f"s3://{bucket_name}", "")
@@ -165,7 +260,7 @@ def get_s3_benchmark_data(huc, s3_src_benchmark_data_path, local_benchmark_data_
     # and only the ones that match the HUCs.
     # Each record will log it it downloaded correctly. If verbose, it will also display it
     num_files_to_be_dwn = len(down_items)
-    down_items = s3_sf.download_files_from_list(bucket_name, down_items, True)
+    down_items = s3_sf.download_files_from_list(bucket_name, down_items, False)
 
     # downloaded benchmark files
     bench_files = []  # only successful
@@ -201,6 +296,12 @@ def __validate_input(
 
     Output: dictionary
     """
+
+    # TODO: test perumations of the input args
+    print()
+    RLOG.notice("NOTE: Some of the testing for non-defaulted args has not yet been completed")
+    print()    
+
 
     # Some variables need to be adjusted and some new derived variables are created
     # dictionary (key / pair) will be returned
@@ -244,7 +345,7 @@ def __validate_input(
     ct_curves_path = len(list(Path(src_geocurves_path).rglob("*.csv")))
     if ct_curves_path == 0:
         raise ValueError(
-            f"The rating curves directory (-sg) of {src_geocurves_path}" " does not have .gpkg files in it."
+            f"The rating curves directory (-sg) of {src_geocurves_path}" " does not have .csv files in it."
         )
 
     rtn_dict["src_geocurves_path"] = src_geocurves_path
@@ -265,8 +366,7 @@ def __validate_input(
             sv.LOCAL_GVAL_EVALS,
             "PROD",
             rtn_dict["unit_id"],
-            rtn_dict["version_date_as_str"],
-            sv.INUNDATION_ROOT_FOLDER_NAME,
+            rtn_dict["version_date_as_str"]
         )
     else:  # DEV or override are fine
         if trg_output_override_path == "":
@@ -277,13 +377,14 @@ def __validate_input(
                 sv.LOCAL_GVAL_EVALS,
                 "DEV",
                 rtn_dict["unit_id"],
-                rtn_dict["version_date_as_str"],
-                sv.INUNDATION_ROOT_FOLDER_NAME,
+                rtn_dict["version_date_as_str"]
             )
         else:
             trg_inun_file_path = trg_output_override_path
 
     rtn_dict["trg_inun_file_path"] = trg_inun_file_path
+    if (os.path.exists(trg_inun_file_path)): # empty it
+        shutil.rmtree(trg_inun_file_path)
 
     # ----------------
     if src_benchmark_data_path == "":
@@ -319,9 +420,8 @@ if __name__ == "__main__":
     # with your own AWS account and credentials.
     # ***********************
 
-    # TODO: sample
-
-    # TODO: do we force the geocurve path?
+    # Sample with min args:
+    #    python ./tools/inundate_unit.py -u 12030103_2276_ble_230923 -e PROD
 
     parser = argparse.ArgumentParser(
         description="Inundating a ras2fim output unit. NOTE: please read notes the top this script"
@@ -349,9 +449,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "-sc",
         "--src_geocurves_path",
-        help=f"OPTIONAL: Local folder were the rating curves (.csv) files are at"
-        r" e.g C:\my_ras\12030101_2276_ble_230925\final\geocurves.\n"
-        f"Defaults to {sv.R2F_DEFAULT_OUTPUT_MODELS}\[unit_name]\{sv.R2F_OUTPUT_DIR_FINAL_GEOCURVES}",
+        help=f"OPTIONAL: Local folder were the rating curves (.csv) files are at.\n"
+        r" e.g C:\my_ras\12030101_2276_ble_230925\final\geocurves."
+        f"\nDefaults to {sv.R2F_DEFAULT_OUTPUT_MODELS}\[unit_name]\{sv.R2F_OUTPUT_DIR_FINAL_GEOCURVES}",
         default="use_default",
         required=False,
         metavar="",
@@ -360,8 +460,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-tg",
         "--trg_gval_root",
-        help=r"OPTIONAL: The root folder were the gval is saved to. e.gc:\rob\gval_testing.\n"
-        f"Defaults to {sv.LOCAL_GVAL_ROOT}",
+        help=r"OPTIONAL: The root folder were the gval is saved to. e.g c:\rob\gval_testing."
+        f"\nDefaults to {sv.LOCAL_GVAL_ROOT}",
         default=sv.LOCAL_GVAL_ROOT,
         required=False,
         metavar="",
@@ -370,11 +470,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "-to",
         "--trg_output_override_path",
-        help="OPTIONAL: You an override the entire pathing structure to put the inundation files"
-        "  wherever you like, you will not be forced to any calculated pathing of any kind, however\n"
-        " if the (-e) env flag is PROD, you can not override the pathing"
-        " only the root gval folder (-tg). In PROD mode, the pathing past the gval root is calculated.\n"
-        " See notes at the top of this script for more details.",
+        help="OPTIONAL: You can override the pathing structure to inundation files"
+        " wherever you like, with no calculated folder pathing.\n"
+        "However, if the (-e) env flag is PROD, you can not override the pathing"
+        " only the root gval folder (-tg).\n"
+        "In PROD mode, the pathing past the gval root is calculated.\n"
+        "See notes at the top of this script for more details.",
         default="",
         required=False,
         metavar="",
@@ -385,9 +486,9 @@ if __name__ == "__main__":
         "--src_benchmark_data_path",
         help="OPTIONAL: The root folder of where the benchmark is located.\n"
         "*** NOTE:This can be a local path OR an S3 path, default will be s3 PROD.\n"
-        r" e.g. C:\ras2fim_data\gval\benchmark_data\n"
+        r" e.g. C:\ras2fim_data\gval\benchmark_data"
         " OR s3://ras2fim/gval/benchmark_data\n"
-        " If the benchmark data is downloaded from S3, it will put it in the default local gval pathing.\n"
+        "If the benchmark data is downloaded from S3, it will put it in the default local gval pathing.\n"
         f"Defaults to {sv.S3_GVAL_BENCHMARK_PATH}",
         default=sv.S3_GVAL_BENCHMARK_PATH,
         required=False,

@@ -23,7 +23,7 @@ RLOG = sv.R2F_LOG
 
 
 # -------------------------------------------------
-def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundation_poly):
+def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundation_poly, verbose=True):
     """
     Produce inundation from RAS2FIM geocurves.
 
@@ -39,15 +39,22 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
     start_dt = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
-    RLOG.lprint("")
-    RLOG.lprint("=================================================================")
-    RLOG.notice("          RUN Inundation tool")
-    RLOG.lprint(f"  (-g): geocurves directory {geocurves_dir} ")
-    RLOG.lprint(f"  (-f): flow file {flow_file}")
-    RLOG.lprint(f"  (-t): output inundation gkpg {output_inundation_poly}")
-    RLOG.lprint(f" --- Start: {dt_string} (UTC time) ")
-    RLOG.lprint("=================================================================")
-    print()
+    if verbose is True:
+        RLOG.lprint("")
+        RLOG.lprint("=================================================================")
+        RLOG.notice("          RUN Inundation tool")
+        RLOG.lprint(f"  (-g): geocurves directory {geocurves_dir} ")
+        RLOG.lprint(f"  (-f): flow file {flow_file}")
+        RLOG.lprint(f"  (-t): output inundation gkpg {output_inundation_poly}")
+        RLOG.lprint(f" --- Start: {dt_string} (UTC time) ")
+        RLOG.lprint("=================================================================")
+        print()
+    else:
+        RLOG.trace("          RUN Inundation tool")
+        RLOG.trace(f"  (-g): geocurves directory {geocurves_dir} ")
+        RLOG.trace(f"  (-f): flow file {flow_file}")
+        RLOG.trace(f"  (-t): output inundation gkpg {output_inundation_poly}")
+
 
     # -------------------------
     # Validation
@@ -77,49 +84,48 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         raise Exception(msg)
 
     # -------------------------
-    geocurve_path_dictionary, available_feature_id_list = {}, []
+    geocurve_path_dictionary = []
     for geocurve_path in geocurves_list:
         feature_id = geocurve_path.name.split("_")[0]
-        available_feature_id_list.append(feature_id)
-        geocurve_path_dictionary.update({feature_id: {"path": geocurve_path}})
+        item = {"feature_id": feature_id, "path": str(geocurve_path)}
+        geocurve_path_dictionary.append(item)
 
-    RLOG.lprint("Completed creating a dictionary of available feature_ids and geocurve files.")
+    if verbose is True:
+        RLOG.lprint("Completed creating a dictionary of available feature_ids and geocurve files.")
 
     # -------------------------
     # get ras2fim version from just one of the geocurve files
     ras2fim_version = None
-    for _, geocurve_file_path in geocurve_path_dictionary.items():
-        sample_geocurve_data = pd.read_csv(geocurve_file_path["path"])
+    for item in geocurve_path_dictionary:
+        sample_geocurve_data = pd.read_csv(item["path"])
         ras2fim_version = sample_geocurve_data.loc[0, "version"]
         break
 
+    """
     if ras2fim_version:
         RLOG.lprint(f"Derived ras2fim version {ras2fim_version} from geocurve files.")
     else:
         RLOG.warning("Failed to derive ras2fim version from geocurve files.")
+    """
 
     # -------------------------
     # Open flow_file to detemine feature_ids to process
     flow_file_df = pd.read_csv(flow_file)
     flow_file_df['feature_id'] = flow_file_df['feature_id'].astype(str)
-    flow_file_df.set_index('feature_id', inplace=True)
+
+    df_geocurve_files = pd.DataFrame.from_dict(geocurve_path_dictionary)
+    df_merged = pd.merge(flow_file_df, df_geocurve_files, how="inner", on='feature_id')
 
     # compile each feature id info (discharge, stage, and geometry) into a dictionary
-    RLOG.lprint("Compiling feature_ids info (discharge, stage, geometry) ... ")
+    # RLOG.lprint("Compiling feature_ids info (discharge, stage, geometry) ... ")
     feature_id_polygon_path_dict = {}
 
     # -------------------------
-    for feature_id in available_feature_id_list:
+    for ind in df_merged.index:    
         # Get discharge and path to geometry file
-        try:
-            discharge_cms = flow_file_df.loc[feature_id, "discharge"]
-            geocurve_file_path = geocurve_path_dictionary[str(feature_id)]["path"]
-        except KeyError:
-            RLOG.warning(
-                "An exception was found finding discharge or geocurve_file_path for feature ID"
-                f" of {feature_id} [path]"
-            )
-            continue
+        feature_id = df_merged.iloc[ind]["feature_id"]
+        discharge_cms = df_merged.iloc[ind]["discharge"]
+        geocurve_file_path = df_merged.iloc[ind]["path"]
 
         # Use interpolation to find the row in geocurve_df that corresponds to the discharge_value
         geocurve_df = pd.read_csv(geocurve_file_path)
@@ -142,15 +148,18 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
     gdf['version'] = ras2fim_version
     gdf.to_file(output_inundation_poly, driver="GPKG")
 
-    print()
-    RLOG.lprint("--------------------------------------")
-    RLOG.success(f"Process completed: {get_stnd_date()}")
-    print(f"log files saved to {RLOG.LOG_FILE_PATH}")
-    print()
     dur_msg = get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
-    RLOG.lprint(dur_msg)
-    print()
-
+    if verbose is True:    
+        print()
+        RLOG.lprint("--------------------------------------")
+        RLOG.success(f"Process completed: {get_stnd_date()}")
+        print(f"log files saved to {RLOG.LOG_FILE_PATH}")
+        print()
+        RLOG.lprint(dur_msg)
+        print()
+    else:
+        RLOG.trace(f"Process completed: {get_stnd_date()}")
+        RLOG.trace(dur_msg)
 
 # -------------------------------------------------
 if __name__ == "__main__":
@@ -162,7 +171,8 @@ if __name__ == "__main__":
     #  python ras2inundation.py
     #    -s C:\ras2fim_data\output_ras2fim\12090301_2277_ble_230825
     #    -f C:\ras2fim_data\inputs\X-National_Datasets\nwm21_17C_recurr_100_0_cms.csv
-    #    -tf nwm_100_inundation.gpkg
+    #    -tf C:\ras2fim_data\gval\evaluations\12030105_2276_ble
+    #             \230923\inundation_files\nwm_100_inundation.gpkg
 
     # Note: for the geocurves files that are required, the system knows that they are in the subfolders
     # of final/geocurves of the unit folder (-s)

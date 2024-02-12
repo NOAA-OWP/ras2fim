@@ -618,13 +618,11 @@ if __name__ == "__main__":
         type=str,
     )
 
-    # Note: As of Jan 2024, 'ble' is the only acceptable value but this could change at any time.
-    # Validated against config/source_codes.csv
     parser.add_argument(
         "-sc",
         "--source_code",
         help="REQUIRED: Enter the source code value to be applied to output folder names."
-        " e.g. ble  [case-sensitive].",
+        " e.g. ble, nws  [case-sensitive].",
         required=True,
         metavar="",
         type=str,

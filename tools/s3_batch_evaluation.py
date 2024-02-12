@@ -12,6 +12,8 @@ from ras2fim.tools.evaluate_ras2fim_unit import evaluate_unit_results
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import shared_variables as sv
+import s3_shared_functions as s3_sf
+from evaluate_ras2fim_unit import evaluate_unit_results
 
 
 RLOG = sv.R2F_LOG
@@ -21,21 +23,20 @@ BUCKET = ""
 RESOLUTION = 10
 NWS_BENCHMARK_PREFIX = "gval/benchmark_data/nws/{0}/"  # format args: huc
 
-# format args: spatial processing unit, benchmark source, stage
+# format args: bucket, unit name, benchmark source, stage
 INUNDATION_URL = 's3://{0}/output_ras2fim/{1}/final/inundation_polys/{2}_{3}_inundation.gpkg'
 
-# format args: spatial processing unit
+# format args: bucket, unit name
 MODEL_DOMAIN_URL = 's3://{0}/output_ras2fim/{1}/final/models_domain/models_domain.gpkg'
 
 VALID_BENCHMARK_STAGES = {"ble": ["100yr", "500yr"], "nws": ["minor", "moderate", "major", "action"]}
 
-# format args: benchmark source, huc, stage
+# format args: bucket, benchmark source, huc, stage
 BENCHMARK_URIS = {
     "ble": 's3://{0}/gval/benchmark_data/{1}/{2}/{3}/{1}_huc_{2}_extent_{3}.tif',
     # format args: benchmark source, huc, nws station, stage
     "nws": 's3://{0}/gval/benchmark_data/{1}/{2}/{3}/{4}/ahps_{3}_huc_{2}_extent_{4}.tif',
 }
-
 
 # -------------------------------------------------
 def get_benchmark_uri(unit_name: str, benchmark_source: str, stage: str, nws_station: str) -> str:
@@ -277,6 +278,17 @@ def run_batch_evaluations(
     for s_unit in get_folder_list(BUCKET, sv.S3_RAS_UNITS_OUTPUT_FOLDER, False):
         s3_unit_name = s_unit.get('key')
 
+
+        rd = s3_sf.parse_unit_folder_name(s3_unit_name)
+        # TODO: Upgrade this pathing.
+        # figure out the output pathing.
+        output_dir = os.path.join(sv.LOCAL_GVAL_ROOT,
+                                  sv.LOCAL_GVAL_EVALS,
+                                  environment,
+                                  rd["key_unit_id"],
+                                  rd["key_date_as_str"])
+            # e.g: C:\ras2fim_data\gval\evaluations\DEV\12090301_2277_ble\230923
+
         # Check if directory is in desired ras2fim output units list if provided
         if unit_names is None or s3_unit_name in unit_names:
             for key, val in VALID_BENCHMARK_STAGES.items():
@@ -332,6 +344,7 @@ if __name__ == '__main__':
 
     # TODO: While it can get files from S3, it can only save outputs locally and can not push
     # them back to S3. Deliberately at this time, allows for review before going back to S3.
+    # Maybe add feature later to push back to s3.
 
     # Parse arguments
     parser = argparse.ArgumentParser(
@@ -387,6 +400,7 @@ if __name__ == '__main__':
 
     args = vars(parser.parse_args())
 
+    log_file_folder = os.path.join(args["output_dir"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -394,12 +408,11 @@ if __name__ == '__main__':
         # Otherwise, the script calling one of the functions in here is assumed
         # to have setup the logger.
 
-        # creates the log file name as the script name
-        script_file_name = os.path.basename(__file__).split('.')[0] + datetime.now().strftime(
-            '%Y-%m-%d_%H:%M'
-        )
-        # assumes RLOG has been added as a global var.
-        RLOG.setup(os.path.join(args['output_dir'], script_file_name + ".log"))
+        # Creates the log file name as the script name
+        script_file_name = os.path.basename(__file__).split('.')[0]
+        # Assumes RLOG has been added as a global var.
+        log_file_name = f"{script_file_name}_{sv.get_date_with_milli(False)}.log"
+        RLOG.setup(os.path.join(log_file_folder, log_file_name))
 
         run_batch_evaluations(**args)
 
