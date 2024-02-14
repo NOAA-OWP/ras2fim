@@ -65,7 +65,7 @@ def fn_create_fim_rasters(
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
     RLOG.notice("|              PROCESSING CONFLATED HEC-RAS MODELS                |")
-    RLOG.notice("|                 (FIRST-PASS FLOW HEC-RAS RUN)                   |")
+    RLOG.notice("|                   (FIRST-PASS HEC-RAS RUN)                      |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     names_created_ras_models = os.listdir(path_created_ras_models)
@@ -113,7 +113,7 @@ def fn_create_fim_rasters(
     RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
 
     RLOG.lprint("")
-    RLOG.notice("        PROCESSING FIRST-PASS FLOW HEC-RAS MODELS COMPLETED        ")
+    RLOG.notice("          PROCESSING FIRST-PASS HEC-RAS MODELS COMPLETED           ")
 
     # -------------------------------------------------
     # Creating second-pass flow HEC-RAS files and
@@ -122,7 +122,7 @@ def fn_create_fim_rasters(
 
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
-    RLOG.notice("|            CREATING SECOND-PASS FLOW HEC-RAS MODELS             |")
+    RLOG.notice("|              CREATING SECOND-PASS HEC-RAS MODELS                |")
     RLOG.lprint("+-----------------------------------------------------------------+")
     RLOG.lprint("  ---(w) HUC-8 WATERSHED: " + huc8_num)
     RLOG.lprint("  ---(o) OUTPUT PATH: " + unit_output_folder)
@@ -151,11 +151,11 @@ def fn_create_fim_rasters(
         unit_output_folder, huc8_num, model_unit, ls_number_of_steps_2ndpass
     )
 
-    RLOG.lprint("*** All SECOND-PASS FLOW HEC-RAS Models Created ***")
+    RLOG.lprint("*** All SECOND-PASS HEC-RAS Models Created ***")
     RLOG.lprint("")
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
-    RLOG.notice("|           PROCESSING SECOND-PASS FLOW HEC-RAS MODELS            |")
+    RLOG.notice("|             PROCESSING SECOND-PASS HEC-RAS MODELS               |")
     RLOG.notice("|          AND CREATING DEPTH GRIDS FOR HEC-RAS STREAMS           |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
