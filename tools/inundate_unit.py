@@ -2,7 +2,9 @@
 
 import argparse
 import datetime as dt
+import glob
 import os
+import pathlib
 import shutil
 import sys
 import traceback
@@ -21,8 +23,9 @@ from shared_functions import get_date_time_duration_msg, get_date_with_milli, ge
 RLOG = sv.R2F_LOG
 
 """
-
 TODO:  explain how this works
+
+
 
 This tool can already work in auto mode. No runtime questions are asked.
 """
@@ -79,26 +82,31 @@ def inundate_unit(
     # rd = Return Variables Dictionary
     # Not all inputs need to be returned from rd or reloaded.
     rd = __validate_input(**arg_values)
+    huc = rd["huc"]
 
     # ----------------
     # We might be downloaded from S3,
     # but we get a list of local huc applicable benchmark csv files
     if rd["is_s3_path"] is True:
         lst_bench_files = get_s3_benchmark_data(
-            rd["huc"], rd["src_benchmark_data_path"], rd["local_benchmark_data_path"]
+            huc, rd["src_benchmark_data_path"], rd["local_benchmark_data_path"]
         )
 
     else:  # get them locally (list of the huc applicable benchmark csv's)
-        print(f"Looking for benchmark files for huc {rd['huc']}")
+        RLOG.lprint(f"Looking for local benchmark files for huc {huc}")
 
-        # TODO: load local benchmark files fully pathed.
+        # let's build up the glob search pattern to look for the HUC number starting
+        # with the src_benchmark_data_path.
+        bench_data_root = rd["local_benchmark_data_path"]
+        if bench_data_root.endswith("\\") is False:
+            bench_data_root += "\\"
 
-        # GLOB
+        lst_bench_files = glob.glob(f"{bench_data_root}**\\*{huc}*.csv", recursive=True)
+        if len(lst_bench_files) == 0:
+            RLOG.critical("No csv benchmark data files were found recursively in the folder"
+                         f" of {bench_data_root} with the huc of {huc}")
+            sys.exit(1)
 
-        # lst_bench_files = (some function)
-        # count
-        # if 0
-        # RLOG.
 
     # ----------------
     # We need to keep just the csv for inundation at this point.
@@ -115,7 +123,7 @@ def inundate_unit(
 
     inundate_files(
         bench_flow_files,
-        rd["huc"],
+        huc,
         rd["src_geocurves_path"],
         rd["trg_inun_file_path"],
         rd["local_benchmark_data_path"],
