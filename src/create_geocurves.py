@@ -35,31 +35,26 @@ xs_extension = 1000
 
 
 def create_geocurves(ras2fim_huc_dir:str, rlog_folder_path:str):
-
-    # setup the global multi-proc logs for this function and it's child functions.
-    mlog_file_prefix = "produce_geocurves"
-    MP_LOG = ras2fim_logger.RAS2FIM_logger()
-    MP_LOG.MP_Log_setup(mlog_file_prefix, rlog_folder_path)
     
     # Get HUC 8
     dir_name = Path(ras2fim_huc_dir).name
     huc_name = re.match("^\d{8}", dir_name).group()
     
     # Read the conflated models list
-    conflated_ras_models_csv = Path(ras2fim_huc_dir, "02_csv_shapes_from_conflation","conflated_ras_models.csv")
+    conflated_ras_models_csv = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF,"conflated_ras_models.csv")
     conflated_ras_models = pd.read_csv(conflated_ras_models_csv, index_col=0)
     
-    nwm_streams_ln_shp = Path(ras2fim_huc_dir, "02_csv_shapes_from_conflation", f"{huc_name}_nwm_streams_ln.shp")
+    nwm_streams_ln_shp = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc_name}_nwm_streams_ln.shp")
     nwm_streams_ln = gpd.read_file(nwm_streams_ln_shp)
-    cross_section_ln_shp = Path(ras2fim_huc_dir, "01_shapes_from_hecras", "cross_section_LN_from_ras.shp")
+    cross_section_ln_shp = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS, "cross_section_LN_from_ras.shp")
     cross_section_ln = gpd.read_file(cross_section_ln_shp)
-    stream_qc_fid_xs_csv = Path(ras2fim_huc_dir, "02_csv_shapes_from_conflation", f"{huc_name}_stream_qc_fid_xs.csv")
+    stream_qc_fid_xs_csv = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc_name}_stream_qc_fid_xs.csv")
     stream_qc_fid_xs = pd.read_csv(stream_qc_fid_xs_csv, index_col=0)
 
     # Loop through each model
     for index, model in conflated_ras_models.iterrows():
         
-        MP_LOG.lprint(model)
+        RLOG.lprint(model)
         
         model_nwm_streams_ln = nwm_streams_ln[nwm_streams_ln.ras_path == model.ras_path]
         model_stream_qc_fid_xs = stream_qc_fid_xs[stream_qc_fid_xs.ras_path == model.ras_path]
@@ -79,7 +74,7 @@ def create_geocurves(ras2fim_huc_dir:str, rlog_folder_path:str):
         main_inundation_poly = disconnected_inundation_poly.iloc[disconnected_inundation_poly.length.idxmax()]
         disconnected_inundation_poly = disconnected_inundation_poly.drop(index=disconnected_inundation_poly.length.idxmax())
                 
-        MP_LOG.lprint("  Loading the max inundation extent for each NWM feature")
+        RLOG.lprint("  Loading the max inundation extent for each NWM feature")
     
         # Create max flow inundation masks for each NWM reach
         nwm_reach_inundation_masks = []
@@ -124,7 +119,7 @@ def create_geocurves(ras2fim_huc_dir:str, rlog_folder_path:str):
             
         nwm_reach_inundation_masks = gpd.GeoDataFrame(pd.concat(nwm_reach_inundation_masks, ignore_index=True))
         # Use max depth extent polygon as mask for other depths
-        MP_LOG.lprint("  Getting the inundation extents from each flow")
+        RLOG.lprint("  Getting the inundation extents from each flow")
         depth_tif_list = [f for f in model_depths_dir.iterdir() if f.suffix == '.tif']
         extent_polys_list = []
         for depth_tif in depth_tif_list:
@@ -146,7 +141,7 @@ def create_geocurves(ras2fim_huc_dir:str, rlog_folder_path:str):
                     binary_arr = np.where((masked_inundation > 0) & (masked_inundation != depth_grid_nodata), 1, 0).astype("uint8")
                     # if the array only has values of zero, then skip it (aka.. no heights above surface)
                     if np.min(binary_arr) == 0 and np.max(binary_arr) == 0:
-                        MP_LOG.warning(f"depth_grid of {depth_tif} does not have any heights above surface.")
+                        RLOG.warning(f"depth_grid of {depth_tif} does not have any heights above surface.")
                         continue
                         
                     results = (
@@ -173,12 +168,12 @@ def create_geocurves(ras2fim_huc_dir:str, rlog_folder_path:str):
 
                     except AttributeError as ae:
                         # TODO (from v1) why does this happen? I suspect bad geometry. Small extent?
-                        MP_LOG.lprint("^^^^^^^^^^^^^^^^^^")
+                        RLOG.lprint("^^^^^^^^^^^^^^^^^^")
                         msg = "Warning...\n"
                         msg += f"  huc is {huc_name}; feature_id = {nwm_feature.ID}; depth_grid = {depth_tif}\n"
                         msg += f"  Details: {ae}"
-                        MP_LOG.warning(msg)
-                        MP_LOG.lprint("^^^^^^^^^^^^^^^^^^")
+                        RLOG.warning(msg)
+                        RLOG.lprint("^^^^^^^^^^^^^^^^^^")
                         continue
                         
                     extent_poly_diss = extent_poly_diss.assign(feature_id=nwm_feature.feature_id,
@@ -426,7 +421,7 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, job_number, output_f
         os.makedirs(output_folder)
 
     # Make geocurves_dir
-    geocurves_dir = os.path.join(output_folder, "geo_curves")
+    geocurves_dir = os.path.join(output_folder, sv.R2F_OUTPUT_DIR_GEOCURVES)
 
     if os.path.exists(geocurves_dir) and not overwrite:
         RLOG.lprint(
@@ -443,72 +438,6 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, job_number, output_f
     #  before replacing it so we don't have left over garbage
     os.makedirs(geocurves_dir)
 
-    # Define paths outputs
-    simplified_depth_grid_parent_dir = os.path.join(
-        ras2fim_output_dir, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES, sv.R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS
-    )
-    rating_curve_parent_dir = os.path.join(ras2fim_output_dir, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES)
-
-    # Create dictionary of files to process
-    proc_dictionary = {}
-    local_dir_list = os.listdir(simplified_depth_grid_parent_dir)
-    for huc in local_dir_list:
-        full_huc_path = os.path.join(simplified_depth_grid_parent_dir, huc)
-        if not os.path.isdir(full_huc_path):
-            RLOG.warning(f"{full_huc_path} is not a directory")
-            continue
-        feature_id_list = os.listdir(full_huc_path)
-        for feature_id in feature_id_list:
-            feature_id_depth_grid_dir = os.path.join(simplified_depth_grid_parent_dir, huc, feature_id)
-            feature_id_rating_curve_path = os.path.join(
-                rating_curve_parent_dir, huc, feature_id, feature_id + "_rating_curve.csv"
-            )
-            try:
-                depth_grid_list = os.listdir(feature_id_depth_grid_dir)
-            except FileNotFoundError:
-                RLOG.warning(f"{feature_id_depth_grid_dir} raised an FileNotFoundError")
-                continue
-            full_path_depth_grid_list = []
-            for depth_grid in depth_grid_list:
-                # filter out any files that is not a tif (ie.. tif.aux.xml (from QGIS))
-                if depth_grid.endswith(".tif"):
-                    full_path_depth_grid_list.append(os.path.join(feature_id_depth_grid_dir, depth_grid))
-            proc_dictionary.update(
-                {
-                    feature_id: {
-                        "huc": huc,
-                        "rating_curve": feature_id_rating_curve_path,
-                        "depth_grids": full_path_depth_grid_list,
-                    }
-                }
-            )
-
-    with ProcessPoolExecutor(max_workers=job_number) as executor:
-        executor_dict = {}
-
-        for feature_id in proc_dictionary:
-            produce_gc_args = {
-                "feature_id": feature_id,
-                "huc": proc_dictionary[feature_id]["huc"],
-                "rating_curve": proc_dictionary[feature_id]["rating_curve"],
-                "depth_grid_list": proc_dictionary[feature_id]["depth_grids"],
-                "version": version,
-                "geocurves_dir": geocurves_dir,
-                "rlog_folder_path": RLOG.LOG_DEFAULT_FOLDER,
-            }
-
-            try:
-                future = executor.submit(mp_produce_geocurves, **produce_gc_args)
-                executor_dict[future] = feature_id
-            except Exception:
-                RLOG.critical(traceback.format_exc())
-                sys.exit(1)
-
-        # Send the executor to the progress bar and wait for all MS tasks to finish
-        sf.progress_bar_handler(executor_dict, True, f"Creating geocurves with {job_number} workers")
-
-    # Now that multi-proc is done, lets merge all of the independent log file from each
-    RLOG.merge_log_files(RLOG.LOG_FILE_PATH, "produce_geocurves")
 
     # Calculate duration
     RLOG.success("Complete")
