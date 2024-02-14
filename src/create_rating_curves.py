@@ -303,12 +303,12 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             x_sections_info_fid = x_sections_info_fid.drop(['discharge', 'wse'], axis=1)
             x_sections_info_fid = pd.concat([x_sections_info_fid, discharge_wse], axis=1)
             x_sections_info_fid = x_sections_info_fid.rename(
-                columns={'wse': 'WSE_Feet', 'discharge': 'Discharge_CFS'}
+                columns={'wse': 'WSE_Feet', 'discharge': 'discharge_cfs'}
             )
 
             # Adding Discharg_CMS column
-            Discharg_CMS = (x_sections_info_fid['Discharge_CFS']*0.0283168).round(4)
-            x_sections_info_fid.insert(7, "Discharg_CMS", Discharg_CMS, True)
+            Discharge_CMS = (x_sections_info_fid['discharge_cfs']*0.0283168).round(4)
+            x_sections_info_fid.insert(7, "discharge_cms", Discharge_CMS, True)
 
             # Saving the dataframe
             x_sections_info_fid.to_csv(path_to_all_xs_info_fid)
@@ -327,12 +327,12 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             fid_mid_x_sections_info_src = pd.concat([fid_mid_x_sections_info_src, discharge_wse2], axis=1)
 
             fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.rename(
-                columns={'wse': 'WSE_Feet', 'discharge': 'Discharge_CFS'}
+                columns={'wse': 'WSE_Feet', 'discharge': 'discharge_cfs'}
             )
 
             # Adding Discharg_CMS column
-            Discharg_CMS_RC = (fid_mid_x_sections_info_src['Discharge_CFS']*0.0283168).round(4)
-            fid_mid_x_sections_info_src.insert(4, "Discharg_CMS", Discharg_CMS_RC, True)
+            Discharge_CMS_RC = (fid_mid_x_sections_info_src['discharge_cfs']*0.0283168).round(4)
+            fid_mid_x_sections_info_src.insert(4, "discharge_cms", Discharge_CMS_RC, True)
 
             # Saving the rating curve
             fid_mid_x_sections_info_src.to_csv(str_xsection_path, index=True)
