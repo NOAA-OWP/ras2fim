@@ -293,7 +293,6 @@ def fn_create_rating_curves(huc8, path_unit_folder):
 
             # -------------------------------------------------
             # Saving all cross sections info per feature_id
-            # TODO: add meter units of feet and meter
             x_sections_info_fid = mid_x_sections_info_fid[mid_x_sections_info_fid['feature_id'] == fids]
             path_to_all_xs_info_fid = os.path.join(str_rating_path_to_create, f"all_xs_info_fid_{fids}.csv")
 
@@ -306,6 +305,12 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             x_sections_info_fid = x_sections_info_fid.rename(
                 columns={'wse': 'WSE_Feet', 'discharge': 'Discharge_CFS'}
             )
+
+            # Adding Discharg_CMS column
+            Discharg_CMS = (x_sections_info_fid['Discharge_CFS']*0.0283168).round(4)
+            x_sections_info_fid.insert(7, "Discharg_CMS", Discharg_CMS, True)
+
+            # Saving the dataframe
             x_sections_info_fid.to_csv(path_to_all_xs_info_fid)
 
             # -------------------------------------------------
@@ -324,6 +329,12 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.rename(
                 columns={'wse': 'WSE_Feet', 'discharge': 'Discharge_CFS'}
             )
+
+            # Adding Discharg_CMS column
+            Discharg_CMS_RC = (fid_mid_x_sections_info_src['Discharge_CFS']*0.0283168).round(4)
+            fid_mid_x_sections_info_src.insert(4, "Discharg_CMS", Discharg_CMS_RC, True)
+
+            # Saving the rating curve
             fid_mid_x_sections_info_src.to_csv(str_xsection_path, index=True)
 
             plot_src(
