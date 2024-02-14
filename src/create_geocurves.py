@@ -31,7 +31,7 @@ GEOMETRY_COL = 'geometry'
 xs_extension = 1000
 
 
-def create_geocurves(ras2fim_huc_dir:str, rlog_folder_path:str):
+def create_geocurves(ras2fim_huc_dir:str):
     
     # Get HUC 8
     dir_name = Path(ras2fim_huc_dir).name
@@ -243,14 +243,13 @@ def extend_cross_section(geom, extension_distance):
 
 
 # -------------------------------------------------
-def manage_geo_rating_curves_production(ras2fim_output_dir, output_folder, overwrite):
+def manage_geo_rating_curves_production(ras2fim_huc_dir, output_folder, overwrite):
     """
     This function sets up the multiprocessed generation of geo version of feature_id-specific rating curves.
 
     Args:
-        ras2fim_output_dir (str): Path to top-level directory storing RAS2FIM outputs for a given run.
+        ras2fim_huc_dir (str): Path to HUC8-level directory storing RAS2FIM outputs for a given run.
         version (str): Version number for RAS2FIM version that produced outputs.
-        job_number (int): The number of jobs to use when parallel processing feature_ids.
         output_folder (str): The path to the output folder where geo rating curves will be written.
     """
 
@@ -266,9 +265,8 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, output_folder, overw
     RLOG.notice("|                   Create GeoCurves                              |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
-    RLOG.lprint(f"  ---(f) ras2fim_output_dir: {ras2fim_output_dir}")
+    RLOG.lprint(f"  ---(f) ras2fim_huc_dir: {ras2fim_huc_dir}")
     RLOG.lprint(f"  ---(v) ras2fim version: {version}")
-    RLOG.lprint(f"  ---(j) job_number: {job_number}")
     RLOG.lprint(f"  ---(t) output_folder: {output_folder}")
     RLOG.lprint(f"  ---(o) overwrite: {overwrite}")
 
@@ -278,9 +276,9 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, output_folder, overw
     RLOG.lprint(f"Started (UTC): {dt_string}")
 
     # Set up output folders. (final outputs folder now created early in the ras2fim.py lifecycle)
-    if not os.path.exists(ras2fim_output_dir):
-        RLOG.error(f"{ras2fim_output_dir} does not exist")
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), ras2fim_output_dir)
+    if not os.path.exists(ras2fim_huc_dir):
+        RLOG.error(f"{ras2fim_huc_dir} does not exist")
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), ras2fim_huc_dir)
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
@@ -301,6 +299,9 @@ def manage_geo_rating_curves_production(ras2fim_output_dir, output_folder, overw
     # Either way.. we are makign a new geocurve folder. e.g. If it is overwrite, we deleted
     #  before replacing it so we don't have left over garbage
     os.makedirs(geocurves_dir)
+
+    # Feed into main geocurve creation function
+    create_geocurves(ras2fim_huc_dir)
 
 
     # Calculate duration
