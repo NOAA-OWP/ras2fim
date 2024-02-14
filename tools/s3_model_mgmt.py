@@ -14,7 +14,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src'
 import s3_shared_functions as s3_sf
 
 import shared_variables as sv
-from shared_functions import get_date_with_milli, get_stnd_date, print_date_time_duration
+from shared_functions import get_date_with_milli, get_stnd_date, get_date_time_duration_msg
 
 
 # Global Variables
@@ -205,7 +205,7 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
     RLOG.success(f"Process completed: {get_stnd_date()}")
     RLOG.success(f"Report csv saved to: {target_report_path}")
     print()
-    dur_msg = print_date_time_duration(start_dt, dt.datetime.utcnow())
+    dur_msg = get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
     print()
 

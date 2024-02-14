@@ -4,7 +4,6 @@ import argparse
 import datetime as dt
 import glob
 import os
-import pathlib
 import shutil
 import sys
 import traceback
@@ -103,10 +102,11 @@ def inundate_unit(
 
         lst_bench_files = glob.glob(f"{bench_data_root}**\\*{huc}*.csv", recursive=True)
         if len(lst_bench_files) == 0:
-            RLOG.critical("No csv benchmark data files were found recursively in the folder"
-                         f" of {bench_data_root} with the huc of {huc}")
+            RLOG.critical(
+                "No csv benchmark data files were found recursively in the folder"
+                f" of {bench_data_root} with the huc of {huc}"
+            )
             sys.exit(1)
-
 
     # ----------------
     # We need to keep just the csv for inundation at this point.

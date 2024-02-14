@@ -88,7 +88,9 @@ def get_nws_stations(huc: str) -> list:
         NWS stations available for HUC
 
     """
-    return [s_unit['key'] for s_unit in s3_sf.get_folder_list(BUCKET, NWS_BENCHMARK_PREFIX.format(huc), False)]
+    return [
+        s_unit['key'] for s_unit in s3_sf.get_folder_list(BUCKET, NWS_BENCHMARK_PREFIX.format(huc), False)
+    ]
 
 
 # -------------------------------------------------
@@ -174,10 +176,11 @@ def add_input_arguments(
 
 
 # -------------------------------------------------
-def report_missing_ouput(units: list = None,
-                         benchmark_sources: list = None,
-                         stages: list = None,
-                         output_dir: str = 'c:\\ras2fim_data\\test_batch_eval'
+def report_missing_ouput(
+    units: list = None,
+    benchmark_sources: list = None,
+    stages: list = None,
+    output_dir: str = 'c:\\ras2fim_data\\test_batch_eval',
 ):
     """
     Method to report missing output that was provided

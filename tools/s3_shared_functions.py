@@ -95,7 +95,8 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
 
     RLOG.lprint("===================================================================")
     print("")
-    RLOG.notice(f"Uploading folder from {src_path}" f"                  to  {s3_full_target_path}")
+    RLOG.notice(f"Uploading folder from {src_path}\n"
+                f"                  to  {s3_full_target_path}")
     print()
 
     # nested function
@@ -300,7 +301,8 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
     try:
         RLOG.lprint("===================================================================")
         print("")
-        RLOG.notice(f"Moving folder from {s3_src_folder_path}" f"                to  {s3_target_folder_path}")
+        RLOG.notice(f"Moving folder from {s3_src_folder_path}\n"
+                    f"               to  {s3_target_folder_path}")
         print()
         print(
             f"{cl.fg('dodger_blue_1')}"
@@ -1101,7 +1103,7 @@ def parse_unit_folder_name(unit_folder_name):
         raise ValueError("unit_folder_name can not be empty")
 
     # cut off the s3 part if there is any.
-    unit_folder_name = unit_folder_name.replace("S3://", "s3://")
+    unit_folder_name = unit_folder_name.replace("S3://", "")
     unit_folder_name = unit_folder_name.replace("s3://", "")
 
     # s3_folder_path and we want to strip the first one only. (can be deeper levels)

@@ -38,7 +38,7 @@ find that you only need to setup yoru machine once with 'aws configure' and not 
 
 
 ####################################################################
-def unit_to_s3(src_unit_dir, s3_bucket_name):
+def unit_to_s3(src_unit_dir_path, s3_bucket_name):
     """
     Overall logic flow:
 
@@ -74,7 +74,7 @@ def unit_to_s3(src_unit_dir, s3_bucket_name):
       transactions made in relation in uploading new unit folder.
 
     Inputs:
-       - src_unit_dir: e.g. C:\ras2fim_data\output_ras2fim\12040101_102739_ble_230922
+       - src_unit_dir_path: e.g. C:\ras2fim_data\output_ras2fim\12040101_102739_ble_230922
        - s3_bucket_name:  e.g. ras2fim-dev
 
     Note:
@@ -91,7 +91,7 @@ def unit_to_s3(src_unit_dir, s3_bucket_name):
     RLOG.lprint("")
     RLOG.lprint("=================================================================")
     RLOG.notice("          RUN ras_unit_to_s3 ")
-    RLOG.lprint(f"  (-s): Source unit folder {src_unit_dir} ")
+    RLOG.lprint(f"  (-s): Source unit folder {src_unit_dir_path} ")
     RLOG.lprint(f"  (-b): s3 bucket name {s3_bucket_name}")
 
     # --------------------
@@ -111,7 +111,7 @@ def unit_to_s3(src_unit_dir, s3_bucket_name):
     # and the temp local tracker file
 
     global TRACKER_SRC_LOCAL_PATH, TRACKER_S3_PATH
-    TRACKER_SRC_LOCAL_PATH = os.path.join(src_unit_dir, sv.S3_OUTPUT_TRACKER_FILE)
+    TRACKER_SRC_LOCAL_PATH = os.path.join(src_unit_dir_path, sv.S3_OUTPUT_TRACKER_FILE)
     TRACKER_S3_PATH = f"{s3_output_path}/{sv.S3_OUTPUT_TRACKER_FILE}"
 
     # These are files that will not be uploaded to S3
@@ -134,7 +134,7 @@ def unit_to_s3(src_unit_dir, s3_bucket_name):
     # and what to do with pre-existing if there are any pre-existing folders
     # matching the huc/crs.
     __process_upload(
-        s3_bucket_name, src_unit_dir, unit_folder_name, s3_output_path, s3_archive_path, skip_files
+        s3_bucket_name, src_unit_dir_path, unit_folder_name, s3_output_path, s3_archive_path, skip_files
     )
 
     # --------------------
@@ -836,7 +836,7 @@ def __add_record_to_tracker(
 
 ####################################################################
 ####  Some validation of input, but also creating key variables ######
-def __validate_input(src_unit_dir, s3_bucket_name):
+def __validate_input(src_unit_dir_path, s3_bucket_name):
     # Some variables need to be adjusted and some new derived variables are created
     # dictionary (key / pair) will be returned
 
@@ -844,11 +844,11 @@ def __validate_input(src_unit_dir, s3_bucket_name):
 
     # ---------------
     # why is this here? might not come in via __main__
-    if src_unit_dir == "":
+    if src_unit_dir_path == "":
         raise ValueError("Source src_unit_dir_path parameter value can not be empty")
 
-    if not os.path.exists(src_unit_dir):
-        raise ValueError(f"Source unit folder not found at {src_unit_dir}")
+    if not os.path.exists(src_unit_dir_path):
+        raise ValueError(f"Source unit folder not found at {src_unit_dir_path}")
 
     if s3_bucket_name == "":
         raise ValueError("Bucket name parameter value can not be empty")
@@ -862,22 +862,22 @@ def __validate_input(src_unit_dir, s3_bucket_name):
 
     # ---------------
     # we need to split this to seperate variables.
-    # e.g src_unit_dir_path = c:\ras2fim_data\output_ras2fim\12030202_102739_230810
+    # e.g src_unit_dir_path = c:\ras2fim_data\output_ras2fim\12030202_102739_ble_230810
 
-    # "unit_folder_name(unit ID)" becomes (if not already) 12030202_102739_230810
-    # "src_unit_full_path" becomes (if not already) c:\ras2fim_data\output_ras2fim\12030202_102739_230810
+    # "unit_folder_name(unit ID)" becomes (if not already) 12030202_102739_ble_230810
+    # "src_unit_full_path" becomes (if not already) c:\ras2fim_data\output_ras2fim\12030202_102739_ble_230810
     # remembering that the path or folder name might be different.
-    src_unit_dir = src_unit_dir.replace("/", "\\")
-    src_path_segs = src_unit_dir.split("\\")
+    src_unit_dir_path = src_unit_dir_path.replace("/", "\\")
+    src_path_segs = src_unit_dir_path.split("\\")
 
     # We need the source huc_crs_source code folder name for later and the full path
-    rtn_dict["unit_id"] = src_path_segs[-1]
+    rtn_dict["unit_folder_name"] = src_path_segs[-1]
     # strip of the parent path
-    rtn_dict["src_unit_full_path"] = src_unit_dir
+    rtn_dict["src_unit_dir_path"] = src_unit_dir_path
 
     # --------------------
     # make sure it has a "final" folder and has some contents
-    final_dir = os.path.join(rtn_dict["src_unit_full_path"], sv.R2F_OUTPUT_DIR_FINAL)
+    final_dir = os.path.join(rtn_dict["src_unit_dir_path"], sv.R2F_OUTPUT_DIR_FINAL)
     if not os.path.exists(final_dir):
         raise ValueError(
             f"Source unit 'final' folder not found at {final_dir}."
