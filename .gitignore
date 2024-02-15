@@ -89,8 +89,7 @@ config/**
 !config/r2f_config.env
 !config/*.lst
 !config/source_codes.csv
-!config/symbology/esri/*.lyr
-!config/symbology/qgis/*.qml
+!config/symbology/
 
 # Base data #
 #############

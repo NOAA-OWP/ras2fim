@@ -22,7 +22,10 @@ RESOLUTION = 10
 NWS_BENCHMARK_PREFIX = "gval/benchmark_data/nws/{0}/"  # format args: huc
 
 # format args: bucket, unit name, benchmark source, stage
-INUNDATION_URL = 's3://{0}/output_ras2fim/{1}/final/inundation_polys/{2}_{3}_inundation.gpkg'
+BLE_INUNDATION_URL = 's3://{0}/output_ras2fim/{1}/final/inundation_polys/{2}_{3}_inundation.gpkg'
+
+# format args: bucket, unit name, nws station, stage
+NWS_INUNDATION_URL = 's3://{0}/output_ras2fim/{1}/final/inundation_polys/ahps_{2}_{3}_inundation.gpkg'
 
 # format args: bucket, unit name
 MODEL_DOMAIN_URL = 's3://{0}/output_ras2fim/{1}/final/models_domain/models_domain.gpkg'
@@ -90,9 +93,10 @@ def get_nws_stations(huc: str) -> list:
         NWS stations available for HUC
 
     """
-    return [
+    unit_keys = [
         s_unit['key'] for s_unit in s3_sf.get_folder_list(BUCKET, NWS_BENCHMARK_PREFIX.format(huc), False)
     ]
+    return unit_keys
 
 
 # -------------------------------------------------
@@ -117,11 +121,19 @@ def check_necessary_files_exist(unit: str, benchmark_source: str, stage: str, nw
 
     """
 
-    files = {
-        'inundation_polygons': INUNDATION_URL.format(BUCKET, unit, benchmark_source, stage),
-        'model_domain_polygons': MODEL_DOMAIN_URL.format(BUCKET, unit),
-        'benchmark_raster': get_benchmark_uri(unit, benchmark_source, stage, nws_station),
-    }
+    if benchmark_source == "ble":
+        files = {
+            'inundation_polygons': BLE_INUNDATION_URL.format(BUCKET, unit, benchmark_source, stage),
+            'model_domain_polygons': MODEL_DOMAIN_URL.format(BUCKET, unit),
+            'benchmark_raster': get_benchmark_uri(unit, benchmark_source, stage, nws_station),
+        }
+
+    if benchmark_source == "nws":
+        files = {
+            'inundation_polygons': NWS_INUNDATION_URL.format(BUCKET, unit, nws_station, stage),
+            'model_domain_polygons': MODEL_DOMAIN_URL.format(BUCKET, unit),
+            'benchmark_raster': get_benchmark_uri(unit, benchmark_source, stage, nws_station),
+        }
 
     exists = [
         s3_sf.is_valid_s3_file(files['inundation_polygons']),
@@ -248,7 +260,7 @@ def run_batch_evaluations(
     unit_names: list = None,
     benchmark_sources: list = None,
     stages: list = None,
-    output_dir: str = 'c:\\ras2fim_data\\test_batch_eval',
+    output_parent_dir: str = 'c:\\ras2fim_data\\test_batch_eval',
 ):
     """
     Run batch evaluations on s3 objects for every valid combination of desired sources
@@ -285,7 +297,7 @@ def run_batch_evaluations(
     else:
         RLOG.lprint(f"  (-st): Stages to run: {stages}")
 
-    RLOG.lprint(f"  (-o):  Root output directory: {output_dir}")
+    RLOG.lprint(f"  (-o):  Root output directory: {output_parent_dir}")
     RLOG.lprint(f" Started (UTC): {sf.get_stnd_date()}")
     print()
     print("NOTE: All output inundation files will be overwritten")
@@ -308,9 +320,13 @@ def run_batch_evaluations(
         s3_unit_name = s_unit.get('key')
 
         rd = s3_sf.parse_unit_folder_name(s3_unit_name)
+
         # TODO: Upgrade this pathing.
         # figure out the output pathing.
-        output_dir = os.path.join(
+
+        # OUTPUT flag doesn't work
+
+        output_parent_dir = os.path.join(
             sv.LOCAL_GVAL_ROOT, sv.LOCAL_GVAL_EVALS, environment, rd["key_unit_id"], rd["key_date_as_str"]
         )
         # e.g: C:\ras2fim_data\gval\evaluations\DEV\12090301_2277_ble\230923
@@ -326,11 +342,15 @@ def run_batch_evaluations(
                             if key == "nws":
                                 # Add arguments for each valid nws_station
                                 for nws_station in get_nws_stations(s3_unit_name.split('_')[0]):
+                                    child_folder_name = f"ahps_{nws_station}_{stage}"
+                                    output_dir = os.path.join(output_parent_dir, child_folder_name)
                                     eval_args = add_input_arguments(
                                         eval_args, s3_unit_name, key, stage, nws_station, output_dir
                                     )
 
                             else:
+                                child_folder_name = f"{key}_{stage}"
+                                output_dir = os.path.join(output_parent_dir, child_folder_name)                                
                                 eval_args = add_input_arguments(
                                     eval_args, s3_unit_name, key, stage, None, output_dir
                                 )
@@ -344,7 +364,7 @@ def run_batch_evaluations(
     if not eval_args:
         RLOG.warning("No valid combinations found, check inputs and try again.")
     else:
-        report_missing_ouput(unit_names, benchmark_sources, stages, output_dir)
+        report_missing_ouput(unit_names, benchmark_sources, stages, output_parent_dir)
 
     print()
     print("===================================================================")
@@ -386,10 +406,6 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        "-o", "--output_dir", help='REQUIRED: Directory to save output evaluation files', required=True
-    )
-
-    parser.add_argument(
         "-e",
         "--environment",
         help="REQUIRED: Must be either the value of PROD meaning it is going to"
@@ -397,7 +413,18 @@ if __name__ == '__main__':
         required=True,
     )
 
+
+    # TODO: add more explaination
+    parser.add_argument(
+        "-o", "--output_parent_dir",
+        help='OPTIONAL: Directory to save output evaluation files',
+        required=False,
+        default=f"{os.path.join(sv.LOCAL_GVAL_ROOT, sv.LOCAL_GVAL_EVALS)}"
+    )
+
     # TODO. Test pattern of cmd args and change e.g. here.
+
+
     parser.add_argument(
         "-u",
         "--unit_names",
@@ -411,6 +438,8 @@ if __name__ == '__main__':
     )
 
     # TODO. Test pattern of cmd args and change ie here, also needs an e.g.
+
+
     parser.add_argument(
         "-b",
         "--benchmark_sources",
@@ -423,6 +452,8 @@ if __name__ == '__main__':
     )
 
     # TODO. Test pattern of cmd args and change ie here, also needs an e.g.
+
+
     parser.add_argument(
         "-st",
         "--stages",
@@ -433,7 +464,7 @@ if __name__ == '__main__':
 
     args = vars(parser.parse_args())
 
-    log_file_folder = os.path.join(args["output_dir"], "logs")
+    log_file_folder = os.path.join(args["output_parent_dir"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.

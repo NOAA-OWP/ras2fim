@@ -111,19 +111,18 @@ def evaluate_unit_results(
     metadata_csv = pd.DataFrame({'process datetime': [dt_now], 'unit_name': [unit_name]})
 
     # Create output directory if it does not exist
-    output_path = os.path.join(output_dir, unit_name)    
-    if not os.path.exists(output_path):
-        os.makedirs(output_path, exist_ok=True)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
 
     # Save output files
     agreement_map.astype(np.int8).rio.to_raster(
-        os.path.join(output_path, "agreement_map.tif"), driver="COG"
+        os.path.join(output_dir, "agreement_map.tif"), driver="COG"
     )
-    metric_table.to_csv(os.path.join(output_path, "metrics.csv"), index=None)
-    metadata_csv.to_csv(os.path.join(output_path, "meta_data.csv"), index=None)
+    metric_table.to_csv(os.path.join(output_dir, "metrics.csv"), index=None)
+    metadata_csv.to_csv(os.path.join(output_dir, "meta_data.csv"), index=None)
 
     RLOG.lprint(f"GVAL evaluation for {unit_name} complete")
-    RLOG.lprint(f"GVAL evaluation output files saved to {output_path}")
+    RLOG.lprint(f"GVAL evaluation output files saved to {output_dir}")
 
 
 if __name__ == '__main__':
@@ -136,6 +135,8 @@ if __name__ == '__main__':
     -b "s3://ras2fim-dev/gval/benchmark_data/ble/12030105/100yr/ble_huc_12030105_extent_100yr.tif"
     -u "12030105_2276_ble_230923_100yr" -o "./test_eval"
     """
+
+    # TODO: Fix output pathing
 
     # Parse arguments
     parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.")
