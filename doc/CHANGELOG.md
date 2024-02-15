@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.xx - 2024-02-13 - [PR#286](https://github.com/NOAA-OWP/ras2fim/pull/286)
+## v2.0.beta.28 - 2024-02-15 - [PR#286](https://github.com/NOAA-OWP/ras2fim/pull/286)
 
 This PR applies minor changes to update the `src/calculate_all_terrain_stats.py` module for use in ras2fim V2.  
 
@@ -12,6 +12,7 @@ This PR applies minor changes to update the `src/calculate_all_terrain_stats.py`
 - `src/ras2fim.py`... Fixed the call to the above script. 
 
 <br/><br/>
+
 
 ## v2.0.beta.27 - 2024-02-15 - [PR#278](https://github.com/NOAA-OWP/ras2fim/pull/278)
 
