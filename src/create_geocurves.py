@@ -37,6 +37,11 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
     # Get HUC 8
     dir_name = Path(ras2fim_huc_dir).name
     huc_name = re.match("^\d{8}", dir_name).group()
+
+    # Get the unit name and version
+    dir_name_split = dir_name.split('_')
+    unit_name = '_'.join(dir_name_split[:-1])
+    unit_version = dir_name_split[-1]
     
     # Read the conflated models list
     conflated_ras_models_csv = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF,"conflated_ras_models.csv")
@@ -182,7 +187,9 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
                     extent_poly_diss = extent_poly_diss.assign(
                         feature_id=nwm_feature.feature_id,
                         profile_num=profile_num,
-                        code_version=code_version
+                        version=code_version,
+                        unit_name=unit_name,
+                        unit_version=unit_version
                         )
                     extent_poly_diss = extent_poly_diss.drop(columns='extent')
 
