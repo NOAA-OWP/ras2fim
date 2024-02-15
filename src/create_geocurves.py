@@ -345,7 +345,6 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
 if __name__ == "__main__":
     # Sample command (all args)
     # python create_geocurves.py -f 'c:\ras2fim_data\output_ras2fim\12090301_2277_230923'
-    #  -j 6
     #  -t 'c:\ras2fim_data\output_ras2fim\12090301_2277_230923\final'
     #  -o
 
@@ -353,15 +352,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Produce Geo Rating Curves for RAS2FIM")
     parser.add_argument(
         "-f",
-        "--ras2fim_output_dir",
+        "--ras2fim_huc_dir",
         help="REQUIRED: Path to directory containing RAS2FIM unit output (huc/crs)",
         required=True,
-    )
-    parser.add_argument(
-        "-j", "--job_number", help="Number of processes to use", required=False, default=1, type=int
-    )
-    parser.add_argument(
-        "-t", "--output_folder", help="Target: Where the geocurve output folder will be", required=True
     )
     parser.add_argument("-o", "--overwrite", help="Overwrite files", required=False, action="store_true")
 
