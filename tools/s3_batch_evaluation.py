@@ -32,12 +32,12 @@ VALID_BENCHMARK_STAGES = {"ble": ["100yr", "500yr"], "nws": ["minor", "moderate"
 BENCHMARK_URIS = {
     "ble": 's3://ras2fim-dev/gval/benchmark_data/{0}/{1}/{2}/{0}_huc_{1}_extent_{2}.tif',
     # format args: benchmark source, huc, nws station, stage
-    "nws": 's3://ras2fim-dev/gval/benchmark_data/{0}/{1}/{2}/{3}/ahps_{2}_huc_{1}_extent_{3}.tif'
+    "nws": 's3://ras2fim-dev/gval/benchmark_data/{0}/{1}/{2}/{3}/ahps_{2}_huc_{1}_extent_{3}.tif',
 }
 
 
 def get_benchmark_uri(spatial_proc_unit: str, benchmark_source: str, stage: str, nws_station: str) -> str:
-    """ Method to get the appropriate benchmark uri
+    """Method to get the appropriate benchmark uri
 
     Parameters
     ----------
@@ -58,12 +58,9 @@ def get_benchmark_uri(spatial_proc_unit: str, benchmark_source: str, stage: str,
     """
 
     if benchmark_source == "ble":
-        return BENCHMARK_URIS["ble"].format(
-            benchmark_source, spatial_proc_unit.split('_')[0], stage
-        )
+        return BENCHMARK_URIS["ble"].format(benchmark_source, spatial_proc_unit.split('_')[0], stage)
 
     elif benchmark_source == "nws":
-
         if nws_station is None:
             raise ValueError("nws_station cannot be none when nws is chosen as a benchmark source")
 
@@ -76,7 +73,7 @@ def get_benchmark_uri(spatial_proc_unit: str, benchmark_source: str, stage: str,
 
 
 def get_nws_stations(huc: str) -> list:
-    """ Get available NWS stations for a HUC
+    """Get available NWS stations for a HUC
 
     Parameters
     ----------
@@ -92,11 +89,10 @@ def get_nws_stations(huc: str) -> list:
     return [s_unit['key'] for s_unit in get_folder_list(BUCKET_DEV, NWS_BENCHMARK_PREFIX.format(huc), False)]
 
 
-def check_necessary_files_exist(spatial_proc_unit: str,
-                                benchmark_source: str,
-                                stage: str,
-                                nws_station: str) -> dict:
-    """ Checks whether the necessary inputs for evaluations exist in S3
+def check_necessary_files_exist(
+    spatial_proc_unit: str, benchmark_source: str, stage: str, nws_station: str
+) -> dict:
+    """Checks whether the necessary inputs for evaluations exist in S3
 
     Parameters
     ----------
@@ -116,13 +112,17 @@ def check_necessary_files_exist(spatial_proc_unit: str,
 
     """
 
-    files = {'inundation_polygons': INUNDATION_URL.format(spatial_proc_unit, benchmark_source, stage),
-             'model_domain_polygons': MODEL_DOMAIN_URL.format(spatial_proc_unit),
-             'benchmark_raster': get_benchmark_uri(spatial_proc_unit, benchmark_source, stage, nws_station)}
+    files = {
+        'inundation_polygons': INUNDATION_URL.format(spatial_proc_unit, benchmark_source, stage),
+        'model_domain_polygons': MODEL_DOMAIN_URL.format(spatial_proc_unit),
+        'benchmark_raster': get_benchmark_uri(spatial_proc_unit, benchmark_source, stage, nws_station),
+    }
 
-    exists = [is_valid_s3_file(files['inundation_polygons']),
-              is_valid_s3_file(files['model_domain_polygons']),
-              is_valid_s3_file(files['benchmark_raster'])]
+    exists = [
+        is_valid_s3_file(files['inundation_polygons']),
+        is_valid_s3_file(files['model_domain_polygons']),
+        is_valid_s3_file(files['benchmark_raster']),
+    ]
 
     if sum(exists) == 3:
         return files
@@ -130,13 +130,15 @@ def check_necessary_files_exist(spatial_proc_unit: str,
         return {}
 
 
-def add_input_arguments(eval_args: list,
-                        spatial_proc_unit: str,
-                        benchmark_source: str,
-                        stage: str,
-                        nws_station: str,
-                        output_dir: str) -> list:
-    """ Add input args if the files exists for use in evaluation function
+def add_input_arguments(
+    eval_args: list,
+    spatial_proc_unit: str,
+    benchmark_source: str,
+    stage: str,
+    nws_station: str,
+    output_dir: str,
+) -> list:
+    """Add input args if the files exists for use in evaluation function
 
     Parameters
     ----------
@@ -166,17 +168,18 @@ def add_input_arguments(eval_args: list,
         input_files['spatial_unit'] = f"{spatial_proc_unit}_{stage}"
         eval_args.append(input_files)
     else:
-        RLOG.trace(f"Spatial Unit {spatial_proc_unit}, benchmark_source {benchmark_source}, "
-                   f"stage {stage} nws_station {nws_station} inputs do not exist")
+        RLOG.trace(
+            f"Spatial Unit {spatial_proc_unit}, benchmark_source {benchmark_source}, "
+            f"stage {stage} nws_station {nws_station} inputs do not exist"
+        )
 
     return eval_args
 
 
-def report_missing_ouput(spatial_units: list = None,
-                         benchmark_sources: list = None,
-                         stages: list = None,
-                         output_dir: str = './'):
-    """ Method to report missing output that was provided
+def report_missing_ouput(
+    spatial_units: list = None, benchmark_sources: list = None, stages: list = None, output_dir: str = './'
+):
+    """Method to report missing output that was provided
 
     Parameters
     ----------
@@ -216,21 +219,26 @@ def report_missing_ouput(spatial_units: list = None,
             report_missing = glob_check(st, "stages", report_missing)
 
     # If any missing outputs exist report
-    if sum([
-        len(report_missing['spatial_units']),
-        len(report_missing['benchmark_sources']),
-        len(report_missing['stages'])
-    ]) > 0:
+    if (
+        sum(
+            [
+                len(report_missing['spatial_units']),
+                len(report_missing['benchmark_sources']),
+                len(report_missing['stages']),
+            ]
+        )
+        > 0
+    ):
+        RLOG.lprint(
+            f"The following provided args have no or incomplete inputs existing on s3: "
+            f"\n {report_missing}"
+        )
 
-        RLOG.lprint(f"The following provided args have no or incomplete inputs existing on s3: "
-                    f"\n {report_missing}")
 
-
-def run_batch_evaluations(spatial_units: list = None,
-                          benchmark_sources: list = None,
-                          stages: list = None,
-                          output_dir: str = './'):
-    """ Run batch evaluations on s3 objects for every valid combination of desired sources
+def run_batch_evaluations(
+    spatial_units: list = None, benchmark_sources: list = None, stages: list = None, output_dir: str = './'
+):
+    """Run batch evaluations on s3 objects for every valid combination of desired sources
 
     Parameters
     ----------
@@ -253,19 +261,13 @@ def run_batch_evaluations(spatial_units: list = None,
 
         # Check if directory is in desired spatial_units list if provided
         if spatial_units is None or spatial_proc_unit in spatial_units:
-
             for key, val in VALID_BENCHMARK_STAGES.items():
-
                 # Check if benchmark source is in desired benchmark_sources list if provided
                 if benchmark_sources is None or key in benchmark_sources:
-
                     for stage in val:
-
                         # Check if stage is in desired stages list if provided
                         if stages is None or stage in stages:
-
                             if key == "nws":
-
                                 # Add arguments for each valid nws_station
                                 for nws_station in get_nws_stations(spatial_proc_unit.split('_')[0]):
                                     eval_args = add_input_arguments(
@@ -285,18 +287,12 @@ def run_batch_evaluations(spatial_units: list = None,
     if not eval_args:
         RLOG.lprint("No valid combinations found, check inputs and try again.")
     else:
-        report_missing_ouput(
-            spatial_units,
-            benchmark_sources,
-            stages,
-            output_dir
-        )
+        report_missing_ouput(spatial_units, benchmark_sources, stages, output_dir)
 
     RLOG.lprint("End s3 batch evaluation")
 
 
 if __name__ == '__main__':
-
     """
     Example Usage:
 
@@ -314,29 +310,24 @@ if __name__ == '__main__':
         "--spatial_units",
         nargs='*',
         help="Argument/s representing list of tag names that refer to ras2fim runs "
-             "(if not provided run all existing)",
-        required=False
+        "(if not provided run all existing)",
+        required=False,
     )
     parser.add_argument(
         "-b",
         "--benchmark_sources",
         nargs='*',
         help="Argument/s epresenting list of benchmark sources to run (if not provided run all existing)",
-        required=False
+        required=False,
     )
     parser.add_argument(
         "-st",
         "--stages",
         nargs='*',
         help="Argument/s representing list of stages to run (if not provided run all existing)",
-        required=False
+        required=False,
     )
-    parser.add_argument(
-        "-o",
-        "--output_dir",
-        help='Directory to save output evaluation files',
-        required=True,
-    )
+    parser.add_argument("-o", "--output_dir", help='Directory to save output evaluation files', required=True)
 
     args = vars(parser.parse_args())
 
@@ -348,8 +339,9 @@ if __name__ == '__main__':
         # to have setup the logger.
 
         # creates the log file name as the script name
-        script_file_name = os.path.basename(__file__).split('.')[0] + \
-                           datetime.now().strftime('%Y-%m-%d_%H:%M')
+        script_file_name = os.path.basename(__file__).split('.')[0] + datetime.now().strftime(
+            '%Y-%m-%d_%H:%M'
+        )
         # assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(args['output_dir'], script_file_name + ".log"))
 
@@ -357,13 +349,3 @@ if __name__ == '__main__':
 
     except Exception:
         RLOG.critical(traceback.format_exc())
-
-
-
-
-
-
-
-
-
-

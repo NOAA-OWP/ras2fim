@@ -31,6 +31,11 @@ To run this tool, you must have already ran 'aws configure' and added creds to t
 find that you only need to setup yoru machine once with 'aws configure' and not each time you use this tool.
 """
 
+# TODO: Feb 5, 2024
+# As this tool asks for user input as it progresses, it needs an "auto" mode, which 
+# will default all answer so none are asked of the user. This is need for automation or 
+# larger "pipeline modes".
+
 
 ####################################################################
 def unit_to_s3(src_unit_dir_path, s3_bucket_name):
@@ -93,8 +98,10 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name):
 
     unit_folder_name = varibles_dict["unit_folder_name"]
     # eg. 12030202_102739_ble_230810
+
     s3_output_path = varibles_dict["s3_output_path"]
     # e.g. s3://ras2fim-dev/output_ras2fim
+
     s3_archive_path = varibles_dict["s3_archive_path"]
     # e.g. s3://xyz/output_ras2fim_archive
 
@@ -831,20 +838,45 @@ def __validate_input(src_unit_dir_path, s3_bucket_name):
     # Some variables need to be adjusted and some new derived variables are created
     # dictionary (key / pair) will be returned
 
-    rtn_varibles_dict = {}
+    rtn_dict = {}
 
     # ---------------
     # why is this here? might not come in via __main__
     if src_unit_dir_path == "":
         raise ValueError("Source src_unit_dir_path parameter value can not be empty")
 
-    if os.path.exists(src_unit_dir_path) is False:
+    if not os.path.exists(src_unit_dir_path):
         raise ValueError(f"Source unit folder not found at {src_unit_dir_path}")
+
+    if s3_bucket_name == "":
+        raise ValueError("Bucket name parameter value can not be empty")
+
+    if ("/" in s3_bucket_name) or ("\\" in s3_bucket_name) or ("s3:" in s3_bucket_name):
+        raise ValueError(
+            "Bucket name parameter value invalid. It needs to be a single word"
+            " or phrase such as my_xyz or r2f-dev. It can not contain values such as"
+            " s3: or forward or back slashes"
+        )
+
+    # ---------------
+    # we need to split this to seperate variables.
+    # e.g src_unit_dir_path = c:\ras2fim_data\output_ras2fim\12030202_102739_230810
+
+    # "unit_folder_name" becomes (if not already) 12030202_102739_230810
+    # "src_unit_full_path" becomes (if not already) c:\ras2fim_data\output_ras2fim\12030202_102739_230810
+    # remembering that the path or folder name might be different.
+    src_unit_dir_path = src_unit_dir_path.replace("/", "\\")
+    src_path_segs = src_unit_dir_path.split("\\")
+
+    # We need the source huc_crs folder name for later and the full path
+    rtn_dict["unit_folder_name"] = src_path_segs[-1]
+    # strip of the parent path
+    rtn_dict["src_unit_full_path"] = src_unit_dir_path
 
     # --------------------
     # make sure it has a "final" folder and has some contents
-    final_dir = os.path.join(src_unit_dir_path, sv.R2F_OUTPUT_DIR_FINAL)
-    if os.path.exists(final_dir) is False:
+    final_dir = os.path.join(rtn_dict["src_unit_full_path"], sv.R2F_OUTPUT_DIR_FINAL)
+    if not os.path.exists(final_dir):
         raise ValueError(
             f"Source unit 'final' folder not found at {final_dir}."
             " Ensure ras2fim has been run to completion and that the full path is submitted in args."
@@ -878,39 +910,28 @@ def __validate_input(src_unit_dir_path, s3_bucket_name):
 
     # --------------------
     # check ras2fim output folder exists
-    s3_output_path = f"s3://{s3_bucket_name}/{sv.S3_RAS_UNITS_OUTPUT_FOLDER}"
-    msg = f"    Validating that the S3 output folder of {s3_output_path} exists"
-    if s3_sf.is_valid_s3_folder(s3_output_path) is False:
+    s3_full_output_path = f"s3://{s3_bucket_name}/{sv.S3_RAS_UNITS_OUTPUT_FOLDER}"
+    msg = f"    Validating that the S3 output folder of {s3_full_output_path} exists"
+    if s3_sf.is_valid_s3_folder(s3_full_output_path) is False:
         raise ValueError(f"{msg} ... does not exist")
     else:
         RLOG.lprint(f"{msg} ... found")
 
     # e.g. s3://ras2fim-dev/output_ras2fim
-    rtn_varibles_dict["s3_output_path"] = s3_output_path
+    rtn_dict["s3_output_path"] = s3_full_output_path
 
     # --------------------
     # check ras2fim archive folder exists
-    s3_archive_path = f"s3://{s3_bucket_name}/{sv.S3_RAS_UNITS_ARCHIVE_FOLDER}"
-    msg = f"    Validating that the S3 archive folder of {s3_archive_path} exists"
-    if s3_sf.is_valid_s3_folder(s3_archive_path) is False:
+    s3_full_archive_path = f"s3://{s3_bucket_name}/{sv.S3_RAS_UNITS_ARCHIVE_FOLDER}"
+    msg = f"    Validating that the S3 archive folder of {s3_full_archive_path} exists"
+    if s3_sf.is_valid_s3_folder(s3_full_archive_path) is False:
         raise ValueError(f"{msg} ... does not exist")
     else:
         RLOG.lprint(f"{msg} ... found")
-    rtn_varibles_dict["s3_archive_path"] = s3_archive_path
-
-    # ---------------
-    # we need to split this to seperate variables.
-    src_unit_dir_path = src_unit_dir_path.replace("/", "\\")
-    src_unit_dir_path_segs = src_unit_dir_path.split("\\")
-
-    # We need the source huc_crs folder name for later and the full path
-    # e.g. 12030202_102739_ble_230810
-    unit_folder_name = src_unit_dir_path_segs[-1]
-    rtn_varibles_dict["unit_folder_name"] = unit_folder_name
-
+    rtn_dict["s3_archive_path"] = s3_full_archive_path
     print()
 
-    return rtn_varibles_dict
+    return rtn_dict
 
 
 ####################################################################

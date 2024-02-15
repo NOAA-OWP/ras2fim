@@ -11,7 +11,7 @@ import geopandas as gpd
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import shared_validators as val
 import shared_variables as sv
-from shared_functions import get_stnd_date, print_date_time_duration
+from shared_functions import get_date_time_duration_msg, get_stnd_date
 
 
 # Global Variables
@@ -108,7 +108,7 @@ def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path, run_by
 
         RLOG.lprint("--------------------------------------")
         RLOG.success(f" - HUC8 extended domain created: {get_stnd_date()}")
-        dur_msg = print_date_time_duration(start_dt, dt.datetime.utcnow())
+        dur_msg = get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
         RLOG.lprint(dur_msg)
         print()
 

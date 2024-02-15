@@ -490,7 +490,7 @@ def fn_run_ras2fim(
 
     RLOG.lprint("+=================================================================+")
     RLOG.success("  RUN RAS2FIM - Completed                                         |")
-    dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
+    dur_msg = sf.get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
     RLOG.lprint("+-----------------------------------------------------------------+")
 
