@@ -1,6 +1,21 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+
+## v2.0.beta.27 - 2024-02-15 - [PR#278](https://github.com/NOAA-OWP/ras2fim/pull/278)
+
+The Simplify Fim Rasters module is no longer needed in V2. We removed the calls from ras2fim.py and added notes to the `simplify_fim_rasters.py` file to say it is deprecated. We are going to keep it for a while.
+
+### Changes  
+
+- `src`
+    - `ras2fim.py`: as mentioned
+    - `shared_variables.py`: as mentioned
+    - `simplify_fim_rasters.py`: as mentioned
+
+<br/><br/>
+
+
 ## v2.0.beta.26 - 2024-02-15 - [PR#281](https://github.com/NOAA-OWP/ras2fim/pull/281)
 
 This PR closes the issue #275.

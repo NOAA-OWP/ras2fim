@@ -34,7 +34,6 @@ from create_model_domain_polygons import fn_make_domain_polygons
 from create_rating_curves import fn_create_rating_curves
 from create_shapes_from_hecras import fn_create_shapes_from_hecras
 from reformat_ras_rating_curve import dir_reformat_ras_rc
-from simplify_fim_rasters import fn_simplify_fim_rasters
 
 
 # Global Variables
@@ -387,21 +386,6 @@ def fn_run_ras2fim(
     # RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
     RLOG.lprint(f"Module temporarily disabled.: {sf.get_stnd_date()}")
     # fn_calculate_all_terrain_stats(unit_output_path)
-
-    # -------------------------------------------------
-    # TODO: Still to be done for v2
-    flt_resolution_depth_grid = int(output_resolution)
-
-    RLOG.lprint("")
-    RLOG.notice("+++++++ Processing: Step ???? (simplifying fim rasters and create metrics) +++++++")
-    RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-
-    # Note: Was pasing in 05 hecras output dir, but should now be the unit_output_path
-    # , it can add the subfolders it needs as it goes.
-    # fn_simplify_fim_rasters(
-    #    unit_output_path, flt_resolution_depth_grid, sv.DEFAULT_RASTER_OUTPUT_CRS,
-    #    model_unit, unit_output_path
-    # )
 
     # -------------------------------------------------
     if os.getenv("PRODUCE_GEOCURVES") == "True":
