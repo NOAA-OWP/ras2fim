@@ -379,13 +379,12 @@ def fn_run_ras2fim(
 
     fn_create_rating_curves(huc8, unit_output_path)
 
-    # Use rating curve data from Step 6
-    # TODO: Jan 22, 2024 - While mostly plugged in, it needs adjustments.
+    # calculate terrain statistics for HEC-RAS models
     RLOG.lprint("")
-    RLOG.notice("+++++++ Processing: STEP 6.b (create rating curve stats) +++++++")
-    # RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-    RLOG.lprint(f"Module temporarily disabled.: {sf.get_stnd_date()}")
-    # fn_calculate_all_terrain_stats(unit_output_path)
+    RLOG.notice("+++++++ Processing: STEP 6.b (calculate terrain statistics for HEC-RAS models) +++++++")
+    RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+    hecras_output_dir = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    fn_calculate_all_terrain_stats(hecras_output_dir)
 
     # -------------------------------------------------
     if os.getenv("PRODUCE_GEOCURVES") == "True":
