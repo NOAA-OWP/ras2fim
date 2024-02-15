@@ -2,7 +2,7 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
-## v2.0.beta.25 - 2024-02-06 - [PR#277](https://github.com/NOAA-OWP/ras2fim/pull/277)
+## v2.0.beta.28 - 2024-02-06 - [PR#277](https://github.com/NOAA-OWP/ras2fim/pull/277)
 
 This is a new tool that can take all applicable output unit files from S3, organize them, and create deployments for both FIM and HydroVIS.
 
