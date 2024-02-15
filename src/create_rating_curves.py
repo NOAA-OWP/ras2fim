@@ -161,8 +161,10 @@ def fn_create_rating_curves(huc8, path_unit_folder):
     # -------------------------------------------------
     # Creating a for loop going through all all_x_sections_info
     # for each confalted stream (step 5 results)
+    stage_diff_gt_1foot = pd.DataFrame(columns = ["model_id", "feature_id"])
     for infoind in range(len(path_to_all_x_sections_info)):
-        mid_x_sections_info = pd.read_csv(path_to_all_x_sections_info[infoind])  #
+    
+        mid_x_sections_info = pd.read_csv(path_to_all_x_sections_info[infoind])
         mid_x_sections_info = mid_x_sections_info.rename(columns={'fid_xs': 'mid_xs', 'modelid': 'model_id'})
 
         # Determinig the number of steps
@@ -249,27 +251,21 @@ def fn_create_rating_curves(huc8, path_unit_folder):
         mid_xs_info_fid_lst = mid_xs_info_fid.groupby(['profile_num', 'feature_id']).last()
 
         for fids in fid_ind:
-            list_int_step_flows = list(
-                mid_xs_info_fid_avr.iloc[mid_xs_info_fid_avr.index.get_level_values('feature_id') == fids][
-                    'discharge'
-                ]
-            )
-            list_step_wse = list(
-                mid_xs_info_fid_avr.iloc[mid_xs_info_fid_avr.index.get_level_values('feature_id') == fids][
-                    'wse'
-                ]
-            )
+            
+            cond_fid_avr = mid_xs_info_fid_avr.index.get_level_values('feature_id') == fids
+            list_int_step_flows = list(mid_xs_info_fid_avr.iloc[cond_fid_avr]['discharge'])
+            list_step_wse = list(mid_xs_info_fid_avr.iloc[cond_fid_avr]['wse'])
+
             str_feature_id = str(fids)
 
-            fid_mid_x_sections_info_avr = mid_xs_info_fid_avr.iloc[
-                mid_xs_info_fid_avr.index.get_level_values('feature_id') == fids
-            ]
-            fid_mid_x_sections_info_1st = mid_xs_info_fid_1st.iloc[
-                mid_xs_info_fid_1st.index.get_level_values('feature_id') == fids
-            ]
-            fid_mid_x_sections_info_lst = mid_xs_info_fid_lst.iloc[
-                mid_xs_info_fid_lst.index.get_level_values('feature_id') == fids
-            ]
+            fid_mid_x_sections_info_avr = mid_xs_info_fid_avr.iloc[cond_fid_avr]
+
+            cond_fid_1st = mid_xs_info_fid_1st.index.get_level_values('feature_id') == fids
+            fid_mid_x_sections_info_1st = mid_xs_info_fid_1st.iloc[cond_fid_1st]
+
+            cond_fid_lst = mid_xs_info_fid_lst.index.get_level_values('feature_id') == fids
+            fid_mid_x_sections_info_lst = mid_xs_info_fid_lst.iloc[cond_fid_lst]
+            
             xs_us_fid = fid_mid_x_sections_info_1st['Xsection_name']
             xs_us_fid = pd.DataFrame(xs_us_fid).rename(columns={'Xsection_name': 'xs_us'})
             xs_ds_fid = fid_mid_x_sections_info_lst['Xsection_name']
@@ -289,6 +285,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
                 created_ras_models_folders[infoind],
                 "Rating_Curve",
             )
+            
             os.makedirs(str_rating_path_to_create, exist_ok=True)
 
             # -------------------------------------------------
@@ -317,9 +314,10 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             # Plotting and saving synthetic rating curves
             str_xsection_path = os.path.join(str_rating_path_to_create, f"rating_curve_{fids}.csv")
 
-            discharge2 = pd.DataFrame(fid_mid_x_sections_info_src['discharge'], columns=['discharge']).round(
-                2
-            )
+            discharge2 = pd.DataFrame(
+                fid_mid_x_sections_info_src['discharge'],
+                columns=['discharge']).round(2)
+            
             wse2 = pd.DataFrame(fid_mid_x_sections_info_src['wse'], columns=['wse']).round(2)
             discharge_wse2 = pd.concat([discharge2, wse2], axis=1)
 
@@ -337,6 +335,17 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             # Saving the rating curve
             fid_mid_x_sections_info_src.to_csv(str_xsection_path, index=True)
 
+            # Determine stage difference greated than 1 foot
+            stage_diff_fid = fid_mid_x_sections_info_src["WSE_Feet"].diff()
+            # print(stage_diff_fid)
+            for diff1 in stage_diff_fid:
+                if diff1 > 1: #foot
+                    mid1 = int(fid_mid_x_sections_info_src["model_id"][0].values)
+                    mid_fid_pd = pd.DataFrame([mid1,fids]).T
+                    mid_fid_pd.columns = ["model_id", "feature_id"]
+                    stage_diff_gt_1foot = pd.concat([stage_diff_gt_1foot, mid_fid_pd])
+                    break
+
             plot_src(
                 str_feature_id,
                 list_int_step_flows,
@@ -345,7 +354,10 @@ def fn_create_rating_curves(huc8, path_unit_folder):
                 str_file_name,
                 model_unit,
             )
-            #
+    path_stage_diff = os.path.join(
+        path_unit_folder, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES, f"stage_diff_gt_1foot_{huc8}.csv"
+        )
+    stage_diff_gt_1foot.to_csv(path_stage_diff)
 
     RLOG.success("Complete")
 
