@@ -1,6 +1,22 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.26 - 2024-02-15 - [PR#281](https://github.com/NOAA-OWP/ras2fim/pull/281)
+
+This PR closes the issue #275.
+The changes on `src/create_model_domain_polygons.py` include:
+
+- The `-conflate` argument is now a required argument.
+- Now, two gpkg files are produced by this code. The user now specifies an output directory and the program creates below two gpkg output files in the directory:
+	- 'models_domain.gpkg'... In this file, each HEC-RAS model domain represented by a polygon geometry
+	- 'dissolved_conflated_models.gpkg'.... This file contains a single dissolved polygon only for conflated HEC-RAS models
+
+### Changes 
+- `src/create_model_domain_polygons.py` as described above.
+- `src/ras2fim.py`... Adjusted accordingly to the changes applied above.
+
+<br/><br/>
+
 
 ## v2.0.beta.25 - 2024-02-15 - [PR#282](https://github.com/NOAA-OWP/ras2fim/pull/282)
 
