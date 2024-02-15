@@ -28,6 +28,7 @@ import shared_variables as sv
 RLOG = sv.R2F_LOG  # the non mp version
 
 GEOMETRY_COL = 'geometry'
+# This is the distance to extent the boundary cross-sections to ensure that the inundation polygon is split
 xs_extension = 1000
 
 
@@ -58,7 +59,7 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
         model_cross_section_ln = cross_section_ln[cross_section_ln.ras_path == model.ras_path]
 
         # Load max depth boundary
-        hecras_output = Path(ras2fim_huc_dir, "05_hecras_output")
+        hecras_output = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
         model_output_dir = [f for f in hecras_output.iterdir() if re.match(f"^{model.model_id}_", f.name)][0]
         model_name = model_output_dir.name.split("_")[1]
         model_depths_dir = Path(model_output_dir, model_name)
@@ -118,7 +119,7 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
         # Use max depth extent polygon as mask for other depths
         RLOG.lprint("  Getting the inundation extents from each flow")
         depth_tif_list = [f for f in model_depths_dir.iterdir() if f.suffix == '.tif']
-        extent_polys_list = []
+        geocurve_df_list = []
         for depth_tif in depth_tif_list:
 
             # This is the regex for the profile number. It finds the numbers after 'flow' in the TIF name
@@ -170,7 +171,7 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
                         # TODO (from v1) why does this happen? I suspect bad geometry. Small extent?
                         RLOG.lprint("^^^^^^^^^^^^^^^^^^")
                         msg = "Warning...\n"
-                        msg += f"  huc is {huc_name}; feature_id = {nwm_feature.ID}; depth_grid = {depth_tif}\n"
+                        msg += f"  huc is {huc_name}; feature_id = {nwm_feature.feature_id}; depth_grid = {depth_tif}\n"
                         msg += f"  Details: {ae}"
                         RLOG.warning(msg)
                         RLOG.lprint("^^^^^^^^^^^^^^^^^^")
@@ -183,13 +184,28 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
                         code_version=code_version
                         )
                     extent_poly_diss = extent_poly_diss.drop(columns='extent')
-                    extent_polys_list.append(extent_poly_diss)
-            extent_poly_df = gpd.GeoDataFrame(pd.concat(extent_polys_list, ignore_index=True))
-            extent_poly_df.to_file(Path(model_output_dir, 'extent_polys.gpkg'), index=False)
-    
-    return extent_poly_df
 
-    # TODO Join geometries with rating curve CSVs
+                    # Load the rating curve
+                    rating_curve_dir = Path(ras2fim_huc_dir, 
+                            sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES, 
+                            model_output_dir.name,
+                            sv.R2F_OUTPUT_DIR_METRIC_RATING_CURVES
+                    )
+                    rating_curve_df = pd.read_csv(Path(rating_curve_dir, f'rating_curve_{nwm_feature.feature_id}.csv'))
+                    
+                    # Join the geometry to the rating curve
+                    feature_id_rating_curve_geo = pd.merge(
+                        rating_curve_df,
+                        extent_poly_diss,
+                        on="profile_num",
+                        how="right",
+                    )
+
+                    geocurve_df_list.append(feature_id_rating_curve_geo)
+    
+        geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
+        geocurve_df.to_csv(Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_GEOCURVES, f'_{model_output_dir.name}_geocurve.csv'), index=False)
+
 
 def find_boundary_xs(nwm_seg_gdf, cross_section_gdf, station_column='stream_stn'):
     
@@ -248,7 +264,7 @@ def extend_cross_section(geom, extension_distance):
 
 
 # -------------------------------------------------
-def manage_geo_rating_curves_production(ras2fim_huc_dir, output_folder, overwrite):
+def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     """
     This function sets up the multiprocessed generation of geo version of feature_id-specific rating curves.
 
@@ -270,8 +286,6 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, output_folder, overwrit
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     RLOG.lprint(f"  ---(f) ras2fim_huc_dir: {ras2fim_huc_dir}")
-    RLOG.lprint(f"  ---(v) ras2fim version: {version}")
-    RLOG.lprint(f"  ---(t) output_folder: {output_folder}")
     RLOG.lprint(f"  ---(o) overwrite: {overwrite}")
 
     RLOG.lprint("")
@@ -283,16 +297,14 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, output_folder, overwrit
     if not os.path.exists(ras2fim_huc_dir):
         RLOG.error(f"{ras2fim_huc_dir} does not exist")
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), ras2fim_huc_dir)
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
 
     # Get the code version
     code_version = sf.get_changelog_version(changelog_path)
 
     # Make geocurves_dir
-    geocurves_dir = os.path.join(output_folder, sv.R2F_OUTPUT_DIR_GEOCURVES)
+    geocurves_dir = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_GEOCURVES)
 
-    if os.path.exists(geocurves_dir) and not overwrite:
+    if geocurves_dir.exists() and not overwrite:
         RLOG.lprint(
             "The output directory, "
             + geocurves_dir
