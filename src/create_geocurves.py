@@ -31,7 +31,7 @@ GEOMETRY_COL = 'geometry'
 xs_extension = 1000
 
 
-def create_geocurves(ras2fim_huc_dir:str):
+def create_geocurves(ras2fim_huc_dir:str, code_version:str):
     
     # Get HUC 8
     dir_name = Path(ras2fim_huc_dir).name
@@ -176,8 +176,13 @@ def create_geocurves(ras2fim_huc_dir:str):
                         RLOG.lprint("^^^^^^^^^^^^^^^^^^")
                         continue
                         
-                    extent_poly_diss = extent_poly_diss.assign(feature_id=nwm_feature.feature_id,
-                                                        profile_num=profile_num)
+                    # Add the feature_id, profile_num, and code_version columns
+                    extent_poly_diss = extent_poly_diss.assign(
+                        feature_id=nwm_feature.feature_id,
+                        profile_num=profile_num,
+                        code_version=code_version
+                        )
+                    extent_poly_diss = extent_poly_diss.drop(columns='extent')
                     extent_polys_list.append(extent_poly_diss)
             extent_poly_df = gpd.GeoDataFrame(pd.concat(extent_polys_list, ignore_index=True))
             extent_poly_df.to_file(Path(model_output_dir, 'extent_polys.gpkg'), index=False)
@@ -249,7 +254,6 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, output_folder, overwrit
 
     Args:
         ras2fim_huc_dir (str): Path to HUC8-level directory storing RAS2FIM outputs for a given run.
-        version (str): Version number for RAS2FIM version that produced outputs.
         output_folder (str): The path to the output folder where geo rating curves will be written.
     """
 
@@ -282,6 +286,9 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, output_folder, overwrit
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
+    # Get the code version
+    code_version = sf.get_changelog_version(changelog_path)
+
     # Make geocurves_dir
     geocurves_dir = os.path.join(output_folder, sv.R2F_OUTPUT_DIR_GEOCURVES)
 
@@ -301,7 +308,7 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, output_folder, overwrit
     os.makedirs(geocurves_dir)
 
     # Feed into main geocurve creation function
-    create_geocurves(ras2fim_huc_dir)
+    create_geocurves(ras2fim_huc_dir, code_version)
 
 
     # Calculate duration
