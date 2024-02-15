@@ -17,6 +17,24 @@ The changes on `src/create_model_domain_polygons.py` include:
 
 <br/><br/>
 
+## v2.0.beta.25 - 2024-02-15 - [PR#282](https://github.com/NOAA-OWP/ras2fim/pull/282)
+
+This PR focuses on developing the 2nd-pass flow hec-ras run. The goal was to create 0.5-foot stage depth grids for every nwm feature-id. This prevents sudden jumps in water surface elevations at the lower end of rating curves.   
+
+### Changes  
+- `src`:
+   - `worker_fim_raster.py`: Two functions were added to this script to calculate the 2nd-pass flow datasets and boundary conditions, and determine the number of steps for each ras model. These two functions are: `create_datasets_2ndpass` and `compute_boundray_condition_2ndpass`. Three more functions also were added to create ras files including: `create_all_2ndpass_flow_files`, `create_2ndpass_rasmap_file` and `create_all_2ndpass_rasmap_files`. Function `fn_run_one_ras_model` also has been changed to be run for the second-pass flow as well as the first-pass flow. 
+
+   - `create_fim_rasters.py`:  The second-pass flow functions (mentioned above) were called in this script to run ras models. This script also uses multi-processing to speed up 2nd-pass run. 
+   - `create_rating_curves.py`: This script was updated to create the rating curves for second-pass flow. 
+
+### Testing
+This PR has been tested against all RAS models in HUC12090301.
+  
+
+<br/><br/>
+
+
 ## v2.0.beta.24 - 2024-02-02 - [PR#264](https://github.com/NOAA-OWP/ras2fim/pull/264)
 
 During some design reviewing it was discovered that we have a need to know and use a code to identify the source.  At this point, we have only one source provider which is BLE. We will use the `source_code` of `ble` for the first records. The code is needed for a number of reasons including helping with merging when multiple runs of ras2fm.py for one HUC are created and also HydroVIS wants this value as well. 
