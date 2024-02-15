@@ -2,7 +2,7 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
-## v2.0.beta.X - 2024-02-09 - [PR#282](https://github.com/NOAA-OWP/ras2fim/pull/282)
+## v2.0.beta.25 - 2024-02-15 - [PR#282](https://github.com/NOAA-OWP/ras2fim/pull/282)
 
 This PR focuses on developing the 2nd-pass flow hec-ras run. The goal was to create 0.5-foot stage depth grids for every nwm feature-id. This prevents sudden jumps in water surface elevations at the lower end of rating curves.   
 
