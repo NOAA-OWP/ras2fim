@@ -212,7 +212,7 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
                     geocurve_df_list.append(feature_id_rating_curve_geo)
     
         geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
-        geocurve_df.to_csv(Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_GEOCURVES, f'_{model_output_dir.name}_geocurve.csv'), index=False)
+        geocurve_df.to_csv(Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_GEOCURVES, f'{unit_name}_geocurve.csv'), index=False)
 
 
 def find_boundary_xs(nwm_seg_gdf, cross_section_gdf, station_column='stream_stn'):
