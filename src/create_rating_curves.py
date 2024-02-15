@@ -101,7 +101,6 @@ def cast_to_int(x):
 
 # -------------------------------------------------
 def fn_create_rating_curves(huc8, path_unit_folder):
-    int_number_of_steps = 76
     model_unit = 'feet'
 
     RLOG.lprint("")
@@ -153,7 +152,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
 
     path_to_all_x_sections_info = []
     for folders in created_ras_models_folders:
-        path_to_all_xs_info = os.path.join(path_to_step5, folders, f"all_x_sections_info_{folders}.csv")
+        path_to_all_xs_info = os.path.join(path_to_step5, folders, f"all_x_sections_info_2nd_{folders}.csv")
 
         path_to_all_x_sections_info.append(path_to_all_xs_info)
 
@@ -165,6 +164,10 @@ def fn_create_rating_curves(huc8, path_unit_folder):
     for infoind in range(len(path_to_all_x_sections_info)):
         mid_x_sections_info = pd.read_csv(path_to_all_x_sections_info[infoind])  #
         mid_x_sections_info = mid_x_sections_info.rename(columns={'fid_xs': 'mid_xs', 'modelid': 'model_id'})
+
+        # Determinig the number of steps
+        xs_us1 = mid_x_sections_info["Xsection_name"][0]
+        int_number_of_steps = len(mid_x_sections_info[mid_x_sections_info["Xsection_name"] == xs_us1])
 
         model_id = mid_x_sections_info['model_id'][0]
 
@@ -187,24 +190,6 @@ def fn_create_rating_curves(huc8, path_unit_folder):
         # feature_ids in average depth per feature_if.
 
         df_XS_name = pd.DataFrame(mid_x_sections_info['Xsection_name'].apply(cast_to_int))
-
-        # TODO: will be removed in the next PR
-        # if type(mid_x_sections_info['Xsection_name'][0]) == str:
-
-        #     df_XS_name0 = pd.DataFrame(mid_x_sections_info['Xsection_name'])
-        #     xs_name = []
-        #     for indx_xs in range(len(df_XS_name0)):
-
-        #         if df_XS_name0['Xsection_name'][indx_xs][-1] == "*":
-
-        #             xs_name.append(np.int64(float(df_XS_name0['Xsection_name'][indx_xs][0:-1])))
-
-        #         else: xs_name.append(np.int64(df_XS_name0['Xsection_name'][indx_xs]))
-
-        #     df_XS_name = pd.DataFrame(xs_name, columns = ['Xsection_name'])
-
-        # else:
-        #     df_XS_name = pd.DataFrame(mid_x_sections_info['Xsection_name'])
 
         maxind = 0  # df_fid_xs_mid["us_xs"].astype(float).idxmax()
         mid_fid = {
@@ -278,7 +263,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
 
             fid_mid_x_sections_info_avr = mid_xs_info_fid_avr.iloc[
                 mid_xs_info_fid_avr.index.get_level_values('feature_id') == fids
-            ]  # .astype(int)
+            ]
             fid_mid_x_sections_info_1st = mid_xs_info_fid_1st.iloc[
                 mid_xs_info_fid_1st.index.get_level_values('feature_id') == fids
             ]
@@ -308,31 +293,48 @@ def fn_create_rating_curves(huc8, path_unit_folder):
 
             # -------------------------------------------------
             # Saving all cross sections info per feature_id
-            # TODO: add meter units of feet and meter
             x_sections_info_fid = mid_x_sections_info_fid[mid_x_sections_info_fid['feature_id'] == fids]
             path_to_all_xs_info_fid = os.path.join(str_rating_path_to_create, f"all_xs_info_fid_{fids}.csv")
 
-            discharge = pd.DataFrame(x_sections_info_fid['discharge'].astype(int), columns=['discharge'])
-            wse = pd.DataFrame(x_sections_info_fid['wse'].astype(int), columns=['wse'])
+            discharge = pd.DataFrame(x_sections_info_fid['discharge'], columns=['discharge']).round(2)
+            wse = pd.DataFrame(x_sections_info_fid['wse'], columns=['wse']).round(2)
             discharge_wse = pd.concat([discharge, wse], axis=1)
 
             x_sections_info_fid = x_sections_info_fid.drop(['discharge', 'wse'], axis=1)
             x_sections_info_fid = pd.concat([x_sections_info_fid, discharge_wse], axis=1)
+            x_sections_info_fid = x_sections_info_fid.rename(
+                columns={'wse': 'WSE_Feet', 'discharge': 'discharge_cfs'}
+            )
+
+            # Adding Discharg_CMS column
+            Discharge_CMS = (x_sections_info_fid['discharge_cfs']*0.0283168).round(4)
+            x_sections_info_fid.insert(7, "discharge_cms", Discharge_CMS, True)
+
+            # Saving the dataframe
             x_sections_info_fid.to_csv(path_to_all_xs_info_fid)
 
             # -------------------------------------------------
             # Plotting and saving synthetic rating curves
-            str_xsection_path = os.path.join(str_rating_path_to_create, f"mean_xs_info_src_{fids}.csv")
+            str_xsection_path = os.path.join(str_rating_path_to_create, f"rating_curve_{fids}.csv")
 
-            discharge2 = pd.DataFrame(
-                fid_mid_x_sections_info_src['discharge'].astype(int), columns=['discharge']
+            discharge2 = pd.DataFrame(fid_mid_x_sections_info_src['discharge'], columns=['discharge']).round(
+                2
             )
-            wse2 = pd.DataFrame(fid_mid_x_sections_info_src['wse'].astype(int), columns=['wse'])
+            wse2 = pd.DataFrame(fid_mid_x_sections_info_src['wse'], columns=['wse']).round(2)
             discharge_wse2 = pd.concat([discharge2, wse2], axis=1)
 
             fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.drop(['discharge', 'wse'], axis=1)
             fid_mid_x_sections_info_src = pd.concat([fid_mid_x_sections_info_src, discharge_wse2], axis=1)
 
+            fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.rename(
+                columns={'wse': 'WSE_Feet', 'discharge': 'discharge_cfs'}
+            )
+
+            # Adding Discharg_CMS column
+            Discharge_CMS_RC = (fid_mid_x_sections_info_src['discharge_cfs']*0.0283168).round(4)
+            fid_mid_x_sections_info_src.insert(4, "discharge_cms", Discharge_CMS_RC, True)
+
+            # Saving the rating curve
             fid_mid_x_sections_info_src.to_csv(str_xsection_path, index=True)
 
             plot_src(
