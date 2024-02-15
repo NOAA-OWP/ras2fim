@@ -69,6 +69,7 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
         max_flow = int(re.search('\d+', flow_search).group())
 
         disconnected_inundation_poly = gpd.read_file(max_inundation_shp).explode(ignore_index=True, index_parts=False)
+        model_crs = disconnected_inundation_poly.crs
         main_inundation_poly = disconnected_inundation_poly.iloc[disconnected_inundation_poly.length.idxmax()]
         disconnected_inundation_poly = disconnected_inundation_poly.drop(index=disconnected_inundation_poly.length.idxmax())
                 
@@ -95,15 +96,15 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
             # Use the first cross-section for the first split
             split1_inundation_geom = split(main_inundation_poly.geometry, boundary_cross_sections_df.geometry.iloc[0])
             split1_inundation = gpd.GeoDataFrame(split1_inundation_geom.geoms)
-            split1_inundation = split1_inundation.set_geometry(0, crs=disconnected_inundation_poly.crs)
+            split1_inundation = split1_inundation.set_geometry(0, crs=model_crs)
             split1_inundation = split1_inundation.sjoin(nwm_reach)
             # Use the second cross-section for the second split
             split2_inundation_geom = split(split1_inundation.geometry.iloc[0], boundary_cross_sections_df.geometry.iloc[1])
             split2_inundation = gpd.GeoDataFrame(split2_inundation_geom.geoms)
-            split2_inundation = split2_inundation.set_geometry(0, crs=disconnected_inundation_poly.crs)
+            split2_inundation = split2_inundation.set_geometry(0, crs=model_crs)
             final_inundation_poly = split2_inundation.sjoin(nwm_reach)
             final_inundation_poly = final_inundation_poly.rename(columns={0:'geometry'})
-            final_inundation_poly = final_inundation_poly.set_geometry('geometry', crs=disconnected_inundation_poly.crs)
+            final_inundation_poly = final_inundation_poly.set_geometry('geometry', crs=model_crs)
             final_inundation_poly = final_inundation_poly.assign(profile_num=max_flow)
             # Search for nearby disconnected polygons using a convex hull of the cross-sections
             search_xs = model_cross_section_ln.loc[(model_cross_section_ln.stream_stn > boundary_cross_sections_df.stream_stn.min()) &
