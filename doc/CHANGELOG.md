@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.25 - 2024-02-07 - [PR#281](https://github.com/NOAA-OWP/ras2fim/pull/281)
+## v2.0.beta.26 - 2024-02-15 - [PR#281](https://github.com/NOAA-OWP/ras2fim/pull/281)
 
 This PR closes the issue #275.
 The changes on `src/create_model_domain_polygons.py` include:
