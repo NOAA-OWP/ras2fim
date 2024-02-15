@@ -2,6 +2,102 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
+## v2.0.beta.29 - 2024-02-06 - [PR#277](https://github.com/NOAA-OWP/ras2fim/pull/277)
+
+This is a new tool that can take all applicable output unit files from S3, organize them, and create deployments for both FIM and HydroVIS.
+
+Other misc changes
+- Some shared functions were renamed in light of new uses
+- Various linting changes (not all previous files were linted correctly)
+- Changes to how s3_shared_functions for downloading folders and files to how it handles multi-threading. It can now detect if there are lots of incoming folders (more than 100) and give it priority for multi-threading priority. If the number of folders incoming is low, it gives priority of multi-threading to actual downloading of file. While this will not meet all conditions, it flows better for when downloading models, which have multi hundreds of small folder, versus downloading unit output folders which don't have many folders to download, but lots of files inside each folder. This triggered updates to most of the s3* tools.
+- Some files now have a message added at the top of them about adding a new variable in the near future and keep it consistent across those files.
+
+__Note__ : Developed at this time against V1 folder pathing. It can be quickly changed as V2 pathing is completed. Also. Not functionality is embedded into this tool such as FIM deployment files (via reformat_rating_curves.py) and possibly others.
+
+### Additions  
+
+- `tools`
+    - `ras2release.py`: New tools
+   
+### Changes  
+
+- `gitignore` - update to ensure lst files are uploaded correctly to git
+- `src`
+     - `conflate_hecras_to_nwm.py`, `create_fim_rasters.py`, `ras2fim.py`, `shared_functions.py`:  changes to reflect shared function name change.
+     - `reformat_ras_rating_curves.py`: Pre-emptive changes anticipating changings coming soon for V2.
+     - `shared_variables.py`: Added new variables.
+ - `tools`
+     - `acquire_and_preprocess_3dep_dems.py`, `extend_huc8_domain.py`, `s3_model_mgmt.py`:  changes to reflect shared function name change.
+     - `evalute_ras2fim_models.py`, `s3_batch_evalations.py`: Linting fixes
+     - `ras2inundation.py`: a few linting fixes, but fixed a small bug not previously discovered. A few variables were renamed.
+     - `s3_get_models.py`: Updates for adjusted shared functions name changes, changed to the new s3 download_folders function usage.
+     - `s3_search_tool.py`: Updates for adjusted shared functions name changes, plus a few text and variable names updates.
+     - `s3_shared_functions.py`:  A rebuild of how folders and files are downloaded to make better use of multi-threading and add flexibility to work with the new ras2release tool as well as other scripts coming soon.
+
+<br/><br/>
+
+
+
+## v2.0.beta.28 - 2024-02-15 - [PR#286](https://github.com/NOAA-OWP/ras2fim/pull/286)
+
+This PR applies minor changes to update the `src/calculate_all_terrain_stats.py` module for use in ras2fim V2.  
+
+
+### Changes  
+
+- `src/calculate_all_terrain_stats.py` 
+- `src/ras2fim.py`... Fixed the call to the above script. 
+
+<br/><br/>
+
+
+## v2.0.beta.27 - 2024-02-15 - [PR#278](https://github.com/NOAA-OWP/ras2fim/pull/278)
+
+The Simplify Fim Rasters module is no longer needed in V2. We removed the calls from ras2fim.py and added notes to the `simplify_fim_rasters.py` file to say it is deprecated. We are going to keep it for a while.
+
+### Changes  
+
+- `src`
+    - `ras2fim.py`: as mentioned
+    - `shared_variables.py`: as mentioned
+    - `simplify_fim_rasters.py`: as mentioned
+
+<br/><br/>
+
+
+## v2.0.beta.26 - 2024-02-15 - [PR#281](https://github.com/NOAA-OWP/ras2fim/pull/281)
+
+This PR closes the issue #275.
+The changes on `src/create_model_domain_polygons.py` include:
+
+- The `-conflate` argument is now a required argument.
+- Now, two gpkg files are produced by this code. The user now specifies an output directory and the program creates below two gpkg output files in the directory:
+	- 'models_domain.gpkg'... In this file, each HEC-RAS model domain represented by a polygon geometry
+	- 'dissolved_conflated_models.gpkg'.... This file contains a single dissolved polygon only for conflated HEC-RAS models
+
+### Changes 
+- `src/create_model_domain_polygons.py` as described above.
+- `src/ras2fim.py`... Adjusted accordingly to the changes applied above.
+
+<br/><br/>
+
+
+## v2.0.beta.25 - 2024-02-15 - [PR#282](https://github.com/NOAA-OWP/ras2fim/pull/282)
+
+This PR focuses on developing the 2nd-pass flow hec-ras run. The goal was to create 0.5-foot stage depth grids for every nwm feature-id. This prevents sudden jumps in water surface elevations at the lower end of rating curves.   
+
+### Changes  
+- `src`:
+   - `worker_fim_raster.py`: Two functions were added to this script to calculate the 2nd-pass flow datasets and boundary conditions, and determine the number of steps for each ras model. These two functions are: `create_datasets_2ndpass` and `compute_boundray_condition_2ndpass`. Three more functions also were added to create ras files including: `create_all_2ndpass_flow_files`, `create_2ndpass_rasmap_file` and `create_all_2ndpass_rasmap_files`. Function `fn_run_one_ras_model` also has been changed to be run for the second-pass flow as well as the first-pass flow. 
+
+   - `create_fim_rasters.py`:  The second-pass flow functions (mentioned above) were called in this script to run ras models. This script also uses multi-processing to speed up 2nd-pass run. 
+   - `create_rating_curves.py`: This script was updated to create the rating curves for second-pass flow. 
+
+  
+
+<br/><br/>
+
+
 ## v2.0.beta.24 - 2024-02-02 - [PR#264](https://github.com/NOAA-OWP/ras2fim/pull/264)
 
 During some design reviewing it was discovered that we have a need to know and use a code to identify the source.  At this point, we have only one source provider which is BLE. We will use the `source_code` of `ble` for the first records. The code is needed for a number of reasons including helping with merging when multiple runs of ras2fm.py for one HUC are created and also HydroVIS wants this value as well. 

@@ -185,7 +185,7 @@ def acquire_and_preprocess_3dep_dems(
 
         RLOG.lprint("--------------------------------------")
         RLOG.success(f" Acquire and pre-proccess 3dep DEMs completed: {sf.get_stnd_date()}")
-        dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
+        dur_msg = sf.get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
         RLOG.lprint(dur_msg)
         print(f"log files saved to {RLOG.LOG_FILE_PATH}")
         print()
@@ -354,7 +354,7 @@ def __upload_file_to_s3(s3_path, file_name, src_file_path):
     s3_sf.upload_file_to_s3(src_file_path, s3_file_path)
     print()
     RLOG.success(f"Upload to {s3_file_path} - Complete")
-    dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
+    dur_msg = sf.get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
     print()
 

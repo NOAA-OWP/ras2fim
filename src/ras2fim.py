@@ -34,7 +34,6 @@ from create_model_domain_polygons import fn_make_domain_polygons
 from create_rating_curves import fn_create_rating_curves
 from create_shapes_from_hecras import fn_create_shapes_from_hecras
 from reformat_ras_rating_curve import dir_reformat_ras_rc
-from simplify_fim_rasters import fn_simplify_fim_rasters
 
 
 # Global Variables
@@ -380,28 +379,12 @@ def fn_run_ras2fim(
 
     fn_create_rating_curves(huc8, unit_output_path)
 
-    # Use rating curve data from Step 6
-    # TODO: Jan 22, 2024 - While mostly plugged in, it needs adjustments.
+    # calculate terrain statistics for HEC-RAS models
     RLOG.lprint("")
-    RLOG.notice("+++++++ Processing: STEP 6.b (create rating curve stats) +++++++")
-    # RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-    RLOG.lprint(f"Module temporarily disabled.: {sf.get_stnd_date()}")
-    # fn_calculate_all_terrain_stats(unit_output_path)
-
-    # -------------------------------------------------
-    # TODO: Still to be done for v2
-    flt_resolution_depth_grid = int(output_resolution)
-
-    RLOG.lprint("")
-    RLOG.notice("+++++++ Processing: Step ???? (simplifying fim rasters and create metrics) +++++++")
+    RLOG.notice("+++++++ Processing: STEP 6.b (calculate terrain statistics for HEC-RAS models) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-
-    # Note: Was pasing in 05 hecras output dir, but should now be the unit_output_path
-    # , it can add the subfolders it needs as it goes.
-    # fn_simplify_fim_rasters(
-    #    unit_output_path, flt_resolution_depth_grid, sv.DEFAULT_RASTER_OUTPUT_CRS,
-    #    model_unit, unit_output_path
-    # )
+    hecras_output_dir = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+    fn_calculate_all_terrain_stats(hecras_output_dir)
 
     # -------------------------------------------------
     if os.getenv("PRODUCE_GEOCURVES") == "True":
@@ -425,11 +408,6 @@ def fn_run_ras2fim(
 
     # -------------------------------------------------
     if os.getenv("CREATE_RAS_DOMAIN_POLYGONS") == "True":
-        # TODO:
-        # V2: Jan 22, 2024: All we need is one big poly that cover the max extent of all features.
-        # This is required for GVAL.
-        # We might already have this covered by earlier steps now. Research required here.
-
         RLOG.lprint("")
         RLOG.notice("+++++++ Processing: STEP: Create polygons for HEC-RAS models domains +++++++")
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
@@ -447,12 +425,11 @@ def fn_run_ras2fim(
         # Also see note in __main__ of create_model_domain_polygons.py as a duplicate msg (more less)
         #  But even after just manually adding that folder it still fails when run from command line.
         output_polygon_dir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_DOMAIN_POLYGONS)
-        polygons_output_file_path = os.path.join(output_polygon_dir, "models_domain.gpkg")
         os.mkdir(output_polygon_dir)
 
         fn_make_domain_polygons(
             xsections_shp_file_path,
-            polygons_output_file_path,
+            output_polygon_dir,
             "ras_path",
             model_huc_catalog_path,
             conflation_csv_path,
@@ -513,7 +490,7 @@ def fn_run_ras2fim(
 
     RLOG.lprint("+=================================================================+")
     RLOG.success("  RUN RAS2FIM - Completed                                         |")
-    dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
+    dur_msg = sf.get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
     RLOG.lprint("+-----------------------------------------------------------------+")
 

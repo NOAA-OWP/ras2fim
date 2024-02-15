@@ -576,7 +576,7 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
         RLOG.lprint("")
         RLOG.success("COMPLETE")
 
-        dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
+        dur_msg = sf.get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
         RLOG.lprint(dur_msg)
         RLOG.lprint("+=================================================================+")
 
@@ -584,7 +584,7 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
         RLOG.lprint("")
         RLOG.critical("NO CONFLATED RAS MODELS FOUND")
 
-        dur_msg = sf.print_date_time_duration(start_dt, dt.datetime.utcnow())
+        dur_msg = sf.get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
         RLOG.lprint(dur_msg)
         RLOG.lprint("+=================================================================+")
 

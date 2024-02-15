@@ -392,7 +392,7 @@ def get_date_with_milli(add_random=True):
 
 
 # -------------------------------------------------
-def print_date_time_duration(start_dt, end_dt):
+def get_date_time_duration_msg(start_dt, end_dt):
     # *********************
     # NOTE:  Ensure the date/tims coming in are UTC in all situations including
     #     just duration's, even though it really doesn't matter for durations.

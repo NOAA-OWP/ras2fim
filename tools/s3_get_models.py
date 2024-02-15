@@ -18,7 +18,7 @@ import s3_shared_functions as s3_sf
 
 import shared_validators as val
 import shared_variables as sv
-from shared_functions import get_source_info, get_stnd_date, print_date_time_duration
+from shared_functions import get_date_time_duration_msg, get_source_info, get_stnd_date
 
 
 # Global Variables
@@ -253,6 +253,14 @@ class Get_Models_By_Catalog:
             # we will save it initially but update it and save it again as it goes
             self.df_filtered.to_csv(self.target_filtered_csv_path, index=False)
 
+            # See if the df already has the two download colums and add them if required.
+            # We will update the values later.
+            if sv.COL_NAME_DOWNLOAD_SUCCESS not in self.df_filtered.columns:
+                self.df_filtered[sv.COL_NAME_DOWNLOAD_SUCCESS] = False  # default
+
+            if sv.COL_NAME_ERROR_DETAILS not in self.df_filtered.columns:
+                self.df_filtered[sv.COL_NAME_ERROR_DETAILS] = ""
+
             # ----------
             # If inc_download_folders, otherwise we just stop.  Sometimes a list is wanted but
             # not the downloads
@@ -262,13 +270,62 @@ class Get_Models_By_Catalog:
                 RLOG.notice(f"... {len(self.df_filtered)} valid filtered model records")
             else:
                 RLOG.lprint("--------------------------------------")
-                # Perform the actual download
-                self.df_filtered = s3_sf.download_folders(
-                    self.src_owp_model_folder_path,
-                    self.target_owp_ras_models_path,
-                    self.df_filtered,
-                    "final_name_key",
+
+                bucket_name, s3_download_folder = s3_sf.parse_bucket_and_folder_name(
+                    self.src_owp_model_folder_path
                 )
+
+                # See if the df already has the two download colums and add them if required.
+                # We will update the values later.
+
+                # With each valid record found, we will add a dictionary record that can be passed
+                # as arguments to find files and download them for a folder
+                list_folders = []
+
+                for ind, row in self.df_filtered.iterrows():
+                    folder_name = row[sv.COL_NAME_FINAL_NAME_KEY]
+                    # ensure the value does not already exist in the list.
+                    if folder_name in list_folders:
+                        raise Exception(
+                            f"The value of {folder_name} exists at least twice"
+                            f" in the {sv.COL_NAME_FINAL_NAME_KEY} column"
+                        )
+
+                    # Ensure the error column does not already have an error msg in it.
+                    # Unlikely but possible. (pre-tests of model records?)
+                    err_val = row[sv.COL_NAME_ERROR_DETAILS]
+                    if err_val is not None and err_val.strip() != "":
+                        msg = f"{folder_name} -- skipped download:  error already existed in the"
+                        f"{sv.COL_NAME_ERROR_DETAILS} column"
+                        RLOG.warning(msg)
+                        row[sv.COL_NAME_ERROR_DETAILS] = msg
+                        continue
+
+                    # e.g. output_ras2fim/12030105_2276_ble_230923
+                    s3_src_child_path = f"{s3_download_folder}/{folder_name}"
+                    local_child_full_path = os.path.join(self.target_owp_ras_models_path, folder_name)
+
+                    # yes.. use the folder name as the ID
+                    item = {
+                        "bucket_name": bucket_name,
+                        "folder_id": folder_name,
+                        "s3_src_folder": s3_src_child_path,
+                        "target_local_folder": local_child_full_path,
+                    }
+
+                    list_folders.append(item)
+
+                downloaded_items = s3_sf.download_folders(list_folders)
+
+                # Update the original dataframe
+                for item in downloaded_items:
+                    folder_id = item["folder_id"]
+                    download_success = item["download_success"]
+                    error_details = item["error_details"]
+
+                    mask = self.df_filtered.final_name_key == folder_id
+                    self.df_filtered.loc[mask, sv.COL_NAME_DOWNLOAD_SUCCESS] = download_success
+                    self.df_filtered.loc[mask, sv.COL_NAME_ERROR_DETAILS] = error_details  # might be empty
 
                 RLOG.lprint("--------------------------------------")
                 RLOG.notice(f"Number of models attempted for downloaded: {num_recs_attempted_download}")
@@ -284,7 +341,7 @@ class Get_Models_By_Catalog:
                     num_skips = len(self.df_filtered) - self.num_success_downloads
                     if num_skips > 0:
                         RLOG.warning(
-                            f"Number of models folders skipped / errored during download: {num_skips}."
+                            f"Number of models folders skipped / errored during download = {num_skips}."
                             " Please review the output logs or the filtered csv for skip/error details."
                         )
                         RLOG.warning(
@@ -310,7 +367,7 @@ class Get_Models_By_Catalog:
         RLOG.success(f"Filtered model catalog saved to : {self.target_filtered_csv_path}")
         print(f"log files saved to {RLOG.LOG_FILE_PATH}")
 
-        dur_msg = print_date_time_duration(start_dt, dt.datetime.utcnow())
+        dur_msg = get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
         RLOG.lprint(dur_msg)
         print()
 
