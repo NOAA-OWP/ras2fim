@@ -91,7 +91,7 @@ class RAS2FIM_logger:
         log_file_name = os.path.basename(log_file_path)
 
         if os.path.exists(folder_path) is False:
-            os.mkdir(folder_path)
+            os.makedirs(folder_path, exist_ok=True )
 
         self.LOG_DEFAULT_FOLDER = folder_path
 

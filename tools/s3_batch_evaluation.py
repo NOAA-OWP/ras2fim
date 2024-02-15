@@ -1,4 +1,5 @@
 import argparse
+import datetime as dt
 import os
 import sys
 import traceback
@@ -10,6 +11,7 @@ import s3_shared_functions as s3_sf
 from evaluate_ras2fim_unit import evaluate_unit_results
 
 import shared_variables as sv
+import shared_functions as sf
 
 
 RLOG = sv.R2F_LOG
@@ -135,7 +137,7 @@ def check_necessary_files_exist(unit: str, benchmark_source: str, stage: str, nw
 
 # -------------------------------------------------
 def add_input_arguments(
-    eval_args: list, unit: str, benchmark_source: str, stage: str, nws_station: str, output_dir: str
+    eval_args: list, unit_name: str, benchmark_source: str, stage: str, nws_station: str, output_dir: str
 ) -> list:
     """Add input args if the files exists for use in evaluation function
 
@@ -143,7 +145,7 @@ def add_input_arguments(
     ----------
     eval_args: list
         Array of dictionaries representing input arguments for evaluations
-    unit: str
+    unit_name: str
         The name of ras2fim unit created and stored in ras2fim output
     benchmark_source: str
         What benchmark source to use in the URI
@@ -161,14 +163,14 @@ def add_input_arguments(
 
     """
 
-    input_files = check_necessary_files_exist(unit, benchmark_source, stage, nws_station)
+    input_files = check_necessary_files_exist(unit_name, benchmark_source, stage, nws_station)
     if input_files:
         input_files['output_dir'] = output_dir
-        input_files['unit'] = f"{unit}_{stage}"
+        input_files['unit_name'] = f"{unit_name}_{stage}"
         eval_args.append(input_files)
     else:
         RLOG.trace(
-            f"ras2fim Unit Name {unit}, benchmark_source {benchmark_source}, "
+            f"ras2fim Unit Name {unit_name}, benchmark_source {benchmark_source}, "
             f"stage {stage} nws_station {nws_station} inputs do not exist"
         )
 
@@ -233,9 +235,11 @@ def report_missing_ouput(
         )
         > 0
     ):
-        RLOG.lprint(
+        print()
+        RLOG.warning(
             "The following provided args have no or incomplete inputs existing on s3: " f"\n {report_missing}"
         )
+        print()        
 
 
 # -------------------------------------------------
@@ -251,6 +255,7 @@ def run_batch_evaluations(
 
     Parameters
     ----------
+    environment: PROD or DEV
     unit_names: list, default=None
         Array of strings representing all spatial processing units to run, (runs all if None)
         ie) 12090301_2277_ble_240206
@@ -263,7 +268,29 @@ def run_batch_evaluations(
 
     """
 
-    RLOG.lprint("Begin s3 batch evaluation")
+    start_dt = dt.datetime.utcnow()
+
+    RLOG.lprint("")
+    RLOG.lprint("=================================================================")
+    RLOG.notice("      Begin s3 batch evaluation")
+    RLOG.lprint(f"  (-u):  Source unit folder name(s): {unit_names} ")
+    RLOG.lprint(f"  (-e):  Environment type: {environment}")
+    if benchmark_sources is None or len(benchmark_sources) == 0:
+        RLOG.lprint(f"  (-b):  Source benchmarks to run: All")
+    else:
+        RLOG.lprint(f"  (-b):  Source benchmarks: {benchmark_sources}")
+
+    if stages is None or len(stages) == 0:
+        RLOG.lprint(f"  (-st): Stages to run: All")
+    else:
+        RLOG.lprint(f"  (-st): Stages to run: {stages}")
+
+    RLOG.lprint(f"  (-o):  Root output directory: {output_dir}")
+    RLOG.lprint(f" Started (UTC): {sf.get_stnd_date()}")
+    print()
+    print("NOTE: All output inundation files will be overwritten")
+
+    print()    
     eval_args = []
 
     if environment != "PROD" and environment != "DEV":
@@ -307,20 +334,27 @@ def run_batch_evaluations(
                                 eval_args = add_input_arguments(
                                     eval_args, s3_unit_name, key, stage, None, output_dir
                                 )
+                            print()
 
     # Run ras2fim model evaluation
     for kwargs in eval_args:
-        RLOG.lprint(f"Processing evaluation for spatial processing unit {kwargs['spatial_unit']}")
+        # RLOG.lprint(f"Processing evaluation for ras2fim output unit {kwargs['unit_name']}")
         evaluate_unit_results(**kwargs)
 
     if not eval_args:
-        RLOG.lprint("No valid combinations found, check inputs and try again.")
+        RLOG.warning("No valid combinations found, check inputs and try again.")
     else:
         report_missing_ouput(unit_names, benchmark_sources, stages, output_dir)
 
-    RLOG.lprint("End s3 batch evaluation")
-    print(f"log files saved to {RLOG.LOG_FILE_PATH}")
-
+    print()
+    print("===================================================================")
+    RLOG.success("Batch Processing complete")
+    dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    RLOG.success(f"Ended (UTC): {dt_string}")
+    RLOG.success(f"log files saved to {RLOG.LOG_FILE_PATH}")
+    dur_msg = sf.get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
+    RLOG.lprint(dur_msg)
+    print()
 
 # -------------------------------------------------
 if __name__ == '__main__':
@@ -410,7 +444,7 @@ if __name__ == '__main__':
         # Creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
         # Assumes RLOG has been added as a global var.
-        log_file_name = f"{script_file_name}_{sv.get_date_with_milli(False)}.log"
+        log_file_name = f"{script_file_name}_{sf.get_date_with_milli(False)}.log"
         RLOG.setup(os.path.join(log_file_folder, log_file_name))
 
         run_batch_evaluations(**args)

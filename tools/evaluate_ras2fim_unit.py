@@ -20,9 +20,12 @@ RLOG = sv.R2F_LOG
 
 adjust_memory_strategy("normal")
 
+# TODO: Feb 14, 2024: Upgrade the output pathing. AT this point, it will just save to a relative path
+# to the script file.
+
 
 def evaluate_unit_results(
-    inundation_polygons, model_domain_polygons, benchmark_raster, spatial_unit, output_dir
+    inundation_polygons, model_domain_polygons, benchmark_raster, unit_name, output_dir
 ):
     """Method to evaluate the model performance of ras2fim output using benchmark data
 
@@ -34,20 +37,22 @@ def evaluate_unit_results(
         File containing the spatial boundaries of ras2fim model
     benchmark_raster: str
         File with benchmark raster data
-    spatial_unit: str
-        Spatial processing unit as used in ras2fim naming conventions
+    unit_name: str
+        e.g. 12030105_2276_ble_230923
     output_dir: str
         Directory to save output evaluation files
     """
-
-    RLOG.lprint(f"GVAL evaluation beginning for {spatial_unit}")
+    print()
+    RLOG.notice(f"GVAL evaluation beginning for {unit_name}")
 
     # Load benchmark, inundation polygon, and model_domain polygon datasets
+    RLOG.lprint("Load benchmark, inundation polygon, and model_domain polygon datasets")
     benchmark = rxr.open_rasterio(benchmark_raster, mask_and_scale=True)
     model_results_df = gpd.read_file(inundation_polygons)
     model_domain_df = gpd.read_file(model_domain_polygons)
 
     # Create the raster candidate map
+    RLOG.lprint("Creating the raster candidate maps")
     model_results_df['extent'] = 1
 
     model_result_raster = make_geocube(
@@ -86,6 +91,7 @@ def evaluate_unit_results(
     }
 
     # Run evaluation with the above encoding dictionary for the agreement map
+    RLOG.lprint("Run evaluation with the above encoding dictionary for the agreement map")
     agreement_map, cross_tabulation_table, metric_table = candidate.gval.categorical_compare(
         benchmark,
         positive_categories=[1],
@@ -100,22 +106,24 @@ def evaluate_unit_results(
     # assign metadata
     dt_now = datetime.now().strftime('%Y-%m-%d %H:%M')
     agreement_map.attrs['process datetime'] = dt_now
-    agreement_map.attrs['spatial processing unit'] = spatial_unit
+    agreement_map.attrs['unit_name'] = unit_name
     metric_table.insert(0, 'procces datetime', dt_now)
-    metadata_csv = pd.DataFrame({'process datetime': [dt_now], 'spatial processing unit': [spatial_unit]})
+    metadata_csv = pd.DataFrame({'process datetime': [dt_now], 'unit_name': [unit_name]})
 
     # Create output directory if it does not exist
-    if not os.path.exists(f"{output_dir}/{spatial_unit}"):
-        os.makedirs(f"{output_dir}/{spatial_unit}")
+    output_path = os.path.join(output_dir, unit_name)    
+    if not os.path.exists(output_path):
+        os.makedirs(output_path, exist_ok=True)
 
     # Save output files
     agreement_map.astype(np.int8).rio.to_raster(
-        f"{output_dir}/{spatial_unit}/agreement_map.tif", driver="COG"
+        os.path.join(output_path, "agreement_map.tif"), driver="COG"
     )
-    metric_table.to_csv(f"{output_dir}/{spatial_unit}/metrics.csv", index=None)
-    metadata_csv.to_csv(f"{output_dir}/{spatial_unit}/meta_data.csv", index=None)
+    metric_table.to_csv(os.path.join(output_path, "metrics.csv"), index=None)
+    metadata_csv.to_csv(os.path.join(output_path, "meta_data.csv"), index=None)
 
-    RLOG.lprint(f"GVAL evaluation for {spatial_unit} complete")
+    RLOG.lprint(f"GVAL evaluation for {unit_name} complete")
+    RLOG.lprint(f"GVAL evaluation output files saved to {output_path}")
 
 
 if __name__ == '__main__':
@@ -126,7 +134,7 @@ if __name__ == '__main__':
     -i "s3://ras2fim/output_ras2fim/12030105_2276_ble_230923/final/inundation_polys/ble_100yr_inundation.gpkg"
     -m "s3://ras2fim/output_ras2fim/12030105_2276_ble_230923/final/models_domain/models_domain.gpkg"
     -b "s3://ras2fim-dev/gval/benchmark_data/ble/12030105/100yr/ble_huc_12030105_extent_100yr.tif"
-    -st "12030105_2276_ble_230923_100yr" -o "./test_eval"
+    -u "12030105_2276_ble_230923_100yr" -o "./test_eval"
     """
 
     # Parse arguments
@@ -140,7 +148,8 @@ if __name__ == '__main__':
     parser.add_argument(
         "-b", "--benchmark_raster", help="Benchmark raster from respective source", required=True
     )
-    parser.add_argument("-st", "--spatial_unit", help='Tag name that refers to a ras2fim run', required=True)
+    parser.add_argument("-u", "--unit_name", help="Tag name that refers to a ras2fim run\n"
+                        "  e.g. 12030105_2276_ble_230923", required=True)
     parser.add_argument("-o", "--output_dir", help='Directory to save output evaluation files', required=True)
 
     args = vars(parser.parse_args())
