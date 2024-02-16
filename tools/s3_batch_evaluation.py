@@ -81,7 +81,6 @@ def get_benchmark_uri(unit_name: str, benchmark_source: str, stage: str, nws_sta
 # -------------------------------------------------
 def get_nws_stations(huc: str) -> list:
     """Get available NWS stations for a HUC
-    """Get available NWS stations for a HUC
 
     Parameters
     ----------

@@ -14,7 +14,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src'
 import s3_shared_functions as s3_sf
 import shared_variables as sv
 from shared_functions import get_date_with_milli, get_stnd_date, get_date_time_duration_msg
-from shared_functions import get_date_with_milli, get_stnd_date, get_date_time_duration_msg
 
 
 # Global Variables
@@ -370,7 +369,6 @@ def __validate_input(s3_master_csv_path, s3_models_path, output_folder_path):
     """
 
     rtn_dict = {}
-    rtn_dict = {}
 
     # ---------------
     # why is this here? might not come in via __main__
@@ -386,13 +384,6 @@ def __validate_input(s3_master_csv_path, s3_models_path, output_folder_path):
     bucket_name, s3_output_folder = s3_sf.parse_bucket_and_folder_name(s3_models_path)
     rtn_dict["bucket_name"] = bucket_name
     rtn_dict["s3_models_output_folder"] = s3_output_folder
-    if s3_sf.is_valid_s3_folder(s3_models_path) is False:
-        raise ValueError(f"S3 models path ({s3_models_path}) does not exist")
-
-    bucket_name, s3_output_folder = s3_sf.parse_bucket_and_folder_name(s3_models_path)
-    rtn_dict["bucket_name"] = bucket_name
-    rtn_dict["s3_models_output_folder"] = s3_output_folder
-
     # see if the master csv exists
     if s3_sf.is_valid_s3_file(s3_master_csv_path) is False:
         raise ValueError(
@@ -400,7 +391,6 @@ def __validate_input(s3_master_csv_path, s3_models_path, output_folder_path):
             " Note: the pathing is case-sensitive"
         )
 
-    return rtn_dict
     return rtn_dict
 
 
@@ -432,8 +422,6 @@ if __name__ == "__main__":
         help="OPTIONAL: The full S3 path to the OWP_ras_models folder.\n"
         "ie) s3://ras2fim-dev/OWP_ras_models/my_models\n"
         "Note: it is a case-sensitive value\n"
-        f"Defaults to {sv.S3_OWP_RAS_MODELS_FOLDER}",
-        default=sv.S3_OWP_RAS_MODELS_FOLDER,
         f"Defaults to {sv.S3_OWP_RAS_MODELS_FOLDER}",
         default=sv.S3_OWP_RAS_MODELS_FOLDER,
         required=False,
