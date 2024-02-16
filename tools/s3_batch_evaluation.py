@@ -21,6 +21,10 @@ BUCKET = ""
 RESOLUTION = 10
 NWS_BENCHMARK_PREFIX = "gval/benchmark_data/nws/{0}/"  # format args: huc
 
+
+# TODO: Fix this for other bench types
+
+
 # format args: bucket, unit name, benchmark source, stage
 BLE_INUNDATION_URL = 's3://{0}/output_ras2fim/{1}/final/inundation_polys/{2}_{3}_inundation.gpkg'
 

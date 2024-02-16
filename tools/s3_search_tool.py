@@ -51,7 +51,6 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
 
     Inputs:
         - s3_path: full s3 base path: ie) s3://ras2fim-dev/OWP_ras_models
-        - s3_path: full s3 base path: ie) s3://ras2fim-dev/OWP_ras_models
         - search_key: Any word, letters, and most chars, with * meaning 0 to many matchs.
             Non-case sensitive.
             ie)
@@ -83,7 +82,6 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
     RLOG.notice("          RUN s3 search tool ")
     RLOG.lprint(f"  (-s3): s3_path {s3_path} ")
     RLOG.lprint(f"  (-key): s3 search value {search_key}")
-    RLOG.lprint(f"  (-key): s3 search value {search_key}")
     RLOG.lprint(f"  (-p): output results folder {output_folder_path}")
     RLOG.lprint(f" --- Start: {dt_string} (UTC time) ")
     RLOG.lprint("=================================================================")
@@ -111,7 +109,6 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
         df = pd.DataFrame(s3_items)
         df.to_csv(output_file_path, index=False)
 
-        RLOG.notice(f"Output search results report saved as {output_file_path}")
         RLOG.notice(f"Output search results report saved as {output_file_path}")
 
     # --------------------
@@ -174,13 +171,6 @@ def __validate_input(s3_path, search_key, output_folder_path):
     bucket_name, s3_search_folder = s3_sf.parse_bucket_and_folder_name(s3_path)
     rtn_dict["bucket_name"] = bucket_name
     rtn_dict["s3_search_folder"] = s3_search_folder
-    # will raise some of it's own exceptions if needed
-    if s3_sf.is_valid_s3_folder(s3_path) is False:
-        raise ValueError(f"S3 search folder of {s3_path} ... does not exist")
-
-    bucket_name, s3_search_folder = s3_sf.parse_bucket_and_folder_name(s3_path)
-    rtn_dict["bucket_name"] = bucket_name
-    rtn_dict["s3_search_folder"] = s3_search_folder
 
     return rtn_dict
     
@@ -223,8 +213,6 @@ if __name__ == "__main__":
         help="OPTIONAL: This value starting s3 folder (full s3 path) where searching will be done.\n"
         "ie) s3://ras2fim-dev/OWP_ras_models/my_models.\n"
         "Note: This value IS case-sensitive\n"
-        f"Defaults to {sv.S3_OWP_RAS_MODELS_FOLDER}",
-        default=sv.S3_OWP_RAS_MODELS_FOLDER,
         f"Defaults to {sv.S3_OWP_RAS_MODELS_FOLDER}",
         default=sv.S3_OWP_RAS_MODELS_FOLDER,
         required=False,

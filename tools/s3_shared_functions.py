@@ -1,7 +1,6 @@
 ﻿#!/usr/bin/env python3
 
 import datetime as dt
-import datetime as dt
 import fnmatch
 import os
 import sys
@@ -9,22 +8,15 @@ import traceback
 from concurrent import futures
 from datetime import datetime
 from functools import partial
-from functools import partial
 
 import boto3
 import botocore.exceptions
 import colored as cl
 import tqdm
-import tqdm
 from botocore.client import ClientError
-
-
-# from math import round
-
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import shared_variables as sv
-from shared_functions import get_date_time_duration_msg
 from shared_functions import get_date_time_duration_msg
 
 
@@ -402,7 +394,6 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
 
 # -------------------------------------------------
 def download_folders(list_folders):
-def download_folders(list_folders):
     """
     Process:
         - The s3 pathing values needs to be case-sensitive.
@@ -435,21 +426,6 @@ def download_folders(list_folders):
              If there is more than 100 folders incoming, then we MT that and only give one per file.
              If there is less than 100 folders incoming, we loop it and give all of the MT's
              to the children
-
-    Inputs:
-        - list_folders. List of dictionary objects
-            - schema is:
-                - "bucket_name":
-                - "folder_id": folder_name or any unique value. e.g. 12030105_2276_ble_230923
-                - "s3_src_folder": e.g. output_ras2fim/12030105_2276_ble_230923
-                - "target_local_folder": e.g. C:\ras2fim_data\output_ras2fim\12030105_2276_ble_230923
-                   all downloaded files and folders will be under this folder.
-      Output
-        - The dictionary objects will have three keys.
-            - "folder_id": folder_name or any unique value. e.g. 12030105_2276_ble_230923
-            - "download_success" as either
-                the string value of 'True' or 'False'
-            - "error_details" - why did it fail
 
     """
     rtn_threads = []
@@ -493,8 +469,6 @@ def download_folders(list_folders):
 
             with futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
                 futures_dict = []
-            with futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
-                futures_dict = []
 
                 for download_args in list_folders:
                     item = {
@@ -504,35 +478,7 @@ def download_folders(list_folders):
                         "target_local_folder": download_args["target_local_folder"],
                     }
                     futures_dict.append(executor.submit(fn_partial_download_single_folder, **item))
-                for download_args in list_folders:
-                    item = {
-                        "bucket_name": download_args["bucket_name"],
-                        "folder_id": download_args["folder_id"],
-                        "s3_src_folder": download_args["s3_src_folder"],
-                        "target_local_folder": download_args["target_local_folder"],
-                    }
-                    futures_dict.append(executor.submit(fn_partial_download_single_folder, **item))
 
-                for future_result in futures.as_completed(futures_dict):
-                    if future_result is not None:
-                        future_exception = future_result.exception()
-                        if future_exception:
-                            RLOG.error(future_exception)
-                        else:
-                            result = future_result.result()
-                            rtn_threads.append(result)
-
-        for result in rtn_threads:
-            # err_msg might be empty
-            item = {
-                "folder_id": result['folder_id'],
-                "download_success": result['is_success'],
-                "error_details": result['err_msg'],
-            }
-
-            rtn_download_details.append(item)
-
-        return rtn_download_details
                 for future_result in futures.as_completed(futures_dict):
                     if future_result is not None:
                         future_exception = future_result.exception()
@@ -570,9 +516,6 @@ def download_folders(list_folders):
 
 
 # -------------------------------------------------
-def download_single_folder(
-    bucket_name, folder_id, s3_src_folder, target_local_folder, num_of_workers, is_verbose
-):
 def download_single_folder(
     bucket_name, folder_id, s3_src_folder, target_local_folder, num_of_workers, is_verbose
 ):
@@ -621,20 +564,10 @@ def download_single_folder(
     else:
         RLOG.lprint(f"Downloading files/folders from  {full_src_path}")
 
-    if is_verbose:
-        print()
-        RLOG.notice(f"Downloading {len(s3_items)} files/folders from  {full_src_path}")
-    else:
-        RLOG.lprint(f"Downloading files/folders from  {full_src_path}")
-
     try:
         s3_client = boto3.client('s3')
         num_fails = 0
-        num_fails = 0
 
-        download_args = []
-        use_multi_thread = num_of_workers != 1
-        for s3_item in s3_items:  # files and folders under the s3_src_folder
         download_args = []
         use_multi_thread = num_of_workers != 1
         for s3_item in s3_items:  # files and folders under the s3_src_folder
@@ -715,38 +648,6 @@ def download_single_folder(
             else:  # use MT on the files
                 download_args.append(args)
 
-        if use_multi_thread:
-            with tqdm.tqdm(total=num_s3_items) as pbar:
-                with futures.ThreadPoolExecutor(max_workers=num_of_workers) as executor:
-                    executor_dict = {}
-
-                    for args in download_args:
-                        try:
-                            future = executor.submit(download_one_file, **args)
-                            executor_dict[future] = args['s3_file']
-
-                        except Exception:
-                            # exception from the thread itself not the function inside the thread
-                            RLOG.critical(f"Critical error while uploading {args['s3_file']}")
-                            RLOG.critical(traceback.format_exc())
-                            sys.exit(1)
-
-                    for future_result in futures.as_completed(executor_dict):
-                        if future_result is not None:
-                            future_exception = future_result.exception()
-                            if future_exception:
-                                num_fails = +1
-                                RLOG.error(future_exception)
-                                # raise future_exception
-                                # supress error
-                        pbar.update(1)
-
-        if is_verbose:
-            RLOG.notice(
-                f"--- Download complete from {full_src_path}\n"
-                f"                      to {target_local_folder}"
-            )
-
         if num_fails > 0:
             RLOG.warning(
                 "Not all files were successfully downloaded." f" {num_fails} failed of {num_s3_items} files"
@@ -760,13 +661,7 @@ def download_single_folder(
     except Exception as ex:
         RLOG.error(f"--- Download Failed for {full_src_path}")
         RLOG.error(traceback.format_exc())
-        RLOG.error(f"--- Download Failed for {full_src_path}")
-        RLOG.error(traceback.format_exc())
         result = {"folder_id": folder_id, "is_success": False, "err_msg": ex}
-
-    if is_verbose:
-        dur_msg = get_date_time_duration_msg(start_time, dt.datetime.utcnow())
-        RLOG.lprint(f"--- {dur_msg}")
 
     if is_verbose:
         dur_msg = get_date_time_duration_msg(start_time, dt.datetime.utcnow())
@@ -855,6 +750,7 @@ def download_one_file(bucket_name: str, trg_file: str, s3_client: boto3.client, 
             os.makedirs(trg_path, exist_ok=True)
 
         # raise Exception("Rob you goofer") Testing exceptions
+        s3_file = s3_file.replace("\\", "/")
 
         with open(trg_file, 'wb') as f:
             s3_client.download_fileobj(Bucket=bucket_name, Key=s3_file, Fileobj=f)
@@ -994,7 +890,6 @@ def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
             print("")
 
         if not s3_src_folder_path.endswith("/"):
-        if not s3_src_folder_path.endswith("/"):
             s3_src_folder_path += "/"
 
         s3_client = boto3.client("s3")
@@ -1118,9 +1013,7 @@ def get_folder_size(bucket_name, s3_src_folder_path):
 def is_valid_s3_folder(s3_full_folder_path):
     """
     Process:
-    Process:
     Input:
-        - s3_full_folder_path: eg. s3://ras2fim/OWP_ras_models
         - s3_full_folder_path: eg. s3://ras2fim/OWP_ras_models
     """
 
@@ -1261,7 +1154,6 @@ def parse_unit_folder_name(unit_folder_name):
     unit_folder_name = unit_folder_name.replace("\\", "/")
 
     # cut off the s3 part if there is any.
-    unit_folder_name = unit_folder_name.replace("S3://", "")
     unit_folder_name = unit_folder_name.replace("s3://", "")
 
     # s3_folder_path and we want to strip the first one only. (can be deeper levels)
@@ -1280,8 +1172,6 @@ def parse_unit_folder_name(unit_folder_name):
     if len(segs) != 4:
         rtn_dict["error"] = "Expected four segments split by three underscores e.g. 12090301_2277_ble_230811"
         return rtn_dict
-        rtn_dict["error"] = "Expected four segments split by three underscores e.g. 12090301_2277_ble_230811"
-        return rtn_dict
 
     key_huc = segs[0]
     key_crs = segs[1]
@@ -1290,27 +1180,19 @@ def parse_unit_folder_name(unit_folder_name):
 
     if (not key_huc.isnumeric()) or (not key_crs.isnumeric()) or (not key_date.isnumeric()):
         rtn_dict["error"] = f"The unit folder name of {unit_folder_name} is invalid."
-        rtn_dict["error"] = f"The unit folder name of {unit_folder_name} is invalid."
         " The pattern should look like '12090301_2277_ble_230811' for example."
-        return rtn_dict
         return rtn_dict
 
     if len(key_huc) != 8:
         rtn_dict["error"] = "The first part of the four segments (huc), is not 8 digits long"
         return rtn_dict
-        rtn_dict["error"] = "The first part of the four segments (huc), is not 8 digits long"
-        return rtn_dict
 
     if (len(key_crs) < 4) or (len(key_crs) > 6):
         rtn_dict["error"] = "Second part of the four segments (crs) is not"
-        rtn_dict["error"] = "Second part of the four segments (crs) is not"
         " between 4 and 6 digits long"
-        return rtn_dict
         return rtn_dict
 
     if len(key_date) != 6:
-        rtn_dict["error"] = "Last part of the four segments (date) is not 6 digits long"
-        return rtn_dict
         rtn_dict["error"] = "Last part of the four segments (date) is not 6 digits long"
         return rtn_dict
 
@@ -1323,11 +1205,9 @@ def parse_unit_folder_name(unit_folder_name):
     except Exception:
         # don't log it
         rtn_dict["error"] = (
-        rtn_dict["error"] = (
             "Last part of the four segments (date) does not appear"
             " to be in the pattern of yymmdd eg 230812"
         )
-        return rtn_dict
         return rtn_dict
 
     rtn_dict["key_huc"] = key_huc
@@ -1335,7 +1215,6 @@ def parse_unit_folder_name(unit_folder_name):
     rtn_dict["key_source_code"] = key_source_code
     rtn_dict["key_unit_id"] = f"{key_huc}_{key_crs}_{key_source_code}"
     rtn_dict["key_date_as_str"] = key_date
-
     rtn_dict["key_date_as_dt"] = dt_key_date
     rtn_dict["unit_folder_name"] = unit_folder_name  # cleaned version
 
