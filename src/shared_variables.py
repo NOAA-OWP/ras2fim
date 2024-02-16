@@ -49,7 +49,7 @@ R2F_OUTPUT_DIR_HECRAS_OUTPUT = "05_hecras_output"
 R2F_OUTPUT_DIR_CREATE_RATING_CURVES = "06_create_rating_curves"
 
 # TODO: Jan 22, 2024: These next three variables are likely no longer needed
-R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS = "Depth_Grid"
+# R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS = "Depth_Grid"
 R2F_OUTPUT_DIR_METRIC_RATING_CURVES = "Rating_Curve"
 R2F_OUTPUT_DIR_METRIC_CROSS_SECTIONS = "Cross_Sections"
 R2F_OUTPUT_DIR_FINAL = "final"
@@ -60,6 +60,7 @@ R2F_OUTPUT_DIR_RAS2CALIBRATION = "ras2calibration"
 R2F_OUTPUT_FILE_RAS2CAL_CSV = "ras2calibration_rating_curve_table.csv"
 R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_rating_curve_points.gpkg"
 R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt"
+R2F_OUTPUT_DIR_RAS2RELEASE = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
 
 # LOGS
 LOCAL_TOOLS_OUTPUT_PATH = os.path.join(DEFAULT_BASE_DIR, "tool_outputs")
@@ -102,6 +103,7 @@ GVAL_VALID_STAGES = [
     "moderate",
     "major",
 ]
+
 
 # NODATA VALUE
 DEFAULT_NODATA_VAL = 0 - 9999

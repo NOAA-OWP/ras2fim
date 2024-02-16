@@ -12,7 +12,6 @@ import datetime
 import multiprocessing as mp
 import os
 import pathlib
-import shutil
 import time
 import traceback
 import xml.etree.ElementTree as et
@@ -251,8 +250,7 @@ def fn_get_list_of_lists_to_compute(hecras_output_dir):
         list_current_abs_paths = []
 
         # get the name of the input file (without extenstion)
-        tup_filename = pathlib.Path(str_rasmap_path).parts[-1:]
-        str_rasmodel_name = tup_filename[0][:-7]
+        str_rasmodel_name = pathlib.Path(str_rasmap_path).parts[-2]
 
         # run function o get paths (that are absolute)
         list_current_abs_paths = fn_paths_from_rasmapper(str_rasmap_path)
@@ -303,14 +301,14 @@ def fn_get_stats_dataseries(list_files_for_stats):
 
 
 # -------------------------------------------------
-def fn_calculate_all_terrain_stats(unit_output_path):
+def fn_calculate_all_terrain_stats(hecras_output_dir):
     flt_start_run = time.time()
 
     print("")
     RLOG.lprint("+=================================================================+")
-    RLOG.notice("|             CALCULATE RATING CURVE STATISTICS                   |")
+    RLOG.notice("|         CALCULATE TERRAIN STATISTICS FOR HEC-RAS MODELS         |")
     RLOG.lprint("+-----------------------------------------------------------------+")
-    RLOG.lprint("  ---(i) UNIT OUTPUT DIRECTORY: " + unit_output_path)
+    RLOG.lprint("  ---(i) HEC-RAS OUTPUT DIRECTORY: " + hecras_output_dir)
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     # create a converted terrain folder
@@ -358,7 +356,7 @@ def fn_calculate_all_terrain_stats(unit_output_path):
     df_combined_stats = df_stats_values.set_axis(column_names, axis=1)
 
     # save to the same folder that was walked (str_input_dir)
-    str_file_output = unit_output_path + "\\" + "terrain_stats.csv"
+    str_file_output = os.path.join(hecras_output_dir, "terrain_stats.csv")
     df_combined_stats.to_csv(str_file_output)
 
     flt_end_run = time.time()
@@ -378,7 +376,7 @@ def fn_calculate_all_terrain_stats(unit_output_path):
 if __name__ == "__main__":
     # Sample
     # python calculate_all_terrain_stats.py
-    #   -i c:\ras2fim_data\output_ras2fim\12030105_2276_ble_231024
+    #   -i c:\ras2fim_data\output_ras2fim\12030105_2276_ble_231024\05_hecras_output
 
     parser = argparse.ArgumentParser(
         description="===== CALCULATE TERRAIN STATISTICS FOR MULTIPLE HEC-RAS MODELS ====="
@@ -386,9 +384,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-i",
-        dest="unit_output_path",
-        help="REQUIRED: Directory where all unit output folder is at:"
-        r" Example: c:\ras2fim_data\output_ras2fim\12030105_2276_ble_231024",
+        dest="hecras_output_dir",
+        help="REQUIRED: Directory where all HEC-RAS runs are at:"
+        r" Example: c:\ras2fim_data\output_ras2fim\12030105_2276_ble_231024\05_hecras_output",
         required=True,
         metavar="DIR",
         type=str,
@@ -396,7 +394,7 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    log_file_folder = os.path.join(args["str_input_dir"], "logs")
+    log_file_folder = os.path.join(args["hecras_output_dir"], "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.

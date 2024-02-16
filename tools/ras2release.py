@@ -21,6 +21,7 @@ from shared_functions import get_date_with_milli
 RLOG = sv.R2F_LOG
 __GEOCURVES = "geocurves"
 
+
 # TODO: Feb 5, 2024. This should be smarter eventually where we can have some sort of whitelist txt
 # file or something so that each package can read it to figure out what files/ folders it needs.
 # Alot of hardcoding of folders in here, but that is plenty good enough for now.
@@ -33,9 +34,12 @@ __GEOCURVES = "geocurves"
 
 
 # -------------------------------------------------
-def create_ras2release(
-    release_name, local_ras2release_path, s3_path_to_output_folder, s3_ras2release_path, skip_save_to_s3
-):
+def create_ras2release(release_name,
+                       local_ras2release_path,
+                       s3_path_to_output_folder,
+                       s3_ras2release_path,
+                       skip_save_to_s3,
+                       unit_names):
     """
     # TODO - WIP
     Processing:
@@ -48,10 +52,10 @@ def create_ras2release(
         - local_ras2release_path: e.g. c:/my_ras2fim_dir/releases/
         - s3_path_to_output_folder: e.g. s3://my_ras2fim_bucket/output_ras2fim
         - s3_ras2release_path: e.g. s3://my_ras2fim_bucket/ras2release/
+        - unit_names: zero to many unit names folders. If empty, process all units
+            - e.g. []  or ["12090301_2277_ble_230923", "12030101_2276_ble_230925", etc]
     Outputs:
     """
-
-    arg_values = locals().copy()
 
     start_time = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
@@ -59,18 +63,32 @@ def create_ras2release(
     # Todo: migth need some validatation here first ??
     # s3_release_path = s3_ras2release_path + "/" + rel_name
 
+    num_units = len(unit_names)
+    if num_units == 0:
+        disp_units_names = "All"
+    else:
+        disp_units_names = ""
+        for ind, unit_name in enumerate(unit_names):
+            disp_units_names += unit_name
+            disp_units_names += ", " if ind < (num_units - 1) else ""
+
     print("")
     RLOG.lprint("=================================================================")
     RLOG.notice("          RUN ras2release ")
     RLOG.lprint(f"  (-r): release path and folder name = {release_name} ")
-    RLOG.lprint(f"  (-l): local ras2release path  = {local_ras2release_path}")
+    RLOG.lprint(f"  (-w): local ras2release path  = {local_ras2release_path}")
     RLOG.lprint(f"  (-s): s3 path to output folder name  = {s3_path_to_output_folder}")
     RLOG.lprint(f"  (-t): s3 ras2release path  = {s3_ras2release_path}/(rel_name)")
     RLOG.lprint(f"  (-ss): Skip saving release results to S3 = {skip_save_to_s3}")
+    RLOG.lprint(f"  (-u): Units included in release package = {disp_units_names}")
 
     # validate input variables and setup key variables
     # rd = Variables Dictionary
-    rd = __validate_input(**arg_values)
+    rd = __validate_input(release_name,
+                          s3_path_to_output_folder,
+                          s3_ras2release_path,                          
+                          local_ras2release_path,                          
+                          skip_save_to_s3)
 
     local_rel_folder = rd["local_target_rel_path"]
     local_rel_units_folder = os.path.join(local_rel_folder, "units")
@@ -79,15 +97,17 @@ def create_ras2release(
 
     print()
     RLOG.lprint(f"Started (UTC): {dt_string}")
-    local_unit_folders = __download_units_from_s3(
-        s3_unit_output_bucket_name, s3_unit_output_folder, local_rel_units_folder
-    )
+    local_unit_folders = __download_units_from_s3(s3_unit_output_bucket_name,
+                                                  s3_unit_output_folder,
+                                                  local_rel_units_folder,
+                                                  unit_names)
 
     __create_hydrovis_package(local_rel_folder, local_unit_folders)
 
     __create_fim_package(local_rel_folder, local_unit_folders)
 
-    # if skip_save_to_s3 is True:
+    if skip_save_to_s3 is True:
+        print("Saving back to S3 feature not quite operational")
     #    s3_release_bucket_name = rd["s3_rel_bucket_name"]
     # __save_to_s3(s3_release_bucket_name, local_wip_folder... ?
 
@@ -97,7 +117,6 @@ def create_ras2release(
     end_time = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
     print(f"Ended (UTC): {dt_string}")
-    print(f"log files saved to {RLOG.LOG_FILE_PATH}")
 
     # Calculate duration
     time_duration = end_time - start_time
@@ -106,7 +125,10 @@ def create_ras2release(
 
 
 # -------------------------------------------------
-def __download_units_from_s3(bucket, s3_path_to_output_folder, local_rel_units_folder):
+def __download_units_from_s3(bucket,
+                             s3_path_to_output_folder,
+                             local_rel_units_folder,
+                             unit_names):
     """
     Process:
         - Get a list of the output units folder (without the "final" subfolder).
@@ -117,6 +139,8 @@ def __download_units_from_s3(bucket, s3_path_to_output_folder, local_rel_units_f
         - bucket: ras2fim-dev
         - s3_path_to_output_folder: e.g. output_ras2fim
         - local_rel_units_folder: e.g. c:/my_ras2fim_dir/ras2fim_releases/r102-test/units
+        - unit_names: 
+            - e.g. []  or ["12090301_2277_ble_230923", "12030101_2276_ble_230925", etc]
     Output:
         - returns a list of full pathed local unit folders that are still valid and have not failed:
           e.g c:/my_ras2fim_dir/ras2fim_releases/r102-test/units/12090301_2277_ble_230923
@@ -140,12 +164,18 @@ def __download_units_from_s3(bucket, s3_path_to_output_folder, local_rel_units_f
 
     # Create a list of folder paths that have a "final" folder.
     s3_final_folders = []
+    found_unit_names = [] # really only needed if we have a pre-defined list of selected unit names
 
     for unit_folder in s3_output_unit_folders:
         # we temp add the word "/final" of it so it directly compares to the unit file folder list.
         unit_folder_name = unit_folder["key"]
-        full_unit_path = f"{unit_folder['url']}/final"
 
+        if len(unit_names) > 0:
+            # filter out ones based only on the listed keys
+            if unit_folder_name not in unit_names:
+                continue
+
+        full_unit_path = f"{unit_folder['url']}/final"
         unit_final_folder = f"{s3_path_to_output_folder}/{unit_folder_name}/final"
 
         if s3_sf.is_valid_s3_folder(full_unit_path) is False:
@@ -156,7 +186,7 @@ def __download_units_from_s3(bucket, s3_path_to_output_folder, local_rel_units_f
             continue
 
         local_target_path = os.path.join(local_rel_units_folder, unit_folder_name)
-
+        found_unit_names.append(unit_folder_name)
         item = {
             "bucket_name": bucket,
             "folder_id": unit_folder_name,
@@ -165,6 +195,27 @@ def __download_units_from_s3(bucket, s3_path_to_output_folder, local_rel_units_f
         }
 
         s3_final_folders.append(item)
+
+    # If we did have a pre-selected list, anyone missing that should have been downloaded?
+    if len(unit_names) > 0:
+        missing_unit_names = []
+        for unit_name in unit_names:
+            if unit_name not in found_unit_names:
+                missing_unit_names.append(unit_name)
+
+        disp_missing_units_names = ""
+        for ind, unit_name in enumerate(missing_unit_names):
+            disp_missing_units_names += unit_name
+            disp_missing_units_names += ", " if ind < (len(missing_unit_names) - 1) else ""
+
+        if (len(missing_unit_names) > 0):
+            msg = f"The following units were not found in s3: {disp_missing_units_names}"
+            RLOG.warning(msg)
+
+
+    if len(s3_final_folders) == 0:
+        RLOG.critical(f"Valid unit folders were found at {s3_path_to_output_folder}")
+        sys.exit(1)
 
     print(
         f"{cl.fg('light_yellow')}"
@@ -365,9 +416,11 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
 
 # -------------------------------------------------
 #  Some validation of input, but also creating key variables
-def __validate_input(
-    rel_name, s3_path_to_output_folder, local_working_folder_path, s3_ras2release_path, skip_save_to_s3
-):
+def __validate_input(rel_name,
+                     s3_path_to_output_folder,
+                     s3_ras2release_path,
+                     local_working_folder_path,                     
+                     skip_save_to_s3):
     """
     Summary: Will raise Exception if some are found
 
@@ -391,6 +444,7 @@ def __validate_input(
 
     # ----------------
     # test s3 bucket and paths (it will automatically throw exceptions)
+    s3_path_to_output_folder = s3_path_to_output_folder.replace("\\", "/")
     if s3_sf.is_valid_s3_folder(s3_path_to_output_folder) is False:
         raise ValueError(f"S3 path to outputs ({s3_path_to_output_folder}) does not exist")
 
@@ -398,6 +452,7 @@ def __validate_input(
     rtn_dict["s3_unit_output_bucket_name"] = bucket_name
     rtn_dict["s3_unit_output_folder"] = s3_output_folder
 
+    s3_ras2release_path = s3_ras2release_path.replace("\\", "/")        
     if skip_save_to_s3 is False:
         if s3_sf.is_valid_s3_folder(s3_ras2release_path) is False:
             raise ValueError(f"S3 path to releases ({s3_ras2release_path}) does not exist")
@@ -435,7 +490,9 @@ if __name__ == "__main__":
 
     # Max args:
     #  python ./tools/ras2release.py -r r121 -w c:/my_release_folder
-    #      -s s3://my_ras2fim_bucket/output_ras2fim -t s3://my_ras2fim_bucket/ras2release/
+    #      -s s3://my_ras2fim_bucket/output_ras2fim
+    #      -t s3://my_ras2fim_bucket/ras2release/
+    #      -u "12090301_2277_ble_230923" "12030101_2276_ble_230925"
     #  but left off the -ss flag as we do want them uploaded
 
     # Note: For the -w local target, we will add a folder under it with the -r name.
@@ -464,9 +521,9 @@ if __name__ == "__main__":
         "--local_ras2release_path",
         help="OPTIONAL: local folder where the files/folders will be created."
         " eg. c:/my_ras2fim_dir/releases/ (we add the -r name as a folder)\n"
-        f" Defaults to {sv.R2F_OUTPUT_DIR_RELEASES}",
+        f" Defaults to {sv.R2F_OUTPUT_DIR_RAS2RELEASE}",
         required=False,
-        default=sv.R2F_OUTPUT_DIR_RELEASES,
+        default=sv.R2F_OUTPUT_DIR_RAS2RELEASE,
         metavar="",
     )
 
@@ -505,6 +562,19 @@ if __name__ == "__main__":
         action="store_true",
     )
 
+    parser.add_argument(
+        "-u",
+        "--unit_names",
+        help="OPTIONAL: By default, all unit folders from saved in S3.\n"
+        " However, you list one or many unit names if you want to build a release package"
+        " based on just the selected units.\n"
+        " e.g.  -u '12030101_2276_ble_230925' '12090301_2277_ble_230923'"
+        " (each with quotes and a space) between the values.",
+        required=False,
+        default = [],
+        nargs='*',
+    )
+
     args = vars(parser.parse_args())
 
     # Yes.. not including the rel_name
@@ -526,3 +596,5 @@ if __name__ == "__main__":
 
     except Exception:
         RLOG.critical(traceback.format_exc())
+        if RLOG.LOG_FILE_PATH != "":
+            print(f"log files saved to {RLOG.LOG_FILE_PATH}")
