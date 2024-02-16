@@ -101,6 +101,7 @@ def cast_to_int(x):
 
 # -------------------------------------------------
 def fn_create_rating_curves(huc8, path_unit_folder):
+
     model_unit = 'feet'
 
     RLOG.lprint("")
@@ -161,7 +162,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
     # -------------------------------------------------
     # Creating a for loop going through all all_x_sections_info
     # for each confalted stream (step 5 results)
-    stage_diff_gt_1foot = pd.DataFrame(columns = ["model_id", "feature_id"])
+    stage_diff_gt_1foot = pd.DataFrame(columns = ["model_id", "feature_id", "max_stage_diff", "max_indx"])
     for infoind in range(len(path_to_all_x_sections_info)):
     
         mid_x_sections_info = pd.read_csv(path_to_all_x_sections_info[infoind])
@@ -336,13 +337,16 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             fid_mid_x_sections_info_src.to_csv(str_xsection_path, index=True)
 
             # Determine stage difference greated than 1 foot
-            stage_diff_fid = fid_mid_x_sections_info_src["WSE_Feet"].diff()
+            stage_diff_fid = fid_mid_x_sections_info_src["WSE_Feet"].diff().dropna()
             # print(stage_diff_fid)
             for diff1 in stage_diff_fid:
                 if diff1 > 1: #foot
                     mid1 = int(fid_mid_x_sections_info_src["model_id"][0].values)
-                    mid_fid_pd = pd.DataFrame([mid1,fids]).T
-                    mid_fid_pd.columns = ["model_id", "feature_id"]
+                    max_diff = round(stage_diff_fid.max(), 3)
+                    max_indx_tup = stage_diff_fid.idxmax()
+                    max_indx, fids_tup = max_indx_tup
+                    mid_fid_pd = pd.DataFrame([mid1,fids,max_diff,max_indx]).T
+                    mid_fid_pd.columns = ["model_id","feature_id","max_stage_diff","max_indx"]
                     stage_diff_gt_1foot = pd.concat([stage_diff_gt_1foot, mid_fid_pd])
                     break
 
@@ -354,8 +358,17 @@ def fn_create_rating_curves(huc8, path_unit_folder):
                 str_file_name,
                 model_unit,
             )
+
+    # max_stage_diff = max(stage_diff_gt_1foot["max_stage_diff"])
+    # cond_max = stage_diff_gt_1foot["max_stage_diff"] == max_stage_diff
+    # max_mid = int(stage_diff_gt_1foot[cond_max]["model_id"])
+    # max_fid = int(stage_diff_gt_1foot[cond_max]["feature_id"])
+    # max_index = int(stage_diff_gt_1foot[cond_max]["max_indx"])
+    # RLOG.lprint(f"Please Note that the max stage difference is {max_stage_diff} feet")
+    # RLOG.lprint(f"detected in model {max_mid} (feature_id = {max_fid}) in flow number {max_index}")
+
     path_stage_diff = os.path.join(
-        path_unit_folder, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES, f"stage_diff_gt_1foot_{huc8}.csv"
+        path_unit_folder, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES, f"warning_stage_diff_gt_1foot_{huc8}.csv"
         )
     stage_diff_gt_1foot.to_csv(path_stage_diff)
 
