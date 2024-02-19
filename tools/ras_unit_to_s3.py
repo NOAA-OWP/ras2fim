@@ -104,9 +104,6 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name):
     s3_output_path = rd["s3_output_path"]
     # e.g. s3://ras2fim-dev/output_ras2fim
 
-    s3_archive_path = rd["s3_archive_path"]
-    # e.g. s3://xyz/output_ras2fim_archive
-
     # We don't want to try upload current active log files (for this script)
     # and the temp local tracker file
 
@@ -134,7 +131,7 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name):
     # and what to do with pre-existing if there are any pre-existing folders
     # matching the huc/crs.
     __process_upload(
-        s3_bucket_name, src_unit_dir_path, unit_folder_name, s3_output_path, s3_archive_path, skip_files
+        s3_bucket_name, src_unit_dir_path, unit_folder_name, s3_output_path, skip_files
     )
 
     # --------------------
@@ -153,9 +150,8 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name):
 
 
 ####################################################################
-def __process_upload(
-    bucket_name, src_unit_dir, unit_folder_name, s3_output_path, s3_archive_path, skip_files
-):
+
+def __process_upload( bucket_name, src_unit_dir, unit_folder_name, s3_output_path, skip_files):
     """
     Processing Steps:
       - Load all first level folder names from that folder. ie) s3://{bucket_name}/output_ras2fim
@@ -182,8 +178,6 @@ def __process_upload(
         - unit_folder_name:  12030105_2276_ble_230810
         - skip_files: files that will not be uploaded to S3 (such as ras_unit_to_s3 log files)
         - s3_output_path: s3://ras2fim-dev/output_ras2fim
-        - s3_archive_path: s3://ras2fim-dev/output_ras2fim_archive
-
     """
 
     RLOG.lprint(
@@ -265,14 +259,16 @@ def __process_upload(
 
             # move pre-existing to archive
             __move_s3_folder_to_archive(
-                bucket_name, src_unit_dir, existing_name_dict["unit_folder_name"], new_s3_folder_name
+                bucket_name, 
+                src_unit_dir,
+                existing_name_dict["unit_folder_name"],
+                new_s3_folder_name
             )
 
             # upload new one to output (yes.. unit_folder_name is used twice)
             __upload_s3_folder(
                 bucket_name,
                 src_unit_dir,
-                unit_folder_name,
                 unit_folder_name,
                 action,
                 sv.S3_RAS_UNITS_OUTPUT_FOLDER,
@@ -342,9 +338,7 @@ def __process_upload(
 
             new_s3_folder_name = __adjust_folder_name_for_archive(s3_existing_folder_name)
 
-            __move_s3_folder_to_archive(
-                bucket_name, src_unit_dir, s3_existing_folder_name, new_s3_folder_name
-            )
+            __move_s3_folder_to_archive(bucket_name, src_unit_dir, s3_existing_folder_name, new_s3_folder_name)
             print("")
 
         # upload new one to output (yes.. unit_folder_name is used twice)
@@ -424,7 +418,7 @@ def __ask_user_about_different_date_folder_name(
     src_unit_folder_name, bucket_name, existing_folder_name, is_existing_older
 ):
     # is_existing_older = True means existing might be 230814, but target is 230722)
-    # is_existing_older = False means existing migth be 221103, but target is 230816)
+    #              else = False means existing migth be 221103, but target is 230816)
     # if the dates are the same, we handle it in a different function (enough differences)
 
     print()
@@ -877,8 +871,8 @@ def __validate_input(src_unit_dir_path, s3_bucket_name):
 
     # --------------------
     # make sure it has a "final" folder and has some contents
-    final_dir = os.path.join(rtn_dict["src_unit_dir_path"], sv.R2F_OUTPUT_DIR_FINAL)
-    if not os.path.exists(final_dir):
+    final_dir = os.path.join(src_unit_dir_path, sv.R2F_OUTPUT_DIR_FINAL)
+    if os.path.exists(final_dir) is False:
         raise ValueError(
             f"Source unit 'final' folder not found at {final_dir}."
             " Ensure ras2fim has been run to completion and that the full path is submitted in args."
@@ -930,7 +924,7 @@ def __validate_input(src_unit_dir_path, s3_bucket_name):
         raise ValueError(f"{msg} ... does not exist")
     else:
         RLOG.lprint(f"{msg} ... found")
-    rtn_dict["s3_archive_path"] = s3_full_archive_path
+    # rtn_dict["s3_archive_path"] = s3_full_archive_path (don't need it later, we re-calc)
     print()
 
     return rtn_dict

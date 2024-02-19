@@ -109,7 +109,7 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
 
         s3_files = []  # a list of dictionaries (src file path, targ file path)
 
-        for subdir, dirs, files in os.walk(src_path, followlinks=False):
+        for subdir, ___, files in os.walk(src_path, followlinks=False):
             for file in files:
                 src_file_path = os.path.join(src_path, subdir, file)
 
@@ -307,7 +307,7 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         RLOG.lprint("===================================================================")
         print("")
         RLOG.notice(f"Moving folder from {s3_src_folder_path}\n"
-                    f"               to  {s3_target_folder_path}")
+                    f"                to {s3_target_folder_path}")
         print()
         print(
             f"{cl.fg('dodger_blue_1')}"
@@ -647,16 +647,6 @@ def download_single_folder(
                     num_fails = +1
             else:  # use MT on the files
                 download_args.append(args)
-
-        if num_fails > 0:
-            RLOG.warning(
-                "Not all files were successfully downloaded." f" {num_fails} failed of {num_s3_items} files"
-            )
-            result = {"folder_id": folder_id, "is_success": False, "err_msg": ""}
-        else:
-            if is_verbose:
-                RLOG.success(f"All {num_s3_items} files/folders were downloaded successfully")
-            result = {"folder_id": folder_id, "is_success": True, "err_msg": ""}
 
     except Exception as ex:
         RLOG.error(f"--- Download Failed for {full_src_path}")
@@ -1031,7 +1021,6 @@ def is_valid_s3_folder(s3_full_folder_path):
 
         # print(s3_objs)
         return s3_objs["KeyCount"] > 0
-        return s3_objs["KeyCount"] > 0
 
     except ValueError:
         # don't trap these types, just re-raise
@@ -1044,8 +1033,6 @@ def is_valid_s3_folder(s3_full_folder_path):
         RLOG.critical(traceback.format_exc())
 
     return False
-    return False
-
 
 # -------------------------------------------------
 def is_valid_s3_file(s3_full_file_path):
@@ -1233,8 +1220,8 @@ def parse_bucket_and_folder_name(s3_full_folder_path):
 
     if s3_full_folder_path.endswith("/"):
         s3_full_folder_path = s3_full_folder_path[:-1]
-
     s3_full_folder_path = s3_full_folder_path.replace("S3://", "s3://")
+    
     # we need the "s3 part stripped off for now" (if it is even there)
     adj_s3_path = s3_full_folder_path.replace("s3://", "")
     path_segs = adj_s3_path.split("/")

@@ -359,11 +359,6 @@ def __validate_input(s3_master_csv_path, s3_models_path, output_folder_path):
         Some variables need to be adjusted and some new derived variables are created
         dictionary (key / pair) will be returned
     """
-    """
-    Process:
-        Some variables need to be adjusted and some new derived variables are created
-        dictionary (key / pair) will be returned
-    """
 
     rtn_dict = {}
 

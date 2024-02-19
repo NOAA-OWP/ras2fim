@@ -122,7 +122,7 @@ def evaluate_unit_results(
     metadata_csv.to_csv(os.path.join(output_dir, "meta_data.csv"), index=None)
 
     RLOG.lprint(f"GVAL evaluation for {unit_name} complete")
-    RLOG.lprint(f"GVAL evaluation output files saved to {output_dir}")
+    RLOG.lprint(f"Evaluation output files saved to {output_dir}")
 
 
 if __name__ == '__main__':

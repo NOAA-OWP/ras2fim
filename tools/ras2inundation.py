@@ -48,11 +48,12 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         RLOG.lprint(f" --- Start: {dt_string} (UTC time) ")
         RLOG.lprint("=================================================================")
         print()
-    else:
+    else:  # trace instead of lprint
         RLOG.trace("          RUN Inundation tool")
         RLOG.trace(f"  (-g): geocurves directory {geocurves_dir} ")
         RLOG.trace(f"  (-f): flow file {flow_file}")
         RLOG.trace(f"  (-t): output inundation gkpg {output_inundation_poly}")
+        RLOG.trace(f" --- Start: {dt_string} (UTC time) ")
 
     # -------------------------
     # Validation
@@ -155,7 +156,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         print()
         RLOG.lprint(dur_msg)
         print()
-    else:
+    else:  # trace does trace
         RLOG.trace(f"Process completed: {get_stnd_date()}")
         RLOG.trace(dur_msg)
 
