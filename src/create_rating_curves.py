@@ -284,7 +284,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
                 path_unit_folder,
                 sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES,
                 created_ras_models_folders[infoind],
-                "Rating_Curve",
+                # "Rating_Curve",
             )
             
             os.makedirs(str_rating_path_to_create, exist_ok=True)
