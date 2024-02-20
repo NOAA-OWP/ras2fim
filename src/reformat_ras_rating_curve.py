@@ -142,7 +142,7 @@ def meters_to_feet(number):
 
 
 # -----------------------------------------------------------------
-# Reads, compiles, and reformats the rating curve info for all directories
+# Reads, compiles, and reformats the rating curve info for all directories TODO: Check to make sure this still works in V2 (esp. check filepaths and filenames)
 # -----------------------------------------------------------------
 def dir_reformat_ras_rc(
     dir_input_folder_path,
@@ -513,7 +513,7 @@ def dir_reformat_ras_rc(
 
 
 # -----------------------------------------------------------------
-# Compiles the rating curve and points from each directory
+# Compiles the rating curve and points from each directory TODO: Move to ras2release
 # -----------------------------------------------------------------
 def compile_ras_rating_curves(
     input_folder_path, output_save_folder, save_logs, verbose, num_workers, location_type, active
@@ -840,7 +840,7 @@ def compile_ras_rating_curves(
 
 
 # -------------------------------------------------
-if __name__ == "__main__":
+if __name__ == "__main__": # TODO: Update this so that it only runs dir_reformat_ras_rc and not compile ras
     """
     Sample usage:
 

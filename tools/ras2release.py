@@ -8,6 +8,8 @@ import sys
 import traceback
 
 import colored as cl
+import pandas as pd
+import geopandas as gpd
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
@@ -60,7 +62,7 @@ def create_ras2release(release_name,
     start_time = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
-    # Todo: migth need some validatation here first ??
+    # TODO: might need some validatation here first ??
     # s3_release_path = s3_ras2release_path + "/" + rel_name
 
     num_units = len(unit_names)
@@ -214,7 +216,7 @@ def __download_units_from_s3(bucket,
 
 
     if len(s3_final_folders) == 0:
-        RLOG.critical(f"Valid unit folders were found at {s3_path_to_output_folder}")
+        RLOG.critical(f"Valid unit folders were found at {s3_path_to_output_folder}") # TODO: Should this read "No valid unit folders were found..." ?
         sys.exit(1)
 
     print(
@@ -331,6 +333,122 @@ def __create_hydrovis_package(local_rel_folder, local_unit_folders):
 
 # -------------------------------------------------
 def __create_fim_package(local_rel_folder, local_unit_folders):
+    print()
+    print("------------------------------------------")
+    RLOG.notice("Creating / Loading the FIM release folder")
+    print()
+
+
+    # review available filepaths ## DEBUG
+    print(f'local_rel_folder: {local_rel_folder}') ## debug
+    local_rel_folder_files = os.listdir(local_rel_folder) ## debug
+    print(local_rel_folder_files) ## debug
+    print(f'local_unit_folders: {local_unit_folders}') ## debug
+    local_unit_folders_files = os.listdir(local_unit_folders) ## debug
+    print(local_unit_folders_files) ## debug
+
+
+
+    # Make sure the correct output folder exists and create it if needed
+    if len(local_unit_folders) == 0:
+        RLOG.critical("No valid unit folders to merge into a FIM release. Program Stopped.")
+        sys.exit(1)
+
+    __HANDFIM_FOLDER = "compiled_rc_for_handfim"
+
+    full_fim_folder = os.path.join(local_rel_folder, __HANDFIM_FOLDER)
+
+    if os.path.exists(__HANDFIM_FOLDER):
+        shutil.rmtree(__HANDFIM_FOLDER, ignore_errors=True)
+
+    os.mkdir(full_fim_folder)
+
+    # Get input folders / filepaths
+    __RAS2CALIBRATION = sv.R2F_OUTPUT_DIR_RAS2CALIBRATION # TODO: Update naming convention?
+
+    # Initialize output table
+    ras2cal_csv_output_table = pd.DataFrame()
+
+    # Compile CSVs
+    for unit_folder in local_unit_folders:
+        unit_ras2cal_csv_filepath = os.path.join(unit_folder, __RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_CSV)
+
+        print(f'unit_ras2cal_csv_filepath: {unit_ras2cal_csv_filepath}') ## debug
+
+        if os.path.exists(unit_ras2cal_csv_filepath):
+
+            print('path exists! compiling now...') ## debug
+            
+            df = pd.read_csv(unit_ras2cal_csv_filepath)
+            ras2cal_csv_output_table = pd.concat([ras2cal_csv_output_table, df])
+
+        else:
+            RLOG.warning(f"{sv.R2F_OUTPUT_FILE_RAS2CAL_CSV} not found for {unit_folder}")
+
+    # Reset index
+    ras2cal_csv_output_table.reset_index(drop=True, inplace=True)
+
+    # Initialize output geopackage and CRS info
+    ras2cal_compiled_geopackage = None
+    ras2cal_compiled_geopackage_CRS = sv.DEFAULT_RASTER_OUTPUT_CRS # TODO: change to sv.DEFAULT_OUTPUT_CRS and test
+
+    # Iterate through input geopackages and compile them
+    for i in range(len(local_unit_folders)):
+
+        local_unit_folders[i]
+
+        unit_ras2cal_gpkg_filepath = os.path.join(unit_folder, __RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG)
+
+        print(f'unit_ras2cal_gpkg_filepath: {unit_ras2cal_csv_filepath}') ## debug
+
+        if os.path.exists(unit_ras2cal_gpkg_filepath):
+            
+            print('path exists! compiling...') ## debug
+
+            if i == 0:
+                
+                print('first one, read geopackage directly') ## debug
+
+                # Load first geopackage directly, compile others after
+                ras2cal_compiled_geopackage = gpd.read_file(unit_ras2cal_gpkg_filepath)
+            else:
+
+                print('not the first one, simply append to original geopackage') ## debug
+
+                data = gpd.read_file(unit_ras2cal_gpkg_filepath)
+                ras2cal_compiled_geopackage = pd.concat([ras2cal_compiled_geopackage, data], ignore_index=True)
+
+        else:
+            RLOG.warning(f"{sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG} not found for {unit_folder}")
+
+    # Set the unified projection for the compiled GeoDataFrame
+    ras2cal_compiled_geopackage.crs = ras2cal_compiled_geopackage_CRS
+
+    # Export the output points geopackage and the rating curve table to the save folder
+    geopackage_name = "reformat_ras_rating_curve_points.gpkg"
+    geopackage_path = os.path.join(full_fim_folder, geopackage_name)
+    ras2cal_compiled_geopackage.to_file(geopackage_path, driver="GPKG")
+
+    csv_name = "reformat_ras_rating_curve_table.csv"
+    csv_path = os.path.join(full_fim_folder, csv_name)
+    ras2cal_csv_output_table.to_csv(csv_path, index=False)
+
+
+    # # Write README metadata file
+    # write_metadata_file(# TODO: Decide whether to move this function to this file (preferred?) or call it from the other file or to remove the metadata file all togethr (I don't like that option... I lke the metadata file)
+    #     output_save_subfolder,
+    #     start_time_string,
+    #     nwm_shapes_file,
+    #     hecras_shapes_file,
+    #     metric_file,
+    #     geopackage_name,
+    #     csv_name,
+    #     log_name,
+    #     verbose,
+    # )
+
+
+
     # process_rating_curves (reformat files ... (src_rel_unit_dirs, local_rel_folder):
     # TODO: WIP
 
@@ -339,10 +457,6 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
 
     # create FIM folder (like HV above)
 
-    print()
-    print("------------------------------------------")
-    RLOG.notice("Creating / Loading the FIM release folder")
-    print()
 
     print("this function is WIP\n\n")
 

@@ -54,7 +54,7 @@ R2F_OUTPUT_DIR_METRIC_CROSS_SECTIONS = "Cross_Sections"
 
 
 R2F_OUTPUT_DIR_RAS2REM = "ras2rem"
-R2F_OUTPUT_DIR_RAS2CALIBRATION = "ras2calibration"
+R2F_OUTPUT_DIR_RAS2CALIBRATION = "ras2calibration" # TODO: Update?
 R2F_OUTPUT_DIR_FINAL = "final"
 R2F_OUTPUT_DIR_DOMAIN_POLYGONS = "models_domain"
 R2F_OUTPUT_DIR_RAS2RELEASE = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
@@ -67,7 +67,7 @@ DEFAULT_LOG_FOLDER_PATH = os.path.join(LOCAL_TOOLS_OUTPUT_PATH, "logs")
 # OUTPUT FILES
 R2F_OUTPUT_FILE_RAS2CAL_CSV = "ras2calibration_rating_curve_table.csv"
 R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_rating_curve_points.gpkg"
-R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt"
+R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt" # TODO: Remove?
 
 # S3 PATHS
 S3_DEFAULT_BUCKET_NAME = "ras2fim"
