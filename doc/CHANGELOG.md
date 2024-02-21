@@ -1,6 +1,57 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.xx - 2024-02-21 - [PR#283](https://github.com/NOAA-OWP/ras2fim/pull/283)
+
+This is a new tool which can use a single unit to:
+- pull down from S3 the exact HUC related benchmark files
+- use the benchmark data and the geocurves from the unit to create inundation files
+- run the new inundations files, the unit extent files, the benchmark extent files and the benchmark rasters to put through the GVAL engine to get benchmark test results.
+- using the newly created metrics files, rolls them into a "unit" level (not unit and version) which has all metrics for all runs against it including earlier versions. 
+
+NOTE: Due to time constraint, only the minimum arguments for cmd line have been tested. More tests using non default arguments and combinations of args are needed. See Issue [294](https://github.com/NOAA-OWP/ras2fim/issues/294).
+
+**One fairly important TODO** is the fact that the tools takes all of the newly created metrics from each benchmarks and appends to to a "master" metrics file at the unit name level (not the version).  ie) C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\12030105_2276_ble_unit_metrics.csv. The problem is that I have no tool or code to go get is from previous test runs so it can be appended. **We just have to remember to downloads it form S3 for now.**
+
+There are also some `TODO`s that are in many of the files in the `tools` directory related to this PR that need to be addressed. Some are higher priority than others.
+
+Also, some symbology .lyr and .qml files have been added to make it easier to apply to output agreement rasters.
+
+Closes Issue [262](https://github.com/NOAA-OWP/ras2fim/issues/262) and Issue [273](https://github.com/NOAA-OWP/ras2fim/issues/273)
+
+### Additions  
+
+- `git-ignore`: Adjust to allow new symbology files.
+- `config`: There are a number of new files have been for symbology in a subfolder of config.
+- `tools`
+    - `run_unit_benchmark_tests.py`: New tool as described above.
+
+### Files Renamed:
+ - `tools`
+     - `evaluate_ras2fim_unit.py` was renamed from `evaluate_ras2fim_model.py` which was incorrectly named.  Updates were also made to function names and variable to talk about units and not models as models are data from RRASSLER.
+
+### Changes  
+
+- `config`
+    - `source_codes.csv`: Updated to included all 5 benchmark source; codes and descriptions.
+
+- `src`
+    - `create_rating_curves.py`: linting fix
+    - `ras2fim.py`: Text changes based on new benchmark sources.
+    - `ras2fim_logger.py`: Fixed a problem with folders being created.
+    - `shared_variables.py`: Updated a few variables and added new ones for the new tool.
+- `tools`
+    - `ras2inundation.py`: Added standard output headers, timers and durations. Updated some inline comments. 
+    - `ras2release.py`: linting fixes.
+   -  `ras_unit_to_s3.py`: Changes some terminology to talk use the new phrase of `units`, `unit_names` and `unit_versions`.
+   - `s3_batch_evaluations.py`:  Added standard output headers, timers and durations. Updated some inline comments.  Fixed a hardcoded output pathing issue which was referential the code file (it could use a bit more upgrading but works now). Some minor text and layout fixes.
+   - `s3_get_models.py`: linting fix and added an logging output line.
+   - `s3_model_mgm.py`: found a better way to pass args into the "validation" functions.
+   - `s3_search_tools.py`: found a better way to pass args into the "validation" functions. Small s3_shared_funtion.py function name change.
+   - `s3_shared_functions.py`:  Added a few more arg fixes. Added some tqdm. Upgraded how files and folders are downloaded, found a problem with it for the new tool.
+
+<br/><br/>
+
 
 ## v2.0.beta.29 - 2024-02-06 - [PR#277](https://github.com/NOAA-OWP/ras2fim/pull/277)
 
