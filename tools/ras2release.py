@@ -338,17 +338,6 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
     RLOG.notice("Creating / Loading the FIM release folder")
     print()
 
-
-    # review available filepaths ## DEBUG
-    print(f'local_rel_folder: {local_rel_folder}') ## debug
-    local_rel_folder_files = os.listdir(local_rel_folder) ## debug
-    print(local_rel_folder_files) ## debug
-    print(f'local_unit_folders: {local_unit_folders}') ## debug
-    local_unit_folders_files = os.listdir(local_unit_folders) ## debug
-    print(local_unit_folders_files) ## debug
-
-
-
     # Make sure the correct output folder exists and create it if needed
     if len(local_unit_folders) == 0:
         RLOG.critical("No valid unit folders to merge into a FIM release. Program Stopped.")
@@ -369,21 +358,18 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
     # Initialize output table
     ras2cal_csv_output_table = pd.DataFrame()
 
+    gpkg_filename = 'ras2calibration_output_geopackage.gpkg' # sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG
+    csv_filename = 'ras2calibration_output_table.csv' # sv.R2F_OUTPUT_FILE_RAS2CAL_CSV
+
     # Compile CSVs
     for unit_folder in local_unit_folders:
-        unit_ras2cal_csv_filepath = os.path.join(unit_folder, __RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_CSV)
-
-        print(f'unit_ras2cal_csv_filepath: {unit_ras2cal_csv_filepath}') ## debug
-
-        if os.path.exists(unit_ras2cal_csv_filepath):
-
-            print('path exists! compiling now...') ## debug
-            
+        unit_ras2cal_csv_filepath = os.path.join(unit_folder, __RAS2CALIBRATION, csv_filename)
+        if os.path.exists(unit_ras2cal_csv_filepath):            
             df = pd.read_csv(unit_ras2cal_csv_filepath)
             ras2cal_csv_output_table = pd.concat([ras2cal_csv_output_table, df])
 
         else:
-            RLOG.warning(f"{sv.R2F_OUTPUT_FILE_RAS2CAL_CSV} not found for {unit_folder}")
+            RLOG.warning(f"{csv_filename} not found for {unit_folder}")
 
     # Reset index
     ras2cal_csv_output_table.reset_index(drop=True, inplace=True)
@@ -395,31 +381,20 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
     # Iterate through input geopackages and compile them
     for i in range(len(local_unit_folders)):
 
-        local_unit_folders[i]
-
-        unit_ras2cal_gpkg_filepath = os.path.join(unit_folder, __RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG)
-
-        print(f'unit_ras2cal_gpkg_filepath: {unit_ras2cal_csv_filepath}') ## debug
+        unit_folder = local_unit_folders[i]
+        unit_ras2cal_gpkg_filepath = os.path.join(unit_folder, __RAS2CALIBRATION, gpkg_filename)
 
         if os.path.exists(unit_ras2cal_gpkg_filepath):
-            
-            print('path exists! compiling...') ## debug
-
+        
+            # Load first geopackage directly, compile others after
             if i == 0:
-                
-                print('first one, read geopackage directly') ## debug
-
-                # Load first geopackage directly, compile others after
                 ras2cal_compiled_geopackage = gpd.read_file(unit_ras2cal_gpkg_filepath)
             else:
-
-                print('not the first one, simply append to original geopackage') ## debug
-
                 data = gpd.read_file(unit_ras2cal_gpkg_filepath)
                 ras2cal_compiled_geopackage = pd.concat([ras2cal_compiled_geopackage, data], ignore_index=True)
 
         else:
-            RLOG.warning(f"{sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG} not found for {unit_folder}")
+            RLOG.warning(f"{gpkg_filename} not found for {unit_folder}")
 
     # Set the unified projection for the compiled GeoDataFrame
     ras2cal_compiled_geopackage.crs = ras2cal_compiled_geopackage_CRS
@@ -433,7 +408,6 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
     csv_path = os.path.join(full_fim_folder, csv_name)
     ras2cal_csv_output_table.to_csv(csv_path, index=False)
 
-
     # # Write README metadata file
     # write_metadata_file(# TODO: Decide whether to move this function to this file (preferred?) or call it from the other file or to remove the metadata file all togethr (I don't like that option... I lke the metadata file)
     #     output_save_subfolder,
@@ -446,25 +420,6 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
     #     log_name,
     #     verbose,
     # )
-
-
-
-    # process_rating_curves (reformat files ... (src_rel_unit_dirs, local_rel_folder):
-    # TODO: WIP
-
-    # not sure yet, if we will call a merging tool that takes care of the logic for merging
-    # rating curves or do it here.
-
-    # create FIM folder (like HV above)
-
-
-    print("this function is WIP\n\n")
-
-    print(
-        "This is where setup files for FIM are at."
-        "At this point, it might just be stripping of the front HUC number of"
-        " each of the unit folders."
-    )
 
     # Do this first.
     # Using each of the incoming local unit_folder names, strip off the huc number off
