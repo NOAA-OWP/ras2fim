@@ -91,9 +91,9 @@ def extend_cross_section(geom, extension_distance):
                     coords[-1][1] + math.copysign(y_dif, end_y) * -1)
     return LineString([start_pnt] + coords + [end_pnt])
 
-ras2fim_huc_dir = "C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\v2-geocurves\\12090301_2277_ble_240216" # TODO:
-code_version = "v2.0"
-create_geocurves(ras2fim_huc_dir, code_version)
+# ras2fim_huc_dir = "C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\v2-geocurves\\12090301_2277_ble_240216" # TODO:
+# code_version = "v2.0"
+# create_geocurves(ras2fim_huc_dir, code_version)
 # -------------------------------------------------
 def create_geocurves(ras2fim_huc_dir:str, code_version:str):    
     
@@ -107,21 +107,21 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
     unit_version = dir_name_split[-1]
     
     # Read the conflated models list
-    # TODO: conflated_ras_models_csv = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF,"conflated_ras_models.csv")
-    conflated_ras_models_csv = Path(ras2fim_huc_dir, "02_csv_shapes_from_conflation", "conflated_ras_models.csv")
+    # TODO: conflated_ras_models_csv = os.path.join(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF,"conflated_ras_models.csv")
+    conflated_ras_models_csv = os.path.join(ras2fim_huc_dir, "02_csv_shapes_from_conflation", "conflated_ras_models.csv")
     conflated_ras_models = pd.read_csv(conflated_ras_models_csv, index_col=0) 
     
-    # TODO: nwm_streams_ln_shp = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc_name}_nwm_streams_ln.shp")
-    nwm_streams_ln_shp = Path(ras2fim_huc_dir, "02_csv_shapes_from_conflation", "12090301_nwm_streams_ln.shp")
+    # TODO: nwm_streams_ln_shp = os.path.join(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc_name}_nwm_streams_ln.shp")
+    nwm_streams_ln_shp = os.path.join(ras2fim_huc_dir, "02_csv_shapes_from_conflation", "12090301_nwm_streams_ln.shp")
     nwm_streams_ln = gpd.read_file(nwm_streams_ln_shp)
 
-    cross_section_ln_shp = Path(ras2fim_huc_dir, "01_shapes_from_hecras", "cross_section_LN_from_ras.shp")
-    # TODO: cross_section_ln_shp = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS, "cross_section_LN_from_ras.shp")
+    cross_section_ln_shp = os.path.join(ras2fim_huc_dir, "01_shapes_from_hecras", "cross_section_LN_from_ras.shp")
+    # TODO: cross_section_ln_shp = os.path.join(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS, "cross_section_LN_from_ras.shp")
     cross_section_ln = gpd.read_file(cross_section_ln_shp)
 
-    stream_qc_fid_xs_csv = Path(ras2fim_huc_dir, "02_csv_shapes_from_conflation", "12090301_stream_qc_fid_xs.csv")
-    # TODO: stream_qc_fid_xs_csv = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc_name}_stream_qc_fid_xs.csv")
-    stream_qc_fid_xs = pd.read_csv(stream_qc_fid_xs_csv, index_col=0)
+    # stream_qc_fid_xs_csv = os.path.join(ras2fim_huc_dir, "02_csv_shapes_from_conflation", "12090301_stream_qc_fid_xs.csv")
+    # # TODO: stream_qc_fid_xs_csv = os.path.join(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc_name}_stream_qc_fid_xs.csv")
+    # stream_qc_fid_xs = pd.read_csv(stream_qc_fid_xs_csv, index_col=0)
 
     # Loop through each model
     for index, model in conflated_ras_models.iterrows():
@@ -129,7 +129,7 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
         # TODO: RLOG.lprint(model)
         
         model_nwm_streams_ln = nwm_streams_ln[nwm_streams_ln.ras_path == model.ras_path]
-        model_stream_qc_fid_xs = stream_qc_fid_xs[stream_qc_fid_xs.ras_path == model.ras_path]
+        # model_stream_qc_fid_xs = stream_qc_fid_xs[stream_qc_fid_xs.ras_path == model.ras_path]
         model_cross_section_ln = cross_section_ln[cross_section_ln.ras_path == model.ras_path]
 
         # Load max depth boundary
@@ -267,7 +267,7 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
                                 for feature in extent_poly_diss["geometry"]
                             ]
 
-                            #TODO: 'list' object has no attribute 'is_valid'
+                            # TODO: 'list' object has no attribute 'is_valid'
                             # if not multipoly_inundation.is_valid:
                             #     make_valid(multipoly_inundation)
                             # extent_poly_diss["geometry"] = multipoly_inundation
@@ -310,7 +310,7 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
                     #     print(f"{rating_curve_dir} does not exist") #TODO: RLOG.l
 
         geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
-        path_geocurve = Path(ras2fim_huc_dir, "final", f'{unit_name}_geocurve.csv') # TODO: sv.R2F_OUTPUT_DIR_FINAL
+        path_geocurve = os.path.join(ras2fim_huc_dir, "final", "geo_rating_curves", f'{unit_name}_geocurve.csv') # TODO: sv.R2F_OUTPUT_DIR_FINAL
         geocurve_df.to_csv(path_geocurve, index=False)
 
 
@@ -336,7 +336,7 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     RLOG.notice("|                   Create GeoCurves                              |")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
-    RLOG.lprint(f"  ---(f) ras2fim_huc_dir: {ras2fim_huc_dir}")
+    RLOG.lprint(f"  ---(p) ras2fim_huc_dir: {ras2fim_huc_dir}")
     RLOG.lprint(f"  ---(o) overwrite: {overwrite}")
 
     RLOG.lprint("")
@@ -353,9 +353,9 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     code_version = sf.get_changelog_version(changelog_path)
 
     # Make geocurves_dir
-    geocurves_dir = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_GEOCURVES)
+    geocurves_dir = os.path.join(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_FINAL, "geo_rating_curves") #TODO: this needs to be added to the sv
 
-    if geocurves_dir.exists() and not overwrite:
+    if os.path.exists(geocurves_dir) and not overwrite:
         RLOG.lprint(
             "The output directory, "
             + geocurves_dir
@@ -383,27 +383,42 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     RLOG.lprint(f"Duration: {str(time_duration).split('.')[0]}")
     RLOG.lprint("")
 
+# overwrite = "overwrite"
+# manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite)
+# -------------------------------------------------
 
 # -------------------------------------------------
 if __name__ == "__main__":
-    # Sample command (all args)
+    # Sample:
     # python create_geocurves.py -f 'c:\ras2fim_data\output_ras2fim\12090301_2277_230923'
     #  -t 'c:\ras2fim_data\output_ras2fim\12090301_2277_230923\final'
     #  -o
 
-    # Parse arguments
-    parser = argparse.ArgumentParser(description="Produce Geo Rating Curves for RAS2FIM")
+    parser = argparse.ArgumentParser(description="== Produce Geo Rating Curves for RAS2FIM ==")
+
     parser.add_argument(
-        "-f",
-        "--ras2fim_huc_dir",
-        help="REQUIRED: Path to directory containing RAS2FIM unit output (huc/crs)",
+        "-p",
+        dest="ras2fim_huc_dir",
+        help="REQUIRED: Directory containing RAS2FIM unit output (huc/crs)",
         required=True,
+        metavar="STRING",
+        type=str,
     )
-    parser.add_argument("-o", "--overwrite", help="Overwrite files", required=False, action="store_true")
+
+    parser.add_argument(
+        "-o",
+        dest="overwrite",
+        help="Overwrite files",
+        required=False,
+        action="store_true",
+    )
 
     args = vars(parser.parse_args())
 
-    log_file_folder = args["ras2fim_output_dir"]
+    overwrite = args["overwrite"]
+    ras2fim_huc_dir = args["ras2fim_huc_dir"]
+
+    log_file_folder = os.path.join(ras2fim_huc_dir, "logs")
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -412,12 +427,12 @@ if __name__ == "__main__":
         # to have setup the logger.
 
         # creates the log file name as the script name
-        script_file_name = os.path.basename(__file__).split(".")[0]
+        script_file_name = os.path.basename(__file__).split('.')[0]
         # Assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
-        manage_geo_rating_curves_production(**args)
+        manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite)
 
     except Exception:
         RLOG.critical(traceback.format_exc())

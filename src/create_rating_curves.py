@@ -370,7 +370,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
     path_stage_diff = os.path.join(
         path_unit_folder, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES, f"warning_stage_diff_gt_1foot_{huc8}.csv"
         )
-    stage_diff_gt_1foot.to_csv(path_stage_diff)
+    stage_diff_gt_1foot.to_csv(path_stage_diff, index=False)
 
     RLOG.success("Complete")
 
