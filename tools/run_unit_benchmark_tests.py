@@ -256,11 +256,9 @@ def __run_tests(
         # it throws exceptions for evaluate_unit_results.
         # Fix: run it via command line, come back, temp disable this part and continue.
         try:
-            evaluate_unit_results(inundation_poly_path,
-                                  src_models_file,
-                                  bench_extent_raster,
-                                  unit_eval_name,
-                                  eval_output_folder)
+            evaluate_unit_results(
+                inundation_poly_path, src_models_file, bench_extent_raster, unit_eval_name, eval_output_folder
+            )
 
         except Exception as ex:
             # re-raise but check if it is includes phrase 'Rasters don't spatially intersect'
@@ -297,7 +295,7 @@ def __run_tests(
         if "unit_name" not in metrics_df.columns:
             metrics_df.insert(0, "unit_name", ud["key_unit_id"])
 
-        if "unit_version" not in metrics_df.columns:      
+        if "unit_version" not in metrics_df.columns:
             metrics_df.insert(1, "unit_version", ud["key_unit_version_as_str"])
             metrics_df["unit_version"] = metrics_df["unit_version"].astype("string")
 
@@ -665,8 +663,9 @@ def __validate_input(
         models_file_path = os.path.join(src_models_folder, "models_domain.gpkg")
         if os.path.exists(models_file_path) is False:
             raise ValueError(
-                 "The file `dissolved_conflated_models.gpkg` or `models_domain`"
-                f" can be not be found at {src_models_folder}")
+                "The file `dissolved_conflated_models.gpkg` or `models_domain`"
+                f" can be not be found at {src_models_folder}"
+            )
 
     rtn_dict["src_models_file"] = models_file_path
 

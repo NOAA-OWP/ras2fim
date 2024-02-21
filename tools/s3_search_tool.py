@@ -125,7 +125,7 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
     print()
     print(f"log files saved to {RLOG.LOG_FILE_PATH}")
     print()
-    
+
 
 ####################################################################
 ####  Some validation of input, but also creating key variables ######
