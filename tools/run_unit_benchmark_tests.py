@@ -85,6 +85,42 @@ def run_unit_benchmark_tests(
     print("NOTE: All output inundation and benchmark results files will be overwritten")
     print()
 
+
+    RLOG.notice("********************************************************************")
+    RLOG.notice("***  IMPORTANT NOTE about unit level roll up metrics files\n")
+    RLOG.lprint(" Each unit (ie. 12030105_2276_ble) can have multiple versions over time.")
+    RLOG.lprint("     ie) 230923 or 240217")    
+    RLOG.lprint(" This tool processes one unit and version at this time.")
+    RLOG.lprint("     ie) 12030105_2276_ble_230923 or 12030105_2276_ble_240217")
+    RLOG.lprint(" This tool processes one unit and version at this time.")
+    RLOG.lprint(r"    ie). C:\ras2fim_data\output_ras2fim\12030105_2276_ble_230923.")
+    print()
+    RLOG.lprint(" When it is saved in the evalution folders, it keeps the unit name and version"
+                " in seperate folders")
+    RLOG.lprint(r"     ie) C:\ras2fim_data\gval\evaluations\PROD\12030103_2276_ble\230923")
+    RLOG.lprint(" This tool creates a metrics records created during this run for"
+    " for each benchmark source and magnitude.")
+    RLOG.lprint(" It will also attempt to create a rollup of those metrics data into"
+                " a unit level metrics.")
+    RLOG.lprint(r"     ie) C:\ras2fim_data\gval\evaluations\PROD"
+                r"\12030105_2276_ble\12030105_2276_ble_unit_metrics.csv")
+    RLOG.lprint(" This means the unit level metrics has all benchmark metrics for"
+                " all versions and runs.")
+    print()
+    RLOG.lprint(" HOWEVER: At this point, the program does not have a feature to check S3"
+    " to see if the file already exists and does not attempt to download it.")
+    print()
+    RLOG.lprint(" For now, please check S3 to see if this unit already as a metrics file"
+    " and download to the unit folder. Otherwise you can manually merge those files later."
+    " Make sure you upload it when you are done.")
+    print()
+    RLOG.notice("********************************************************************")
+
+    # TODO: test permuations of the input args
+    print()
+    RLOG.lprint("NOTE: Some of the testing for non-defaulted args has not yet been completed")
+    print()
+
     # ----------------
     # validate input variables and setup key variables
     # rd = Return Variables Dictionary
@@ -593,11 +629,6 @@ def __validate_input(
 
     Output: dictionary
     """
-
-    # TODO: test perumations of the input args
-    print()
-    RLOG.notice("NOTE: Some of the testing for non-defaulted args has not yet been completed")
-    print()
 
     # Some variables need to be adjusted and some new derived variables are created
     # dictionary (key / pair) will be returned
