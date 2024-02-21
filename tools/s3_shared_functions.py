@@ -97,6 +97,7 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
     print("")
     RLOG.notice(f"Uploading folder from {src_path}\n" f"                  to  {s3_full_target_path}")
     print()
+    RLOG.notice("Hang in there. This can take between 2 to 10 mins depending on folder size")
 
     # nested function
     def __upload_file(s3_client, bucket_name, src_file_path, target_file_path):
@@ -153,18 +154,28 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
         print(" ... This may take a few minutes, stand by")
         RLOG.lprint(f" ... Uploading with {num_workers} workers")
 
-        with futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
-            executor_dict = {}
+        with tqdm.tqdm(total=len(s3_files)) as pbar:
+            with futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+                executor_dict = {}
 
-            for upload_file_args in s3_files:
-                try:
-                    future = executor.submit(__upload_file, **upload_file_args)
-                    executor_dict[future] = upload_file_args['src_file_path']
+                for upload_file_args in s3_files:
+                    try:
+                        future = executor.submit(__upload_file, **upload_file_args)
+                        executor_dict[future] = upload_file_args['src_file_path']
 
-                except Exception:
-                    RLOG.critical(f"Critical error while uploading {upload_file_args['src_file_path']}")
-                    RLOG.critical(traceback.format_exc())
-                    sys.exit(1)
+                    except Exception:
+                        RLOG.critical(f"Critical error while uploading {upload_file_args['src_file_path']}")
+                        RLOG.critical(traceback.format_exc())
+                        sys.exit(1)
+
+                for future_result in futures.as_completed(executor_dict):
+                    if future_result is not None:
+                        future_exception = future_result.exception()
+                        if future_exception:
+                            RLOG.error(future_exception)
+                            # raise future_exception
+                            # supress error
+                    pbar.update(1)
 
         RLOG.lprint(" ... Uploading complete")
         print()

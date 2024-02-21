@@ -15,7 +15,7 @@ import pandas as pd
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import ras2inundation as ri
 import s3_shared_functions as s3_sf
-import evaluate_unit_results
+from evaluate_ras2fim_unit import evaluate_unit_results
 
 import shared_variables as sv
 from shared_functions import get_date_time_duration_msg, get_date_with_milli, get_stnd_date

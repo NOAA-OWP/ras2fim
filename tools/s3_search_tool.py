@@ -122,8 +122,10 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
     # Calculate duration
     time_duration = end_time - start_time
     RLOG.lprint(f"Duration: {str(time_duration).split('.')[0]}")
-    RLOG.lprint("")
-
+    print()
+    print(f"log files saved to {RLOG.LOG_FILE_PATH}")
+    print()
+    
 
 ####################################################################
 ####  Some validation of input, but also creating key variables ######

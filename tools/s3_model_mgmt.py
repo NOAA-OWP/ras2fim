@@ -207,6 +207,8 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
     dur_msg = get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
     print()
+    print(f"log files saved to {RLOG.LOG_FILE_PATH}")
+    print()
 
 
 ####################################################################
