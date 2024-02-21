@@ -237,9 +237,9 @@ def __process_upload( bucket_name, src_unit_dir, unit_folder_name, s3_output_pat
 
         # An existing s3_folder has a newer or older date
         else:
-            if existing_name_dict["key_date_as_dt"] < src_name_dict["key_date_as_dt"]:
+            if existing_name_dict["key_unit_version_as_dt"] < src_name_dict["key_unit_version_as_dt"]:
                 is_existing_older = False
-            elif existing_name_dict["key_date_as_dt"] > src_name_dict["key_date_as_dt"]:
+            elif existing_name_dict["key_unit_version_as_dt"] > src_name_dict["key_unit_version_as_dt"]:
                 is_existing_older = True
 
             action = __ask_user_about_different_date_folder_name(
@@ -636,8 +636,8 @@ def __get_s3_unit_folder_list(bucket_name, src_name_dict, s3_output_path):
                 key_huc,
                 key_crs_number,
                 key_source_code,
-                key_date_as_str (date string eg: 230811),
-                key_date_as_dt (date obj for 230811)
+                key_unit_version_as_str (date string eg: 230811),
+                key_unit_version_as_dt (date obj for 230811)
                 unit_folder_name (12090301_2277_ble_230811) (cleaned version)
         - s3_output_path:
 

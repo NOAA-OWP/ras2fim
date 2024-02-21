@@ -331,7 +331,7 @@ def run_batch_evaluations(
         # OUTPUT flag doesn't work
 
         output_parent_dir = os.path.join(
-            sv.LOCAL_GVAL_ROOT, sv.LOCAL_GVAL_EVALS, environment, rd["key_unit_id"], rd["key_date_as_str"]
+            sv.LOCAL_GVAL_ROOT, sv.LOCAL_GVAL_EVALS, environment, rd["key_unit_id"], rd["key_unit_version_as_str"]
         )
         # e.g: C:\ras2fim_data\gval\evaluations\DEV\12090301_2277_ble\230923
 

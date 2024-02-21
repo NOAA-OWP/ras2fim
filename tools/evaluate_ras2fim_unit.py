@@ -134,6 +134,8 @@ if __name__ == '__main__':
     -m "s3://ras2fim/output_ras2fim/12030105_2276_ble_230923/final/models_domain/models_domain.gpkg"
     -b "s3://ras2fim-dev/gval/benchmark_data/ble/12030105/100yr/ble_huc_12030105_extent_100yr.tif"
     -u "12030105_2276_ble_230923_100yr" -o "./test_eval"
+
+    Note: The paths can be S3 paths or local drive paths.
     """
 
     # TODO: Fix output pathing
