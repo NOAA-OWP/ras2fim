@@ -15,6 +15,7 @@ import colored as cl
 import tqdm
 from botocore.client import ClientError
 
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import shared_variables as sv
 from shared_functions import get_date_time_duration_msg
@@ -94,8 +95,7 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
 
     RLOG.lprint("===================================================================")
     print("")
-    RLOG.notice(f"Uploading folder from {src_path}\n"
-                f"                  to  {s3_full_target_path}")
+    RLOG.notice(f"Uploading folder from {src_path}\n" f"                  to  {s3_full_target_path}")
     print()
 
     # nested function
@@ -303,11 +303,11 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         s3_client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=target_file_path)
 
     try:
-
         RLOG.lprint("===================================================================")
         print("")
-        RLOG.notice(f"Moving folder from {s3_src_folder_path}\n"
-                    f"                to {s3_target_folder_path}")
+        RLOG.notice(
+            f"Moving folder from {s3_src_folder_path}\n" f"                to {s3_target_folder_path}"
+        )
         print()
         print(
             f"{cl.fg('dodger_blue_1')}"
@@ -866,7 +866,6 @@ def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
     """
 
     try:
-
         s3_src_folder_path = s3_src_folder_path.replace("\\", "/")
 
         if is_verbose is True:
@@ -885,7 +884,7 @@ def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
         s3_client = boto3.client("s3")
         s3_items = []  # a list of dictionaries
 
-        default_kwargs = {"Bucket": bucket_name, "Prefix": s3_src_folder_path,  "Delimiter": "/"}
+        default_kwargs = {"Bucket": bucket_name, "Prefix": s3_src_folder_path, "Delimiter": "/"}
 
         next_token = ""
 
@@ -897,20 +896,20 @@ def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
             # will limit to 1000 objects - hence tokens
             response = s3_client.list_objects_v2(**updated_kwargs)
             if response.get("KeyCount") == 0:
-                next_token = response.get("NextContinuationToken")                
+                next_token = response.get("NextContinuationToken")
                 continue
 
             prefix_recs = response.get("CommonPrefixes")
             if prefix_recs is None:
-                next_token = response.get("NextContinuationToken")                
+                next_token = response.get("NextContinuationToken")
                 continue
-            
+
             for result in prefix_recs:
                 prefix = result.get("Prefix")
                 prefix_adj = prefix.replace(s3_src_folder_path, "")
                 if prefix_adj.endswith("/"):
                     prefix_adj = prefix_adj[:-1]
-                if prefix_adj != "": # empty.. likely the parent folder itself.
+                if prefix_adj != "":  # empty.. likely the parent folder itself.
                     item = {"key": prefix_adj, "url": f"s3://{bucket_name}/{s3_src_folder_path}{prefix_adj}"}
                     s3_items.append(item)
             next_token = response.get("NextContinuationToken")
@@ -1034,6 +1033,7 @@ def is_valid_s3_folder(s3_full_folder_path):
 
     return False
 
+
 # -------------------------------------------------
 def is_valid_s3_file(s3_full_file_path):
     """
@@ -1134,7 +1134,7 @@ def parse_unit_folder_name(unit_folder_name):
     """
 
     rtn_dict = {}
-    
+
     if unit_folder_name == "":
         raise ValueError("unit_folder_name can not be empty")
 
@@ -1221,7 +1221,7 @@ def parse_bucket_and_folder_name(s3_full_folder_path):
     if s3_full_folder_path.endswith("/"):
         s3_full_folder_path = s3_full_folder_path[:-1]
     s3_full_folder_path = s3_full_folder_path.replace("S3://", "s3://")
-    
+
     # we need the "s3 part stripped off for now" (if it is even there)
     adj_s3_path = s3_full_folder_path.replace("s3://", "")
     path_segs = adj_s3_path.split("/")

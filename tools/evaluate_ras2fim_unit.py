@@ -20,10 +20,8 @@ RLOG = sv.R2F_LOG
 
 adjust_memory_strategy("normal")
 
-# TODO: Feb 14, 2024: Upgrade the output pathing. AT this point, it will just save to a relative path
-# to the script file.
 
-
+# -------------------------------------------------
 def evaluate_unit_results(
     inundation_polygons, model_domain_polygons, benchmark_raster, unit_name, output_dir
 ):
@@ -43,6 +41,9 @@ def evaluate_unit_results(
         Directory to save output evaluation files
     """
     print()
+
+    # TODO: Add input validation tests.
+
     RLOG.notice(f"GVAL evaluation beginning for {unit_name}")
 
     # Load benchmark, inundation polygon, and model_domain polygon datasets
@@ -115,9 +116,7 @@ def evaluate_unit_results(
         os.makedirs(output_dir, exist_ok=True)
 
     # Save output files
-    agreement_map.astype(np.int8).rio.to_raster(
-        os.path.join(output_dir, "agreement_map.tif"), driver="COG"
-    )
+    agreement_map.astype(np.int8).rio.to_raster(os.path.join(output_dir, "agreement_map.tif"), driver="COG")
     metric_table.to_csv(os.path.join(output_dir, "metrics.csv"), index=None)
     metadata_csv.to_csv(os.path.join(output_dir, "meta_data.csv"), index=None)
 
@@ -125,6 +124,7 @@ def evaluate_unit_results(
     RLOG.lprint(f"Evaluation output files saved to {output_dir}")
 
 
+# -------------------------------------------------
 if __name__ == '__main__':
     """
     Example Usage:
@@ -133,12 +133,11 @@ if __name__ == '__main__':
     -i "s3://ras2fim/output_ras2fim/12030105_2276_ble_230923/final/inundation_polys/ble_100yr_inundation.gpkg"
     -m "s3://ras2fim/output_ras2fim/12030105_2276_ble_230923/final/models_domain/models_domain.gpkg"
     -b "s3://ras2fim-dev/gval/benchmark_data/ble/12030105/100yr/ble_huc_12030105_extent_100yr.tif"
-    -u "12030105_2276_ble_230923_100yr" -o "./test_eval"
+    -u "12030105_2276_ble_230923_100yr"
+    -o "C:\ras2fim_data\test_batch_eval"
 
     Note: The paths can be S3 paths or local drive paths.
     """
-
-    # TODO: Fix output pathing
 
     # Parse arguments
     parser = argparse.ArgumentParser(description="Produce Inundation from RAS2FIM geocurves.")
@@ -151,8 +150,13 @@ if __name__ == '__main__':
     parser.add_argument(
         "-b", "--benchmark_raster", help="Benchmark raster from respective source", required=True
     )
-    parser.add_argument("-u", "--unit_name", help="Tag name that refers to a ras2fim run\n"
-                        "  e.g. 12030105_2276_ble_230923", required=True)
+    parser.add_argument(
+        "-u",
+        "--unit_name",
+        help="Tag name that refers to a ras2fim run\n" "  e.g. 12030105_2276_ble_230923",
+        required=True,
+    )
+
     parser.add_argument("-o", "--output_dir", help='Directory to save output evaluation files', required=True)
 
     args = vars(parser.parse_args())

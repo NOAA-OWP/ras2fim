@@ -21,6 +21,7 @@ from shared_functions import get_date_time_duration_msg, get_date_with_milli, ge
 # Global Variables
 RLOG = sv.R2F_LOG
 
+
 # -------------------------------------------------
 def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundation_poly, verbose=True):
     """
@@ -100,12 +101,10 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         ras2fim_version = sample_geocurve_data.loc[0, "version"]
         break
 
-    """
     if ras2fim_version:
-        RLOG.lprint(f"Derived ras2fim version {ras2fim_version} from geocurve files.")
+        RLOG.trace(f"Derived ras2fim version {ras2fim_version} from geocurve files.")
     else:
         RLOG.warning("Failed to derive ras2fim version from geocurve files.")
-    """
 
     # -------------------------
     # Open flow_file to detemine feature_ids to process
@@ -125,6 +124,11 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         feature_id = df_merged.iloc[ind]["feature_id"]
         discharge_cms = df_merged.iloc[ind]["discharge"]
         geocurve_file_path = df_merged.iloc[ind]["path"]
+
+        RLOG.trace(
+            f"Get discharge and path for feature id: {feature_id};"
+            f" discharge_cms: {discharge_cms}; geocurve_file_path: {geocurve_file_path}"
+        )
 
         # Use interpolation to find the row in geocurve_df that corresponds to the discharge_value
         geocurve_df = pd.read_csv(geocurve_file_path)

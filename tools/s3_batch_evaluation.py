@@ -10,8 +10,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src'
 import s3_shared_functions as s3_sf
 from evaluate_ras2fim_unit import evaluate_unit_results
 
-import shared_variables as sv
 import shared_functions as sf
+import shared_variables as sv
 
 
 RLOG = sv.R2F_LOG
@@ -255,7 +255,7 @@ def report_missing_ouput(
         RLOG.warning(
             "The following provided args have no or incomplete inputs existing on s3: " f"\n {report_missing}"
         )
-        print()        
+        print()
 
 
 # -------------------------------------------------
@@ -292,12 +292,12 @@ def run_batch_evaluations(
     RLOG.lprint(f"  (-u):  Source unit folder name(s): {unit_names} ")
     RLOG.lprint(f"  (-e):  Environment type: {environment}")
     if benchmark_sources is None or len(benchmark_sources) == 0:
-        RLOG.lprint(f"  (-b):  Source benchmarks to run: All")
+        RLOG.lprint("  (-b):  Source benchmarks to run: All")
     else:
         RLOG.lprint(f"  (-b):  Source benchmarks: {benchmark_sources}")
 
     if stages is None or len(stages) == 0:
-        RLOG.lprint(f"  (-st): Stages to run: All")
+        RLOG.lprint("  (-st): Stages to run: All")
     else:
         RLOG.lprint(f"  (-st): Stages to run: {stages}")
 
@@ -306,7 +306,7 @@ def run_batch_evaluations(
     print()
     print("NOTE: All output inundation files will be overwritten")
 
-    print()    
+    print()
     eval_args = []
 
     if environment != "PROD" and environment != "DEV":
@@ -331,7 +331,11 @@ def run_batch_evaluations(
         # OUTPUT flag doesn't work
 
         output_parent_dir = os.path.join(
-            sv.LOCAL_GVAL_ROOT, sv.LOCAL_GVAL_EVALS, environment, rd["key_unit_id"], rd["key_unit_version_as_str"]
+            sv.LOCAL_GVAL_ROOT,
+            sv.LOCAL_GVAL_EVALS,
+            environment,
+            rd["key_unit_id"],
+            rd["key_unit_version_as_str"],
         )
         # e.g: C:\ras2fim_data\gval\evaluations\DEV\12090301_2277_ble\230923
 
@@ -354,7 +358,7 @@ def run_batch_evaluations(
 
                             else:
                                 child_folder_name = f"{key}_{stage}"
-                                output_dir = os.path.join(output_parent_dir, child_folder_name)                                
+                                output_dir = os.path.join(output_parent_dir, child_folder_name)
                                 eval_args = add_input_arguments(
                                     eval_args, s3_unit_name, key, stage, None, output_dir
                                 )
@@ -379,6 +383,7 @@ def run_batch_evaluations(
     dur_msg = sf.get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
     print()
+
 
 # -------------------------------------------------
 if __name__ == '__main__':
@@ -417,17 +422,16 @@ if __name__ == '__main__':
         required=True,
     )
 
-
     # TODO: add more explaination
     parser.add_argument(
-        "-o", "--output_parent_dir",
+        "-o",
+        "--output_parent_dir",
         help='OPTIONAL: Directory to save output evaluation files',
         required=False,
-        default=f"{os.path.join(sv.LOCAL_GVAL_ROOT, sv.LOCAL_GVAL_EVALS)}"
+        default=f"{os.path.join(sv.LOCAL_GVAL_ROOT, sv.LOCAL_GVAL_EVALS)}",
     )
 
     # TODO. Test pattern of cmd args and change e.g. here.
-
 
     parser.add_argument(
         "-u",
@@ -443,7 +447,6 @@ if __name__ == '__main__':
 
     # TODO. Test pattern of cmd args and change ie here, also needs an e.g.
 
-
     parser.add_argument(
         "-b",
         "--benchmark_sources",
@@ -456,7 +459,6 @@ if __name__ == '__main__':
     )
 
     # TODO. Test pattern of cmd args and change ie here, also needs an e.g.
-
 
     parser.add_argument(
         "-st",

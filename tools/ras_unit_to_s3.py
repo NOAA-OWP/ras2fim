@@ -130,9 +130,7 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name):
     # Depending on what we find will tell us where to uploading the incoming folder
     # and what to do with pre-existing if there are any pre-existing folders
     # matching the huc/crs.
-    __process_upload(
-        s3_bucket_name, src_unit_dir_path, unit_folder_name, s3_output_path, skip_files
-    )
+    __process_upload(s3_bucket_name, src_unit_dir_path, unit_folder_name, s3_output_path, skip_files)
 
     # --------------------
     RLOG.lprint("")
@@ -151,7 +149,8 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name):
 
 ####################################################################
 
-def __process_upload( bucket_name, src_unit_dir, unit_folder_name, s3_output_path, skip_files):
+
+def __process_upload(bucket_name, src_unit_dir, unit_folder_name, s3_output_path, skip_files):
     """
     Processing Steps:
       - Load all first level folder names from that folder. ie) s3://{bucket_name}/output_ras2fim
@@ -259,20 +258,12 @@ def __process_upload( bucket_name, src_unit_dir, unit_folder_name, s3_output_pat
 
             # move pre-existing to archive
             __move_s3_folder_to_archive(
-                bucket_name, 
-                src_unit_dir,
-                existing_name_dict["unit_folder_name"],
-                new_s3_folder_name
+                bucket_name, src_unit_dir, existing_name_dict["unit_folder_name"], new_s3_folder_name
             )
 
             # upload new one to output (yes.. unit_folder_name is used twice)
             __upload_s3_folder(
-                bucket_name,
-                src_unit_dir,
-                unit_folder_name,
-                action,
-                sv.S3_RAS_UNITS_OUTPUT_FOLDER,
-                skip_files,
+                bucket_name, src_unit_dir, unit_folder_name, action, sv.S3_RAS_UNITS_OUTPUT_FOLDER, skip_files
             )
 
         elif action == TRACKER_ACTIONS[2]:  # (overwriting_prev)
@@ -338,7 +329,9 @@ def __process_upload( bucket_name, src_unit_dir, unit_folder_name, s3_output_pat
 
             new_s3_folder_name = __adjust_folder_name_for_archive(s3_existing_folder_name)
 
-            __move_s3_folder_to_archive(bucket_name, src_unit_dir, s3_existing_folder_name, new_s3_folder_name)
+            __move_s3_folder_to_archive(
+                bucket_name, src_unit_dir, s3_existing_folder_name, new_s3_folder_name
+            )
             print("")
 
         # upload new one to output (yes.. unit_folder_name is used twice)

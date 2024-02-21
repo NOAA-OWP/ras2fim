@@ -132,7 +132,7 @@ def __validate_input(s3_path, search_key, output_folder_path):
     # dictionary (key / pair) will be returned
 
     rtn_dict = {}
-    
+
     # ---------------
     # why is this here? might not come in via __main__
     if output_folder_path == "":
@@ -173,7 +173,7 @@ def __validate_input(s3_path, search_key, output_folder_path):
     rtn_dict["s3_search_folder"] = s3_search_folder
 
     return rtn_dict
-    
+
 
 ####################################################################
 if __name__ == "__main__":

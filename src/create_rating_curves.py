@@ -307,7 +307,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             )
 
             # Adding Discharg_CMS column
-            Discharge_CMS = (x_sections_info_fid['discharge_cfs']*0.0283168).round(4)
+            Discharge_CMS = (x_sections_info_fid['discharge_cfs'] * 0.0283168).round(4)
             x_sections_info_fid.insert(7, "discharge_cms", Discharge_CMS, True)
 
             # Saving the dataframe
@@ -331,7 +331,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             )
 
             # Adding Discharg_CMS column
-            Discharge_CMS_RC = (fid_mid_x_sections_info_src['discharge_cfs']*0.0283168).round(4)
+            Discharge_CMS_RC = (fid_mid_x_sections_info_src['discharge_cfs'] * 0.0283168).round(4)
             fid_mid_x_sections_info_src.insert(4, "discharge_cms", Discharge_CMS_RC, True)
 
             # Saving the rating curve

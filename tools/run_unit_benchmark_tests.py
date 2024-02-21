@@ -4,7 +4,6 @@ import argparse
 import datetime as dt
 import glob
 import os
-import shutil
 import sys
 import traceback
 from pathlib import Path
@@ -12,12 +11,13 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import ras2inundation as ri
 import s3_shared_functions as s3_sf
-import shared_variables as sv
+import evaluate_unit_results
 
-from evaluate_ras2fim_unit import evaluate_unit_results
+import shared_variables as sv
 from shared_functions import get_date_time_duration_msg, get_date_with_milli, get_stnd_date
 
 
@@ -31,6 +31,11 @@ TODO:  explain how this works
 This tool can already work in auto mode. No runtime questions are asked.
 
 TODO: Later, do we optionally load this back up to S3?
+   For now.. manually upload C:\ras2fim_data\gval\evaluations\PROD\12030103_2276_ble (to the unit level)
+
+TODO: If already has the master metics for the unit in S3. How do we remember to pull it down before
+   running an inundatoin test.  Maybe pull it down as a seperate step?
+
 """
 
 # ***********************
@@ -147,13 +152,14 @@ def run_unit_benchmark_tests(
         bench_extent_files.append(b_file)
 
     # ----------
-    __run_tests(bench_extent_files,
-                unit_folder_name,
-                rd["trg_unit_folder"],
-                rd["src_models_file"],
-                rd["trg_inun_file_path"],
-                rd["local_benchmark_data_path"])
-
+    __run_tests(
+        bench_extent_files,
+        unit_folder_name,
+        rd["trg_unit_folder"],
+        rd["src_models_file"],
+        rd["trg_inun_file_path"],
+        rd["local_benchmark_data_path"],
+    )
 
     print()
     print("===================================================================")
@@ -166,16 +172,18 @@ def run_unit_benchmark_tests(
     RLOG.lprint(dur_msg)
     print()
 
+
 # -------------------------------------------------
-def __run_tests(bench_extent_files,
-                unit_folder_name,
-                trg_unit_folder,
-                src_models_file,
-                trg_inun_file_path,
-                local_benchmark_data_path):
-    
+def __run_tests(
+    bench_extent_files,
+    unit_folder_name,
+    trg_unit_folder,
+    src_models_file,
+    trg_inun_file_path,
+    local_benchmark_data_path,
+):
     """
-    Process: Iterates the incoming local benchmark and run them against evaluate_ras2fim_unit.py 
+    Process: Iterates the incoming local benchmark and run them against evaluate_ras2fim_unit.py
     Input:
         bench_extent_files: simple list of all huc applicable benchmark extent files
         src_models_file = unit's file to the unit domain file.
@@ -217,8 +225,7 @@ def __run_tests(bench_extent_files,
     metric_files = []
 
     for bench_extent_raster in bench_extent_files:
-
-        bench_name_details = parse_bench_file_name(bench_extent_raster, local_benchmark_data_path )
+        bench_name_details = parse_bench_file_name(bench_extent_raster, local_benchmark_data_path)
 
         try:
             bench_prefix = bench_name_details["prefix"]
@@ -245,16 +252,16 @@ def __run_tests(bench_extent_files,
             RLOG.critical(err_msg)
             raise ex
 
-        # Feb 21, 2024: For reasons unknown, when using VSCode debug, it throws exceptions for evaluate_unit_results.
+        # Feb 21, 2024: For reasons unknown, when using VSCode debug,
+        # it throws exceptions for evaluate_unit_results.
         # Fix: run it via command line, come back, temp disable this part and continue.
-        """
         try:
             evaluate_unit_results(inundation_poly_path,
                                   src_models_file,
                                   bench_extent_raster,
                                   unit_eval_name,
                                   eval_output_folder)
-            
+
         except Exception as ex:
             # re-raise but check if it is includes phrase 'Rasters don't spatially intersect'
             # so we can give a better error message.
@@ -266,56 +273,68 @@ def __run_tests(bench_extent_files,
             f" unit_folder_name is {unit_folder_name}"
             RLOG.critical(err_msg)
             raise ex
-        """
-        
-        # before coping around and merging HUC / GVAL results, pull the "version" column from models_domain (dissoved)
+
+        # before coping around and merging HUC / GVAL results, pull the "version" column
+        # from models_domain (dissoved)
         # and put it in the gval / results. Not availalbe in V1, but manually add to a V1 model_domain
         # metrics output needs the following columns added:
-            # code_version  (v.2.0.0)
-            # unit name   (112030105_2276_ble)
-            # unit version  (230923)
-            # benchmark source  (nws)
-            # benchmark magnitude  (major)
-            # huc  (112030105)
-            # ahps_lid  ( n/a  or  dalt2)
-        
+        # code_version  (v.2.0.0)
+        # unit name   (112030105_2276_ble)
+        # unit version  (230923)
+        # benchmark source  (nws)
+        # benchmark magnitude  (major)
+        # huc  (112030105)
+        # ahps_lid  ( n/a  or  dalt2)
+
         # ud means unit_dictionary (parts)
         ud = s3_sf.parse_unit_folder_name(unit_folder_name)
         if "error" in ud:
             raise Exception(ud["error"])
-      
+
         metrics_file_path = os.path.join(eval_output_folder, "metrics.csv")
 
-        """
         metrics_df = pd.read_csv(metrics_file_path)
-        metrics_df.insert(0, "unit_name", ud["key_unit_id"])
-        metrics_df.insert(1, "unit_version", ud["key_unit_version_as_str"])
-        metrics_df["unit_version"] = metrics_df["unit_version"].astype("string")
-        metrics_df.insert(2, "code_version", code_version)
-        metrics_df.insert(3, "huc", ud["key_huc"])
-        metrics_df.insert(4, "benchmark_source", bench_name_details["source"])
-        metrics_df.insert(5, "magnitude", bench_name_details["magnitude"])
-        metrics_df.insert(6, "ahps_lid", bench_name_details["ahps_lid"])
+        if "unit_name" not in metrics_df.columns:
+            metrics_df.insert(0, "unit_name", ud["key_unit_id"])
+
+        if "unit_version" not in metrics_df.columns:      
+            metrics_df.insert(1, "unit_version", ud["key_unit_version_as_str"])
+            metrics_df["unit_version"] = metrics_df["unit_version"].astype("string")
+
+        if "code_version" not in metrics_df.columns:
+            metrics_df.insert(2, "code_version", code_version)
+
+        if "huc" not in metrics_df.columns:
+            metrics_df.insert(3, "huc", ud["key_huc"])
+
+        if "benchmark_source" not in metrics_df.columns:
+            metrics_df.insert(4, "benchmark_source", bench_name_details["source"])
+
+        if "magnitude" not in metrics_df.columns:
+            metrics_df.insert(5, "magnitude", bench_name_details["magnitude"])
+
+        if "ahps_lid" not in metrics_df.columns:
+            metrics_df.insert(6, "ahps_lid", bench_name_details["ahps_lid"])
 
         metrics_df.to_csv(metrics_file_path, index=False)
-        """
 
         metric_files.append(metrics_file_path)
-        
+
         # merge this wil the unit master csv
     __merge_metrics_files(metric_files, ud["key_unit_id"], ud["key_unit_version_as_str"], trg_unit_folder)
 
 
-# -------------------------------------------------   
+# -------------------------------------------------
 def __merge_metrics_files(metric_files, unit_name, unit_version, trg_unit_folder):
-
     # All of the individual benchmark tests folder have their own metrics,
     # but we will roll them up to a unit level "master" metrics.
     # If it finds records that already exist with that version (ie. 230914),
     # it will delete them first so we don't have dup sets of one version records
 
-    #And will be saved to :
+    # And will be saved to :
     #    ie) C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\12030105_2276_ble_unit_metrics.csv
+
+    # TODO: What if the rollup metrics file in S3 but not local
 
     unit_metrics_file_name = f"{unit_name}_unit_metrics.csv"
     unit_metrics_path = os.path.join(trg_unit_folder, unit_metrics_file_name)
@@ -324,14 +343,16 @@ def __merge_metrics_files(metric_files, unit_name, unit_version, trg_unit_folder
     for idx, metrics_file in enumerate(metric_files):
         if idx == 0:
             if os.path.exists(unit_metrics_path) is True:
-                RLOG.trace(f"Merging new metrics file of {metrics_file}"
-                           " to unit master at {unit_metrics_path}")
+                RLOG.trace(
+                    f"Merging new metrics file of {metrics_file}" " to unit master at {unit_metrics_path}"
+                )
                 unit_metrics_df = pd.read_csv(unit_metrics_path)
                 # if it already exists, check to see if it already has records
                 # for the incoming version and remove them, as we will replace them.
-                unit_metrics_df = unit_metrics_df.drop(unit_metrics_df[
-                    unit_metrics_df['unit_version'].astype("string") == unit_version].index)
-                #unit_metrics_df = unit_metrics_df.loc[unit_metrics_df['unit_version'] != unit_version]
+                unit_metrics_df = unit_metrics_df.drop(
+                    unit_metrics_df[unit_metrics_df['unit_version'].astype("string") == unit_version].index
+                )
+                # unit_metrics_df = unit_metrics_df.loc[unit_metrics_df['unit_version'] != unit_version]
 
                 metrics_df = pd.read_csv(metrics_file)
                 # I heard it not good to write directly back to a df progress of concat
@@ -343,7 +364,7 @@ def __merge_metrics_files(metric_files, unit_name, unit_version, trg_unit_folder
                 RLOG.trace(f"Loading the first one, metrics file of {metrics_file}")
                 unit_metrics_df = pd.read_csv(metrics_file)
         else:
-            RLOG.trace(f"Concatenating metrics file of {metrics_file}")            
+            RLOG.trace(f"Concatenating metrics file of {metrics_file}")
             metrics_df = pd.read_csv(metrics_file)
             # I heard it not good to write directly back to a df progress of concat
             con_df = pd.concat([unit_metrics_df, metrics_df], ignore_index=True)
@@ -351,16 +372,17 @@ def __merge_metrics_files(metric_files, unit_name, unit_version, trg_unit_folder
 
     if len(unit_metrics_df) == 0:
         raise Exception("The unit master metrics file is empty. Please review code")
-    
+
     print()
     unit_metrics_df.to_csv(unit_metrics_path, index=False)
-    RLOG.notice("Created or Updated the rolled up unit level metrics file"
-               f" at {unit_metrics_path}. All new metrics files have been added to this file.")
+    RLOG.notice(
+        "Created or Updated the rolled up unit level metrics file"
+        f" at {unit_metrics_path}. All new metrics files have been added to this file."
+    )
 
 
-# -------------------------------------------------        
+# -------------------------------------------------
 def parse_bench_file_name(file_path, local_benchmark_data_path):
-
     """
     Process:
       Using the file name, we extract out the benchmark type (ie, ble, ifc)
@@ -368,7 +390,7 @@ def parse_bench_file_name(file_path, local_benchmark_data_path):
       (ie: ble_100yr or nws_ahps_major)
 
       We use the incoming file_name (and path) to figure that out
-    
+
     Returns:
         A dictionary:
            - prefix: ie) ble_100yr or nws_ahps_dalt2_minor
@@ -383,24 +405,24 @@ def parse_bench_file_name(file_path, local_benchmark_data_path):
     bench_source = split_paths[0]  # (first level folder name)
 
     ahps_lid = "na"
-    if (bench_source == "ble"):
+    if bench_source == "ble":
         # becomes ble_100yr
         bench_prefix = f"ble_{split_paths[2]}"
         magnitude = split_paths[2]
-    elif (bench_source == "nws"):
+    elif bench_source == "nws":
         # becomes nws_ahps_dalts_minor
         bench_prefix = f"nws_ahps_{split_paths[2]}_{split_paths[3]}"
         ahps_lid = split_paths[2]
         magnitude = split_paths[3]
-    elif (bench_source == "ifc"):
+    elif bench_source == "ifc":
         # becomes ifc_100yr
         bench_prefix = f"ifc_{split_paths[2]}"
         magnitude = split_paths[2]
-    elif (bench_source == "ras2fim"):
+    elif bench_source == "ras2fim":
         # becomes ras2f_100yr
         bench_prefix = f"ras2fim_{split_paths[2]}"
         magnitude = split_paths[2]
-    elif (bench_source == "usgs"):
+    elif bench_source == "usgs":
         # becomes nws_nchn3_minor
         bench_prefix = f"usgs_{split_paths[2]}_{split_paths[3]}"
         ahps_lid = split_paths[2]
@@ -408,12 +430,15 @@ def parse_bench_file_name(file_path, local_benchmark_data_path):
     else:
         raise Exception(f"Invalid benchmark source key found ({bench_source})")
 
-    bench_name_parts = {"prefix": bench_prefix,
-                        "source": bench_source,
-                        "ahps_lid": ahps_lid,
-                        "magnitude": magnitude}
+    bench_name_parts = {
+        "prefix": bench_prefix,
+        "source": bench_source,
+        "ahps_lid": ahps_lid,
+        "magnitude": magnitude,
+    }
 
     return bench_name_parts
+
 
 # -------------------------------------------------
 def inundate_files(flow_files, huc, src_geocurves_path, trg_inun_file_path, local_benchmark_data_path):
@@ -436,7 +461,6 @@ def inundate_files(flow_files, huc, src_geocurves_path, trg_inun_file_path, loca
 
     # don't let if fail if one errors out, unless all fail.
     flow_files.sort()
-    lst_bench_sources = []
 
     for b_file in flow_files:
         # the key is that it is sort.
@@ -447,20 +471,22 @@ def inundate_files(flow_files, huc, src_geocurves_path, trg_inun_file_path, loca
         #   the output pathing becomes C:\ras2fim_data\gval\evaluations\
         #      PROD\12030105_2276_ble\230923\**.gkpg
 
-        # a dictionary 
-        bench_name_details = parse_bench_file_name(b_file, local_benchmark_data_path )
+        # a dictionary
+        bench_name_details = parse_bench_file_name(b_file, local_benchmark_data_path)
 
         print()
-        RLOG.notice("----- Inundating files for benchmark source of"
-                   f" {bench_name_details['source']} - {bench_name_details['magnitude']} ---------")
+        RLOG.notice(
+            "----- Inundating files for benchmark source of"
+            f" {bench_name_details['source']} - {bench_name_details['magnitude']} ---------"
+        )
 
         inun_file_name = bench_name_details["prefix"] + "_inundation.gpkg"
         # At this point the inun_file name are names such as:
         #    ble_100yr_inundation.gpkg and
         #    nws_ahps_cbst2_major_inundation.gpkg
 
-        #strip_pattern = f"_huc_{huc}_flows"
-        #inun_file_name = inun_file_name.replace(strip_pattern, "")
+        # strip_pattern = f"_huc_{huc}_flows"
+        # inun_file_name = inun_file_name.replace(strip_pattern, "")
         trg_file_path = os.path.join(trg_inun_file_path, inun_file_name)
 
         print(f"... Inundation Starting : {b_file}")
@@ -497,14 +523,14 @@ def get_s3_benchmark_data(huc, s3_src_benchmark_data_path, local_benchmark_data_
     bench_files = s3_sf.get_file_list(bucket_name, s3_folder_path, "*" + huc + "*", False)
 
     # sort out to keep the .csv
-#    files_to_download = []
-#    for bench_file in bench_files:  # Iterate dictionary items
-#        if bench_file["url"].endswith(".csv") or :
-#            files_to_download.append(bench_file)
+    #    files_to_download = []
+    #    for bench_file in bench_files:  # Iterate dictionary items
+    #        if bench_file["url"].endswith(".csv") or :
+    #            files_to_download.append(bench_file)
 
-#    if len(files_to_download) == 0:
-#        RLOG.critical(f"There are no benchmark .csv files for the huc {huc}")
-#        sys.exit(1)
+    #    if len(files_to_download) == 0:
+    #        RLOG.critical(f"There are no benchmark .csv files for the huc {huc}")
+    #        sys.exit(1)
 
     down_items = []
     # for s3_file in files_to_download (yes.. all files in those folders)
@@ -609,7 +635,7 @@ def __validate_input(
         )
     else:
         src_geocurves_path = os.path.join(src_unit_final_path, sv.R2F_OUTPUT_DIR_FINAL_GEOCURVES)
-        
+
     if os.path.exists(src_geocurves_path) is False:
         raise ValueError(
             f"The unit 'final\geocurve' directory (-sc) of {src_geocurves_path}"
@@ -627,26 +653,22 @@ def __validate_input(
     # ----------------
     # get the models domain file from the unit
     if src_unit_final_path == "use_default":
-        src_unit_final_path = os.path.join(
-            sv.R2F_DEFAULT_OUTPUT_MODELS,
-            unit_folder_name,
-        )
+        src_unit_final_path = os.path.join(sv.R2F_DEFAULT_OUTPUT_MODELS, unit_folder_name)
 
     # This covers v1 and v2. V1 only had a models_domain.gpkg file
-    src_models_folder = os.path.join(src_unit_final_path,
-                                   sv.R2F_OUTPUT_DIR_FINAL,
-                                   sv.R2F_OUTPUT_DIR_DOMAIN_POLYGONS)
+    src_models_folder = os.path.join(
+        src_unit_final_path, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_DOMAIN_POLYGONS
+    )
     models_file_path = os.path.join(src_models_folder, "dissolved_conflated_models.gpkg")
 
-    # TODO: Temp for V1
     if os.path.exists(models_file_path) is False:
         models_file_path = os.path.join(src_models_folder, "models_domain.gpkg")
         if os.path.exists(models_file_path) is False:
             raise ValueError(
-                f"The file `dissolved_conflated_models.gpkg` or `models_domain` can be not be found at {src_models_folder}"
-            )
+                 "The file `dissolved_conflated_models.gpkg` or `models_domain`"
+                f" can be not be found at {src_models_folder}")
 
-    rtn_dict["src_models_file"] = models_file_path    
+    rtn_dict["src_models_file"] = models_file_path
 
     # ----------------
     if trg_gval_root == "":
@@ -657,8 +679,7 @@ def __validate_input(
     # trg_output_override_path
     if enviro == "PROD":  # only base gval root is ok here.
         # trg_unit_folder: e.g. C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble
-        trg_unit_folder = os.path.join(
-            trg_gval_root, sv.LOCAL_GVAL_EVALS, "PROD", rtn_dict["unit_id"])
+        trg_unit_folder = os.path.join(trg_gval_root, sv.LOCAL_GVAL_EVALS, "PROD", rtn_dict["unit_id"])
 
         # trg_inun_file_path: e.g. C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\230923
         trg_inun_file_path = os.path.join(trg_unit_folder, rtn_dict["version_date_as_str"])
@@ -666,17 +687,13 @@ def __validate_input(
         if trg_output_override_path == "":
             # I am sure there is a better way to do this.. but this is easy to read and follow
             # trg_unit_folder: e.g. C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble
-            trg_unit_folder = os.path.join(
-                trg_gval_root, sv.LOCAL_GVAL_EVALS, "DEV", rtn_dict["unit_id"])
+            trg_unit_folder = os.path.join(trg_gval_root, sv.LOCAL_GVAL_EVALS, "DEV", rtn_dict["unit_id"])
 
             # trg_inun_file_path: e.g. C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\230923
             trg_inun_file_path = os.path.join(trg_unit_folder, rtn_dict["version_date_as_str"])
         else:
             trg_unit_folder = trg_output_override_path
             trg_inun_file_path = trg_output_override_path
-
-    #if os.path.exists(trg_inun_file_path):  # empty it (unit name/version folder)
-    #    shutil.rmtree(trg_inun_file_path)
 
     rtn_dict["trg_unit_folder"] = trg_unit_folder
     rtn_dict["trg_inun_file_path"] = trg_inun_file_path
