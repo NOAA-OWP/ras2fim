@@ -387,18 +387,24 @@ def fn_run_ras2fim(
     fn_calculate_all_terrain_stats(hecras_output_dir)
 
     # -------------------------------------------------
-    if os.getenv("PRODUCE_GEOCURVES") == "True":
-        RLOG.lprint("")
-        RLOG.notice("+++++++ Processing: STEP: Producing Geocurves +++++++")
+    # Produce geocurves
+    RLOG.lprint("")
+    RLOG.notice("+++++++ Processing: STEP: Producing Geocurves +++++++")
+    RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+    manage_geo_rating_curves_production(unit_output_path,overwrite=False)
 
-        RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+    # if os.getenv("PRODUCE_GEOCURVES") == "True":
+    #     RLOG.lprint("")
+    #     RLOG.notice("+++++++ Processing: STEP: Producing Geocurves +++++++")
 
-        # Produce geocurves
+    #     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
-        # job_number = os.cpu_count() - 2
-        manage_geo_rating_curves_production(unit_output_path,overwrite=False)
+    #     # Produce geocurves
 
-        # RLOG.lprint("Geocurves module not ready yet")
+    #     # job_number = os.cpu_count() - 2
+    #     manage_geo_rating_curves_production(unit_output_path,overwrite=False)
+
+    #     # RLOG.lprint("Geocurves module not ready yet")
 
     # -------------------------------------------------
     if os.getenv("CREATE_RAS_DOMAIN_POLYGONS") == "True":
