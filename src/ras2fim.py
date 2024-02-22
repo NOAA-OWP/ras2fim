@@ -395,16 +395,10 @@ def fn_run_ras2fim(
 
         # Produce geocurves
 
-        """
-        job_number = os.cpu_count() - 2
-        manage_geo_rating_curves_production(
-            ras2fim_output_dir=unit_output_path,
-            job_number=job_number,
-            output_folder=r2f_final_dir,
-            overwrite=False,
-        )
-        """
-        RLOG.lprint("Geocurves module not ready yet")
+        # job_number = os.cpu_count() - 2
+        manage_geo_rating_curves_production(unit_output_path,overwrite=False)
+
+        # RLOG.lprint("Geocurves module not ready yet")
 
     # -------------------------------------------------
     if os.getenv("CREATE_RAS_DOMAIN_POLYGONS") == "True":
