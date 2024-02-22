@@ -1,9 +1,11 @@
 All notable changes to this project will be documented in this file.
-We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
+We follow the [Semantic Vers
+
+NOTE To Rob / Carson when merging to dev. There are at least two sections with beta.x in it. One section is for the new 
 
 ## v2.0.beta.xx - 2024-02-21 - [PR#283](https://github.com/NOAA-OWP/ras2fim/pull/283)
 
-This is a new tool which can use a single unit to:
+This is a new tool, run_unit_benchmark_tests.py, named  which can use a single unit to:
 - pull down from S3 the exact HUC related benchmark files
 - use the benchmark data and the geocurves from the unit to create inundation files
 - run the new inundations files, the unit extent files, the benchmark extent files and the benchmark rasters to put through the GVAL engine to get benchmark test results.
@@ -49,6 +51,36 @@ Closes Issue [262](https://github.com/NOAA-OWP/ras2fim/issues/262) and Issue [27
    - `s3_model_mgm.py`: found a better way to pass args into the "validation" functions.
    - `s3_search_tools.py`: found a better way to pass args into the "validation" functions. Small s3_shared_funtion.py function name change.
    - `s3_shared_functions.py`:  Added a few more arg fixes. Added some tqdm. Upgraded how files and folders are downloaded, found a problem with it for the new tool.
+
+<br/><br/>
+
+
+## v2.0.beta.xx - 2024-02-22 - [PR#295](https://github.com/NOAA-OWP/ras2fim/pull/295)
+
+This tool, named s3_get_unit_inputs.py, can take in a HUC8 at a minimum, scan the local driver to see exactly files ras2fim.py needs for input files and goes get the files from S3.  For some files that are HUC specific like inputs\dems\ras_3dep_HUC8_10m\, it will pull down only the file that applies to the given HUC.
+
+This file simplifies getting setup for a ras2fim.py run and will also be helpful with automation.
+
+The files to be downloaded are based on a config file named s3_unit_download_files.lst for quick updates or testing.
+
+Closes Issue [290](https://github.com/NOAA-OWP/ras2fim/issues/290).
+
+### Additions  
+
+- `config`
+    - `s3_unit_download_files.lst`: The changeable list of which files need to be downloaded for ras2fim.py run.
+- `tools`
+    - `s3_get_unit_inputs.py`: As described above.
+
+### Changes  
+- `src`
+    - `clip_dem_from_shape.py`: variable name change.
+    - `ras2fim.py`: variable name change.
+    - `shared_variables.py`:  one variable name change plus a few new one ones for this tool.
+- `tools`
+    - `acquire_and_preprocess_3dep_dems.py`: variable name change.
+    - `run_unit_benchmark_tests.py`: Some linting, updated some notes and text.
+    - `s3_shared_functions.py`: minor text adjustments
 
 <br/><br/>
 
