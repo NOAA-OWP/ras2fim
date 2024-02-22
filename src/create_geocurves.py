@@ -400,14 +400,10 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     RLOG.lprint("")
 
 
-# overwrite = "overwrite"
-# manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite)
-# -------------------------------------------------
-
 # -------------------------------------------------
 if __name__ == "__main__":
     # Sample:
-    # python create_geocurves.py -p 'c:\ras2fim_data\output_ras2fim\12090301_2277_230923'
+    # python create_geocurves.py -p 'c:\ras2fim_data\output_ras2fim\12090301_2277_ble_240216'
     #  -o
 
     parser = argparse.ArgumentParser(description="== Produce Geo Rating Curves for RAS2FIM ==")
