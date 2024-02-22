@@ -683,7 +683,7 @@ def download_files_from_list(bucket_name, lst_files, is_verbose):
         bucket_name:
         lst_files: A list of dictionary items (e.g. ...
             - "s3_file": "output_ras2fim/12090301_2277_ble_230923/run_arguments.txt"
-                (can't have the value of 's3://' or the bucket name)
+                (It is has s3 or the bucket name in front it will be stripped)
             - "trg_file: "C:\ras2fim_data\output_ras2fim\12090301_2277_ble_240206\run_arguments.txt"
     Output:
         - Same list of dictionaries returned with two new fields.
@@ -700,21 +700,25 @@ def download_files_from_list(bucket_name, lst_files, is_verbose):
         src_file = item["s3_file"]
         trg_file = item["trg_file"]
 
+        # may or may not have the full path but we will take it off anyways
+        src_file = src_file.replace(f"s3://{bucket_name}", "")
+
         if src_file.startswith("/"):
             src_file = src_file[1:]  # cut off the front slash
 
         # just catch them and log why they failed, we don't want to assume
         # the calling function wants to shut down the process
-        msg = f"Downloading s3://{bucket_name}/{src_file} to {trg_file}"
+        msg = f"-- Downloading s3://{bucket_name}/{src_file} to {trg_file}"
+        if is_verbose:
+            RLOG.lprint(msg)
+        else:
+            RLOG.trace(msg)
+
         try:
             download_one_file(bucket_name, trg_file, s3_client, src_file)
             item["success"] = "True"
             item["fail_reason"] = ""
-            msg = "Success : " + msg
-            if is_verbose:
-                RLOG.lprint(msg)
-            else:
-                RLOG.trace(msg)
+            msg = "-- Success : " + msg
 
         except Exception:
             err_msg = f"An error occurred while download {item['src_file']}\n"

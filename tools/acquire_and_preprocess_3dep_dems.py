@@ -442,9 +442,9 @@ if __name__ == '__main__':
         '--s3_path',
         help='OPTIONAL: The root s3 path to upload the new output files to S3. It will overwrite the'
         ' specific files in S3 if those files already there.'
-        f' Defaults to {sv.S3_INPUTS_3DEP_DEMS}',
+        f' Defaults to {sv.S3_INPUTS_3DEP_DEMS_PATH}',
         required=False,
-        default=sv.S3_INPUTS_3DEP_DEMS,
+        default=sv.S3_INPUTS_3DEP_DEMS_PATH,
         metavar="",
     )
 
