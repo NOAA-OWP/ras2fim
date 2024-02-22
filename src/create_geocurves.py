@@ -1,10 +1,10 @@
 import argparse
 import errno
+import math
 import os
+import re
 import shutil
 import traceback
-import re
-import math
 
 # import warnings
 from datetime import datetime
@@ -16,12 +16,14 @@ import pandas as pd
 import rasterio
 from rasterio.features import shapes
 from rasterio.mask import mask
-from shapely.geometry import MultiPolygon, Polygon, Point, LineString
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.ops import split
-from shapely.validation import make_valid
 
 import shared_functions as sf
 import shared_variables as sv
+
+
+# from shapely.validation import make_valid
 
 
 # Global Variables
@@ -31,9 +33,9 @@ GEOMETRY_COL = 'geometry'
 # This is the distance to extent the boundary cross-sections to ensure that the inundation polygon is split
 xs_extension = 1000
 
+
 # -------------------------------------------------
 def find_boundary_xs(nwm_seg_gdf, cross_section_gdf, station_column='stream_stn'):
-    
     # Get intersecting cross sections
     fid_cross_sections = gpd.sjoin(nwm_seg_gdf, cross_section_gdf, how='right')
     # Filter to only the intersecting ones
@@ -63,7 +65,7 @@ def find_boundary_xs(nwm_seg_gdf, cross_section_gdf, station_column='stream_stn'
         up_xs_plus2 = stations_sorted.iloc[-1]
 
     return down_xs_plus2, up_xs_plus2
-    
+
 
 # -------------------------------------------------
 def extend_vector(angle, extension_distance):
@@ -76,25 +78,26 @@ def extend_vector(angle, extension_distance):
 # -------------------------------------------------
 def extend_cross_section(geom, extension_distance):
     coords = list(geom.coords)
-    start_y = (coords[1][1] - coords[0][1])
-    start_x = (coords[1][0] - coords[0][0])
+    start_y = coords[1][1] - coords[0][1]
+    start_x = coords[1][0] - coords[0][0]
     start_slope = 0 if start_x == 0 else start_y / start_x
-    end_y = (coords[-2][1] - coords[-1][1])
-    end_x = (coords[-2][0] - coords[-1][0])
+    end_y = coords[-2][1] - coords[-1][1]
+    end_x = coords[-2][0] - coords[-1][0]
     end_slope = 0 if end_x == 0 else end_y / end_x
     # Add new points to the line
     y_dif, x_dif = extend_vector(math.atan(start_slope), extension_distance)
-    start_pnt = Point(coords[0][0] + math.copysign(x_dif, start_x) * -1, 
-                        coords[0][1] + math.copysign(y_dif, start_y) * -1)
+    start_pnt = Point(
+        coords[0][0] + math.copysign(x_dif, start_x) * -1, coords[0][1] + math.copysign(y_dif, start_y) * -1
+    )
     y_dif, x_dif = extend_vector(math.atan(end_slope), extension_distance)
-    end_pnt = Point(coords[-1][0] + math.copysign(x_dif, end_x) * -1, 
-                    coords[-1][1] + math.copysign(y_dif, end_y) * -1)
+    end_pnt = Point(
+        coords[-1][0] + math.copysign(x_dif, end_x) * -1, coords[-1][1] + math.copysign(y_dif, end_y) * -1
+    )
     return LineString([start_pnt] + coords + [end_pnt])
 
 
 # -------------------------------------------------
-def create_geocurves(ras2fim_huc_dir:str, code_version:str):    
-    
+def create_geocurves(ras2fim_huc_dir: str, code_version: str):
     # Get HUC 8
     dir_name = Path(ras2fim_huc_dir).name
     huc_name = re.match("^\d{8}", dir_name).group()
@@ -103,34 +106,27 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
     dir_name_split = dir_name.split('_')
     unit_name = '_'.join(dir_name_split[:-1])
     unit_version = dir_name_split[-1]
-    
+
     # Read the conflated models list
     conflated_ras_models_csv = os.path.join(
-        ras2fim_huc_dir,
-        sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF,
-        "conflated_ras_models.csv"
-        )
-    conflated_ras_models = pd.read_csv(conflated_ras_models_csv, index_col=0) 
-    
+        ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, "conflated_ras_models.csv"
+    )
+    conflated_ras_models = pd.read_csv(conflated_ras_models_csv, index_col=0)
+
     nwm_streams_ln_shp = os.path.join(
-        ras2fim_huc_dir,
-        sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF,
-        f"{huc_name}_nwm_streams_ln.shp"
-        )
+        ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc_name}_nwm_streams_ln.shp"
+    )
     nwm_streams_ln = gpd.read_file(nwm_streams_ln_shp)
 
     cross_section_ln_shp = os.path.join(
-        ras2fim_huc_dir,
-        sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS,
-        "cross_section_LN_from_ras.shp"
-        )
+        ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS, "cross_section_LN_from_ras.shp"
+    )
     cross_section_ln = gpd.read_file(cross_section_ln_shp)
 
     # Loop through each model
     for index, model in conflated_ras_models.iterrows():
-        
-        RLOG.lprint(model) 
-        
+        RLOG.lprint(model)
+
         model_nwm_streams_ln = nwm_streams_ln[nwm_streams_ln.ras_path == model.ras_path]
         model_cross_section_ln = cross_section_ln[cross_section_ln.ras_path == model.ras_path]
 
@@ -152,74 +148,71 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
         main_inundation_poly = disconnected_inundation_poly.iloc[disconnected_inundation_poly.length.idxmax()]
         disconnected_inundation_poly = disconnected_inundation_poly.drop(
             index=disconnected_inundation_poly.length.idxmax()
-            )
+        )
 
         RLOG.lprint("-----------------------------------------------")
         RLOG.lprint(f"Loading the max inundation extent for each NWM reach for model {name_mid}")
-    
+
         # Create max flow inundation masks for each NWM reach
         nwm_reach_inundation_masks = []
         for index, nwm_reach in model_nwm_streams_ln.iterrows():
-                            
             nwm_reach = gpd.GeoDataFrame(nwm_reach.to_dict(), index=[0]).set_geometry(
                 'geometry', crs=model_nwm_streams_ln.crs
-                )
+            )
 
             # Find boundary cross-sections
-            boundary_cross_section_ids = find_boundary_xs(
-                nwm_reach, 
-                model_cross_section_ln
-            )
+            boundary_cross_section_ids = find_boundary_xs(nwm_reach, model_cross_section_ln)
             if not (boundary_cross_section_ids[0] or boundary_cross_section_ids[1]):
                 continue
-            boundary_cross_sections_df = model_cross_section_ln.loc[model_cross_section_ln['stream_stn'].isin(boundary_cross_section_ids)]
+            boundary_cross_sections_df = model_cross_section_ln.loc[
+                model_cross_section_ln['stream_stn'].isin(boundary_cross_section_ids)
+            ]
             boundary_cross_sections_df = boundary_cross_sections_df.assign(feature_id=nwm_reach.feature_id)
 
             # Extend boundary cross-sections because they sometimes don't breach the inundation polygon
-            boundary_cross_sections_df.loc[:, 'geometry'] = boundary_cross_sections_df.geometry.apply(lambda row: 
-                                                                extend_cross_section(row, xs_extension))
-            
+            boundary_cross_sections_df.loc[:, 'geometry'] = boundary_cross_sections_df.geometry.apply(
+                lambda row: extend_cross_section(row, xs_extension)
+            )
+
             # Use the first cross-section for the first split
             split1_inundation_geom = split(
-                main_inundation_poly.geometry,
-                boundary_cross_sections_df.geometry.iloc[0]
-                )
+                main_inundation_poly.geometry, boundary_cross_sections_df.geometry.iloc[0]
+            )
             split1_inundation = gpd.GeoDataFrame(split1_inundation_geom.geoms)
             split1_inundation = split1_inundation.set_geometry(0, crs=model_crs)
             split1_inundation = split1_inundation.sjoin(nwm_reach)
 
             # Use the second cross-section for the second split
-            if len(split1_inundation)>0:
-
+            if len(split1_inundation) > 0:
                 split2_inundation_geom = split(
-                    split1_inundation.geometry.iloc[0],
-                    boundary_cross_sections_df.geometry.iloc[1]
-                    )
+                    split1_inundation.geometry.iloc[0], boundary_cross_sections_df.geometry.iloc[1]
+                )
                 split2_inundation = gpd.GeoDataFrame(split2_inundation_geom.geoms)
                 split2_inundation = split2_inundation.set_geometry(0, crs=model_crs)
                 final_inundation_poly = split2_inundation.sjoin(nwm_reach)
-                final_inundation_poly = final_inundation_poly.rename(columns={0:'geometry'})
+                final_inundation_poly = final_inundation_poly.rename(columns={0: 'geometry'})
                 final_inundation_poly = final_inundation_poly.set_geometry('geometry', crs=model_crs)
                 final_inundation_poly = final_inundation_poly.assign(profile_num=max_flow)
 
                 # Search for nearby disconnected polygons using a convex hull of the cross-sections
-                search_xs = model_cross_section_ln.loc[(model_cross_section_ln.stream_stn > boundary_cross_sections_df.stream_stn.min()) &
-                                (model_cross_section_ln.stream_stn < boundary_cross_sections_df.stream_stn.max())]
+                search_xs = model_cross_section_ln.loc[
+                    (model_cross_section_ln.stream_stn > boundary_cross_sections_df.stream_stn.min())
+                    & (model_cross_section_ln.stream_stn < boundary_cross_sections_df.stream_stn.max())
+                ]
                 search_xs = pd.concat([search_xs, boundary_cross_sections_df])
                 search_hull = search_xs.dissolve().geometry.iloc[0].convex_hull
                 search_hull = gpd.GeoDataFrame(
-                    {'geometry': [search_hull]},
-                    crs=boundary_cross_sections_df.crs
-                    )
+                    {'geometry': [search_hull]}, crs=boundary_cross_sections_df.crs
+                )
                 nearby_polygons = gpd.sjoin(disconnected_inundation_poly, search_hull, how='inner')
                 final_inundation_poly.geometry.iloc[0] = MultiPolygon(
                     [final_inundation_poly.geometry.iloc[0]] + list(nearby_polygons.geometry)
-                    )
+                )
                 nwm_reach_inundation_masks.append(final_inundation_poly)
 
         nwm_reach_inundation_masks = gpd.GeoDataFrame(
             pd.concat(nwm_reach_inundation_masks, ignore_index=True)
-            )
+        )
 
         # Use max depth extent polygon as mask for other depths
         RLOG.lprint("Getting the inundation extents from each flow")
@@ -227,11 +220,9 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
 
         geocurve_df_list = []
         for depth_tif in depth_tif_list:
-
             # This is the regex for the profile number. It finds the numbers after 'flow' in the TIF name
             flow_search = re.search('\(flow\d*\.*\d*_', depth_tif.name).group()
             profile_num = float(re.search('\d+\.*\d*', flow_search).group())
-
 
             with rasterio.open(depth_tif) as depth_grid_rast:
                 depth_grid_nodata = depth_grid_rast.profile['nodata']
@@ -239,32 +230,31 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
 
                 # Mask raster using rasterio for each NWM reach
                 for index, nwm_feature in nwm_reach_inundation_masks.iterrows():
-                    
                     # Load the rating curve
-                    rating_curve_dir = Path(ras2fim_huc_dir, 
-                            sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES,
-                            name_mid,
-                            f'rating_curve_{nwm_feature.feature_id}.csv'
+                    rating_curve_dir = Path(
+                        ras2fim_huc_dir,
+                        sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES,
+                        name_mid,
+                        f'rating_curve_{nwm_feature.feature_id}.csv',
                     )
 
                     if rating_curve_dir.exists():
-
                         mask_shapes = list([nwm_feature.geometry])
                         masked_inundation, masked_inundation_transform = mask(
-                            depth_grid_rast,
-                            mask_shapes, crop=True
-                            )
+                            depth_grid_rast, mask_shapes, crop=True
+                        )
                         masked_inundation = masked_inundation[0]
                         # Create binary raster
                         binary_arr = np.where(
-                            (masked_inundation > 0) & (masked_inundation != depth_grid_nodata),
-                            1, 0).astype("uint8")
+                            (masked_inundation > 0) & (masked_inundation != depth_grid_nodata), 1, 0
+                        ).astype("uint8")
                         # TODO: # if the array only has values of zero, then skip it
-                        #(aka.. no heights above surface)
+                        # (aka.. no heights above surface)
                         # if np.min(binary_arr) == 0 and np.max(binary_arr) == 0:
-                        #     RLOG.warning(f"depth_grid of {depth_tif} does not have any heights above surface.")
+                        #     RLOG.warning(
+                        #       f"depth_grid of {depth_tif} does not have any heights above surface.")
                         #     continue
-                            
+
                         results = (
                             {"properties": {"extent": 1}, "geometry": s}
                             for i, (s, v) in enumerate(
@@ -272,29 +262,29 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
                                     binary_arr,
                                     mask=binary_arr > 0,
                                     transform=masked_inundation_transform,
-                                    connectivity=8
+                                    connectivity=8,
                                 )
                             )
                         )
-                        
+
                         results_ls = list(results)
                         results_df = pd.DataFrame(results_ls)
 
                         poly_coordinates = []
-                        for pc in range (len(results_df)):
+                        for pc in range(len(results_df)):
                             coords = Polygon(results_df['geometry'][pc]['coordinates'][0])
                             poly_coordinates.append(coords)
-                        poly_coordinates_df = pd.DataFrame(poly_coordinates, columns = ["geometry"])
-                        
+                        poly_coordinates_df = pd.DataFrame(poly_coordinates, columns=["geometry"])
+
                         # Convert list of shapes to polygon, then dissolve
-                        extent_poly = gpd.GeoDataFrame(poly_coordinates_df, crs=depth_grid_crs) 
+                        extent_poly = gpd.GeoDataFrame(poly_coordinates_df, crs=depth_grid_crs)
                         try:
-                            #extent_poly_diss = extent_poly.dissolve(by="extent")
+                            # extent_poly_diss = extent_poly.dissolve(by="extent")
                             extent_poly_diss = extent_poly.dissolve()
-                            multipoly_inundation = [
-                                MultiPolygon([feature]) if type(feature) == Polygon else feature
-                                for feature in extent_poly_diss["geometry"]
-                            ]
+                            # multipoly_inundation = [
+                            #     MultiPolygon([feature]) if type(feature) == Polygon else feature
+                            #     for feature in extent_poly_diss["geometry"]
+                            # ]
 
                             # # TODO: 'list' object has no attribute 'is_valid'
                             # if not multipoly_inundation[0].is_valid:
@@ -305,42 +295,39 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
                             # TODO (from v1) why does this happen? I suspect bad geometry. Small extent?
                             RLOG.lprint("^^^^^^^^^^^^^^^^^^")
                             msg = "Warning...\n"
-                            msg += f"  huc is {huc_name}; feature_id = {nwm_feature.feature_id}; depth_grid = {depth_tif}\n"
+                            msg += f"  huc is {huc_name}; "
+                            msg += f"feature_id = {nwm_feature.feature_id}; "
+                            msg += f"depth_grid = {depth_tif}\n"
                             msg += f"  Details: {ae}"
                             RLOG.warning(msg)
                             RLOG.lprint("^^^^^^^^^^^^^^^^^^")
                             continue
-                            
+
                         # Add the feature_id, profile_num, and code_version columns
                         extent_poly_diss = extent_poly_diss.assign(
                             feature_id=nwm_feature.feature_id,
                             profile_num=profile_num,
                             version=code_version,
                             unit_name=unit_name,
-                            unit_version=unit_version
-                            )
+                            unit_version=unit_version,
+                        )
                         # TODO: Does not exist anymore
                         # extent_poly_diss = extent_poly_diss.drop(columns='extent')
-                        
+
                         rating_curve_df = pd.read_csv(rating_curve_dir)
-                        
+
                         # Join the geometry to the rating curve
                         feature_id_rating_curve_geo = pd.merge(
-                            rating_curve_df,
-                            extent_poly_diss,
-                            on="profile_num",
-                            how="right",
+                            rating_curve_df, extent_poly_diss, on="profile_num", how="right"
                         )
 
                         geocurve_df_list.append(feature_id_rating_curve_geo)
-        
+
         if rating_curve_dir.exists():
             geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
             path_geocurve = os.path.join(
-                ras2fim_huc_dir,
-                sv.R2F_OUTPUT_DIR_FINAL,
-                "geo_rating_curves",
-                f'{name_mid}_geocurve.csv')
+                ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_FINAL, "geo_rating_curves", f'{name_mid}_geocurve.csv'
+            )
             geocurve_df.to_csv(path_geocurve, index=False)
 
 
@@ -403,7 +390,6 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     # Feed into main geocurve creation function
     create_geocurves(ras2fim_huc_dir, code_version)
 
-
     # Calculate duration
     RLOG.success("Complete")
     end_time = datetime.utcnow()
@@ -412,6 +398,7 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     time_duration = end_time - overall_start_time
     RLOG.lprint(f"Duration: {str(time_duration).split('.')[0]}")
     RLOG.lprint("")
+
 
 # overwrite = "overwrite"
 # manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite)
@@ -434,13 +421,7 @@ if __name__ == "__main__":
         type=str,
     )
 
-    parser.add_argument(
-        "-o",
-        dest="overwrite",
-        help="Overwrite files",
-        required=False,
-        action="store_true",
-    )
+    parser.add_argument("-o", dest="overwrite", help="Overwrite files", required=False, action="store_true")
 
     args = vars(parser.parse_args())
 
