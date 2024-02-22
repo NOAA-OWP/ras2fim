@@ -91,9 +91,7 @@ def extend_cross_section(geom, extension_distance):
                     coords[-1][1] + math.copysign(y_dif, end_y) * -1)
     return LineString([start_pnt] + coords + [end_pnt])
 
-# ras2fim_huc_dir = "C:\\ras2fim_data\\OWP_ras_models\\ras2fimv2.0\\v2-geocurves\\12090301_2277_ble_240216" # TODO:
-# code_version = "v2.0"
-# create_geocurves(ras2fim_huc_dir, code_version)
+
 # -------------------------------------------------
 def create_geocurves(ras2fim_huc_dir:str, code_version:str):    
     
@@ -108,14 +106,11 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
     
     # Read the conflated models list
     conflated_ras_models_csv = os.path.join(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF,"conflated_ras_models.csv")
-    # TODO: conflated_ras_models_csv = os.path.join(ras2fim_huc_dir, "02_csv_shapes_from_conflation", "conflated_ras_models.csv")
     conflated_ras_models = pd.read_csv(conflated_ras_models_csv, index_col=0) 
     
     nwm_streams_ln_shp = os.path.join(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc_name}_nwm_streams_ln.shp")
-    # TODO: nwm_streams_ln_shp = os.path.join(ras2fim_huc_dir, "02_csv_shapes_from_conflation", "12090301_nwm_streams_ln.shp")
     nwm_streams_ln = gpd.read_file(nwm_streams_ln_shp)
 
-    # TODO: cross_section_ln_shp = os.path.join(ras2fim_huc_dir, "01_shapes_from_hecras", "cross_section_LN_from_ras.shp")
     cross_section_ln_shp = os.path.join(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS, "cross_section_LN_from_ras.shp")
     cross_section_ln = gpd.read_file(cross_section_ln_shp)
 
@@ -126,14 +121,14 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
     # Loop through each model
     for index, model in conflated_ras_models.iterrows():
         
-        RLOG.lprint(model)# TODO: 
+        RLOG.lprint(model) 
         
         model_nwm_streams_ln = nwm_streams_ln[nwm_streams_ln.ras_path == model.ras_path]
         # model_stream_qc_fid_xs = stream_qc_fid_xs[stream_qc_fid_xs.ras_path == model.ras_path]
         model_cross_section_ln = cross_section_ln[cross_section_ln.ras_path == model.ras_path]
 
         # Load max depth boundary
-        hecras_output = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT) # TODO: "05_hecras_output"
+        hecras_output = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
         model_output_dir = [f for f in hecras_output.iterdir() if re.match(f"^{model.model_id}_", f.name)][0]
         model_name = model_output_dir.name.split("_")[1]
         model_depths_dir = Path(model_output_dir, model_name)
@@ -149,7 +144,7 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
         disconnected_inundation_poly = disconnected_inundation_poly.drop(index=disconnected_inundation_poly.length.idxmax())
 
         RLOG.lprint("-----------------------------------------------")        
-        RLOG.lprint(f"Loading the max inundation extent for each NWM feature for model {model_output_dir.name}")# TODO: 
+        RLOG.lprint(f"Loading the max inundation extent for each NWM feature for model {model_output_dir.name}")
     
         # Create max flow inundation masks for each NWM reach
         nwm_reach_inundation_masks = []
@@ -202,7 +197,7 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
         nwm_reach_inundation_masks = gpd.GeoDataFrame(pd.concat(nwm_reach_inundation_masks, ignore_index=True))
 
         # Use max depth extent polygon as mask for other depths
-        RLOG.lprint("Getting the inundation extents from each flow") # TODO: 
+        RLOG.lprint("Getting the inundation extents from each flow")
         depth_tif_list = [f for f in model_depths_dir.iterdir() if f.suffix == '.tif']
 
         geocurve_df_list = []
@@ -222,9 +217,9 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
                     
                     # Load the rating curve
                     rating_curve_dir = Path(ras2fim_huc_dir, 
-                            sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES, # TODO: "06_create_rating_curves", 
+                            sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES,
                             model_output_dir.name,
-                            "Rating_Curve",# TODO:  
+                            # TODO:  "Rating_Curve",
                             f'rating_curve_{nwm_feature.feature_id}.csv'
                     )
 
@@ -279,12 +274,12 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
 
                         except AttributeError as ae:
                             # TODO (from v1) why does this happen? I suspect bad geometry. Small extent?
-                            RLOG.lprint("^^^^^^^^^^^^^^^^^^")# TODO: 
+                            RLOG.lprint("^^^^^^^^^^^^^^^^^^")
                             msg = "Warning...\n"
                             msg += f"  huc is {huc_name}; feature_id = {nwm_feature.feature_id}; depth_grid = {depth_tif}\n"
                             msg += f"  Details: {ae}"
-                            RLOG.warning(msg)# TODO: 
-                            RLOG.lprint("^^^^^^^^^^^^^^^^^^") # TODO: 
+                            RLOG.warning(msg)
+                            RLOG.lprint("^^^^^^^^^^^^^^^^^^")
                             continue
                             
                         # Add the feature_id, profile_num, and code_version columns
@@ -309,9 +304,6 @@ def create_geocurves(ras2fim_huc_dir:str, code_version:str):
                         )
 
                         geocurve_df_list.append(feature_id_rating_curve_geo)
-                    
-                    # else:
-                    #     print(f"{rating_curve_dir} does not exist") #TODO: RLOG.l
         
         if rating_curve_dir.exists():
             geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
