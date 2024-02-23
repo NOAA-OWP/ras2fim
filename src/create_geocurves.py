@@ -333,7 +333,7 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
         if rating_curve_dir.exists():
             geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
             path_geocurve = os.path.join(
-                ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_FINAL, "geo_rating_curves", f'{name_mid}_geocurve.csv' #TODO
+                ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES, f'{name_mid}_geocurve.csv'
             )
             geocurve_df.to_csv(path_geocurve, index=False)
 
