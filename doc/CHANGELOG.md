@@ -2,6 +2,24 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
+## v2.0.beta.30 - 2024-02-23 - [PR#296](https://github.com/NOAA-OWP/ras2fim/pull/296)
+
+This PR focuses on creating geo rating curves for each conflated RAS model. 
+
+### Changes  
+- `src`
+    - `create_geocurves.py`: Completely revised to create geo rating curves for each NWM reach per RAS Model. 
+    - `ras2fim.py`: create_geocurves.py was reactivated in this script. 
+    - `shared_variable.py`: R2F_OUTPUT_DIR_GEOCURVES was added to this script
+    - `create_rating_curves.py`: updated to skip creating the "rating_curves" folder inside model folders. 
+
+### Testing
+Tested on all RAS models in HUC 12090301.
+  
+
+<br/><br/>
+
+
 ## v2.0.beta.29 - 2024-02-06 - [PR#277](https://github.com/NOAA-OWP/ras2fim/pull/277)
 
 This is a new tool that can take all applicable output unit files from S3, organize them, and create deployments for both FIM and HydroVIS.

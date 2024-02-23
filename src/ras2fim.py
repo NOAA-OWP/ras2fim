@@ -380,31 +380,19 @@ def fn_run_ras2fim(
     fn_create_rating_curves(huc8, unit_output_path)
 
     # calculate terrain statistics for HEC-RAS models
-    RLOG.lprint("")
+    print()
     RLOG.notice("+++++++ Processing: STEP 6.b (calculate terrain statistics for HEC-RAS models) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
     hecras_output_dir = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
     fn_calculate_all_terrain_stats(hecras_output_dir)
 
     # -------------------------------------------------
+    # Produce geocurves
+
     if os.getenv("PRODUCE_GEOCURVES") == "True":
-        RLOG.lprint("")
         RLOG.notice("+++++++ Processing: STEP: Producing Geocurves +++++++")
-
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-
-        # Produce geocurves
-
-        """
-        job_number = os.cpu_count() - 2
-        manage_geo_rating_curves_production(
-            ras2fim_output_dir=unit_output_path,
-            job_number=job_number,
-            output_folder=r2f_final_dir,
-            overwrite=False,
-        )
-        """
-        RLOG.lprint("Geocurves module not ready yet")
+        manage_geo_rating_curves_production(unit_output_path,overwrite=False)
 
     # -------------------------------------------------
     if os.getenv("CREATE_RAS_DOMAIN_POLYGONS") == "True":
