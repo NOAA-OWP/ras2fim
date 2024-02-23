@@ -380,7 +380,7 @@ def fn_run_ras2fim(
     fn_create_rating_curves(huc8, unit_output_path)
 
     # calculate terrain statistics for HEC-RAS models
-    RLOG.lprint("")
+    print()
     RLOG.notice("+++++++ Processing: STEP 6.b (calculate terrain statistics for HEC-RAS models) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
     hecras_output_dir = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
@@ -388,23 +388,11 @@ def fn_run_ras2fim(
 
     # -------------------------------------------------
     # Produce geocurves
-    RLOG.lprint("")
-    RLOG.notice("+++++++ Processing: STEP: Producing Geocurves +++++++")
-    RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-    manage_geo_rating_curves_production(unit_output_path,overwrite=False)
 
-    # if os.getenv("PRODUCE_GEOCURVES") == "True":
-    #     RLOG.lprint("")
-    #     RLOG.notice("+++++++ Processing: STEP: Producing Geocurves +++++++")
-
-    #     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-
-    #     # Produce geocurves
-
-    #     # job_number = os.cpu_count() - 2
-    #     manage_geo_rating_curves_production(unit_output_path,overwrite=False)
-
-    #     # RLOG.lprint("Geocurves module not ready yet")
+    if os.getenv("PRODUCE_GEOCURVES") == "True":
+        RLOG.notice("+++++++ Processing: STEP: Producing Geocurves +++++++")
+        RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+        manage_geo_rating_curves_production(unit_output_path,overwrite=False)
 
     # -------------------------------------------------
     if os.getenv("CREATE_RAS_DOMAIN_POLYGONS") == "True":
