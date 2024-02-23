@@ -77,10 +77,10 @@ def plot_src(
 
     if model_unit == "meter":
         plt.ylabel("Average Depth (m)")
-        plt.xlabel("Discharge (m^3/s)")
+        plt.xlabel("Discharge (cms)")
     else:
         plt.ylabel("Average Depth (ft)")
-        plt.xlabel("Discharge (ft^3/s)")
+        plt.xlabel("Discharge (cfs)")
 
     plt.grid(True)
 
@@ -215,14 +215,14 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             [
                 mid_x_sections_info[["mid_xs", "model_id", "xs_counter"]],
                 df_XS_name["Xsection_name"],
-                mid_x_sections_info[["wse", "discharge"]],
+                mid_x_sections_info[["discharge", "wse", "max_depth"]],
                 df_mid_fid,
             ],
             axis=1,
         )
 
         mid_xs_info_fid = mid_x_sections_info_fid[
-            ['model_id', 'feature_id', 'xs_counter', 'Xsection_name', 'wse', 'discharge']
+            ['model_id', 'feature_id', 'xs_counter', 'Xsection_name', 'discharge', 'wse', 'max_depth']
         ]
 
         # -------------------------------------------------
@@ -272,7 +272,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             xs_ds_fid = fid_mid_x_sections_info_lst['Xsection_name']
             xs_ds_fid = pd.DataFrame(xs_ds_fid).rename(columns={'Xsection_name': 'xs_ds'})
 
-            fid_mid_x_sections_info_src = fid_mid_x_sections_info_avr[['model_id', 'wse', 'discharge']]
+            fid_mid_x_sections_info_src = fid_mid_x_sections_info_avr[['model_id', 'wse', 'discharge', 'max_depth']]
             fid_mid_x_sections_info_src = pd.concat(
                 [fid_mid_x_sections_info_src, xs_us_fid, xs_ds_fid], axis=1
             )
@@ -296,12 +296,14 @@ def fn_create_rating_curves(huc8, path_unit_folder):
 
             discharge = pd.DataFrame(x_sections_info_fid['discharge'], columns=['discharge']).round(2)
             wse = pd.DataFrame(x_sections_info_fid['wse'], columns=['wse']).round(2)
-            discharge_wse = pd.concat([discharge, wse], axis=1)
+            depth = pd.DataFrame(x_sections_info_fid['max_depth'], columns=['depth']).round(2)
 
-            x_sections_info_fid = x_sections_info_fid.drop(['discharge', 'wse'], axis=1)
-            x_sections_info_fid = pd.concat([x_sections_info_fid, discharge_wse], axis=1)
+            discharge_wse_depth = pd.concat([discharge, wse, depth], axis=1)
+
+            x_sections_info_fid = x_sections_info_fid.drop(['discharge', 'wse', 'max_depth'], axis=1)
+            x_sections_info_fid = pd.concat([x_sections_info_fid, discharge_wse_depth], axis=1)
             x_sections_info_fid = x_sections_info_fid.rename(
-                columns={'wse': 'WSE_Feet', 'discharge': 'discharge_cfs'}
+                columns={'wse': 'wse_ft', 'discharge': 'discharge_cfs', 'max_depth': 'stage_ft'}
             )
 
             # Adding Discharg_CMS column
@@ -317,16 +319,16 @@ def fn_create_rating_curves(huc8, path_unit_folder):
 
             discharge2 = pd.DataFrame(
                 fid_mid_x_sections_info_src['discharge'],
-                columns=['discharge']).round(2)
-            
+                columns=['discharge']).round(2)            
             wse2 = pd.DataFrame(fid_mid_x_sections_info_src['wse'], columns=['wse']).round(2)
-            discharge_wse2 = pd.concat([discharge2, wse2], axis=1)
+            depth2 = pd.DataFrame(fid_mid_x_sections_info_src['max_depth'], columns=['stage_ft']).round(2)
+            discharge_wse_depth2 = pd.concat([discharge2, wse2, depth2], axis=1)
 
-            fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.drop(['discharge', 'wse'], axis=1)
-            fid_mid_x_sections_info_src = pd.concat([fid_mid_x_sections_info_src, discharge_wse2], axis=1)
+            fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.drop(['discharge', 'wse', 'max_depth'], axis=1)
+            fid_mid_x_sections_info_src = pd.concat([fid_mid_x_sections_info_src, discharge_wse_depth2], axis=1)
 
             fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.rename(
-                columns={'wse': 'WSE_Feet', 'discharge': 'discharge_cfs'}
+                columns={'wse': 'wse', 'discharge': 'discharge_cfs', 'max_depth': 'stage_ft'}
             )
 
             # Adding Discharg_CMS column
@@ -337,7 +339,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             fid_mid_x_sections_info_src.to_csv(str_xsection_path, index=True)
 
             # Determine stage difference greated than 1 foot
-            stage_diff_fid = fid_mid_x_sections_info_src["WSE_Feet"].diff().dropna()
+            stage_diff_fid = fid_mid_x_sections_info_src["wse_ft"].diff().dropna()
             # print(stage_diff_fid)
             for diff1 in stage_diff_fid:
                 if diff1 > 1: #foot
@@ -368,7 +370,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
     # RLOG.lprint(f"detected in model {max_mid} (feature_id = {max_fid}) in flow number {max_index}")
 
     path_stage_diff = os.path.join(
-        path_unit_folder, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES, f"warning_stage_diff_gt_1foot_{huc8}.csv"
+        path_unit_folder, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES, f"warning_stage_diff_gt_1ft_{huc8}.csv"
         )
     stage_diff_gt_1foot.to_csv(path_stage_diff, index=False)
 
