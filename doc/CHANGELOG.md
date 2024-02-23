@@ -57,7 +57,7 @@ Closes Issue [262](https://github.com/NOAA-OWP/ras2fim/issues/262) and Issue [27
 
 ## v2.0.beta.xx - 2024-02-22 - [PR#295](https://github.com/NOAA-OWP/ras2fim/pull/295)
 
-This tool, named s3_get_unit_inputs.py, can take in a HUC8 at a minimum, scan the local driver to see exactly files ras2fim.py needs for input files and goes get the files from S3.  For some files that are HUC specific like inputs\dems\ras_3dep_HUC8_10m\, it will pull down only the file that applies to the given HUC.
+This tool, named s3_get_unit_inputs.py, can take in a HUC8 at a minimum, scan the local driver to see exactly files ras2fim.py needs for input files and goes get the files from S3.  For some files that are HUC specific like inputs\dems\ras_3dep_HUC8_10m\, it will pull down only the file that applies to the given HUC. It can process only one HUC at a time (per script run).
 
 This file simplifies getting setup for a ras2fim.py run and will also be helpful with automation.
 
