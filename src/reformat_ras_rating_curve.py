@@ -7,7 +7,7 @@ import os
 # import sys
 # import time
 import traceback
-# from concurrent.futures import ProcessPoolExecutor
+# from concurrent.futures import ProcessPoolExecutor 
 from pathlib import Path
 
 import geopandas as gpd
@@ -23,7 +23,7 @@ RLOG = sv.R2F_LOG
 
 # -----------------------------------------------------------------
 # Writes a metadata file into the save directory
-# --------------------------
+# -----------------------------------------------------------------
 def write_metadata_file(
     output_save_folder,
     start_time_string,
@@ -143,7 +143,6 @@ def meters_to_feet(number):
 
 # -----------------------------------------------------------------
 # Reads, compiles, and reformats the rating curve info for all directories 
-# TODO: Check to make sure this still works in V2 (esp. check filepaths and filenames)
 # -----------------------------------------------------------------
 def dir_reformat_ras_rc(
     dir_input_folder_path,
@@ -183,10 +182,6 @@ def dir_reformat_ras_rc(
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
     RLOG.lprint(f"Started (UTC): {dt_string}")
 
-    output_log = []
-    output_log.append(" ")
-    output_log.append(f"Directory: {dir_input_folder_path}")
-
     if verbose is True:
         print()
         RLOG.debug("======================")
@@ -200,9 +195,7 @@ def dir_reformat_ras_rc(
     int_output_table_label = "ras2calibration_output_table.csv"
     int_output_geopackage_label = "ras2calibration_output_geopackage.gpkg" 
 
-    int_log_label = "log.txt" # TODO: Remove this type of logging stuff?
-
-    # ------------------------------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------------------------
     # Retrieve information from `run_arguments.txt` file
 
     # Read run_arguments.txt file
@@ -244,7 +237,7 @@ def dir_reformat_ras_rc(
             if not os.path.exists(intermediate_filepath):
                 os.mkdir(intermediate_filepath)
 
-        # ------------------------------------------------------------------------------------------------
+        # -----------------------------------------------------------------------------------------
         # Manually build filepaths for the geospatial data
 
         # root_dir = os.path.join(input_folder_path, dir)
@@ -261,14 +254,12 @@ def dir_reformat_ras_rc(
         if not os.path.exists(nwm_all_lines_filepath):
             msg = f"Error: No file at {nwm_all_lines_filepath}"
             RLOG.warning(msg)
-            output_log.append(msg)
 
         if not os.path.exists(hecras_crosssections_filepath):
             msg = f"Error: No file at {hecras_crosssections_filepath}"
             RLOG.warning(msg)
-            output_log.append(msg)
 
-        # ------------------------------------------------------------------------------------------------
+        # -----------------------------------------------------------------------------------------
         # Intersect NWM lines and HEC-RAS crosssections to get the points
         # (but keep the metadata from the HEC-RAS cross-sections)
 
@@ -312,17 +303,14 @@ def dir_reformat_ras_rc(
             intersection_gdf["feature_id"].astype(str) + "_" + intersection_gdf["stream_stn"].astype(str)
         )
     
-
-        # ------------------------------------------------------------------------------------------------
+        # -----------------------------------------------------------------------------------------
         # Get compiled rating curves from metric folder
+        
         metric_path = os.path.join(dir_input_folder_path, metric_file)
-
         rc_path_list = list(Path(metric_path).rglob("rating_curve_*"))
-
 
         if len(rc_path_list) == 0:
             log = "ERROR: No paths in rating curve path list. "
-            output_log.append(log)
             RLOG.warning(log)
             rc_path = ''
         
@@ -331,22 +319,17 @@ def dir_reformat_ras_rc(
             for i in range(len(rc_path_list)):
                 rc_path = rc_path_list[i]
 
-                # print(rc_path) ## debug
-
                 if os.path.isfile(rc_path) is False:
                     RLOG.warning(f"No rating curve file available for {dir_input_folder_path}, skipping this directory.")
                     continue
 
-                # Otherwise, code continues here
-
-                # ------------------------------------------------------------------------------------------------
+                # ---------------------------------------------------------------------------------
                 # Read compiled rating curve and append huc8 from intersections
                 try:
                     rc_df = pd.read_csv(rc_path)
                 except Exception as ex:
                     msg = f"Unable to read rating curve at path {rc_path}"
                     RLOG.warning(msg + f"\n details: {ex}")
-                    output_log.append(msg)
 
 
                 # Combined feature ID and HECRAS cross-section ID to make a new ID (e.g. 5791000_189926)
@@ -356,7 +339,6 @@ def dir_reformat_ras_rc(
 
                 # Join some of the geospatial data to the rc_df data 
                     # TODO: Check that this is merging in the correct direction
-                    # TODO: Update, because the fid_xs is now gone
                 rc_geospatial_df = pd.merge(
                     rc_df,
                     intersection_gdf[["fid_xs", "huc8", "ras_model_dir"]],
@@ -369,14 +351,23 @@ def dir_reformat_ras_rc(
                 if len(rc_geospatial_df) == 0: 
                     msg = f"No rows survived the merge of rc_geospatial with the rating curve rows for {rc_path}."
 
-                    print("len(rc_df): ") ## debug
-                    print(len(rc_df)) ## debug
-                    
+                    # print("len(rc_df): ") ## debug
+                    # print(len(rc_df)) ## debug
+                    # print() ## debug
+                    # print('rc_df') ## debug
+                    # print(rc_df["fid_xs"]) ## debug
+                    # print() ## debug
+                    # print('intersection_gdf') ## debug
+                    # print(intersection_gdf["fid_xs"]) ## debug
+                    # print() ## debug
+
                     RLOG.warning(msg)
 
                 rc_geospatial_df = rc_geospatial_df.astype({"huc8": "object"})
 
-                # ------------------------------------------------------------------------------------------------
+
+
+                # ---------------------------------------------------------------------------------
                 # Get ras2fim version and assign to 'source' variable
 
                 changelog_path = '../doc/CHANGELOG.md'  # TODO: replace with shared variable?
@@ -385,7 +376,7 @@ def dir_reformat_ras_rc(
 
                 # print(f'Source: {source}')  # debug
 
-                # ------------------------------------------------------------------------------------------------
+                # ---------------------------------------------------------------------------------
                 # Build output table
 
                 # Get a current timestamp
@@ -427,8 +418,8 @@ def dir_reformat_ras_rc(
                     dir_output_table_all  = pd.concat([dir_output_table_all, dir_output_table])
                     intersection_gdf_all = pd.concat([intersection_gdf_all, intersection_gdf], ignore_index=True)
 
-            # ------------------------------------------------------------------------------------------------
-            # Export dir_output_table_all, intersection_gdf_all, and log (TODO: Deprecate log?) to the intermediate save folder
+            # -------------------------------------------------------------------------------------
+            # Export dir_output_table_all and intersection_gdf_all to the directory
 
             # Write filepath for geopackage
             dir_output_geopackage_filepath = os.path.join(intermediate_filepath, int_output_geopackage_label)
@@ -446,19 +437,11 @@ def dir_reformat_ras_rc(
                 msg = "Unable to save HEC-RAS points geopackage."
                 RLOG.warning(msg)
                 RLOG.warning(f"\n details: {ex}")
-                output_log.append(msg)
 
             # Save output table for directory
             dir_output_table_filename = int_output_table_label
             dir_output_table_filepath = os.path.join(intermediate_filepath, dir_output_table_filename)
             dir_output_table_all.to_csv(dir_output_table_filepath, index=False)
-
-            # # Save log for directory # TODO: Deprecate log?
-            # dir_log_filename = int_log_label
-            # dir_log_filepath = os.path.join(intermediate_filepath, dir_log_filename)
-            # with open(dir_log_filepath, "w") as f:
-            #     for line in output_log:
-            #         f.write(f"{line}\n")
 
             if verbose is True:
                 RLOG.debug("")
@@ -466,6 +449,7 @@ def dir_reformat_ras_rc(
 
             # Get timestamp for metadata
             start_time_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+            int_log_label = 'none'
 
             # Write README metadata file for the intermediate file
             write_metadata_file(
@@ -541,7 +525,6 @@ if __name__ == "__main__":
         " (each with quotes and a space) between the values.",
         required=False,
         default = [],
-        # nargs='*', # TODO: Do I need this?
     )
 
     parser.add_argument(
@@ -552,7 +535,6 @@ if __name__ == "__main__":
         f" Defaults to {sv.R2F_DEFAULT_OUTPUT_MODELS}",
         required=False,
         default=sv.R2F_DEFAULT_OUTPUT_MODELS,
-        # metavar="", # TODO: Do I need this?
     )
     parser.add_argument(
         "-v",
@@ -606,35 +588,11 @@ if __name__ == "__main__":
         for filepath in os.listdir(input_folder_path):
             all_folders.append(filepath)
 
-        print()
-        print('all_folders: ') ## debug
-        print(all_folders) ## debug
-        print()
-
-        # num_dirs = len(unit_names)
-        # dirlist = [] # TODO: Work out this logic so that it selects the correct folders to process
-        
-
         # Compile input directory list
         if len(unit_names) == 0:
-            # Include all units
-            print('include all units') ## debug
             dirlist = all_folders
         else:
-            # Only include units that mtch
-            print('include listed units')
-
             dirlist = [filepath for filepath in all_folders if any(unit in filepath for unit in unit_names)]
-
-
-            # for ind, unit_name in enumerate(unit_names):
-            #     dirlist += unit_name
-            #     dirlist += ", " if ind < (num_dirs - 1) else ""
-
-        print()
-        print('dirlist: ') ## debug
-        print(dirlist) ## debug
-        print()
 
         # Run reformat ras rating curves function
         for dir in dirlist:
@@ -651,7 +609,7 @@ if __name__ == "__main__":
 
 #
 # ----------------------------------------------------------------------------------------------
-# CODE BONEYARD -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+# OLD CODE -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 # ----------------------------------------------------------------------------------------------
 # 
 
