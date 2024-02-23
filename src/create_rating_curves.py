@@ -164,7 +164,10 @@ def fn_create_rating_curves(huc8, path_unit_folder):
     # for each confalted stream (step 5 results)
     stage_diff_gt_1foot = pd.DataFrame(columns = ["model_id", "feature_id", "max_stage_diff", "max_indx"])
     for infoind in range(len(path_to_all_x_sections_info)):
-    
+        
+        model_name_id = path_to_all_x_sections_info[infoind].split("\\")[-2]
+        RLOG.lprint("")
+        RLOG.lprint(f"Creating rating curve for model {model_name_id}")
         mid_x_sections_info = pd.read_csv(path_to_all_x_sections_info[infoind])
         mid_x_sections_info = mid_x_sections_info.rename(columns={'fid_xs': 'mid_xs', 'modelid': 'model_id'})
 
