@@ -296,7 +296,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
 
             discharge = pd.DataFrame(x_sections_info_fid['discharge'], columns=['discharge']).round(2)
             wse = pd.DataFrame(x_sections_info_fid['wse'], columns=['wse']).round(2)
-            depth = pd.DataFrame(x_sections_info_fid['max_depth'], columns=['depth']).round(2)
+            depth = pd.DataFrame(x_sections_info_fid['max_depth'], columns=['max_depth']).round(2)
 
             discharge_wse_depth = pd.concat([discharge, wse, depth], axis=1)
 
@@ -321,7 +321,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
                 fid_mid_x_sections_info_src['discharge'],
                 columns=['discharge']).round(2)            
             wse2 = pd.DataFrame(fid_mid_x_sections_info_src['wse'], columns=['wse']).round(2)
-            depth2 = pd.DataFrame(fid_mid_x_sections_info_src['max_depth'], columns=['stage_ft']).round(2)
+            depth2 = pd.DataFrame(fid_mid_x_sections_info_src['max_depth'], columns=['max_depth']).round(2)
             discharge_wse_depth2 = pd.concat([discharge2, wse2, depth2], axis=1)
 
             fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.drop(['discharge', 'wse', 'max_depth'], axis=1)
