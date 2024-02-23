@@ -127,7 +127,10 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
 
     # Loop through each model
     for index, model in conflated_ras_models.iterrows():
-        RLOG.lprint(model)
+
+        name_mid = model_output_dir.name
+        RLOG.lprint("-----------------------------------------------")
+        RLOG.lprint(f"Creatin geo rating curves for model {name_mid}")
 
         model_nwm_streams_ln = nwm_streams_ln[nwm_streams_ln.ras_path == model.ras_path]
         model_cross_section_ln = cross_section_ln[cross_section_ln.ras_path == model.ras_path]
@@ -135,7 +138,6 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
         # Load max depth boundary
         hecras_output = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
         model_output_dir = [f for f in hecras_output.iterdir() if re.match(f"^{model.model_id}_", f.name)][0]
-        name_mid = model_output_dir.name
         model_name = name_mid.split("_")[1]
         model_depths_dir = Path(model_output_dir, model_name)
         max_inundation_shp = [f for f in model_depths_dir.glob("Inundation Boundary*.shp")][0]
@@ -152,7 +154,6 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
             index=disconnected_inundation_poly.length.idxmax()
         )
 
-        RLOG.lprint("-----------------------------------------------")
         RLOG.lprint(f"Loading the max inundation extent for each NWM reach for model {name_mid}")
 
         # Create max flow inundation masks for each NWM reach
@@ -332,7 +333,7 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
         if rating_curve_dir.exists():
             geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
             path_geocurve = os.path.join(
-                ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_FINAL, "geo_rating_curves", f'{name_mid}_geocurve.csv' #TODO
+                ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES, f'{name_mid}_geocurve.csv'
             )
             geocurve_df.to_csv(path_geocurve, index=False)
 

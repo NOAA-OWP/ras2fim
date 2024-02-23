@@ -167,7 +167,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
         
         model_name_id = path_to_all_x_sections_info[infoind].split("\\")[-2]
         RLOG.lprint("")
-        RLOG.lprint(f"Creating rating curve for model {model_name_id}")
+        RLOG.lprint(f"Creating rating curves for model {model_name_id}")
         mid_x_sections_info = pd.read_csv(path_to_all_x_sections_info[infoind])
         mid_x_sections_info = mid_x_sections_info.rename(columns={'fid_xs': 'mid_xs', 'modelid': 'model_id'})
 
@@ -377,6 +377,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
         )
     stage_diff_gt_1foot.to_csv(path_stage_diff, index=False)
 
+    RLOG.lprint("")
     RLOG.success("Complete")
 
 
