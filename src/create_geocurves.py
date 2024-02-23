@@ -128,9 +128,7 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
     # Loop through each model
     for index, model in conflated_ras_models.iterrows():
 
-        name_mid = model_output_dir.name
         RLOG.lprint("-----------------------------------------------")
-        RLOG.lprint(f"Creatin geo rating curves for model {name_mid}")
 
         model_nwm_streams_ln = nwm_streams_ln[nwm_streams_ln.ras_path == model.ras_path]
         model_cross_section_ln = cross_section_ln[cross_section_ln.ras_path == model.ras_path]
@@ -138,6 +136,8 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
         # Load max depth boundary
         hecras_output = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
         model_output_dir = [f for f in hecras_output.iterdir() if re.match(f"^{model.model_id}_", f.name)][0]
+        name_mid = model_output_dir.name
+        RLOG.lprint(f"Creatin geo rating curves for model {name_mid}")
         model_name = name_mid.split("_")[1]
         model_depths_dir = Path(model_output_dir, model_name)
         max_inundation_shp = [f for f in model_depths_dir.glob("Inundation Boundary*.shp")][0]
