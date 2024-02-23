@@ -23,6 +23,10 @@ but some files are HUC specific such as files in he WBD_HUC8 and ras_3dep_HUC8_1
 
 But.. before it pulls it down, it checks to see if it is already download and will only download
 files it is missing. Unless, the user uses the re-download flag, which means all will be downloaded.
+
+Note: You only need to edit the `s3_unit_download_files.lst` (and likely check it in),
+  if you want to change the what needs to be downloaded generally for ras2fim.py.
+
 """
 
 
