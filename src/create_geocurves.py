@@ -105,7 +105,9 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
     # Get the unit name and version
     dir_name_split = dir_name.split('_')
     unit_name = '_'.join(dir_name_split[:-1])
+    source_code = unit_name.split('_')[-1]
     unit_version = dir_name_split[-1]
+    source1 = sf.get_source_info(source_code)
 
     # Read the conflated models list
     conflated_ras_models_csv = os.path.join(
@@ -309,9 +311,12 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
                             version=code_version,
                             unit_name=unit_name,
                             unit_version=unit_version,
+                            source_code=source_code,
+                            source=source1
                         )
                         extent_poly_diss = extent_poly_diss.reindex(
-                            columns=['version', 'unit_name', 'unit_version', 'geometry', 'profile_num']
+                            columns=['version', 'unit_name', 'unit_version', 
+                                     'source_code', 'source', 'geometry', 'profile_num']
                             )
                         # TODO: Does not exist anymore
                         # extent_poly_diss = extent_poly_diss.drop(columns='extent')
@@ -322,7 +327,6 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
                         feature_id_rating_curve_geo = pd.merge(
                             rating_curve_df, extent_poly_diss, on="profile_num", how="right"
                         )
-                        print(feature_id_rating_curve_geo.columns)
                         geocurve_df_list.append(feature_id_rating_curve_geo)
 
         if rating_curve_dir.exists():
