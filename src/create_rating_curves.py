@@ -328,7 +328,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             fid_mid_x_sections_info_src = pd.concat([fid_mid_x_sections_info_src, discharge_wse_depth2], axis=1)
 
             fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.rename(
-                columns={'wse': 'wse', 'discharge': 'discharge_cfs', 'max_depth': 'stage_ft'}
+                columns={'wse': 'wse_ft', 'discharge': 'discharge_cfs', 'max_depth': 'stage_ft'}
             )
 
             # Adding Discharg_CMS column
