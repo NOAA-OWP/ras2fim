@@ -2,7 +2,7 @@ All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 
-## v2.0.beta.X - 2024-02-15 - [PR#296](https://github.com/NOAA-OWP/ras2fim/pull/296)
+## v2.0.beta.30 - 2024-02-23 - [PR#296](https://github.com/NOAA-OWP/ras2fim/pull/296)
 
 This PR focuses on creating geo rating curves for each conflated RAS model. 
 
