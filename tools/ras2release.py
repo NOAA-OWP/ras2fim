@@ -354,12 +354,11 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
 
     # Get input folders / filepaths
     __RAS2CALIBRATION = sv.R2F_OUTPUT_DIR_RAS2CALIBRATION # TODO: Update naming convention?
+    gpkg_filename = sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG
+    csv_filename = sv.R2F_OUTPUT_FILE_RAS2CAL_CSV
 
     # Initialize output table
     ras2cal_csv_output_table = pd.DataFrame()
-
-    gpkg_filename = 'ras2calibration_output_geopackage.gpkg' # sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG
-    csv_filename = 'ras2calibration_output_table.csv' # sv.R2F_OUTPUT_FILE_RAS2CAL_CSV
 
     # Compile CSVs
     for unit_folder in local_unit_folders:
@@ -401,6 +400,7 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
 
     # Export the output points geopackage and the rating curve table to the save folder
     geopackage_name = "reformat_ras_rating_curve_points.gpkg"
+
     geopackage_path = os.path.join(full_fim_folder, geopackage_name)
     ras2cal_compiled_geopackage.to_file(geopackage_path, driver="GPKG")
 

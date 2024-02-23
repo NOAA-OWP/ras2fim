@@ -192,8 +192,8 @@ def dir_reformat_ras_rc(
     hecras_shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS  # "01_shapes_from_hecras"
     metric_file = sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES  # "06_xxx folder"
     intermediate_filename = sv.R2F_OUTPUT_DIR_RAS2CALIBRATION
-    int_output_table_label = "ras2calibration_output_table.csv"
-    int_output_geopackage_label = "ras2calibration_output_geopackage.gpkg" 
+    int_output_table_label = sv.R2F_OUTPUT_FILE_RAS2CAL_CSV # formerly "ras2calibration_output_table.csv"
+    int_output_geopackage_label = sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG # formerly "ras2calibration_output_geopackage.gpkg" 
 
     # ---------------------------------------------------------------------------------------------
     # Retrieve information from `run_arguments.txt` file
@@ -307,7 +307,7 @@ def dir_reformat_ras_rc(
         # Get compiled rating curves from metric folder
         
         metric_path = os.path.join(dir_input_folder_path, metric_file)
-        rc_path_list = list(Path(metric_path).rglob("rating_curve_*"))
+        rc_path_list = list(Path(metric_path).rglob("all_xs_info_fid_*"))
 
         if len(rc_path_list) == 0:
             log = "ERROR: No paths in rating curve path list. "
@@ -334,11 +334,11 @@ def dir_reformat_ras_rc(
 
                 # Combined feature ID and HECRAS cross-section ID to make a new ID (e.g. 5791000_189926)
                 rc_df["fid_xs"] = (
-                    rc_df["feature_id"].astype(str) + "_" + rc_df["xs_us"].astype(str)
+                    rc_df["feature_id"].astype(str) + "_" + rc_df["Xsection_name"].astype(str)
                 )
 
                 # Join some of the geospatial data to the rc_df data 
-                    # TODO: Check that this is merging in the correct direction
+                # TODO: Check that this is merging in the correct direction
                 rc_geospatial_df = pd.merge(
                     rc_df,
                     intersection_gdf[["fid_xs", "huc8", "ras_model_dir"]],
@@ -350,6 +350,8 @@ def dir_reformat_ras_rc(
                 # Check that merge worked
                 if len(rc_geospatial_df) == 0: 
                     msg = f"No rows survived the merge of rc_geospatial with the rating curve rows for {rc_path}."
+
+                    # rlog.trace('text') ## goes to the log file but doesn't print!!
 
                     # print("len(rc_df): ") ## debug
                     # print(len(rc_df)) ## debug
@@ -370,11 +372,11 @@ def dir_reformat_ras_rc(
                 # ---------------------------------------------------------------------------------
                 # Get ras2fim version and assign to 'source' variable
 
-                changelog_path = '../doc/CHANGELOG.md'  # TODO: replace with shared variable?
+                changelog_path = os.path.abspath(
+                    os.path.join(os.path.dirname(__file__), os.pardir, 'doc', 'CHANGELOG.md')
+                )
                 ras2fim_version = sf.get_changelog_version(changelog_path)
                 source = "ras2fim_" + ras2fim_version
-
-                # print(f'Source: {source}')  # debug
 
                 # ---------------------------------------------------------------------------------
                 # Build output table
@@ -388,10 +390,10 @@ def dir_reformat_ras_rc(
                     {
                         "fid_xs": rc_geospatial_df["fid_xs"],
                         "feature_id": rc_geospatial_df["feature_id"],
-                        "xsection_name": rc_geospatial_df["xs_us"], # used to be Xsection_name
-                        "flow": rc_geospatial_df["discharge_cms"],
+                        "xsection_name": rc_geospatial_df["Xsection_name"], # used to be Xsection_name
+                        "flow": rc_geospatial_df["discharge_cfs"],
                         "wse": rc_geospatial_df["WSE_Feet"], # used to be wse_m
-                        "flow_units": "cms",  # str
+                        "flow_units": "cfs",  # str
                         "wse_units": "ft",  # str # used to be m
                         "location_type": location_type,  # str
                         "source": source,  # str
@@ -607,384 +609,10 @@ if __name__ == "__main__":
         RLOG.critical(traceback.format_exc())
 
 
-#
-# ----------------------------------------------------------------------------------------------
-# OLD CODE -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-# ----------------------------------------------------------------------------------------------
-# 
 
-
-
-# TODO: Decide if I still want to have it run the multiprocessor... leaning towards no
-# Create a process pool and run dir_reformat_ras_rc() for each directory 
-
-# with ProcessPoolExecutor(max_workers=num_workers) as executor:
-#     if verbose is True:
-#         RLOG.debug("")
-#         RLOG.debug("--------------------------------------------------------------")
-#         RLOG.debug("Begin iterating through directories with multiprocessor...")
-#         RLOG.debug("")
-
-#     for dir in dirlist:
-#         dir_input_folder_path = os.path.join(input_folder_path, dir)
-#         executor.submit(
-#             dir_reformat_ras_rc,
-#             dir_input_folder_path,
-#             intermediate_filename,
-#             location_type,
-#             active,
-#             verbose,
-
-#         )
-
-# # -----------------------------------------------------------------
-# # Compiles the rating curve and points from each directory
-# # -----------------------------------------------------------------
-# def compile_ras_rating_curves(
-#     input_folder_path, output_save_folder, save_logs, verbose, num_workers, location_type, active
-# ):
-#     """
-#     Overview:
-
-#     Creates directory list and feeds directories to dir_reformat_ras_rc() inside a multiprocessor.
-#     Compiles the rating curve and geopackage info from the intermediate data folder and saves a final
-#     rating curve CSV and geospatial outputs geopackage. Runs from __main__.
-
-
-#     Parameters (required):
-
-#     - input_folder_path: (str) filepath for folder containing input ras2fim models
-
-#     - output_save_folder: (str) filepath of parent folder in which to create the ras2calibration
-#       folder containing the output files
-
-#     - verbose: (bool) option to run verbose code with a lot of print statements
-
-#     - save_logs: (bool) option to save output logs as a textfile
-
-#     - num_workers: (int) number of workers to use during parallel processing
-
-#     - location_type: (str) optional input value for the "location_type" output column
-#      (i.e. "", "USGS", "IFC")
-
-#     - active: (str) optional input value for the "active" column (i.e. "", "True", "False")
-
-#     """
-
-#     # Establish file naming conventions
-#     int_output_table_label = "ras2calibration_output_table.csv"
-#     int_geopackage_label = "ras2calibration_output_geopackage.gpkg"
-#     int_log_label = "log.txt"
-#     intermediate_filename = sv.R2F_OUTPUT_DIR_RAS2CALIBRATION
-
-#     # Record and print start time
-#     start_time = dt.datetime.utcnow()
-#     start_time_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
-
-#     # Settings block
-#     RLOG.lprint(
-#         "-----------------------------------------------------------------------------------------------"
-#     )
-#     RLOG.lprint("Begin rating curve compilation process.")
-#     RLOG.lprint("")
-#     RLOG.lprint(f"Start time: {start_time_string}.")
-#     RLOG.lprint("")
-#     RLOG.lprint(f"Verbose: {str(verbose)}")
-#     RLOG.lprint(f"Save output log to folder: {str(save_logs)}")
-#     RLOG.lprint(f"Number of workers: {num_workers}")
-#     RLOG.lprint("")
-
-#     # Get default paths from shared variables if they aren't included
-#     if input_folder_path == "":
-#         input_folder_path = sv.R2F_DEFAULT_OUTPUT_MODELS  # ras2fim output folder
-#         RLOG.lprint(f"Using default input folder path: {input_folder_path}")
-
-#         if not os.path.exists(input_folder_path):
-#             RLOG.warning(f"No file exists at {input_folder_path}")
-
-#     # Error out if the input folder doesn't exist
-#     if not os.path.exists(input_folder_path):
-#         msg = f"No folder at input folder path: {input_folder_path}"
-#         RLOG.critical(msg)
-#         sys.exit(msg)
-
-#     # Check for output folders
-#     if output_save_folder == "":  # Using the default filepath
-#         output_save_folder = sv.R2F_OUTPUT_DIR_RAS2RELEASE
-#         RLOG.lprint(f"Attempting to use default output save folder: {output_save_folder}")
-
-#         # Attempt to make default output folder if it doesn't exist, error out if it doesn't work.
-#         if not os.path.exists(output_save_folder):
-#             RLOG.lprint(f"No folder found at {output_save_folder}")
-#             try:
-#                 RLOG.lprint("Creating output folder.")
-#                 os.mkdir(output_save_folder)
-#             except OSError:
-#                 msg = f"Unable to create default output save folder at {output_save_folder}"
-#                 RLOG.critical(msg)
-#                 RLOG.critical(OSError)
-#                 sys.exit()
-
-#         # Assemble the output subfolder filepath
-#         output_save_subfolder = os.path.join(sv.R2F_OUTPUT_DIR_RAS2RELEASE, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
-
-#         # If the output subfolder already exists, remove it
-#         if os.path.exists(output_save_subfolder) is True:
-#             shutil.rmtree(output_save_subfolder)
-#             # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
-#             # so sometimes mkdir can fail if rmtree isn't done
-#             time.sleep(1)
-
-#         # Make the output subfolder
-#         os.mkdir(output_save_subfolder)
-
-#     else:  # Using the specified filepath
-#         # Check that the destination filepath exists. If it doesn't, give error and quit.
-#         if not os.path.exists(output_save_folder):
-#             msg = f"Error: No folder found at {output_save_folder}.\n"
-#             "Create this parent directory or specify a different output folder"
-#             " using `-o` followed by the directory filepath."
-#             RLOG.critical(msg)
-#             sys.exit()
-
-#         # Assemble the output subfolder filepath
-#         output_save_subfolder = os.path.join(output_save_folder, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
-
-#         # If the output subfolder already exists, remove it
-#         if os.path.exists(output_save_subfolder) is True:
-#             shutil.rmtree(output_save_subfolder)
-#             # shutil.rmtree is not instant, it sends a command to windows, so do a quick time out here
-#             # so sometimes mkdir can fail if rmtree isn't done
-#             time.sleep(1)
-
-#         # Make the output subfolder
-#         os.mkdir(output_save_subfolder)
-
-#     # Check job numbers
-#     total_cpus_requested = num_workers
-#     total_cpus_available = os.cpu_count() - 2
-#     if total_cpus_requested > total_cpus_available:
-#         raise ValueError(
-#             "Total CPUs requested exceeds your machine's available CPU count minus one. "
-#             "Please lower the quantity of requested workers accordingly."
-#         )
-
-#     # Get a list of the directories in the input folder path
-#     dirlist = []
-
-#     for dir in os.listdir(input_folder_path):
-#         if len(dir) < 8:
-#             continue
-
-#         huc_number = dir[0:8]
-#         if not huc_number.isnumeric():
-#             RLOG.warning(f"dir of {dir} does not start with a huc_number")
-#             continue
-
-#         dirlist.append(dir)
-
-#     # Create empty output log and give it a header
-#     output_log = []
-#     output_log.append(f"Processing for reformat_ras_rating_curves.py started at {str(start_time_string)}")
-#     output_log.append(f"Input directory: {input_folder_path}")
-
-#     # ------------------------------------------------------------------------------------------------
-#     # Assemble filepaths
-
-#     nwm_shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF  # "02_shapes_from_conflation"
-#     hecras_shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS  # "01_shapes_from_hecras"
-
-#     # This needs to be rethought (which folder and why)
-#     metric_file = sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES  # "06_xxx folder"
-
-#     # ------------------------------------------------------------------------------------------------
-#     # Create a process pool and run dir_reformat_ras_rc() for each directory
-
-#     with ProcessPoolExecutor(max_workers=num_workers) as executor:
-#         if verbose is True:
-#             RLOG.debug("")
-#             RLOG.debug("--------------------------------------------------------------")
-#             RLOG.debug("Begin iterating through directories with multiprocessor...")
-#             RLOG.debug("")
-
-#         for dir in dirlist:
-#             dir_input_folder_path = os.path.join(input_folder_path, dir)
-#             executor.submit(
-#                 dir_reformat_ras_rc,
-#                 dir_input_folder_path,
-#                 intermediate_filename,
-#                 int_output_table_label,
-#                 int_geopackage_label,
-#                 int_log_label,
-#                 location_type,
-#                 active,
-#                 verbose,
-#                 nwm_shapes_file,
-#                 hecras_shapes_file,
-#                 metric_file,
-#             )
-
-#     # # Run without multiprocessor
-#     # for dir in dirlist:
-#     #     dir_reformat_ras_rc(dir, input_folder_path, intermediate_filename,
-#     # int_output_table_label, int_log_label,
-#     # location_type, active, verbose,
-#     # nwm_shapes_file, hecras_shapes_file, metric_file)
-
-#     # ------------------------------------------------------------------------------------------------
-#     # Read in all intermedate files (+ output logs) and combine them
-
-#     if verbose is True:
-#         RLOG.debug("")
-#         RLOG.debug("--------------------------------------------------------------")
-#         RLOG.debug("Begin compiling multiprocessor outputs...")
-#         RLOG.debug("")
-
-#     # Get list of intermediate files from path
-#     int_output_table_files = []
-#     int_geopackage_files = []
-#     int_logs = []
-
-#     for dir in dirlist:
-#         intermediate_filepath = os.path.join(input_folder_path, dir, intermediate_filename)
-
-#         # Get output table and append to list if path exists
-#         filename = int_output_table_label
-#         path = os.path.join(intermediate_filepath, filename)
-#         if os.path.exists(path):
-#             int_output_table_files.append(path)
-
-#         # Get geopackage filename and append to list if path exists
-#         filename = int_geopackage_label
-#         path = os.path.join(intermediate_filepath, filename)
-#         if os.path.exists(path):
-#             int_geopackage_files.append(path)
-
-#         # Get log filename and append to list if path exists
-#         filename = int_log_label
-#         path = os.path.join(intermediate_filepath, filename)
-#         if os.path.exists(path):
-#             int_logs.append(path)
-
-#     # Read and compile the intermediate rating curve tables
-#     full_output_table = pd.DataFrame()
-#     for file_path in int_output_table_files:
-#         if os.path.exists(file_path):
-#             df = pd.read_csv(file_path)
-#             full_output_table = pd.concat([full_output_table, df])
-#     full_output_table.reset_index(drop=True, inplace=True)
-
-#     if len(int_geopackage_files) == 0:
-#         raise ValueError("no geopackage file paths have been found")
-
-#     # Define output projection from shared variables
-#     # TODO: change to sv.DEFAULT_OUTPUT_CRS and test
-#     compiled_geopackage_CRS = sv.DEFAULT_RASTER_OUTPUT_CRS
-
-#     compiled_geopackage = None
-
-#     # Iterate through input geopackages and compile them
-#     for i in range(len(int_geopackage_files)):
-#         if i == 0:
-#             # we have to load the first gkpg directly then concat more after.
-#             # Create an empty GeoDataFrame to store the compiled data
-#             compiled_geopackage = gpd.read_file(int_geopackage_files[i])
-#         else:
-#             data = gpd.read_file(int_geopackage_files[i])
-#             compiled_geopackage = pd.concat([compiled_geopackage, data], ignore_index=True)
-
-#     # Set the unified projection for the compiled GeoDataFrame
-#     compiled_geopackage.crs = compiled_geopackage_CRS
-
-#     # Read and compile all logs
-#     for file_path in int_logs:
-#         if os.path.exists(file_path):
-#             with open(file_path) as f:
-#                 lines = f.readlines()
-#                 for line in lines:
-#                     output_log.append(line)
-
-#     # Remove extra linebreaks from log
-#     output_log = [s.replace("\n", "") for s in output_log]
-#     output_log.append(" ")
-
-#     # ------------------------------------------------------------------------------------------------
-#     # Export the output points geopackage and the rating curve table to the save folder
-
-#     geopackage_name = "reformat_ras_rating_curve_points.gpkg"
-#     geopackage_path = os.path.join(output_save_subfolder, geopackage_name)
-#     compiled_geopackage.to_file(geopackage_path, driver="GPKG")
-
-#     csv_name = "reformat_ras_rating_curve_table.csv"
-#     csv_path = os.path.join(output_save_subfolder, csv_name)
-#     full_output_table.to_csv(csv_path, index=False)
-
-#     # ------------------------------------------------------------------------------------------------
-#     # Export metadata, print filepaths and save logs
-
-#     # Report output pathing
-#     output_log.append(f"Geopackage initial save location: {geopackage_path}")
-#     output_log.append(f"Compiled rating curve csv initial save location: {csv_path}")
-#     if verbose is True:
-#         RLOG.debug("")
-#         RLOG.debug(f"Compiled geopackage saved to {geopackage_path}")
-#         RLOG.debug(f"Compiled rating curve csv saved to {csv_path}")
-
-#     # Save output log if the log option was selected
-#     log_name = "reformat_ras_rating_curve_log.txt"
-#     if save_logs is True:
-#         log_path = os.path.join(output_save_subfolder, log_name)
-
-#         with open(log_path, "w") as f:
-#             for line in output_log:
-#                 f.write(f"{line}\n")
-#         RLOG.lprint(f"Compiled output log saved to {log_path}.")
-#     else:
-#         RLOG.lprint("No output log saved.")
-
-#     # Write README metadata file
-#     write_metadata_file(
-#         output_save_subfolder,
-#         start_time_string,
-#         nwm_shapes_file,
-#         hecras_shapes_file,
-#         metric_file,
-#         geopackage_name,
-#         csv_name,
-#         log_name,
-#         verbose,
-#     )
-
-#     # Record end time, calculate runtime, and print runtime
-#     end_time = dt.datetime.utcnow()
-#     runtime = end_time - start_time
-
-#     RLOG.lprint("")
-#     RLOG.lprint(f"Process finished. Total runtime: {runtime}")
-#     RLOG.lprint("--------------------------------------------")
-        
-    # parser.add_argument(
-    #     "-i",
-    #     "--input-path",
-    #     help="Input directory containing ras2fim outputs to process.",
-    #     required=False,
-    #     default="",
-    # )
-    # parser.add_argument("-o", "--output-path", help="Output save folder.", required=False, default="")
-    # parser.add_argument(
-    #     "-l",
-    #     "--log",
-    #     help="Option to save output log to output save folder.",
-    #     required=False,
-    #     default=False,
-    #     action="store_true",
-    # )
-    # parser.add_argument(
-    #     "-j", "--num-workers", help="Number of concurrent processes", required=False, default=1, type=int
-    # )
-
-
+# TODO: Rob should we remove this? 
 # TODO: Finish changing this script to be testable by one unit folder dir_reformat_ras_rc function
+
 """
     parser = argparse.ArgumentParser(
         description="========== Process calibration for a single unit =========="

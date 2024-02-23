@@ -65,9 +65,8 @@ DEFAULT_LOG_FOLDER_PATH = os.path.join(LOCAL_TOOLS_OUTPUT_PATH, "logs")
 
 
 # OUTPUT FILES
-R2F_OUTPUT_FILE_RAS2CAL_CSV = "ras2calibration_rating_curve_table.csv"
-R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_rating_curve_points.gpkg"
-R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt" # TODO: Remove?
+R2F_OUTPUT_FILE_RAS2CAL_CSV = "ras2calibration_output_table.csv"
+R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_output_geopackage.gpkg"
 
 # S3 PATHS
 S3_DEFAULT_BUCKET_NAME = "ras2fim"

@@ -438,10 +438,8 @@ def fn_run_ras2fim(
     # -------------------------------------------------
     if os.getenv("RUN_RAS2CALIBRATION") == "True":
         RLOG.lprint("")
-        RLOG.notice("+++++++ Processing: STEP: Running ras2calibration +++++++")
+        RLOG.notice("+++++++ Processing: STEP: Post-processing rating curves for HAND-FIM calibration +++++++")
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-
-
 
         dir_reformat_ras_rc(
             unit_output_path,
@@ -449,7 +447,6 @@ def fn_run_ras2fim(
             "",
             False,
         )
-
 
         # Copy outputs into the ras2calibration subdirectory of the /final folder
         r2f_final_ras2cal_subdir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
@@ -472,7 +469,6 @@ def fn_run_ras2fim(
             r2f_final_ras2cal_subdir,
         )
 
-        # RLOG.lprint("fim calibration module not ready yet") # TODO: Remove
 
     # -------------------------------------------------
     RLOG.lprint("")
