@@ -305,12 +305,14 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
 
                         # Add the feature_id, profile_num, and code_version columns
                         extent_poly_diss = extent_poly_diss.assign(
-                            feature_id=nwm_feature.feature_id,
                             profile_num=profile_num,
                             version=code_version,
                             unit_name=unit_name,
                             unit_version=unit_version,
                         )
+                        extent_poly_diss = extent_poly_diss.reindex(
+                            columns=['version', 'unit_name', 'unit_version', 'geometry', 'profile_num']
+                            )
                         # TODO: Does not exist anymore
                         # extent_poly_diss = extent_poly_diss.drop(columns='extent')
 
@@ -320,13 +322,13 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
                         feature_id_rating_curve_geo = pd.merge(
                             rating_curve_df, extent_poly_diss, on="profile_num", how="right"
                         )
-
+                        print(feature_id_rating_curve_geo.columns)
                         geocurve_df_list.append(feature_id_rating_curve_geo)
 
         if rating_curve_dir.exists():
             geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
             path_geocurve = os.path.join(
-                ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_FINAL, "geo_rating_curves", f'{name_mid}_geocurve.csv'
+                ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_FINAL, "geo_rating_curves", f'{name_mid}_geocurve.csv' #TODO
             )
             geocurve_df.to_csv(path_geocurve, index=False)
 
