@@ -16,24 +16,16 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src'
 import s3_shared_functions as s3_sf
 
 import shared_variables as sv
-from shared_functions import get_date_with_milli
+from shared_functions import get_date_with_milli, parse_unit_folder_name
 
 
 # Global Variables
 RLOG = sv.R2F_LOG
-__GEOCURVES = "geocurves"
 
 
 # TODO: Feb 5, 2024. This should be smarter eventually where we can have some sort of whitelist txt
 # file or something so that each package can read it to figure out what files/ folders it needs.
 # Alot of hardcoding of folders in here, but that is plenty good enough for now.
-
-
-# **********************
-# NOTE
-#   While V2 is WIP, we will use folder pathing from V1 and change it as V2 gets closer to completion.
-# **********************
-
 
 # -------------------------------------------------
 def create_ras2release(release_name,
@@ -109,9 +101,7 @@ def create_ras2release(release_name,
     __create_fim_package(local_rel_folder, local_unit_folders)
 
     if skip_save_to_s3 is True:
-        print("Saving back to S3 feature not quite operational")
-    #    s3_release_bucket_name = rd["s3_rel_bucket_name"]
-    # __save_to_s3(s3_release_bucket_name, local_wip_folder... ?
+        print("Saving back to S3 feature not finished being implemented")
 
     print()
     print("===================================================================")
@@ -312,7 +302,7 @@ def __create_hydrovis_package(local_rel_folder, local_unit_folders):
     print()
 
     full_hv_folder = os.path.join(local_rel_folder, __HYDROVIS_FOLDER)
-    full_hv_gc_folder = os.path.join(full_hv_folder, __GEOCURVES)
+    full_hv_gc_folder = os.path.join(full_hv_folder, sv.R2F_OUTPUT_DIR_GEOCURVES)
 
     if os.path.exists(__HYDROVIS_FOLDER):
         shutil.rmtree(__HYDROVIS_FOLDER, ignore_errors=True)
@@ -321,11 +311,11 @@ def __create_hydrovis_package(local_rel_folder, local_unit_folders):
     os.mkdir(full_hv_gc_folder)
 
     for unit_folder in local_unit_folders:
-        unit_gc_folder = os.path.join(unit_folder, __GEOCURVES)
+        unit_gc_folder = os.path.join(unit_folder, sv.R2F_OUTPUT_DIR_GEOCURVES)
         if os.path.exists(unit_gc_folder):
             shutil.copytree(unit_gc_folder, full_hv_gc_folder, dirs_exist_ok=True)
         else:
-            RLOG.warning(f"{__GEOCURVES} folder not found for folder {unit_folder}")
+            RLOG.warning(f"{sv.R2F_OUTPUT_DIR_GEOCURVES} folder not found for folder {unit_folder}")
 
     RLOG.lprint("Completed - Creating / loading the HydroVIS release folder")
     print("------------------------------------------")
@@ -343,7 +333,7 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
         RLOG.critical("No valid unit folders to merge into a FIM release. Program Stopped.")
         sys.exit(1)
 
-    __HANDFIM_FOLDER = "compiled_rc_for_handfim"
+    __HANDFIM_FOLDER = "HAND_FIM"
 
     full_fim_folder = os.path.join(local_rel_folder, __HANDFIM_FOLDER)
 
@@ -352,131 +342,85 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
 
     os.mkdir(full_fim_folder)
 
-    # Get input folders / filepaths
-    __RAS2CALIBRATION = sv.R2F_OUTPUT_DIR_RAS2CALIBRATION # TODO: Update naming convention?
-    gpkg_filename = sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG
-    csv_filename = sv.R2F_OUTPUT_FILE_RAS2CAL_CSV
-
     # Initialize output table
     ras2cal_csv_output_table = pd.DataFrame()
 
-    # Compile CSVs
+    # Compile CSVs in its own huc folder
     for unit_folder in local_unit_folders:
-        unit_ras2cal_csv_filepath = os.path.join(unit_folder, __RAS2CALIBRATION, csv_filename)
-        if os.path.exists(unit_ras2cal_csv_filepath):            
-            df = pd.read_csv(unit_ras2cal_csv_filepath)
-            ras2cal_csv_output_table = pd.concat([ras2cal_csv_output_table, df])
 
-        else:
-            RLOG.warning(f"{csv_filename} not found for {unit_folder}")
-
-    # Reset index
-    ras2cal_csv_output_table.reset_index(drop=True, inplace=True)
-
-    # Initialize output geopackage and CRS info
-    ras2cal_compiled_geopackage = None
-    ras2cal_compiled_geopackage_CRS = sv.DEFAULT_RASTER_OUTPUT_CRS # TODO: change to sv.DEFAULT_OUTPUT_CRS and test
-
-    # Iterate through input geopackages and compile them
-    for i in range(len(local_unit_folders)):
-
-        unit_folder = local_unit_folders[i]
-        unit_ras2cal_gpkg_filepath = os.path.join(unit_folder, __RAS2CALIBRATION, gpkg_filename)
-
-        if os.path.exists(unit_ras2cal_gpkg_filepath):
+        src_name_dict = parse_unit_folder_name(unit_folder)
+        if "error" in src_name_dict:
+            raise Exception(src_name_dict["error"])    
         
-            # Load first geopackage directly, compile others after
-            if i == 0:
-                ras2cal_compiled_geopackage = gpd.read_file(unit_ras2cal_gpkg_filepath)
+        huc8 = src_name_dict["key_huc"]
+        fim_huc_calib_path = os.path.join(full_fim_folder, huc8)
+        os.makedirs(fim_huc_calib_path, exist_ok=True)
+
+        # all calibration (reformat) files get put in there own huc folder
+
+        # ----------------------------
+        # let's load the csv first
+        # get unit specific cal csv file
+        unit_ras2cal_csv_filepath = os.path.join(unit_folder,
+                                                 sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
+                                                 sv.R2F_OUTPUT_FILE_RAS2CAL_CSV)
+        
+        if os.path.exists(unit_ras2cal_csv_filepath) is False:
+            RLOG.warning(f"{sv.R2F_OUTPUT_FILE_RAS2CAL_CSV} not found for {unit_folder}")
+        else:
+            # let's load the new incoming csv.
+            new_csv_df = pd.read_csv(unit_ras2cal_csv_filepath)
+
+            # see if one is already there
+            fim_huc_calib_file = os.path.join(fim_huc_calib_path, sv.R2F_OUTPUT_FILE_RAS2CAL_CSV)
+            if os.path.exists(fim_huc_calib_file):
+                # we need to load the existing one so we can concat
+                existing_csv_df = pd.read_csv(fim_huc_calib_file)
+                # concat the new and the existing
+                ras2cal_csv_output_table = pd.concat([existing_csv_df, new_csv_df],
+                                                     ignore_index=True)
+                # Reset index
+                ras2cal_csv_output_table.reset_index(drop=True, inplace=True)
             else:
-                data = gpd.read_file(unit_ras2cal_gpkg_filepath)
-                ras2cal_compiled_geopackage = pd.concat([ras2cal_compiled_geopackage, data], ignore_index=True)
+                ras2cal_csv_output_table = new_csv_df
 
+            # now save it  (yes... for each unit if pre-existing exists)
+            ras2cal_csv_output_table.to_csv(fim_huc_calib_file, index=False)
+
+
+        # ----------------------------
+        # Now let's load the points gkpg
+        # get unit specific points gpkg file
+        unit_ras2cal_gpkg_filepath = os.path.join(unit_folder,
+                                                 sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
+                                                 sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG)
+        
+        if os.path.exists(unit_ras2cal_csv_filepath) is False:
+            RLOG.warning(f"{sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG} not found for {unit_folder}")
         else:
-            RLOG.warning(f"{gpkg_filename} not found for {unit_folder}")
+            # let's load the new incoming gkpg
+            new_points_gdf = gpd.read_file(unit_ras2cal_gpkg_filepath)
 
-    # Set the unified projection for the compiled GeoDataFrame
-    ras2cal_compiled_geopackage.crs = ras2cal_compiled_geopackage_CRS
+            # Reproject to output SRC
+            new_points_proj_crc = new_points_gdf.to_crs(sv.DEFAULT_RASTER_OUTPUT_CRS)            
 
-    # Export the output points geopackage and the rating curve table to the save folder
-    geopackage_name = "reformat_ras_rating_curve_points.gpkg"
+            # see if one is already there
+            fim_huc_points_file = os.path.join(fim_huc_calib_path, sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG)
+            if os.path.exists(fim_huc_points_file):
 
-    geopackage_path = os.path.join(full_fim_folder, geopackage_name)
-    ras2cal_compiled_geopackage.to_file(geopackage_path, driver="GPKG")
+                # we need to load the existing one so we can concat
+                existing_points_gdf = gpd.read_file(fim_huc_points_file)
 
-    csv_name = "reformat_ras_rating_curve_table.csv"
-    csv_path = os.path.join(full_fim_folder, csv_name)
-    ras2cal_csv_output_table.to_csv(csv_path, index=False)
+                # concat the new and the existing
+                ras2cal_points_gdf = pd.concat([existing_points_gdf, new_points_proj_crc],
+                                                ignore_index=True)
+                # Reset index
+                ras2cal_points_gdf.reset_index(drop=True, inplace=True)
+            else:
+                ras2cal_points_gdf = new_points_proj_crc
 
-    # # Write README metadata file
-    # write_metadata_file(# TODO: Decide whether to move this function to this file (preferred?) or call it from the other file or to remove the metadata file all togethr (I don't like that option... I lke the metadata file)
-    #     output_save_subfolder,
-    #     start_time_string,
-    #     nwm_shapes_file,
-    #     hecras_shapes_file,
-    #     metric_file,
-    #     geopackage_name,
-    #     csv_name,
-    #     log_name,
-    #     verbose,
-    # )
-
-    # Do this first.
-    # Using each of the incoming local unit_folder names, strip off the huc number off
-    # the front. See if there are any duplicates. If there are, we have to stop.
-    # We don't have other logic workign in various places yet for duplicate HUCs from units
-
-    # If we don't have dups, no we can process them. FIM now wants seperate HUC folders which for
-    # now are a one-to-one case (unit to HUC)
-
-
-"""
-# -------------------------------------------------
-# def __process_domain_models(local_rel_folder, local_wip_folder):
-
-    # TODO: WIP
-
-    print()
-    print("*** processing domain models")
-
-    output_folder = os.path.join(local_wip_folder, "domain_models")
-    # TODO: incoming files have been renamed.
-    merged_domain_model_file = os.path.join(output_folder, "ras2fim_domain_models.gpkg")
-
-    # ----------------
-    # Copy all domain model geopackages from
-    # the local output unit folders to the ras2release/{rel version}/domain_models folder
-
-    # ----------------
-    # Iterate and join the files
-    model_files = glob.glob(os.path.join(output_folder, "*_models_domain.gpkg"))
-
-    # TODO: This might have to move to Parquet or similar as gpkg have a 2GB limit, in FIM, we have a
-    # parquet file per HUC8. inputs/rating_curve/water_edge_database/calibration_points/
-
-    merged_gkpg_crs = sv.DEFAULT_OUTPUT_CRS
-
-    merged_gkpg = None
-
-    # Add manual tqdm (not multi proc or multi thread)
-    # Iterate through input geopackages and compile them
-    for i in range(len(model_files)):
-        if i == 0:
-            # we have to load the first gkpg directly then concat more after.
-            # Create an empty GeoDataFrame to store the compiled data
-            gkpg_raw = gpd.read_file(model_files[i])
-            merged_gkpg = gkpg_raw.to_crs(merged_gkpg_crs)
-        else:
-            gkpg_raw = gpd.read_file(model_files[i])
-            gkpg_adj = gkpg_raw.to_crs(merged_gkpg_crs)
-            merged_gkpg = pd.concat([merged_gkpg, gkpg_adj], ignore_index=True)
-
-    merged_gkpg.to_file(merged_domain_model_file, driver="GPKG")
-"""
-
-# -------------------------------------------------
-# def __process_models_used():
-#   not sure if we will need this. Likely not
+            # now save it  (yes... for each unit if pre-existing exists)
+            ras2cal_points_gdf.to_file(fim_huc_points_file, driver="GPKG",)
 
 
 # -------------------------------------------------
