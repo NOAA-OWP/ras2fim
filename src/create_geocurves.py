@@ -355,7 +355,7 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     version = sf.get_changelog_version(changelog_path)
     RLOG.lprint("Version found: " + version)
 
-    RLOG.lprint("")
+    print()
     RLOG.lprint("+=================================================================+")
     RLOG.notice("|                   Create GeoCurves                              |")
     RLOG.lprint("+-----------------------------------------------------------------+")
@@ -363,7 +363,7 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     RLOG.lprint(f"  ---(p) ras2fim_huc_dir: {ras2fim_huc_dir}")
     RLOG.lprint(f"  ---(o) overwrite: {overwrite}")
 
-    RLOG.lprint("")
+    print("")
     overall_start_time = datetime.utcnow()
     dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
     RLOG.lprint(f"Started (UTC): {dt_string}")

@@ -14,7 +14,7 @@ import s3_shared_functions as s3_sf
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import shared_variables as sv
-from shared_functions import get_date_with_milli, get_stnd_date
+from shared_functions import get_date_with_milli, get_stnd_date, parse_unit_folder_name
 
 
 # Global Variables
@@ -136,7 +136,7 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name):
     )
 
     # --------------------
-    RLOG.lprint("")
+    print()
     RLOG.lprint("===================================================================")
     RLOG.lprint("Copy to S3 Complete")
     end_time = dt.datetime.utcnow()
@@ -147,7 +147,7 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name):
     time_duration = end_time - start_time
     RLOG.lprint(f"Duration: {str(time_duration).split('.')[0]}")
     print(f"log files saved to {RLOG.LOG_FILE_PATH}")
-    RLOG.lprint("")
+    print()
 
 
 ####################################################################
@@ -200,7 +200,7 @@ def __process_upload(
 
     # ---------------
     # splits it a six part dictionary to be sent into __get_s3_unit_folder_list
-    src_name_dict = s3_sf.parse_unit_folder_name(unit_folder_name)
+    src_name_dict = parse_unit_folder_name(unit_folder_name)
     if "error" in src_name_dict:
         raise Exception(src_name_dict["error"])
 
@@ -225,7 +225,7 @@ def __process_upload(
         # existing_folder_path = f"{sv.S3_RAS_UNITS_OUTPUT_FOLDER}/{s3_existing_folder_name}"
         # eg. outputs_ras2fim/12030105_2276_ble_230303
 
-        existing_name_dict = s3_sf.parse_unit_folder_name(s3_existing_folder_name)
+        existing_name_dict = parse_unit_folder_name(s3_existing_folder_name)
         RLOG.trace(f"s3_existing_folder_name is {s3_existing_folder_name}")
 
         action = ""
@@ -693,7 +693,7 @@ def __get_s3_unit_folder_list(bucket_name, src_name_dict, s3_output_path):
             # if it is valid key, add it to a list. Returns a dict.
             # If it does not match a pattern we want, the first element of the tuple will be
             # the word error, but we don't care. We only want valid huc_crs_date pattern folders.
-            existing_dic = s3_sf.parse_unit_folder_name(key_child_folder)
+            existing_dic = parse_unit_folder_name(key_child_folder)
             if "error" in existing_dic:  # if error exists, just skip this one
                 continue
 
@@ -756,7 +756,7 @@ def __add_record_to_tracker(
         print()
         RLOG.trace(f"Updating the s3 output tracker file at {TRACKER_S3_PATH}")
 
-        orig_folder_dict = s3_sf.parse_unit_folder_name(orig_folder_name)
+        orig_folder_dict = parse_unit_folder_name(orig_folder_name)
 
         # ----------
         # calls over to S3 using the aws creds file even though it doesn't use it directly

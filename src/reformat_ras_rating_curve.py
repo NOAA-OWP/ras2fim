@@ -3,11 +3,8 @@
 import argparse
 import datetime as dt
 import os
-# import shutil
-# import sys
-# import time
+import sys
 import traceback
-# from concurrent.futures import ProcessPoolExecutor 
 from pathlib import Path
 
 import geopandas as gpd
@@ -114,42 +111,14 @@ def write_metadata_file(
             f.write(f"{line}\n")
 
     if verbose is True:
+        print()
         RLOG.debug(f"Metadata README saved to {metadata_path}")
-
-
-# -----------------------------------------------------------------
-# Functions for handling units
-# -----------------------------------------------------------------
-def get_unit_from_string(string):
-    if "meters" in string or "meter" in string or "m" in string or "metre" in string or "metres" in string:
-        return "m"
-    elif "feet" in string or "foot" in string or "ft" in string:
-        return "ft"
-    else:
-        return "UNKNOWN"
-
-
-# -------------------------------------------------
-def feet_to_meters(number):
-    converted_value = number / 3.281  # meter = feet / 3.281
-    return converted_value
-
-
-# -------------------------------------------------
-def meters_to_feet(number):
-    converted_value = number / 0.3048  # feet = meters / 0.3048
-    return converted_value
 
 
 # -----------------------------------------------------------------
 # Reads, compiles, and reformats the rating curve info for all directories 
 # -----------------------------------------------------------------
-def dir_reformat_ras_rc(
-    dir_input_folder_path,
-    location_type,
-    active,
-    verbose,
-):
+def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
     """
     Overview:
 
@@ -162,323 +131,332 @@ def dir_reformat_ras_rc(
           exist in the output folder. If there is a need to keep the existing main outputs, use a different
           output folder. # TODO: Update once I've finalized functionality
 
-
-    Parameters (required):
-
-    - dir_input_folder_path: (str) local filepath for folder containing input ras2fim models for the HUC
-      (optional arguments set in __main__ or defaults C:\ras2fim_data\output_ras2fim ) 
-
-    - location_type: (str) optional input value for the "location_type" output column (i.e. "", "USGS", "IFC")
-
+    Inputs:
+    - src_unit_dir_path: e.g. C:\ras2fim_data\output_ras2fim\12040101_102739_ble_230922
     - active: (str) optional input value for the "active" column (i.e. "", "True", "False")
-
     - verbose: (bool) option to run verbose code with a lot of print statements (optional argument set in __main__)
 
     """
 
+    arg_values = locals().copy()
+
     # Create empty output log
-    RLOG.lprint("")
+    print()
     overall_start_time = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
-    RLOG.lprint(f"Started (UTC): {dt_string}")
 
-    if verbose is True:
-        print()
-        RLOG.debug("======================")
-        RLOG.debug(f"Directory: {dir_input_folder_path}")
-        print()
+    print()
+    RLOG.lprint("+=================================================================+")
+    RLOG.notice("                   Reformat Rating Curves                        ")
+    RLOG.lprint(f"--- (-s) ras2fim_huc_dir: {src_unit_dir_path}")
+    RLOG.lprint(f"--- (-a) active: {active}")
+    RLOG.lprint(f"--- (-v) is verbose: {str(verbose)}")    
+    RLOG.lprint(f"  Started (UTC): {dt_string}")
 
-    nwm_shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF  # "02_shapes_from_conflation"
-    hecras_shapes_file = sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS  # "01_shapes_from_hecras"
-    metric_file = sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES  # "06_xxx folder"
-    intermediate_filename = sv.R2F_OUTPUT_DIR_RAS2CALIBRATION
-    int_output_table_label = sv.R2F_OUTPUT_FILE_RAS2CAL_CSV # formerly "ras2calibration_output_table.csv"
-    int_output_geopackage_label = sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG # formerly "ras2calibration_output_geopackage.gpkg" 
+    # --------------------
+    # validate input variables and setup key variables
+    # NOTE: for now.. not all key variables are being setup, migth move some later.
+    __validate_input(**arg_values)
+
+    # ---------------
+    # splits it a six part dictionary, we don't use all here
+    src_name_dict = sf.parse_unit_folder_name(src_unit_dir_path)
+    if "error" in src_name_dict:
+        raise Exception(src_name_dict["error"])    
+    
+    huc8 = src_name_dict["key_huc"]
+    source_code = src_name_dict["key_source_code"]
+
+    # -----------------------------------------------------------------------------------------
+    # Manually build filepaths for the geospatial data
+    nwm_streams_folder_path = os.path.join(src_unit_dir_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
+    hecras_shapes_dir_path = os.path.join(src_unit_dir_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS)
+    ratings_curves_dir_name = os.path.join(src_unit_dir_path, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES)
+    ref_rc_output_dir_path = os.path.join(src_unit_dir_path,
+                                          sv.R2F_OUTPUT_DIR_FINAL,
+                                          sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
+    output_table_file_path = os.path.join(ref_rc_output_dir_path, sv.R2F_OUTPUT_FILE_RAS2CAL_CSV)
+    output_gpkg_file_path = os.path.join(ref_rc_output_dir_path, sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG)
+
+    nwm_all_lines_filename = huc8 + "_nwm_streams_ln.shp"
+    nwm_all_lines_filepath = os.path.join(nwm_streams_folder_path, nwm_all_lines_filename)
+    if not os.path.exists(nwm_all_lines_filepath):
+        RLOG.critical(f"Error: No file at {nwm_all_lines_filepath}")
+        sys.exit(1)
+
+    hecras_crosssections_filename = "cross_section_LN_from_ras.shp"
+    hecras_crosssections_filepath = os.path.join(hecras_shapes_dir_path, hecras_crosssections_filename)
+    if not os.path.exists(hecras_crosssections_filepath):
+        RLOG.critical(f"Error: No file at {hecras_crosssections_filepath}")
+        sys.exit(1)
+
+    # ---------------------------------------------------------------------------------
+    # Get ras2fim version and assign to 'source' variable
+    changelog_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), os.pardir, 'doc', 'CHANGELOG.md')
+    )
+    ras2fim_version = sf.get_changelog_version(changelog_path)
+    source = "ras2fim_" + ras2fim_version
 
     # ---------------------------------------------------------------------------------------------
     # Retrieve information from `run_arguments.txt` file
-
-    # Read run_arguments.txt file
-    run_arguments_filepath = os.path.join(dir_input_folder_path, "run_arguments.txt")
-
-    # Open the file and read all lines from the file
+    # Open the unit run_argsments.text file and read all lines from the file
     try:
+        run_arguments_filepath = os.path.join(src_unit_dir_path, "run_arguments.txt")        
         with open(run_arguments_filepath, "r") as file:
-            lines = file.readlines()
-    except Exception as ex:
-        RLOG.error(f"Unable to open run_arguments.txt, skipping directory {dir_input_folder_path}.")
-        RLOG.error(f"\n details: {ex}")
-        lines = None
+            run_args_file_lines = file.readlines()
+    except Exception:
+        RLOG.error(f"Unable to open run_arguments.txt, skipping directory {src_unit_dir_path}.")
+        RLOG.critical(traceback.format_exc())
+        sys.exit(1)
 
-    # Continue with the processing if the filepath exists 
-    # (which is the way of testing which folders are ras2fim outputs)
-    if lines != None:
-
-        # Search for and extract the model unit and projection from run_arguments.txt
-        for line in lines:
-            if "model_unit ==" in line:
-                model_unit = line.split("==")[1].strip()
-            elif "huc8 ==" in line:
-                huc8 = line.split("==")[1].strip()
-            elif "proj_crs ==" in line:
+    proj_crs = ""
+    if run_args_file_lines != None:
+        # Search for and extract the projection from run_arguments.txt
+        # only looking for one value at this time, in full form:  ie) EPSG:2277
+        for line in run_args_file_lines:
+            if "proj_crs ==" in line:
                 proj_crs = line.split("==")[1].strip()
+                break
 
-        # Standardize the model unit and output unit
-        model_unit = get_unit_from_string(model_unit)
+    if proj_crs == "":
+        RLOG.critical("Unable to find the 'proc_crs' variable value in the run_arguments.txt file")
+        sys.exit(1)
 
-        if verbose is True:
-            RLOG.debug(
-                f"Model settings: model_unit {model_unit} | huc8: {huc8} | proj_crs: {proj_crs}"
-            )
+    # e.g. C:\ras2fim_data\output_ras2fim\12030106_2276_ble_240224\ras2calibation
+    if not os.path.exists(ref_rc_output_dir_path):
+        os.mkdir(ref_rc_output_dir_path)
 
-        # Create intermediate output file within directory (only if the run_arguments.txt folder is there)
-        if lines is not None:
-            intermediate_filepath = os.path.join(dir_input_folder_path, intermediate_filename)
-            if not os.path.exists(intermediate_filepath):
-                os.mkdir(intermediate_filepath)
+    # -----------------------------------------------------------------------------------------
+    # Intersect NWM lines and HEC-RAS crosssections to get the points
+    # (but keep the metadata from the HEC-RAS cross-sections)
+    print()
+    RLOG.notice("** Reading shapefiles and generating cross section/streamline intersection points ...")
+    RLOG.lprint(f"-- Reading {hecras_crosssections_filepath}")
+    # Read shapefiles
+    hecras_crosssections_shp = gpd.read_file(hecras_crosssections_filepath)
 
-        # -----------------------------------------------------------------------------------------
-        # Manually build filepaths for the geospatial data
+    # Iterate over rows usign the full pathed ras_path column, extracting
+    # the parent folder name from each row.        
+    # C:\ras2fim_data\OWP_ras_models\models-12030106-small\
+    # 1291898_UNT705 in EFT Watershed_g01_1701646099\UNT705 in EFT Watershed.g01
+    # becomes: 1291898_UNT705 in EFT Watershed_g01_1701646099
+    # Create the empty colummn first
+    hecras_crosssections_shp["ras_model_dir"] = ""
 
-        # root_dir = os.path.join(input_folder_path, dir)
-        root_dir = dir_input_folder_path  # TODO: clean up
+    for i in range(len(hecras_crosssections_shp)):
+        orig_src_model_path = hecras_crosssections_shp.at[i, "ras_path"]
+        orig_src_model_folder_name = os.path.basename(os.path.dirname(orig_src_model_path))
+        hecras_crosssections_shp.at[i, "ras_model_dir"] = orig_src_model_folder_name
 
-        nwm_all_lines_filename = huc8 + "_nwm_streams_ln.shp"
-        nwm_all_lines_filepath = os.path.join(root_dir, nwm_shapes_file, nwm_all_lines_filename)
+    RLOG.lprint(f"-- Reading {nwm_all_lines_filepath}")
+    nwm_all_lines_shp = gpd.read_file(nwm_all_lines_filepath)
 
-        hecras_crosssections_filename = "cross_section_LN_from_ras.shp"
-        hecras_crosssections_filepath = os.path.join(
-            root_dir, hecras_shapes_file, hecras_crosssections_filename
-        )
+    # Apply shapefile projection
+    hecras_crosssections_shp.crs = proj_crs
+    nwm_all_lines_shp.crs = proj_crs
 
-        if not os.path.exists(nwm_all_lines_filepath):
-            msg = f"Error: No file at {nwm_all_lines_filepath}"
-            RLOG.warning(msg)
+    # Find intersections
+    intersections = gpd.overlay(
+        nwm_all_lines_shp, hecras_crosssections_shp, how="intersection", keep_geom_type=False
+    )
 
-        if not os.path.exists(hecras_crosssections_filepath):
-            msg = f"Error: No file at {hecras_crosssections_filepath}"
-            RLOG.warning(msg)
+    # Create a GeoDataFrame for the intersection points
+    intersection_gdf = gpd.GeoDataFrame(geometry=intersections.geometry, crs=nwm_all_lines_shp.crs)
 
-        # -----------------------------------------------------------------------------------------
-        # Intersect NWM lines and HEC-RAS crosssections to get the points
-        # (but keep the metadata from the HEC-RAS cross-sections)
+    # Append attribute table of hecras_crosssections_shp to intersection_points_gdf
+    # and fix data type for stream_stn
+    intersection_gdf = intersection_gdf.join(intersections.drop(columns="geometry"))
+    intersection_gdf = intersection_gdf.astype({"stream_stn": "int"})
 
-        if verbose is True:
-            RLOG.debug("")
-            RLOG.debug("Reading shapefiles and generating crosssection/streamline intersection points ...")
+    # Combined feature ID and HECRAS cross-section ID to make a new ID (e.g. 5791000_189926)
+    intersection_gdf["fid_xs"] = (
+        intersection_gdf["feature_id"].astype(str) + "_" + intersection_gdf["stream_stn"].astype(str)
+    )
 
-        # Read shapefiles
-        hecras_crosssections_shp = gpd.read_file(hecras_crosssections_filepath)
-        nwm_all_lines_shp = gpd.read_file(nwm_all_lines_filepath)
+    # Add necessary columns to the intersections ge
+    intersection_gdf["location_type"] = source_code
+    intersection_gdf["source"] = source
+    intersection_gdf["timestamp"] = dt_string
+    intersection_gdf["active"] = active
+    intersection_gdf["flow_units"] = "cfs"
+    intersection_gdf["wse_units"] = "ft"
 
-        # Get ras_model_dir from the hecras_crosssections_shp
-        ras_path_list = list(hecras_crosssections_shp["ras_path"])
+    # we have some columns we don't need.
+    intersection_gdf.drop(['ras_path_1', 'ras_path_2', 'huc12', 'huc10'], axis=1, inplace=True)
 
-        ras_dir_list = []
-        for path in ras_path_list:
-            ras_dir = os.path.basename(os.path.dirname(path))
-            ras_dir_list.append(ras_dir)
+    # Reproject intersection_gdf_all to output SRC
+    shared_variables_crs = sv.DEFAULT_RASTER_OUTPUT_CRS
+    intersection_prj_gdf = intersection_gdf.to_crs(shared_variables_crs)
 
-        hecras_crosssections_shp["ras_model_dir"] = ras_dir_list
+    # Save points geopackage
+    try:
+        intersection_prj_gdf.to_file(output_gpkg_file_path, driver="GPKG",)
+        print()
+        RLOG.lprint(f"HECRAS-NWM intersection points geopackage saved as {output_gpkg_file_path}.")
+    except Exception as ex:
+        RLOG.critical("Unable to save HEC-RAS points geopackage.")
+        RLOG.critical(traceback.format_exc())
+        sys.exit(1)
 
-        # Apply shapefile projection
-        hecras_crosssections_shp.crs = proj_crs
-        nwm_all_lines_shp.crs = proj_crs
 
-        # Find intersections
-        intersections = gpd.overlay(
-            nwm_all_lines_shp, hecras_crosssections_shp, how="intersection", keep_geom_type=False
-        )
+    # -----------------------------------------------------------------------------------------
+    # Get compiled rating curves from unit rating curves folder (06...)
 
-        # Create a GeoDataFrame for the intersection points
-        intersection_gdf = gpd.GeoDataFrame(geometry=intersections.geometry, crs=nwm_all_lines_shp.crs)
+    # At this point we have a df that is an intersected from 
+    #     01_shapes_from_hecras\cross_section_LN_from_ras.shp and
+    #     02_csv_shapes_from_conflation\[huc8 number]_nwm_streams_ln.shp
+    # Now we need to iterate through all RC paths which are multiple all_xs_info_fid_*
+    # 06_create_rating_curves\10008_UNT 013 IN BCTR\Rating_Curve\all_xs_info_fid_1484758.csv
+    # Will merge it to the new intersection_gdf
 
-        # Append attribute table of hecras_crosssections_shp to intersection_points_gdf
-        # and fix data type for stream_stn
-        intersection_gdf = intersection_gdf.join(intersections.drop(columns="geometry"))
-        intersection_gdf = intersection_gdf.astype({"stream_stn": "int"})
+    RLOG.notice("** Processing model ratings curves")
+
+    rc_path_list = list(Path(ratings_curves_dir_name).rglob("all_xs_info_fid_*"))
+    if len(rc_path_list) == 0:
+        RLOG.critial("ERROR: No 'all_xs_info_fid_*' files found in rating curve path list.")
+        sys.exit(1)
+
+    for i in range(len(rc_path_list)):
+        rc_path = rc_path_list[i]
+
+        parent_dir = os.path.dirname(rc_path).split("\\")[-1]
+        file_name = os.path.basename(rc_path)
+        file_and_parent = parent_dir + "\\" + file_name
+        RLOG.lprint(f"-- Processing: {file_and_parent}")
+
+        # ---------------------------------------------------------------------------------
+        # Read compiled rating curve and append huc8 from intersections
+        try:
+            rc_df = pd.read_csv(rc_path)
+        except Exception:
+            RLOG.critical(f"Unable to read rating curve at path {rc_path}")
+            RLOG.critical(traceback.format_exc())
+            sys.exit(1)
 
         # Combined feature ID and HECRAS cross-section ID to make a new ID (e.g. 5791000_189926)
-        intersection_gdf["fid_xs"] = (
-            intersection_gdf["feature_id"].astype(str) + "_" + intersection_gdf["stream_stn"].astype(str)
+        rc_df["fid_xs"] = (
+            rc_df["feature_id"].astype(str) + "_" + rc_df["Xsection_name"].astype(str)
         )
-    
-        # -----------------------------------------------------------------------------------------
-        # Get compiled rating curves from metric folder
-        
-        metric_path = os.path.join(dir_input_folder_path, metric_file)
-        rc_path_list = list(Path(metric_path).rglob("all_xs_info_fid_*"))
 
-        if len(rc_path_list) == 0:
-            log = "ERROR: No paths in rating curve path list. "
-            RLOG.warning(log)
-            rc_path = ''
-        
+        # Join some of the geospatial data to the rc_df data 
+        # this is for the csv, but not the gpkg
+        rc_geospatial_df = pd.merge(
+            rc_df,
+            intersection_gdf[["fid_xs", "huc8", "ras_model_dir"]],
+            left_on="fid_xs",
+            right_on="fid_xs",
+            how="inner",
+        )
+
+        # Check that merge worked
+        if len(rc_geospatial_df) == 0: 
+            msg = f"No rows survived the merge of rc_geospatial with the rating curve rows for {rc_path}."
+            RLOG.critical(msg)
+            sys.exit(1)
+
+        # rlog.trace('text') ## goes to the log file but doesn't print!!
+
+        # print("len(rc_df): ") ## debug
+        # print(len(rc_df)) ## debug
+        # print() ## debug
+        # print('rc_df') ## debug
+        # print(rc_df["fid_xs"]) ## debug
+        # print() ## debug
+        # print('intersection_gdf') ## debug
+        # print(intersection_gdf["fid_xs"]) ## debug
+        # print() ## debug
+
+        rc_geospatial_df = rc_geospatial_df.astype({"huc8": "object"})
+
+        # ---------------------------------------------------------------------------------
+        # Build output table
+
+        # Assemble output table
+        # Ensure the "source" column always has the phrase 'ras2fim' in it somewhere (fim needs it)
+        dir_output_table = pd.DataFrame(
+            {
+                "fid_xs": rc_geospatial_df["fid_xs"],
+                "feature_id": rc_geospatial_df["feature_id"],
+                "xsection_name": rc_geospatial_df["Xsection_name"], # used to be Xsection_name
+                "flow": rc_geospatial_df["discharge_cfs"],
+                "wse": rc_geospatial_df["wse_ft"], # used to be wse_m
+                "flow_units": "cfs",  # str
+                "wse_units": "ft",  # str # used to be m
+                "flow_cms": rc_geospatial_df["discharge_cfs"] * 0.3048,
+                "wse_m": rc_geospatial_df["wse_ft"] * 0.3048,
+                "location_type": source_code,  # str
+                "source": source,  # str
+                "timestamp": dt_string,  # str
+                "active": active,  # str
+                "huc8": rc_geospatial_df["huc8"],  # str
+                "ras_model_dir": rc_geospatial_df["ras_model_dir"],  # str
+            }
+        )
+
+        # Append to output objects (both the csv and the points gpkg)
+        if i == 0:
+            dir_output_table_all = dir_output_table
         else:
-            # Iterate through all RC paths
-            for i in range(len(rc_path_list)):
-                rc_path = rc_path_list[i]
-
-                if os.path.isfile(rc_path) is False:
-                    RLOG.warning(f"No rating curve file available for {dir_input_folder_path}, skipping this directory.")
-                    continue
-
-                # ---------------------------------------------------------------------------------
-                # Read compiled rating curve and append huc8 from intersections
-                try:
-                    rc_df = pd.read_csv(rc_path)
-                except Exception as ex:
-                    msg = f"Unable to read rating curve at path {rc_path}"
-                    RLOG.warning(msg + f"\n details: {ex}")
+            dir_output_table_all  = pd.concat([dir_output_table_all, dir_output_table])
 
 
-                # Combined feature ID and HECRAS cross-section ID to make a new ID (e.g. 5791000_189926)
-                rc_df["fid_xs"] = (
-                    rc_df["feature_id"].astype(str) + "_" + rc_df["Xsection_name"].astype(str)
-                )
+    # -------------------------------------------------------------------------------------
+    # Save output table for directory
+    dir_output_table_all.to_csv(output_table_file_path, index=False)
+    print()
+    RLOG.lprint(f"reformat csv output table saved as {output_table_file_path}.")
+    
+    # Get timestamp for metadata
+    start_time_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    int_log_label = 'none'
 
-                # Join some of the geospatial data to the rc_df data 
-                # TODO: Check that this is merging in the correct direction
-                rc_geospatial_df = pd.merge(
-                    rc_df,
-                    intersection_gdf[["fid_xs", "huc8", "ras_model_dir"]],
-                    left_on="fid_xs",
-                    right_on="fid_xs",
-                    how="inner",
-                )
+    # Write README metadata file for the intermediate file
+    write_metadata_file(
+        ref_rc_output_dir_path,
+        start_time_string,
+        nwm_streams_folder_path,
+        hecras_shapes_dir_path,
+        ratings_curves_dir_name,
+        output_gpkg_file_path,
+        output_table_file_path,
+        int_log_label,
+        verbose,
+    )
 
-                # Check that merge worked
-                if len(rc_geospatial_df) == 0: 
-                    msg = f"No rows survived the merge of rc_geospatial with the rating curve rows for {rc_path}."
-
-                    # rlog.trace('text') ## goes to the log file but doesn't print!!
-
-                    # print("len(rc_df): ") ## debug
-                    # print(len(rc_df)) ## debug
-                    # print() ## debug
-                    # print('rc_df') ## debug
-                    # print(rc_df["fid_xs"]) ## debug
-                    # print() ## debug
-                    # print('intersection_gdf') ## debug
-                    # print(intersection_gdf["fid_xs"]) ## debug
-                    # print() ## debug
-
-                    RLOG.warning(msg)
-
-                rc_geospatial_df = rc_geospatial_df.astype({"huc8": "object"})
+    print()
+    RLOG.success("Complete")
+    end_time = dt.datetime.utcnow()
+    dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    RLOG.lprint(f"Ended : {dt_string}")
+    time_duration = end_time - overall_start_time
+    RLOG.lprint(f"Duration: {str(time_duration).split('.')[0]}")
+    print(f"log files saved to {RLOG.LOG_FILE_PATH}")    
+    print()
 
 
+# -------------------------------------------------
+#  Some validation of input, but also creating key variables ######
+def __validate_input(src_unit_dir_path, active, verbose):
+    # Some variables need to be adjusted and some new derived variables are created
+    # dictionary (key / pair) will be returned
+    # Note: No return at this time, but most scripts using this pattern do and 
+    # this one might later.
 
-                # ---------------------------------------------------------------------------------
-                # Get ras2fim version and assign to 'source' variable
+    #rtn_dict = {}
 
-                changelog_path = os.path.abspath(
-                    os.path.join(os.path.dirname(__file__), os.pardir, 'doc', 'CHANGELOG.md')
-                )
-                ras2fim_version = sf.get_changelog_version(changelog_path)
-                source = "ras2fim_" + ras2fim_version
+    # ---------------
+    # why is this here? might not come in via __main__
+    if src_unit_dir_path == "":
+        raise ValueError("Source src_unit_dir_path (-s) parameter value can not be empty")
 
-                # ---------------------------------------------------------------------------------
-                # Build output table
+    if not os.path.exists(src_unit_dir_path):
+        raise ValueError(f"Source unit folder not found at {src_unit_dir_path}")
 
-                # Get a current timestamp
-                timestamp = dt.datetime.utcnow()
+    # no need to return src_unit_dir_path back
 
-                # Assemble output table
-                # Ensure the "source" column always has the phrase 'ras2fim' in it somewhere (fim needs it)
-                dir_output_table = pd.DataFrame(
-                    {
-                        "fid_xs": rc_geospatial_df["fid_xs"],
-                        "feature_id": rc_geospatial_df["feature_id"],
-                        "xsection_name": rc_geospatial_df["Xsection_name"], # used to be Xsection_name
-                        "flow": rc_geospatial_df["discharge_cfs"],
-                        "wse": rc_geospatial_df["WSE_Feet"], # used to be wse_m
-                        "flow_units": "cfs",  # str
-                        "wse_units": "ft",  # str # used to be m
-                        "location_type": location_type,  # str
-                        "source": source,  # str
-                        "timestamp": timestamp,  # str
-                        "active": active,  # str
-                        "huc8": rc_geospatial_df["huc8"],  # str
-                        "ras_model_dir": rc_geospatial_df["ras_model_dir"],  # str
-                    }
-                )
-
-                # Add necessary columns to the intersections geopackage
-                intersection_gdf["location_type"] = location_type
-                intersection_gdf["source"] = source
-                intersection_gdf["timestamp"] = timestamp
-                intersection_gdf["active"] = active
-                intersection_gdf["flow_units"] = "cms"
-                intersection_gdf["wse_units"] = "m"
-
-                # Append to output objects
-                if i == 0:
-                    dir_output_table_all = dir_output_table
-                    intersection_gdf_all = intersection_gdf
-                else:
-                    dir_output_table_all  = pd.concat([dir_output_table_all, dir_output_table])
-                    intersection_gdf_all = pd.concat([intersection_gdf_all, intersection_gdf], ignore_index=True)
-
-            # -------------------------------------------------------------------------------------
-            # Export dir_output_table_all and intersection_gdf_all to the directory
-
-            # Write filepath for geopackage
-            dir_output_geopackage_filepath = os.path.join(intermediate_filepath, int_output_geopackage_label)
-
-            # Reproject intersection_gdf_all to output SRC
-            shared_variables_crs = sv.DEFAULT_RASTER_OUTPUT_CRS
-            intersection_prj_gdf = intersection_gdf_all.to_crs(shared_variables_crs)
-
-            # Save directory geopackage
-            try:
-                intersection_prj_gdf.to_file(dir_output_geopackage_filepath, driver="GPKG")
-                if verbose is True:
-                    RLOG.debug("HECRAS-NWM intersection geopackage saved.")
-            except Exception as ex:
-                msg = "Unable to save HEC-RAS points geopackage."
-                RLOG.warning(msg)
-                RLOG.warning(f"\n details: {ex}")
-
-            # Save output table for directory
-            dir_output_table_filename = int_output_table_label
-            dir_output_table_filepath = os.path.join(intermediate_filepath, dir_output_table_filename)
-            dir_output_table_all.to_csv(dir_output_table_filepath, index=False)
-
-            if verbose is True:
-                RLOG.debug("")
-                RLOG.debug(f"Saved directory outputs for {dir_input_folder_path}.")
-
-            # Get timestamp for metadata
-            start_time_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
-            int_log_label = 'none'
-
-            # Write README metadata file for the intermediate file
-            write_metadata_file(
-                intermediate_filepath,
-                start_time_string,
-                nwm_shapes_file,
-                hecras_shapes_file,
-                metric_file,
-                int_output_geopackage_label,
-                int_output_table_label,
-                int_log_label,
-                verbose,
-            )
-
-            if verbose is True:
-                RLOG.debug(f"Saved metadata to {intermediate_filepath}.")
-
-        RLOG.success("Complete")
-        end_time = dt.datetime.utcnow()
-        dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
-        RLOG.lprint(f"Ended : {dt_string}")
-        time_duration = end_time - overall_start_time
-        RLOG.lprint(f"Duration: {str(time_duration).split('.')[0]}")
-        RLOG.lprint("")
-
-
-
+    # TODO: NTH, can move some to the derived varaibles into it from the dir_reformat_ras_rc function
+    # but we don't need to.
 
 
 # -------------------------------------------------
@@ -486,23 +464,12 @@ if __name__ == "__main__":
     """
     Sample usage:
 
-    # Recommended parameters:
-    python reformat_ras_rating_curve.py
-        -p 'C:/ras2fim_data/output_ras2fim' -u '12090301_2277_ble_240207' -v 
-
     # Minimalist run (all defaults used):
-    python reformat_ras_rating_curve.py
-
-    # Input the data location type, and active information using the -l, and -a flags:
-    python reformat_ras_rating_curve.py
-        -p 'C:/ras2fim_data/output_ras2fim' -v -l "USGS" -a "True"
+    python reformat_ras_rating_curve.py -s C:\ras2fim_data\output_ras2fim\12030106_2276_ble_240224
 
     Notes:
        - Required arguments: None
-       - Optional arguments: -u     unit folders to run reformat ras rating curves on (defaults to all units in the folder)
-                             -p     filepath of ras2fim outputs (defaults to c:\ras2fim_data\output_ras2fim)
-                             -v     verbose (to make verbose, put -v in the command) 
-                             -l     value to use for the "location_type" output column (i.e. "USGS", "IFC"; defaults to "")
+       - Optional arguments: -v     verbose (to make verbose, put -v in the command) 
                              -a     value for the "active" column (i.e. "True", "False", ""; defaults to "")
 
     """
@@ -517,27 +484,15 @@ if __name__ == "__main__":
         description="Reformat the ras2fim rating curve outputs to be used in HAND FIM calibration."
     )
 
-    parser.add_argument( 
-        "-u",
-        "--unit_names",
-        help="OPTIONAL: By default, all unit folders from the input folder.\n"
-        " However, you list one or many unit names if you want to reformat rating curves for just a few"
-        " based on just the selected units.\n"
-        " e.g.  -u '12030101_2276_ble_230925' '12090301_2277_ble_230923'"
-        " (each with quotes and a space) between the values.",
-        required=False,
-        default = [],
+    parser.add_argument(
+        "-s",
+        "--src_unit_dir_path",
+        help="REQUIRED: A full defined path including output unit folder.\n"
+        r" ie) c:\my_ras\output\12030202_102739_ble_230810",
+        required=True,
+        metavar="",
     )
 
-    parser.add_argument(
-        "-p",
-        "--path_to_input_folder",
-        help=f"OPTIONAL (case-sensitive): local filepath to where the ras2fim unit output folders are located. "
-        " e.g. -p C:\ras2fim_data\output_ras2fim \n "
-        f" Defaults to {sv.R2F_DEFAULT_OUTPUT_MODELS}",
-        required=False,
-        default=sv.R2F_DEFAULT_OUTPUT_MODELS,
-    )
     parser.add_argument(
         "-v",
         "--verbose",
@@ -546,13 +501,7 @@ if __name__ == "__main__":
         default=False,
         action="store_true",
     )
-    parser.add_argument(
-        "-l",
-        "--location-type",
-        help='OPTIONAL: Input a value for the "location_type" output column (i.e. "USGS", "IFC").',
-        required=False,
-        default="",
-    )
+
     parser.add_argument(
         "-a",
         "--active",
@@ -561,15 +510,8 @@ if __name__ == "__main__":
         default="",
     )
 
-
     # Assign variables from arguments
     args = vars(parser.parse_args())
-    unit_names=args["unit_names"]
-    input_folder_path = args["path_to_input_folder"]
-    location_type = str(args["location_type"])
-    active = str(args["active"])
-    verbose = bool(args["verbose"])
-
     
     try:
         # Catch all exceptions through the script if it came
@@ -578,88 +520,16 @@ if __name__ == "__main__":
         # Otherwise, the script calling one of the functions in here is assumed
         # to have setup the logger.
 
+        src_unit_dir_path=args["src_unit_dir_path"]
+        parent_dir = os.path.dirname(src_unit_dir_path)
+        log_file_folder = os.path.join(parent_dir, "logs")
 
         # Creates the log file name as the script name and assumes RLOG has been added as a global var.
         script_file_name = os.path.basename(__file__).split('.')[0]
-        
-        log_file_folder = os.path.join(input_folder_path, "logs") # TODO: Update this
-        RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
-
-        # Get all files from dir
-        all_folders = []
-        for filepath in os.listdir(input_folder_path):
-            all_folders.append(filepath)
-
-        # Compile input directory list
-        if len(unit_names) == 0:
-            dirlist = all_folders
-        else:
-            dirlist = [filepath for filepath in all_folders if any(unit in filepath for unit in unit_names)]
-
-        # Run reformat ras rating curves function
-        for dir in dirlist:
-            unit_output_path = os.path.join(input_folder_path, dir)
-            
-            # log_file_folder = os.path.join(unit_output_path, "logs")
-            # RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
-
-            dir_reformat_ras_rc(unit_output_path, location_type, active, verbose, )
-
-    except Exception:
-        RLOG.critical(traceback.format_exc())
-
-
-
-# TODO: Rob should we remove this? 
-# TODO: Finish changing this script to be testable by one unit folder dir_reformat_ras_rc function
-
-"""
-    parser = argparse.ArgumentParser(
-        description="========== Process calibration for a single unit =========="
-    )
-
-    parser.add_argument(
-        "-o",
-        dest="output_folder_path",
-        help="REQUIRED: full path to the output unit folder",
-        required=True,
-        metavar="",
-        type=str,
-    )
-
-    args = vars(parser.parse_args())
-    output_folder_path = args["output_folder_path"]
-
-    
-    log_file_folder = os.path.join(args["output_folder_path"], "test_reformat_rc_logs")
-    try:
-        # Catch all exceptions through the script if it came
-        # from command line.
-        # Note.. this code block is only needed here if you are calling from command line.
-        # Otherwise, the script calling one of the functions in here is assumed
-        # to have setup the logger.
-
-        # creates the log file name as the script name
-        script_file_name = os.path.basename(__file__).split('.')[0]
-        # Assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 
         # call main program
-        dir_reformat_ras_rc(
-            output_folder_path,
-            sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
-            sv.R2F_OUTPUT_FILE_RAS2CAL_CSV,
-            sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG,
-            sv.R2F_OUTPUT_FILE_RAS2CAL_LOG,
-            "",
-            "",
-            False,
-            sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF,
-            sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS,
-            sv.R2F_OUTPUT_DIR_METRIC,
-            )
+        dir_reformat_ras_rc(**args)
 
     except Exception:
         RLOG.critical(traceback.format_exc())
-
-"""
