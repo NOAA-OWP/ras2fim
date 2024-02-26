@@ -216,7 +216,8 @@ def fn_create_rating_curves(huc8, path_unit_folder):
         mid_x_sections_info = mid_x_sections_info.rename(columns={'Unnamed: 0': 'xs_counter'})
         mid_x_sections_info_fid = pd.concat(
             [
-                mid_x_sections_info[["mid_xs", "model_id", "xs_counter"]],
+                mid_x_sections_info["mid_xs"],
+                mid_x_sections_info[["model_id", "xs_counter"]].astype(int),
                 df_XS_name["Xsection_name"],
                 mid_x_sections_info[["discharge", "wse", "max_depth"]],
                 df_mid_fid,
@@ -275,9 +276,11 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             xs_ds_fid = fid_mid_x_sections_info_lst['Xsection_name']
             xs_ds_fid = pd.DataFrame(xs_ds_fid).rename(columns={'Xsection_name': 'xs_ds'})
 
-            fid_mid_x_sections_info_src = fid_mid_x_sections_info_avr[['model_id', 'wse', 'discharge', 'max_depth']]
+            model_id2 = fid_mid_x_sections_info_avr['model_id'].astype(int)
+
+            fid_mid_x_sections_info_src = fid_mid_x_sections_info_avr[['wse', 'discharge', 'max_depth']]
             fid_mid_x_sections_info_src = pd.concat(
-                [fid_mid_x_sections_info_src, xs_us_fid, xs_ds_fid], axis=1
+                [model_id2,fid_mid_x_sections_info_src, xs_us_fid, xs_ds_fid], axis=1
             )
 
             str_file_name = str_feature_id + "_rating_curve.png"
