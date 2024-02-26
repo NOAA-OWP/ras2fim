@@ -596,7 +596,6 @@ def parse_unit_folder_name(unit_folder_name):
         path_split = unit_folder_name.split("/")
         unit_folder_name = path_split[-1]
 
-
     # The best see if it has an underscore in it, split if based on that, then
     # see the first chars are an 8 digit number and that it has three underscores (4 segs)
     # and will split it to a list of tuples

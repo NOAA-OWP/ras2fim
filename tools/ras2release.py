@@ -8,8 +8,8 @@ import sys
 import traceback
 
 import colored as cl
-import pandas as pd
 import geopandas as gpd
+import pandas as pd
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
@@ -27,13 +27,16 @@ RLOG = sv.R2F_LOG
 # file or something so that each package can read it to figure out what files/ folders it needs.
 # Alot of hardcoding of folders in here, but that is plenty good enough for now.
 
+
 # -------------------------------------------------
-def create_ras2release(release_name,
-                       local_ras2release_path,
-                       s3_path_to_output_folder,
-                       s3_ras2release_path,
-                       skip_save_to_s3,
-                       unit_names):
+def create_ras2release(
+    release_name,
+    local_ras2release_path,
+    s3_path_to_output_folder,
+    s3_ras2release_path,
+    skip_save_to_s3,
+    unit_names,
+):
     """
     # TODO - WIP
     Processing:
@@ -78,11 +81,9 @@ def create_ras2release(release_name,
 
     # validate input variables and setup key variables
     # rd = Variables Dictionary
-    rd = __validate_input(release_name,
-                          s3_path_to_output_folder,
-                          s3_ras2release_path,                          
-                          local_ras2release_path,                          
-                          skip_save_to_s3)
+    rd = __validate_input(
+        release_name, s3_path_to_output_folder, s3_ras2release_path, local_ras2release_path, skip_save_to_s3
+    )
 
     local_rel_folder = rd["local_target_rel_path"]
     local_rel_units_folder = os.path.join(local_rel_folder, "units")
@@ -91,10 +92,9 @@ def create_ras2release(release_name,
 
     print()
     RLOG.lprint(f"Started (UTC): {dt_string}")
-    local_unit_folders = __download_units_from_s3(s3_unit_output_bucket_name,
-                                                  s3_unit_output_folder,
-                                                  local_rel_units_folder,
-                                                  unit_names)
+    local_unit_folders = __download_units_from_s3(
+        s3_unit_output_bucket_name, s3_unit_output_folder, local_rel_units_folder, unit_names
+    )
 
     __create_hydrovis_package(local_rel_folder, local_unit_folders)
 
@@ -117,10 +117,7 @@ def create_ras2release(release_name,
 
 
 # -------------------------------------------------
-def __download_units_from_s3(bucket,
-                             s3_path_to_output_folder,
-                             local_rel_units_folder,
-                             unit_names):
+def __download_units_from_s3(bucket, s3_path_to_output_folder, local_rel_units_folder, unit_names):
     """
     Process:
         - Get a list of the output units folder (without the "final" subfolder).
@@ -131,7 +128,7 @@ def __download_units_from_s3(bucket,
         - bucket: ras2fim-dev
         - s3_path_to_output_folder: e.g. output_ras2fim
         - local_rel_units_folder: e.g. c:/my_ras2fim_dir/ras2fim_releases/r102-test/units
-        - unit_names: 
+        - unit_names:
             - e.g. []  or ["12090301_2277_ble_230923", "12030101_2276_ble_230925", etc]
     Output:
         - returns a list of full pathed local unit folders that are still valid and have not failed:
@@ -156,7 +153,7 @@ def __download_units_from_s3(bucket,
 
     # Create a list of folder paths that have a "final" folder.
     s3_final_folders = []
-    found_unit_names = [] # really only needed if we have a pre-defined list of selected unit names
+    found_unit_names = []  # really only needed if we have a pre-defined list of selected unit names
 
     for unit_folder in s3_output_unit_folders:
         # we temp add the word "/final" of it so it directly compares to the unit file folder list.
@@ -200,13 +197,14 @@ def __download_units_from_s3(bucket,
             disp_missing_units_names += unit_name
             disp_missing_units_names += ", " if ind < (len(missing_unit_names) - 1) else ""
 
-        if (len(missing_unit_names) > 0):
+        if len(missing_unit_names) > 0:
             msg = f"The following units were not found in s3: {disp_missing_units_names}"
             RLOG.warning(msg)
 
-
     if len(s3_final_folders) == 0:
-        RLOG.critical(f"Valid unit folders were found at {s3_path_to_output_folder}") # TODO: Should this read "No valid unit folders were found..." ?
+        RLOG.critical(
+            f"Valid unit folders were found at {s3_path_to_output_folder}"
+        )  # TODO: Should this read "No valid unit folders were found..." ?
         sys.exit(1)
 
     print(
@@ -347,11 +345,10 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
 
     # Compile CSVs in its own huc folder
     for unit_folder in local_unit_folders:
-
         src_name_dict = parse_unit_folder_name(unit_folder)
         if "error" in src_name_dict:
-            raise Exception(src_name_dict["error"])    
-        
+            raise Exception(src_name_dict["error"])
+
         huc8 = src_name_dict["key_huc"]
         fim_huc_calib_path = os.path.join(full_fim_folder, huc8)
         os.makedirs(fim_huc_calib_path, exist_ok=True)
@@ -361,10 +358,10 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
         # ----------------------------
         # let's load the csv first
         # get unit specific cal csv file
-        unit_ras2cal_csv_filepath = os.path.join(unit_folder,
-                                                 sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
-                                                 sv.R2F_OUTPUT_FILE_RAS2CAL_CSV)
-        
+        unit_ras2cal_csv_filepath = os.path.join(
+            unit_folder, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_CSV
+        )
+
         if os.path.exists(unit_ras2cal_csv_filepath) is False:
             RLOG.warning(f"{sv.R2F_OUTPUT_FILE_RAS2CAL_CSV} not found for {unit_folder}")
         else:
@@ -377,8 +374,7 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
                 # we need to load the existing one so we can concat
                 existing_csv_df = pd.read_csv(fim_huc_calib_file)
                 # concat the new and the existing
-                ras2cal_csv_output_table = pd.concat([existing_csv_df, new_csv_df],
-                                                     ignore_index=True)
+                ras2cal_csv_output_table = pd.concat([existing_csv_df, new_csv_df], ignore_index=True)
                 # Reset index
                 ras2cal_csv_output_table.reset_index(drop=True, inplace=True)
             else:
@@ -387,14 +383,13 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
             # now save it  (yes... for each unit if pre-existing exists)
             ras2cal_csv_output_table.to_csv(fim_huc_calib_file, index=False)
 
-
         # ----------------------------
         # Now let's load the points gkpg
         # get unit specific points gpkg file
-        unit_ras2cal_gpkg_filepath = os.path.join(unit_folder,
-                                                 sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
-                                                 sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG)
-        
+        unit_ras2cal_gpkg_filepath = os.path.join(
+            unit_folder, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG
+        )
+
         if os.path.exists(unit_ras2cal_csv_filepath) is False:
             RLOG.warning(f"{sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG} not found for {unit_folder}")
         else:
@@ -402,25 +397,23 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
             new_points_gdf = gpd.read_file(unit_ras2cal_gpkg_filepath)
 
             # Reproject to output SRC
-            new_points_proj_crc = new_points_gdf.to_crs(sv.DEFAULT_RASTER_OUTPUT_CRS)            
+            new_points_proj_crc = new_points_gdf.to_crs(sv.DEFAULT_RASTER_OUTPUT_CRS)
 
             # see if one is already there
             fim_huc_points_file = os.path.join(fim_huc_calib_path, sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG)
             if os.path.exists(fim_huc_points_file):
-
                 # we need to load the existing one so we can concat
                 existing_points_gdf = gpd.read_file(fim_huc_points_file)
 
                 # concat the new and the existing
-                ras2cal_points_gdf = pd.concat([existing_points_gdf, new_points_proj_crc],
-                                                ignore_index=True)
+                ras2cal_points_gdf = pd.concat([existing_points_gdf, new_points_proj_crc], ignore_index=True)
                 # Reset index
                 ras2cal_points_gdf.reset_index(drop=True, inplace=True)
             else:
                 ras2cal_points_gdf = new_points_proj_crc
 
             # now save it  (yes... for each unit if pre-existing exists)
-            ras2cal_points_gdf.to_file(fim_huc_points_file, driver="GPKG",)
+            ras2cal_points_gdf.to_file(fim_huc_points_file, driver="GPKG")
 
 
 # -------------------------------------------------
@@ -429,11 +422,9 @@ def __create_fim_package(local_rel_folder, local_unit_folders):
 
 # -------------------------------------------------
 #  Some validation of input, but also creating key variables
-def __validate_input(rel_name,
-                     s3_path_to_output_folder,
-                     s3_ras2release_path,
-                     local_working_folder_path,                     
-                     skip_save_to_s3):
+def __validate_input(
+    rel_name, s3_path_to_output_folder, s3_ras2release_path, local_working_folder_path, skip_save_to_s3
+):
     """
     Summary: Will raise Exception if some are found
 
@@ -465,7 +456,7 @@ def __validate_input(rel_name,
     rtn_dict["s3_unit_output_bucket_name"] = bucket_name
     rtn_dict["s3_unit_output_folder"] = s3_output_folder
 
-    s3_ras2release_path = s3_ras2release_path.replace("\\", "/")        
+    s3_ras2release_path = s3_ras2release_path.replace("\\", "/")
     if skip_save_to_s3 is False:
         if s3_sf.is_valid_s3_folder(s3_ras2release_path) is False:
             raise ValueError(f"S3 path to releases ({s3_ras2release_path}) does not exist")
@@ -584,7 +575,7 @@ if __name__ == "__main__":
         " e.g.  -u '12030101_2276_ble_230925' '12090301_2277_ble_230923'"
         " (each with quotes and a space) between the values.",
         required=False,
-        default = [],
+        default=[],
         nargs='*',
     )
 

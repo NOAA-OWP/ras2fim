@@ -116,7 +116,7 @@ def write_metadata_file(
 
 
 # -----------------------------------------------------------------
-# Reads, compiles, and reformats the rating curve info for all directories 
+# Reads, compiles, and reformats the rating curve info for all directories
 # -----------------------------------------------------------------
 def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
     """
@@ -134,7 +134,8 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
     Inputs:
     - src_unit_dir_path: e.g. C:\ras2fim_data\output_ras2fim\12040101_102739_ble_230922
     - active: (str) optional input value for the "active" column (i.e. "", "True", "False")
-    - verbose: (bool) option to run verbose code with a lot of print statements (optional argument set in __main__)
+    - verbose: (bool) option to run verbose code with a lot of print statements
+      (optional argument set in __main__)
 
     """
 
@@ -150,7 +151,7 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
     RLOG.notice("                   Reformat Rating Curves                        ")
     RLOG.lprint(f"--- (-s) ras2fim_huc_dir: {src_unit_dir_path}")
     RLOG.lprint(f"--- (-a) active: {active}")
-    RLOG.lprint(f"--- (-v) is verbose: {str(verbose)}")    
+    RLOG.lprint(f"--- (-v) is verbose: {str(verbose)}")
     RLOG.lprint(f"  Started (UTC): {dt_string}")
 
     # --------------------
@@ -162,8 +163,8 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
     # splits it a six part dictionary, we don't use all here
     src_name_dict = sf.parse_unit_folder_name(src_unit_dir_path)
     if "error" in src_name_dict:
-        raise Exception(src_name_dict["error"])    
-    
+        raise Exception(src_name_dict["error"])
+
     huc8 = src_name_dict["key_huc"]
     source_code = src_name_dict["key_source_code"]
 
@@ -172,9 +173,9 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
     nwm_streams_folder_path = os.path.join(src_unit_dir_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
     hecras_shapes_dir_path = os.path.join(src_unit_dir_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS)
     ratings_curves_dir_name = os.path.join(src_unit_dir_path, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES)
-    ref_rc_output_dir_path = os.path.join(src_unit_dir_path,
-                                          sv.R2F_OUTPUT_DIR_FINAL,
-                                          sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
+    ref_rc_output_dir_path = os.path.join(
+        src_unit_dir_path, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION
+    )
     output_table_file_path = os.path.join(ref_rc_output_dir_path, sv.R2F_OUTPUT_FILE_RAS2CAL_CSV)
     output_gpkg_file_path = os.path.join(ref_rc_output_dir_path, sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG)
 
@@ -202,16 +203,15 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
     # Retrieve information from `run_arguments.txt` file
     # Open the unit run_argsments.text file and read all lines from the file
     try:
-        run_arguments_filepath = os.path.join(src_unit_dir_path, "run_arguments.txt")        
+        run_arguments_filepath = os.path.join(src_unit_dir_path, "run_arguments.txt")
         with open(run_arguments_filepath, "r") as file:
             run_args_file_lines = file.readlines()
     except Exception:
-        RLOG.error(f"Unable to open run_arguments.txt, skipping directory {src_unit_dir_path}.")
+        RLOG.critical("Unable to open run_arguments.txt.")
         RLOG.critical(traceback.format_exc())
         sys.exit(1)
 
-    proj_crs = ""
-    if run_args_file_lines != None:
+    if run_args_file_lines is not None:
         # Search for and extract the projection from run_arguments.txt
         # only looking for one value at this time, in full form:  ie) EPSG:2277
         for line in run_args_file_lines:
@@ -219,8 +219,13 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
                 proj_crs = line.split("==")[1].strip()
                 break
 
-    if proj_crs == "":
-        RLOG.critical("Unable to find the 'proc_crs' variable value in the run_arguments.txt file")
+        if proj_crs == "":
+            RLOG.critical("Unable to find the 'proc_crs' variable value in the run_arguments.txt file")
+            sys.exit(1)
+
+    else:
+        RLOG.critical("Unable to correctly read the run_arguments.txt")
+        RLOG.critical(traceback.format_exc())
         sys.exit(1)
 
     # e.g. C:\ras2fim_data\output_ras2fim\12030106_2276_ble_240224\ras2calibation
@@ -237,7 +242,7 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
     hecras_crosssections_shp = gpd.read_file(hecras_crosssections_filepath)
 
     # Iterate over rows usign the full pathed ras_path column, extracting
-    # the parent folder name from each row.        
+    # the parent folder name from each row.
     # C:\ras2fim_data\OWP_ras_models\models-12030106-small\
     # 1291898_UNT705 in EFT Watershed_g01_1701646099\UNT705 in EFT Watershed.g01
     # becomes: 1291898_UNT705 in EFT Watershed_g01_1701646099
@@ -291,19 +296,18 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
 
     # Save points geopackage
     try:
-        intersection_prj_gdf.to_file(output_gpkg_file_path, driver="GPKG",)
+        intersection_prj_gdf.to_file(output_gpkg_file_path, driver="GPKG")
         print()
         RLOG.lprint(f"HECRAS-NWM intersection points geopackage saved as {output_gpkg_file_path}.")
-    except Exception as ex:
+    except Exception:
         RLOG.critical("Unable to save HEC-RAS points geopackage.")
         RLOG.critical(traceback.format_exc())
         sys.exit(1)
 
-
     # -----------------------------------------------------------------------------------------
     # Get compiled rating curves from unit rating curves folder (06...)
 
-    # At this point we have a df that is an intersected from 
+    # At this point we have a df that is an intersected from
     #     01_shapes_from_hecras\cross_section_LN_from_ras.shp and
     #     02_csv_shapes_from_conflation\[huc8 number]_nwm_streams_ln.shp
     # Now we need to iterate through all RC paths which are multiple all_xs_info_fid_*
@@ -335,11 +339,9 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
             sys.exit(1)
 
         # Combined feature ID and HECRAS cross-section ID to make a new ID (e.g. 5791000_189926)
-        rc_df["fid_xs"] = (
-            rc_df["feature_id"].astype(str) + "_" + rc_df["Xsection_name"].astype(str)
-        )
+        rc_df["fid_xs"] = rc_df["feature_id"].astype(str) + "_" + rc_df["Xsection_name"].astype(str)
 
-        # Join some of the geospatial data to the rc_df data 
+        # Join some of the geospatial data to the rc_df data
         # this is for the csv, but not the gpkg
         rc_geospatial_df = pd.merge(
             rc_df,
@@ -350,7 +352,7 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
         )
 
         # Check that merge worked
-        if len(rc_geospatial_df) == 0: 
+        if len(rc_geospatial_df) == 0:
             msg = f"No rows survived the merge of rc_geospatial with the rating curve rows for {rc_path}."
             RLOG.critical(msg)
             sys.exit(1)
@@ -378,9 +380,9 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
             {
                 "fid_xs": rc_geospatial_df["fid_xs"],
                 "feature_id": rc_geospatial_df["feature_id"],
-                "xsection_name": rc_geospatial_df["Xsection_name"], # used to be Xsection_name
+                "xsection_name": rc_geospatial_df["Xsection_name"],  # used to be Xsection_name
                 "flow": rc_geospatial_df["discharge_cfs"],
-                "wse": rc_geospatial_df["wse_ft"], # used to be wse_m
+                "wse": rc_geospatial_df["wse_ft"],  # used to be wse_m
                 "flow_units": "cfs",  # str
                 "wse_units": "ft",  # str # used to be m
                 "flow_cms": rc_geospatial_df["discharge_cfs"] * 0.3048,
@@ -398,15 +400,14 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
         if i == 0:
             dir_output_table_all = dir_output_table
         else:
-            dir_output_table_all  = pd.concat([dir_output_table_all, dir_output_table])
-
+            dir_output_table_all = pd.concat([dir_output_table_all, dir_output_table])
 
     # -------------------------------------------------------------------------------------
     # Save output table for directory
     dir_output_table_all.to_csv(output_table_file_path, index=False)
     print()
     RLOG.lprint(f"reformat csv output table saved as {output_table_file_path}.")
-    
+
     # Get timestamp for metadata
     start_time_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
     int_log_label = 'none'
@@ -431,7 +432,7 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
     RLOG.lprint(f"Ended : {dt_string}")
     time_duration = end_time - overall_start_time
     RLOG.lprint(f"Duration: {str(time_duration).split('.')[0]}")
-    print(f"log files saved to {RLOG.LOG_FILE_PATH}")    
+    print(f"log files saved to {RLOG.LOG_FILE_PATH}")
     print()
 
 
@@ -440,10 +441,10 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
 def __validate_input(src_unit_dir_path, active, verbose):
     # Some variables need to be adjusted and some new derived variables are created
     # dictionary (key / pair) will be returned
-    # Note: No return at this time, but most scripts using this pattern do and 
+    # Note: No return at this time, but most scripts using this pattern do and
     # this one might later.
 
-    #rtn_dict = {}
+    # rtn_dict = {}
 
     # ---------------
     # why is this here? might not come in via __main__
@@ -469,7 +470,7 @@ if __name__ == "__main__":
 
     Notes:
        - Required arguments: None
-       - Optional arguments: -v     verbose (to make verbose, put -v in the command) 
+       - Optional arguments: -v     verbose (to make verbose, put -v in the command)
                              -a     value for the "active" column (i.e. "True", "False", ""; defaults to "")
 
     """
@@ -512,7 +513,7 @@ if __name__ == "__main__":
 
     # Assign variables from arguments
     args = vars(parser.parse_args())
-    
+
     try:
         # Catch all exceptions through the script if it came
         # from command line.
@@ -520,7 +521,7 @@ if __name__ == "__main__":
         # Otherwise, the script calling one of the functions in here is assumed
         # to have setup the logger.
 
-        src_unit_dir_path=args["src_unit_dir_path"]
+        src_unit_dir_path = args["src_unit_dir_path"]
         parent_dir = os.path.dirname(src_unit_dir_path)
         log_file_folder = os.path.join(parent_dir, "logs")
 

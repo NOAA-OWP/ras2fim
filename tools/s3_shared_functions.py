@@ -98,8 +98,7 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
 
     RLOG.lprint("===================================================================")
     print("")
-    RLOG.notice(f"Uploading folder from {src_path}"
-                f"                  to  {s3_full_target_path}")
+    RLOG.notice(f"Uploading folder from {src_path}" f"                  to  {s3_full_target_path}")
     print()
 
     # nested function
@@ -307,11 +306,9 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
         s3_client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=target_file_path)
 
     try:
-
         RLOG.lprint("===================================================================")
         print("")
-        RLOG.notice(f"Moving folder from {s3_src_folder_path}"
-                    f"                to  {s3_target_folder_path}")
+        RLOG.notice(f"Moving folder from {s3_src_folder_path}" f"                to  {s3_target_folder_path}")
         print()
         print(
             f"{cl.fg('dodger_blue_1')}"
@@ -445,7 +442,6 @@ def download_folders(list_folders):
 
             num_completed = 0
             for download_args in list_folders:
-
                 download_args["s3_src_folder"] = download_args["s3_src_folder"].replace("\\", "/")
 
                 item = {
@@ -699,7 +695,6 @@ def get_records_list(bucket_name, s3_src_folder_path, search_key, is_verbose=Fal
     """
 
     try:
-
         s3_src_folder_path = s3_src_folder_path.replace("\\", "/")
         search_key = search_key.replace("\\", "/")
 
@@ -796,7 +791,6 @@ def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
     """
 
     try:
-
         s3_src_folder_path = s3_src_folder_path.replace("\\", "/")
 
         if is_verbose is True:
@@ -815,7 +809,7 @@ def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
         s3_client = boto3.client("s3")
         s3_items = []  # a list of dictionaries
 
-        default_kwargs = {"Bucket": bucket_name, "Prefix": s3_src_folder_path,  "Delimiter": "/"}
+        default_kwargs = {"Bucket": bucket_name, "Prefix": s3_src_folder_path, "Delimiter": "/"}
 
         next_token = ""
 
@@ -827,20 +821,20 @@ def get_folder_list(bucket_name, s3_src_folder_path, is_verbose):
             # will limit to 1000 objects - hence tokens
             response = s3_client.list_objects_v2(**updated_kwargs)
             if response.get("KeyCount") == 0:
-                next_token = response.get("NextContinuationToken")                
+                next_token = response.get("NextContinuationToken")
                 continue
 
             prefix_recs = response.get("CommonPrefixes")
             if prefix_recs is None:
-                next_token = response.get("NextContinuationToken")                
+                next_token = response.get("NextContinuationToken")
                 continue
-            
+
             for result in prefix_recs:
                 prefix = result.get("Prefix")
                 prefix_adj = prefix.replace(s3_src_folder_path, "")
                 if prefix_adj.endswith("/"):
                     prefix_adj = prefix_adj[:-1]
-                if prefix_adj != "": # empty.. likely the parent folder itself.
+                if prefix_adj != "":  # empty.. likely the parent folder itself.
                     item = {"key": prefix_adj, "url": f"s3://{bucket_name}/{s3_src_folder_path}{prefix_adj}"}
                     s3_items.append(item)
             next_token = response.get("NextContinuationToken")
@@ -1045,7 +1039,6 @@ def does_s3_bucket_exist(bucket_name):
         sys.exit(1)
 
     # other exceptions can be passed through
-
 
 
 # -------------------------------------------------

@@ -419,15 +419,13 @@ def fn_run_ras2fim(
     # -------------------------------------------------
     if os.getenv("RUN_RAS2CALIBRATION") == "True":
         RLOG.lprint("")
-        RLOG.notice("+++++++ Processing: STEP: Post-processing rating curves for HAND-FIM calibration +++++++")
+        RLOG.notice(
+            "+++++++ Processing: STEP: Post-processing rating curves for HAND-FIM calibration +++++++"
+        )
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
         # Writes directly to its own folder under the final directory
-        dir_reformat_ras_rc(
-            unit_output_path,
-            "",
-            False,
-        )
+        dir_reformat_ras_rc(unit_output_path, "", False)
 
     # -------------------------------------------------
     print()

@@ -20,6 +20,7 @@ import shared_variables as sv
 # Global Variables
 RLOG = sv.R2F_LOG
 
+
 # -------------------------------------------------
 def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundation_poly):
     """
