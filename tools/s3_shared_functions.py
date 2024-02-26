@@ -98,7 +98,8 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
 
     RLOG.lprint("===================================================================")
     print("")
-    RLOG.notice(f"Uploading folder from {src_path}" f"                  to  {s3_full_target_path}")
+    RLOG.notice(f"Uploading folder from {src_path}")
+    RLOG.notice(f"                 to  {s3_full_target_path}")
     print()
 
     # nested function
@@ -308,7 +309,8 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
     try:
         RLOG.lprint("===================================================================")
         print("")
-        RLOG.notice(f"Moving folder from {s3_src_folder_path}" f"                to  {s3_target_folder_path}")
+        RLOG.notice(f"Moving folder from {s3_src_folder_path}")
+        RLOG.notice(f"              to  {s3_target_folder_path}")
         print()
         print(
             f"{cl.fg('dodger_blue_1')}"
