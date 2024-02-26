@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.31 - 2024-02-25 - [PR#299](https://github.com/NOAA-OWP/ras2fim/pull/299)
+## v2.0.beta.31 - 2024-02-26 - [PR#299](https://github.com/NOAA-OWP/ras2fim/pull/299)
 
 This PR adjusts the reformat_rating_curve system, sometimes called ras2calibation. It creates a rating curve csv that has all rating curves merged and adjusted for HAND_FIM needs.  It also creates a points file based on intersections of nwm streams and model cross_sections and makes a point gpkg for HAND_FIM. This is the V2 version of the same functionally from V1.
 
