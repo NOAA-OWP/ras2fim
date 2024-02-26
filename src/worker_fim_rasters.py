@@ -1402,8 +1402,7 @@ def create_datasets_2ndpass(unit_output_folder, flt_interval):
         ls_second_pass_flows_xs = []
         for num_q in range(len(df_peak_flows_xs)):
             int_max_flow2 = df_peak_flows_xs["discharge"][num_q]
-            list_2nd_pass_flows2 = [int_max_flow2 * ratio for ratio in second_pass_ratio]  # int()
-
+            list_2nd_pass_flows2 = [int_max_flow2 * ratio for ratio in second_pass_ratio]
             ls_second_pass_flows_xs.append(list_2nd_pass_flows2)
 
         ls_ls_second_pass_flows_xs[nsindx] = ls_second_pass_flows_xs
@@ -1419,6 +1418,7 @@ def create_datasets_2ndpass(unit_output_folder, flt_interval):
 
 
 def compute_boundray_condition_2ndpass(unit_output_folder, ls_second_pass_flows_xs_df):
+
     path_to_1st_pass_output = os.path.join(unit_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
     folder_1stpass_models = os.listdir(path_to_1st_pass_output)
 
@@ -1437,7 +1437,12 @@ def compute_boundray_condition_2ndpass(unit_output_folder, ls_second_pass_flows_
         # Read boundary condition from 1st pass flow file
         # and generate BC for the 2nd pass flow
         # -------------------------------------------------
-        second_pass_flows_xs_df = ls_second_pass_flows_xs_df[fldr]
+        second_pass_flows_xs_df0 = ls_second_pass_flows_xs_df[fldr]
+        second_pass_flows_xs_df = pd.DataFrame(
+            np.sort(second_pass_flows_xs_df0.values, axis=0),
+            index=second_pass_flows_xs_df0.index,
+            columns=second_pass_flows_xs_df0.columns
+            )
 
         path_1stpass_flow_file = os.path.join(path_to_1st_pass_output, folder, folder[6:] + ".f01")
 
@@ -1583,7 +1588,7 @@ def create_all_2ndpass_flow_files(
 
         for fc2 in range(int_num_of_flow_change_xs):
             # list of the second pass flows
-            ls_second_pass_flows_xs2 = ls_second_pass_flows_xs[fc2]
+            ls_second_pass_flows_xs2 = sorted(ls_second_pass_flows_xs[fc2])
             ls_second_pass_flows_xs_int = [int(y1) for y1 in ls_second_pass_flows_xs2]
             ls_second_pass_flows_xs_int = [1 if y2 == 0 else y2 for y2 in ls_second_pass_flows_xs_int]
 
