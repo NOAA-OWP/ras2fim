@@ -381,12 +381,10 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
                 "fid_xs": rc_geospatial_df["fid_xs"],
                 "feature_id": rc_geospatial_df["feature_id"],
                 "xsection_name": rc_geospatial_df["Xsection_name"],  # used to be Xsection_name
-                "flow": rc_geospatial_df["discharge_cfs"],
-                "wse": rc_geospatial_df["wse_ft"],  # used to be wse_m
+                "flow_cfs": rc_geospatial_df["discharge_cfs"],
+                "wse_ft": rc_geospatial_df["WSE_Feet"], 
                 "flow_units": "cfs",  # str
-                "wse_units": "ft",  # str # used to be m
-                "flow_cms": rc_geospatial_df["discharge_cfs"] * 0.3048,
-                "wse_m": rc_geospatial_df["wse_ft"] * 0.3048,
+                "wse_units": "ft",  # str 
                 "location_type": source_code,  # str
                 "source": source,  # str
                 "timestamp": dt_string,  # str
