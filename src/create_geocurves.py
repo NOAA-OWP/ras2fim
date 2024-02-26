@@ -127,7 +127,6 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
 
     # Loop through each model
     for index, model in conflated_ras_models.iterrows():
-
         RLOG.lprint("-----------------------------------------------")
 
         model_nwm_streams_ln = nwm_streams_ln[nwm_streams_ln.ras_path == model.ras_path]
@@ -313,12 +312,19 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
                             unit_name=unit_name,
                             unit_version=unit_version,
                             source_code=source_code,
-                            source=source1
+                            source=source1,
                         )
                         extent_poly_diss = extent_poly_diss.reindex(
-                            columns=['version', 'unit_name', 'unit_version', 
-                                     'source_code', 'source', 'geometry', 'profile_num']
-                            )
+                            columns=[
+                                'version',
+                                'unit_name',
+                                'unit_version',
+                                'source_code',
+                                'source',
+                                'geometry',
+                                'profile_num',
+                            ]
+                        )
                         # TODO: Does not exist anymore
                         # extent_poly_diss = extent_poly_diss.drop(columns='extent')
 
@@ -333,7 +339,10 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
         if rating_curve_dir.exists():
             geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
             path_geocurve = os.path.join(
-                ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES, f'{name_mid}_geocurve.csv'
+                ras2fim_huc_dir,
+                sv.R2F_OUTPUT_DIR_FINAL,
+                sv.R2F_OUTPUT_DIR_GEOCURVES,
+                f'{name_mid}_geocurve.csv',
             )
             geocurve_df.to_csv(path_geocurve, index=False)
 
@@ -355,7 +364,7 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     version = sf.get_changelog_version(changelog_path)
     RLOG.lprint("Version found: " + version)
 
-    RLOG.lprint("")
+    print()
     RLOG.lprint("+=================================================================+")
     RLOG.notice("|                   Create GeoCurves                              |")
     RLOG.lprint("+-----------------------------------------------------------------+")
@@ -363,7 +372,7 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     RLOG.lprint(f"  ---(p) ras2fim_huc_dir: {ras2fim_huc_dir}")
     RLOG.lprint(f"  ---(o) overwrite: {overwrite}")
 
-    RLOG.lprint("")
+    print("")
     overall_start_time = datetime.utcnow()
     dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
     RLOG.lprint(f"Started (UTC): {dt_string}")

@@ -547,3 +547,105 @@ def get_source_info(source_code):
         raise Exception(f"{source_code_file} has more than one record with the source code of {source_code}")
 
     return df_source["source_name"].iloc[0]
+
+
+# -------------------------------------------------
+def parse_unit_folder_name(unit_folder_name):
+    """
+    Overview:
+        While all uses of this function pass back errors if invalid the calling code can decide if it is
+        an exception. Sometimes it doesn't, it just want to check to see if the key is a huc crs key.
+
+    Input:
+        unit_folder_name: migth be a full s3 string, or full local the folder name
+           e.g.  s3://xzy/output_ras2fim/12090301_2277_ble_230811
+           or c:\my_ras_data\output_ras2fim\12090301_2277_ble_230811
+           Also can be just the unit_folder_name (no path)
+
+    Output:
+        A dictionary with records of:
+                       key_huc,
+                       key_crs_number,
+                       key_source_code,
+                       key_date_as_str (date string eg: 230811),
+                       key_date_as_dt  (date obj for 230811)
+                       unit_folder_name (12090301_2277_ble_230811) (without path if it came in)
+        OR
+        If in error, dictionary will have only one key of "error", saying why it the
+           reason for the error. It lets the calling code to decide if it wants to raise
+           and exception.
+           Why? There are some incoming folders that will not match the pattern and the
+           calling code will want to know that and may just continue on
+
+        BUT: if the incoming param doesn't exist, that raises an exception
+    """
+
+    rtn_dict = {}
+
+    if unit_folder_name == "":
+        raise ValueError("unit_folder_name can not be empty")
+
+    # Temp switch all slashes if needed
+    unit_folder_name = unit_folder_name.replace("\\", "/")
+
+    if "/" in unit_folder_name:
+        if unit_folder_name.endswith("/"):
+            unit_folder_name = unit_folder_name[:-1]  # strip the ending slash
+
+        # strip off the last folder name
+        path_split = unit_folder_name.split("/")
+        unit_folder_name = path_split[-1]
+
+    # The best see if it has an underscore in it, split if based on that, then
+    # see the first chars are an 8 digit number and that it has three underscores (4 segs)
+    # and will split it to a list of tuples
+    segs = unit_folder_name.split("_")
+    if len(segs) != 4:
+        rtn_dict["error"] = "Expected four segments split by three underscores e.g. 12090301_2277_ble_230811"
+        return rtn_dict
+
+    key_huc = segs[0]
+    key_crs = segs[1]
+    key_source_code = segs[2]
+    key_date = segs[3]
+
+    if (not key_huc.isnumeric()) or (not key_crs.isnumeric()) or (not key_date.isnumeric()):
+        rtn_dict["error"] = f"The unit folder name of {unit_folder_name} is invalid."
+        " The pattern should look like '12090301_2277_ble_230811' for example."
+        return rtn_dict
+
+    if len(key_huc) != 8:
+        rtn_dict["error"] = "The first part of the four segments (huc), is not 8 digits long"
+        return rtn_dict
+
+    if (len(key_crs) < 4) or (len(key_crs) > 6):
+        rtn_dict["error"] = "Second part of the four segments (crs) is not"
+        " between 4 and 6 digits long"
+        return rtn_dict
+
+    if len(key_date) != 6:
+        rtn_dict["error"] = "Last part of the four segments (date) is not 6 digits long"
+        return rtn_dict
+
+    # test date format
+    # format should come in as yymmdd  e.g. 230812
+    # If successful, the actual date object be added
+    dt_key_date = None
+    try:
+        dt_key_date = dt.strptime(key_date, "%y%m%d")
+    except Exception:
+        # don't log it
+        rtn_dict["error"] = (
+            "Last part of the four segments (date) does not appear"
+            " to be in the pattern of yymmdd eg 230812"
+        )
+        return rtn_dict
+
+    rtn_dict["key_huc"] = key_huc
+    rtn_dict["key_crs_number"] = key_crs
+    rtn_dict["key_source_code"] = key_source_code
+    rtn_dict["key_date_as_str"] = key_date
+    rtn_dict["key_date_as_dt"] = dt_key_date
+    rtn_dict["unit_folder_name"] = unit_folder_name  # cleaned version
+
+    return rtn_dict

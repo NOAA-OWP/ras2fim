@@ -1,6 +1,30 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.31 - 2024-02-26 - [PR#299](https://github.com/NOAA-OWP/ras2fim/pull/299)
+
+This PR adjusts the reformat_rating_curve system, sometimes called ras2calibation. It creates a rating curve csv that has all rating curves merged and adjusted for HAND_FIM needs.  It also creates a points file based on intersections of nwm streams and model cross_sections and makes a point gpkg for HAND_FIM. This is the V2 version of the same functionally from V1.
+
+This tool also completes the `ras2release.py` tool which needed files from this reformat system.
+
+### Changes  
+- `src`
+    - `create_geocurves.py`:  linting changes.
+    - `create_rating_curves.py`: linting changes.
+    - `ras2fim.py`: Adjustments for modified reformat rc system.
+    - `ras2fim_logger.py`:  linting changes.
+    - `reformat_ras_rating_curves.py`:  As described above.
+    - `shared_functions.py`: Moved a function for parsing unit  folder names, moved from `tools\s3_shared_functions.py`.
+    - `shared_variables.py`: Adjustments for the modified reformat rc system. Function moved is `parse_unit_folder_name`.
+-`tools`
+    - `ras2inundation.py`: linting changes.
+    - `ras2release.py`:  Finalize based on changes from updated reformat rc system.
+    - `ras_unit_s3.py`: Adjusted for moved `parse_unit_folder_name` function.
+    - `s3_model_mgmt.py`: Fix for an earlier function name change. Pre-existing bug.
+    - `s3_shared_functions.py`:  Moved the `parse_unit_folder_name` to `src\shared_variables.py`.  
+
+<br/><br/>
+
 
 ## v2.0.beta.30 - 2024-02-23 - [PR#296](https://github.com/NOAA-OWP/ras2fim/pull/296)
 
