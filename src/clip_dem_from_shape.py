@@ -95,7 +95,7 @@ def fn_cut_dems_from_shapes(
         if os.path.exists(terrain_file_path) is False:
             raise ValueError(
                 f"The calculated terrain DEM path of {terrain_file_path} does not appear exist.\n"
-                f"For NOAA/OWP staff.... this file can likely be downloaded from {sv.S3_INPUTS_3DEP_DEMS}"
+                f"For NOAA/OWP staff.... this file can likely be downloaded from {sv.S3_INPUTS_3DEP_DEMS_PATH}"
             )
     elif terrain_file_path != "":
         if os.path.exists(terrain_file_path) is False:  # might be a full path

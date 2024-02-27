@@ -92,7 +92,6 @@ def run_unit_benchmark_tests(
     print("NOTE: All output inundation and benchmark results files will be overwritten")
     print()
 
-
     RLOG.notice("********************************************************************")
     RLOG.notice("***  IMPORTANT NOTE about roll up metrics files\n")
     print(" Each unit (ie. 12030105_2276_ble) can have multiple versions over time.")
@@ -112,15 +111,12 @@ def run_unit_benchmark_tests(
     print(r"       ie) C:\ras2fim_data\gval\evaluations\PROD"
           r"\12030105_2276_ble\12030105_2276_ble_unit_metrics.csv")
     print()
-    print("   - The second file is at the unit version level which covers all metrics created"
-                " during this run.")
-    print(r"       ie) C:\ras2fim_data\gval\evaluations\PROD"
-                r"\12030105_2276_ble\240228\12030105_2276_ble_240228_metrics.csv")
+    RLOG.lprint(" HOWEVER: At this point, the program does not have a feature to check S3"
+    " to see if the file already exists and does not attempt to download it.")
     print()
-    if unit_metrics == "" or unit_metrics == "not_set":
-        print(" Remember can optionally use the (-m) with to point to an existing"
-              " unit level metrics file that can be downloaded or copied and be appended."
-              " It can be an s3 url file path or a local file sytem file path.")
+    RLOG.lprint(" For now, please check S3 to see if this unit already as a metrics file"
+    " and download to the unit folder. Otherwise you can manually merge those files later."
+    " Make sure you upload it when you are done.")
     print()
     RLOG.notice("********************************************************************")
 
