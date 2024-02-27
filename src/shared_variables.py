@@ -47,34 +47,25 @@ R2F_OUTPUT_DIR_HECRAS_TERRAIN = "04_hecras_terrain"
 R2F_OUTPUT_DIR_HECRAS_OUTPUT = "05_hecras_output"
 R2F_OUTPUT_DIR_CREATE_RATING_CURVES = "06_create_rating_curves"
 
-# TODO: Jan 22, 2024: These next three variables are likely no longer needed
-# R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS = "Depth_Grid"
 R2F_OUTPUT_DIR_METRIC_RATING_CURVES = "Rating_Curve"
 R2F_OUTPUT_DIR_METRIC_CROSS_SECTIONS = "Cross_Sections"
 R2F_OUTPUT_DIR_FINAL = "final"
 R2F_OUTPUT_DIR_GEOCURVES = "geo_rating_curves"
-R2F_OUTPUT_DIR_FINAL_GEOCURVES = r"final\geocurves"
 R2F_OUTPUT_DIR_DOMAIN_POLYGONS = "models_domain"
-
-R2F_OUTPUT_DIR_RAS2CALIBRATION = "ras2calibration"
-R2F_OUTPUT_FILE_RAS2CAL_CSV = "ras2calibration_rating_curve_table.csv"
-R2F_OUTPUT_FILE_RAS2CAL_GPKG = "ras2calibration_rating_curve_points.gpkg"
-R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt"
 R2F_OUTPUT_DIR_RAS2RELEASE = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
+
+R2F_OUTPUT_DIR_RAS2CALIBRATION = "ras2calibration"  # TODO: Update?
+R2F_OUTPUT_FILE_RAS2CAL_CSV = "reformat_ras_rating_curve_table.csv"
+R2F_OUTPUT_FILE_RAS2CAL_GPKG = "reformat_ras_rating_curve_points.gpkg"
+R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt"
 
 # LOGS
 LOCAL_TOOLS_OUTPUT_PATH = os.path.join(DEFAULT_BASE_DIR, "tool_outputs")
 DEFAULT_LOG_FOLDER_PATH = os.path.join(LOCAL_TOOLS_OUTPUT_PATH, "logs")
 
-
-# OUTPUT FILES
-R2F_OUTPUT_FILE_RAS2CAL_CSV = "reformat_ras_rating_curve_table.csv"
-R2F_OUTPUT_FILE_RAS2CAL_GPKG = "reformat_ras_rating_curve_points.gpkg"
-
 # S3 PATHS
 S3_DEFAULT_BUCKET_NAME = "ras2fim"
 S3_DEFAULT_BUCKET_PATH = "s3://ras2fim/"
-
 S3_RAS_UNITS_OUTPUT_FOLDER = "output_ras2fim"
 S3_RAS_UNITS_ARCHIVE_FOLDER = "output_ras2fim_archive"
 S3_RAS_UNITS_OUTPUT_PATH = S3_DEFAULT_BUCKET_PATH + S3_RAS_UNITS_OUTPUT_FOLDER

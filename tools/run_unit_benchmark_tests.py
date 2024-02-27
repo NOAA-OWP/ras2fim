@@ -16,12 +16,11 @@ import pandas as pd
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import ras2inundation as ri
+import shared_functions as sf
 import shared_variables as sv
 import s3_shared_functions as s3_sf
 
 from evaluate_ras2fim_unit import evaluate_unit_results
-from shared_functions import get_date_time_duration_msg, get_date_with_milli, get_stnd_date
-
 
 # Global Variables
 RLOG = sv.R2F_LOG
@@ -88,7 +87,7 @@ def run_unit_benchmark_tests(
         RLOG.lprint(f"  (-to): Local target output override path: {trg_output_override_path}")
     if unit_metrics != "" and unit_metrics != "not_set":
         RLOG.lprint(f"  (-m): Path to unit metrics file: {trg_output_override_path}")        
-    RLOG.lprint(f" Started (UTC): {get_stnd_date()}")
+    RLOG.lprint(f" Started (UTC): {sf.get_stnd_date()}")
     print()
     print("NOTE: All output inundation and benchmark results files will be overwritten")
     print()
@@ -219,7 +218,7 @@ def run_unit_benchmark_tests(
     RLOG.success(f"Ended (UTC): {dt_string}")
     RLOG.success(f"log files saved to {RLOG.LOG_FILE_PATH}")
 
-    dur_msg = get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
+    dur_msg = sf.get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
     print()
 
@@ -341,7 +340,7 @@ def __run_tests(
         # ahps_lid  ( n/a  or  dalt2)
 
         # ud means unit_dictionary (parts)
-        ud = s3_sf.parse_unit_folder_name(unit_folder_name)
+        ud = sf.parse_unit_folder_name(unit_folder_name)
         if "error" in ud:
             raise Exception(ud["error"])
 
@@ -711,7 +710,7 @@ def __validate_input(
         raise ValueError("unit_folder_name (-u) can not be empty")
 
     # splits it a six part dictionary
-    src_name_dict = s3_sf.parse_unit_folder_name(unit_folder_name)
+    src_name_dict = sf.parse_unit_folder_name(unit_folder_name)
     if "error" in src_name_dict:
         raise Exception(src_name_dict["error"])
 
