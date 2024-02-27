@@ -381,31 +381,18 @@ def fn_run_ras2fim(
     fn_create_rating_curves(huc8, unit_output_path)
 
     # calculate terrain statistics for HEC-RAS models
-    RLOG.lprint("")
+    print()
     RLOG.notice("+++++++ Processing: STEP 6.b (calculate terrain statistics for HEC-RAS models) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
     hecras_output_dir = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
     fn_calculate_all_terrain_stats(hecras_output_dir)
 
     # -------------------------------------------------
+    # Produce geocurves
     if os.getenv("PRODUCE_GEOCURVES") == "True":
-        RLOG.lprint("")
         RLOG.notice("+++++++ Processing: STEP: Producing Geocurves +++++++")
-
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-
-        # Produce geocurves
-
-        """
-        job_number = os.cpu_count() - 2
-        manage_geo_rating_curves_production(
-            ras2fim_output_dir=unit_output_path,
-            job_number=job_number,
-            output_folder=r2f_final_dir,
-            overwrite=False,
-        )
-        """
-        RLOG.lprint("Geocurves module not ready yet")
+        manage_geo_rating_curves_production(unit_output_path, overwrite=False)
 
     # -------------------------------------------------
     if os.getenv("CREATE_RAS_DOMAIN_POLYGONS") == "True":
@@ -419,12 +406,6 @@ def fn_run_ras2fim(
         # provide conflation qc file to mark the parent models that conflated to NWM reaches
         conflation_csv_path = os.path.join(dir_shapes_from_conflation, "%s_stream_qc_fid_xs.csv" % huc8)
 
-        # make output folder and build path to the output file
-        # TODO: Nov 3, 2023: The creation of the output_polygon_dir and polygons_output_file_path
-        # has to be done inside the fn_make_domain_polygons. Why? create_model_domain_polygons.py
-        # fails when being run from command line as the folder doesn't exist
-        # Also see note in __main__ of create_model_domain_polygons.py as a duplicate msg (more less)
-        #  But even after just manually adding that folder it still fails when run from command line.
         output_polygon_dir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_DOMAIN_POLYGONS)
         os.mkdir(output_polygon_dir)
 
@@ -439,50 +420,16 @@ def fn_run_ras2fim(
     # -------------------------------------------------
     if os.getenv("RUN_RAS2CALIBRATION") == "True":
         RLOG.lprint("")
-        RLOG.notice("+++++++ Processing: STEP: Running ras2calibration +++++++")
+        RLOG.notice(
+            "+++++++ Processing: STEP: Post-processing rating curves for HAND-FIM calibration +++++++"
+        )
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
-        """
-        dir_reformat_ras_rc(
-            unit_output_path,
-            sv.R2F_OUTPUT_DIR_RAS2CALIBRATION,
-            sv.R2F_OUTPUT_FILE_RAS2CAL_CSV,
-            sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG,
-            sv.R2F_OUTPUT_FILE_RAS2CAL_LOG,
-            "",
-            "",
-            False,
-            sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF,
-            sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS,
-            sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES,
-        )
-
-        # Copy outputs into the ras2calibration subdirectory of the /final folder
-        r2f_final_ras2cal_subdir = os.path.join(r2f_final_dir, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION)
-        os.mkdir(r2f_final_ras2cal_subdir)
-
-        shutil.copy2(
-            os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_CSV),
-            r2f_final_ras2cal_subdir,
-        )
-        shutil.copy2(
-            os.path.join(
-                unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, sv.R2F_OUTPUT_FILE_RAS2CAL_GPKG
-            ),
-            r2f_final_ras2cal_subdir,
-        )
-        shutil.copy2(
-            os.path.join(
-                unit_output_path, sv.R2F_OUTPUT_DIR_RAS2CALIBRATION, "README_reformat_ras_rating_curve.txt"
-            ),
-            r2f_final_ras2cal_subdir,
-        )
-        """
-        RLOG.lprint("fim calibration module not ready yet")
+        # Writes directly to its own folder under the final directory
+        dir_reformat_ras_rc(unit_output_path, "", False)
 
     # -------------------------------------------------
-    RLOG.lprint("")
-    RLOG.notice("+++++++ Finalizing processing +++++++")
+    print()
 
     # Copy it here in case it gets updated along the way
     shutil.copy2(model_huc_catalog_path, r2f_final_dir)

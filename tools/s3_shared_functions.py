@@ -95,7 +95,8 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
 
     RLOG.lprint("===================================================================")
     print("")
-    RLOG.notice(f"Uploading folder from {src_path}\n" f"                  to  {s3_full_target_path}")
+    RLOG.notice(f"Uploading folder from {src_path}")
+    RLOG.notice(f"                 to  {s3_full_target_path}")
     print()
     RLOG.notice("Hang in there. This can take between 2 to 10 mins depending on folder size")
 
@@ -316,9 +317,8 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
     try:
         RLOG.lprint("===================================================================")
         print("")
-        RLOG.notice(
-            f"Moving folder from {s3_src_folder_path}\n" f"                to {s3_target_folder_path}"
-        )
+        RLOG.notice(f"Moving folder from {s3_src_folder_path}"
+                    f"                to  {s3_target_folder_path}")
         print()
         print(
             f"{cl.fg('dodger_blue_1')}"
@@ -458,6 +458,8 @@ def download_folders(list_folders):
 
             num_completed = 0
             for download_args in list_folders:
+                download_args["s3_src_folder"] = download_args["s3_src_folder"].replace("\\", "/")
+
                 item = {
                     "bucket_name": download_args["bucket_name"],
                     "folder_id": download_args["folder_id"],
@@ -588,9 +590,9 @@ def download_single_folder(
 
             args = {
                 "bucket_name": bucket_name,
+                "s3_file": src_file,                
                 "trg_file": trg_file,
-                "s3_client": s3_client,
-                "s3_file": src_file,
+                "s3_client": s3_client
             }
             if use_multi_thread is False:  # no MT here, just serially
                 try:
@@ -646,9 +648,9 @@ def download_single_folder(
 
             args = {
                 "bucket_name": bucket_name,
+                "s3_file": src_file,                
                 "trg_file": trg_file,
-                "s3_client": s3_client,
-                "s3_file": src_file,
+                "s3_client": s3_client
             }
             if use_multi_thread is False:  # no MT here, just serially
                 try:
@@ -683,7 +685,6 @@ def download_files_from_list(bucket_name, lst_files, is_verbose):
         bucket_name:
         lst_files: A list of dictionary items (e.g. ...
             - "s3_file": "output_ras2fim/12090301_2277_ble_230923/run_arguments.txt"
-                (It is has s3 or the bucket name in front it will be stripped)
             - "trg_file: "C:\ras2fim_data\output_ras2fim\12090301_2277_ble_240206\run_arguments.txt"
     Output:
         - Same list of dictionaries returned with two new fields.
@@ -697,28 +698,34 @@ def download_files_from_list(bucket_name, lst_files, is_verbose):
     # so all calls share this client and it is much faster.
     s3_client = boto3.client('s3')
     for item in lst_files:
+
         src_file = item["s3_file"]
-        trg_file = item["trg_file"]
 
-        # may or may not have the full path but we will take it off anyways
-        src_file = src_file.replace(f"s3://{bucket_name}", "")
-
+        # This might come in with the s3://bucket name or might
+        # start after the bucket name. We need to cut off the
+        # s3 and bucket
+        # may or may not have s3 in front (and worry about case)
+        src_file = src_file.replace("S3://", "")
+        src_file = src_file.replace("s3://", "")
+        src_file = src_file.replace(bucket_name, "", 1)
+        
         if src_file.startswith("/"):
-            src_file = src_file[1:]  # cut off the front slash
+            src_file = src_file.lstrip("/")  # cut off the front slash
+
+        trg_file = item["trg_file"]
 
         # just catch them and log why they failed, we don't want to assume
         # the calling function wants to shut down the process
-        msg = f"-- Downloading s3://{bucket_name}/{src_file} to {trg_file}"
-        if is_verbose:
-            RLOG.lprint(msg)
-        else:
-            RLOG.trace(msg)
-
+        msg = f"Downloading s3://{bucket_name}/{src_file} to {trg_file}"
         try:
-            download_one_file(bucket_name, trg_file, s3_client, src_file)
+            download_one_file(bucket_name, src_file, trg_file, s3_client)
             item["success"] = "True"
             item["fail_reason"] = ""
-            msg = "-- Success : " + msg
+            msg = "Success : " + msg
+            if is_verbose:
+                RLOG.lprint(msg)
+            else:
+                RLOG.trace(msg)
 
         except Exception:
             err_msg = f"An error occurred while download {item['src_file']}\n"
@@ -734,17 +741,18 @@ def download_files_from_list(bucket_name, lst_files, is_verbose):
 
 
 # -------------------------------------------------
-def download_one_file(bucket_name: str, trg_file: str, s3_client: boto3.client, s3_file: str):
+def download_one_file(bucket_name: str, s3_file: str, trg_file: str, s3_client: boto3 = None):
     """
     Download a single file from S3
     Args:
         bucket_name (str):
-        trg_file (str):
         s3_file (str): S3 object name (full s3 path less bucket name)
             e.g. output_ras2fim/12030101_2276_ble_230925/myfile.txt
+        trg_file (str):            
         s3_client (boto3.client):
     """
     try:
+
         # Why extract the directory name? the key might have subfolder
         # names right in the key
         # print(f"... trg_file is {trg_file}")
@@ -756,6 +764,14 @@ def download_one_file(bucket_name: str, trg_file: str, s3_client: boto3.client, 
 
         # raise Exception("Rob you goofer") Testing exceptions
         s3_file = s3_file.replace("\\", "/")
+
+        if s3_client is None:
+            
+            # TODO:  MAKE SURE THIS isn't used by download_files_from_list
+            # It should provide it
+            RLOG.error("Opps.. (maybe).. s3 client create")
+            
+            s3_client = boto3.client('s3')
 
         with open(trg_file, 'wb') as f:
             s3_client.download_fileobj(Bucket=bucket_name, Key=s3_file, Fileobj=f)
@@ -799,6 +815,9 @@ def get_file_list(bucket_name, s3_src_folder_path, search_key="", is_verbose=Fal
     # search_key = "*12090301*"
 
     try:
+        s3_src_folder_path = s3_src_folder_path.replace("\\", "/")
+        search_key = search_key.replace("\\", "/")
+
         if is_verbose is True:
             print("")
             RLOG.lprint(
@@ -1115,112 +1134,6 @@ def does_s3_bucket_exist(bucket_name):
         sys.exit(1)
 
     # other exceptions can be passed through
-
-
-# -------------------------------------------------
-def parse_unit_folder_name(unit_folder_name):
-    """
-    Overview:
-        While all uses of this function pass back errors if invalid the calling code can decide if it is
-        an exception. Sometimes it doesn't, it just want to check to see if the key is a huc crs key.
-
-    Input:
-        unit_folder_name: migth be a full s3 string, or full local the folder name
-           e.g.  s3://xzy/output_ras2fim/12090301_2277_ble_230811
-           or c://my_ras_data/output_ras2fim/12090301_2277_ble_230811
-
-    Output:
-        A dictionary with records of:
-                       key_huc,
-                       key_crs_number,
-                       key_source_code,
-                       key_unit_id,  (12090301_2277_ble)
-                       key_unit_version_as_str (date string eg: 230811),
-                       key_unit_version_as_dt  (date obj for 230811)
-                       unit_folder_name (12090301_2277_ble_230811) (cleaned version)
-        OR
-        If in error, dictionary will have only one key of "error", saying why it the
-           reason for the error. It lets the calling code to decide if it wants to raise
-           and exception.
-           Why? There are some incoming folders that will not match the pattern and the
-           calling code will want to know that and may just continue on
-
-        BUT: if the incoming param doesn't exist, that raises an exception
-    """
-
-    rtn_dict = {}
-
-    if unit_folder_name == "":
-        raise ValueError("unit_folder_name can not be empty")
-
-    unit_folder_name = unit_folder_name.replace("\\", "/")
-
-    # cut off the s3 part if there is any.
-    unit_folder_name = unit_folder_name.replace("s3://", "")
-
-    # s3_folder_path and we want to strip the first one only. (can be deeper levels)
-    if unit_folder_name.endswith("/"):
-        unit_folder_name = unit_folder_name[:-1]  # strip the ending slash
-
-    # see if there / in it and split out based on the last one (might not be one)
-    unit_folder_segs = unit_folder_name.rsplit("/", 1)
-    if len(unit_folder_segs) > 1:
-        unit_folder_name = unit_folder_segs[-1]
-
-    # The best see if it has an underscore in it, split if based on that, then
-    # see the first chars are an 8 digit number and that it has three underscores (4 segs)
-    # and will split it to a list of tuples
-    segs = unit_folder_name.split("_")
-    if len(segs) != 4:
-        rtn_dict["error"] = "Expected four segments split by three underscores e.g. 12090301_2277_ble_230811"
-        return rtn_dict
-
-    key_huc = segs[0]
-    key_crs = segs[1]
-    key_source_code = segs[2]
-    key_date = segs[3]
-
-    if (not key_huc.isnumeric()) or (not key_crs.isnumeric()) or (not key_date.isnumeric()):
-        rtn_dict["error"] = f"The unit folder name of {unit_folder_name} is invalid."
-        " The pattern should look like '12090301_2277_ble_230811' for example."
-        return rtn_dict
-
-    if len(key_huc) != 8:
-        rtn_dict["error"] = "The first part of the four segments (huc), is not 8 digits long"
-        return rtn_dict
-
-    if (len(key_crs) < 4) or (len(key_crs) > 6):
-        rtn_dict["error"] = "Second part of the four segments (crs) is not"
-        " between 4 and 6 digits long"
-        return rtn_dict
-
-    if len(key_date) != 6:
-        rtn_dict["error"] = "Last part of the four segments (date) is not 6 digits long"
-        return rtn_dict
-
-    # test date format
-    # format should come in as yymmdd  e.g. 230812
-    # If successful, the actual date object be added
-    dt_key_date = None
-    try:
-        dt_key_date = datetime.strptime(key_date, "%y%m%d")
-    except Exception:
-        # don't log it
-        rtn_dict["error"] = (
-            "Last part of the four segments (date) does not appear"
-            " to be in the pattern of yymmdd eg 230812"
-        )
-        return rtn_dict
-
-    rtn_dict["key_huc"] = key_huc
-    rtn_dict["key_crs_number"] = key_crs
-    rtn_dict["key_source_code"] = key_source_code
-    rtn_dict["key_unit_id"] = f"{key_huc}_{key_crs}_{key_source_code}"
-    rtn_dict["key_unit_version_as_str"] = key_date
-    rtn_dict["key_unit_version_as_dt"] = dt_key_date
-    rtn_dict["unit_folder_name"] = unit_folder_name  # cleaned version
-
-    return rtn_dict
 
 
 # -------------------------------------------------

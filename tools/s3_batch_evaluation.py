@@ -323,7 +323,7 @@ def run_batch_evaluations(
     for s_unit in s3_sf.get_folder_list(BUCKET, sv.S3_RAS_UNITS_OUTPUT_FOLDER, False):
         s3_unit_name = s_unit.get('key')
 
-        rd = s3_sf.parse_unit_folder_name(s3_unit_name)
+        rd = sf.parse_unit_folder_name(s3_unit_name)
 
         # TODO: Upgrade this pathing.
         # figure out the output pathing.

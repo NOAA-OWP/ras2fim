@@ -51,6 +51,56 @@ Closes Issue [262](https://github.com/NOAA-OWP/ras2fim/issues/262) and Issue [27
    - `s3_model_mgm.py`: found a better way to pass args into the "validation" functions.
    - `s3_search_tools.py`: found a better way to pass args into the "validation" functions. Small s3_shared_funtion.py function name change.
    - `s3_shared_functions.py`:  Added a few more arg fixes. Added some tqdm. Upgraded how files and folders are downloaded, found a problem with it for the new tool.
+## v2.0.beta.32 - 2024-02-26 - [PR#302](https://github.com/NOAA-OWP/ras2fim/pull/302)
+
+Fix a couple of columns for reformat csv output. It was creating an error.
+
+### Changes  
+- `src`
+    - `reformat_ras_rating_curves.py`: Fix a couple of columns for reformat csv output.
+
+<br/><br/>
+
+
+## v2.0.beta.31 - 2024-02-26 - [PR#299](https://github.com/NOAA-OWP/ras2fim/pull/299)
+
+This PR adjusts the reformat_rating_curve system, sometimes called ras2calibation. It creates a rating curve csv that has all rating curves merged and adjusted for HAND_FIM needs.  It also creates a points file based on intersections of nwm streams and model cross_sections and makes a point gpkg for HAND_FIM. This is the V2 version of the same functionally from V1.
+
+This tool also completes the `ras2release.py` tool which needed files from this reformat system.
+
+### Changes  
+- `src`
+    - `create_geocurves.py`:  linting changes.
+    - `create_rating_curves.py`: linting changes.
+    - `ras2fim.py`: Adjustments for modified reformat rc system.
+    - `ras2fim_logger.py`:  linting changes.
+    - `reformat_ras_rating_curves.py`:  As described above.
+    - `shared_functions.py`: Moved a function for parsing unit  folder names, moved from `tools\s3_shared_functions.py`.
+    - `shared_variables.py`: Adjustments for the modified reformat rc system. Function moved is `parse_unit_folder_name`.
+-`tools`
+    - `ras2inundation.py`: linting changes.
+    - `ras2release.py`:  Finalize based on changes from updated reformat rc system.
+    - `ras_unit_s3.py`: Adjusted for moved `parse_unit_folder_name` function.
+    - `s3_model_mgmt.py`: Fix for an earlier function name change. Pre-existing bug.
+    - `s3_shared_functions.py`:  Moved the `parse_unit_folder_name` to `src\shared_variables.py`.  
+
+<br/><br/>
+
+
+## v2.0.beta.30 - 2024-02-23 - [PR#296](https://github.com/NOAA-OWP/ras2fim/pull/296)
+
+This PR focuses on creating geo rating curves for each conflated RAS model. 
+
+### Changes  
+- `src`
+    - `create_geocurves.py`: Completely revised to create geo rating curves for each NWM reach per RAS Model. 
+    - `ras2fim.py`: create_geocurves.py was reactivated in this script. 
+    - `shared_variable.py`: R2F_OUTPUT_DIR_GEOCURVES was added to this script
+    - `create_rating_curves.py`: updated to skip creating the "rating_curves" folder inside model folders. 
+
+### Testing
+Tested on all RAS models in HUC 12090301.
+  
 
 <br/><br/>
 
