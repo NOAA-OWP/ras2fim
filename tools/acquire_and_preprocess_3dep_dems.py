@@ -261,6 +261,9 @@ def __download_usgs_dem(domain_file_path, output_dem_file_path, target_projectio
         # Now we can reproject to the projection of our preference.
         sf.reproject_raster(temp_dem_file_path, output_dem_file_path, new_proj_wkt, 10)
 
+        # remove the temp file
+        os.remove(temp_dem_file_path)
+
         RLOG.success("USGS DEM downloaded")
 
     except Exception:
