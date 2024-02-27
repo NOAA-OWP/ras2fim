@@ -77,10 +77,10 @@ def plot_src(
 
     if model_unit == "meter":
         plt.ylabel("Average Depth (m)")
-        plt.xlabel("Discharge (m^3/s)")
+        plt.xlabel("Discharge (cms)")
     else:
         plt.ylabel("Average Depth (ft)")
-        plt.xlabel("Discharge (ft^3/s)")
+        plt.xlabel("Discharge (cfs)")
 
     plt.grid(True)
 
@@ -161,8 +161,12 @@ def fn_create_rating_curves(huc8, path_unit_folder):
     # -------------------------------------------------
     # Creating a for loop going through all all_x_sections_info
     # for each confalted stream (step 5 results)
+    stage_diff_gt_1foot = pd.DataFrame(columns=["model_id", "feature_id", "max_stage_diff", "max_indx"])
     for infoind in range(len(path_to_all_x_sections_info)):
-        mid_x_sections_info = pd.read_csv(path_to_all_x_sections_info[infoind])  #
+        model_name_id = path_to_all_x_sections_info[infoind].split("\\")[-2]
+        RLOG.lprint("")
+        RLOG.lprint(f"Creating rating curves for model {model_name_id}")
+        mid_x_sections_info = pd.read_csv(path_to_all_x_sections_info[infoind])
         mid_x_sections_info = mid_x_sections_info.rename(columns={'fid_xs': 'mid_xs', 'modelid': 'model_id'})
 
         # Determinig the number of steps
@@ -212,14 +216,14 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             [
                 mid_x_sections_info[["mid_xs", "model_id", "xs_counter"]],
                 df_XS_name["Xsection_name"],
-                mid_x_sections_info[["wse", "discharge"]],
+                mid_x_sections_info[["discharge", "wse", "max_depth"]],
                 df_mid_fid,
             ],
             axis=1,
         )
 
         mid_xs_info_fid = mid_x_sections_info_fid[
-            ['model_id', 'feature_id', 'xs_counter', 'Xsection_name', 'wse', 'discharge']
+            ['model_id', 'feature_id', 'xs_counter', 'Xsection_name', 'discharge', 'wse', 'max_depth']
         ]
 
         # -------------------------------------------------
@@ -249,33 +253,28 @@ def fn_create_rating_curves(huc8, path_unit_folder):
         mid_xs_info_fid_lst = mid_xs_info_fid.groupby(['profile_num', 'feature_id']).last()
 
         for fids in fid_ind:
-            list_int_step_flows = list(
-                mid_xs_info_fid_avr.iloc[mid_xs_info_fid_avr.index.get_level_values('feature_id') == fids][
-                    'discharge'
-                ]
-            )
-            list_step_wse = list(
-                mid_xs_info_fid_avr.iloc[mid_xs_info_fid_avr.index.get_level_values('feature_id') == fids][
-                    'wse'
-                ]
-            )
+            cond_fid_avr = mid_xs_info_fid_avr.index.get_level_values('feature_id') == fids
+            list_int_step_flows = list(mid_xs_info_fid_avr.iloc[cond_fid_avr]['discharge'])
+            list_step_wse = list(mid_xs_info_fid_avr.iloc[cond_fid_avr]['wse'])
+
             str_feature_id = str(fids)
 
-            fid_mid_x_sections_info_avr = mid_xs_info_fid_avr.iloc[
-                mid_xs_info_fid_avr.index.get_level_values('feature_id') == fids
-            ]
-            fid_mid_x_sections_info_1st = mid_xs_info_fid_1st.iloc[
-                mid_xs_info_fid_1st.index.get_level_values('feature_id') == fids
-            ]
-            fid_mid_x_sections_info_lst = mid_xs_info_fid_lst.iloc[
-                mid_xs_info_fid_lst.index.get_level_values('feature_id') == fids
-            ]
+            fid_mid_x_sections_info_avr = mid_xs_info_fid_avr.iloc[cond_fid_avr]
+
+            cond_fid_1st = mid_xs_info_fid_1st.index.get_level_values('feature_id') == fids
+            fid_mid_x_sections_info_1st = mid_xs_info_fid_1st.iloc[cond_fid_1st]
+
+            cond_fid_lst = mid_xs_info_fid_lst.index.get_level_values('feature_id') == fids
+            fid_mid_x_sections_info_lst = mid_xs_info_fid_lst.iloc[cond_fid_lst]
+
             xs_us_fid = fid_mid_x_sections_info_1st['Xsection_name']
             xs_us_fid = pd.DataFrame(xs_us_fid).rename(columns={'Xsection_name': 'xs_us'})
             xs_ds_fid = fid_mid_x_sections_info_lst['Xsection_name']
             xs_ds_fid = pd.DataFrame(xs_ds_fid).rename(columns={'Xsection_name': 'xs_ds'})
 
-            fid_mid_x_sections_info_src = fid_mid_x_sections_info_avr[['model_id', 'wse', 'discharge']]
+            fid_mid_x_sections_info_src = fid_mid_x_sections_info_avr[
+                ['model_id', 'wse', 'discharge', 'max_depth']
+            ]
             fid_mid_x_sections_info_src = pd.concat(
                 [fid_mid_x_sections_info_src, xs_us_fid, xs_ds_fid], axis=1
             )
@@ -287,8 +286,9 @@ def fn_create_rating_curves(huc8, path_unit_folder):
                 path_unit_folder,
                 sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES,
                 created_ras_models_folders[infoind],
-                "Rating_Curve",
+                # "Rating_Curve",
             )
+
             os.makedirs(str_rating_path_to_create, exist_ok=True)
 
             # -------------------------------------------------
@@ -298,12 +298,14 @@ def fn_create_rating_curves(huc8, path_unit_folder):
 
             discharge = pd.DataFrame(x_sections_info_fid['discharge'], columns=['discharge']).round(2)
             wse = pd.DataFrame(x_sections_info_fid['wse'], columns=['wse']).round(2)
-            discharge_wse = pd.concat([discharge, wse], axis=1)
+            depth = pd.DataFrame(x_sections_info_fid['max_depth'], columns=['max_depth']).round(2)
 
-            x_sections_info_fid = x_sections_info_fid.drop(['discharge', 'wse'], axis=1)
-            x_sections_info_fid = pd.concat([x_sections_info_fid, discharge_wse], axis=1)
+            discharge_wse_depth = pd.concat([discharge, wse, depth], axis=1)
+
+            x_sections_info_fid = x_sections_info_fid.drop(['discharge', 'wse', 'max_depth'], axis=1)
+            x_sections_info_fid = pd.concat([x_sections_info_fid, discharge_wse_depth], axis=1)
             x_sections_info_fid = x_sections_info_fid.rename(
-                columns={'wse': 'WSE_Feet', 'discharge': 'discharge_cfs'}
+                columns={'wse': 'wse_ft', 'discharge': 'discharge_cfs', 'max_depth': 'stage_ft'}
             )
 
             # Adding Discharg_CMS column
@@ -321,13 +323,18 @@ def fn_create_rating_curves(huc8, path_unit_folder):
                 2
             )
             wse2 = pd.DataFrame(fid_mid_x_sections_info_src['wse'], columns=['wse']).round(2)
-            discharge_wse2 = pd.concat([discharge2, wse2], axis=1)
+            depth2 = pd.DataFrame(fid_mid_x_sections_info_src['max_depth'], columns=['max_depth']).round(2)
+            discharge_wse_depth2 = pd.concat([discharge2, wse2, depth2], axis=1)
 
-            fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.drop(['discharge', 'wse'], axis=1)
-            fid_mid_x_sections_info_src = pd.concat([fid_mid_x_sections_info_src, discharge_wse2], axis=1)
+            fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.drop(
+                ['discharge', 'wse', 'max_depth'], axis=1
+            )
+            fid_mid_x_sections_info_src = pd.concat(
+                [fid_mid_x_sections_info_src, discharge_wse_depth2], axis=1
+            )
 
             fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.rename(
-                columns={'wse': 'WSE_Feet', 'discharge': 'discharge_cfs'}
+                columns={'wse': 'wse_ft', 'discharge': 'discharge_cfs', 'max_depth': 'stage_ft'}
             )
 
             # Adding Discharg_CMS column
@@ -337,6 +344,20 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             # Saving the rating curve
             fid_mid_x_sections_info_src.to_csv(str_xsection_path, index=True)
 
+            # Determine stage difference greated than 1 foot
+            stage_diff_fid = fid_mid_x_sections_info_src["wse_ft"].diff().dropna()
+            # print(stage_diff_fid)
+            for diff1 in stage_diff_fid:
+                if diff1 > 1:  # foot
+                    mid1 = int(fid_mid_x_sections_info_src["model_id"][0].values)
+                    max_diff = round(stage_diff_fid.max(), 3)
+                    max_indx_tup = stage_diff_fid.idxmax()
+                    max_indx, fids_tup = max_indx_tup
+                    mid_fid_pd = pd.DataFrame([mid1, fids, max_diff, max_indx]).T
+                    mid_fid_pd.columns = ["model_id", "feature_id", "max_stage_diff", "max_indx"]
+                    stage_diff_gt_1foot = pd.concat([stage_diff_gt_1foot, mid_fid_pd])
+                    break
+
             plot_src(
                 str_feature_id,
                 list_int_step_flows,
@@ -345,8 +366,21 @@ def fn_create_rating_curves(huc8, path_unit_folder):
                 str_file_name,
                 model_unit,
             )
-            #
 
+    # max_stage_diff = max(stage_diff_gt_1foot["max_stage_diff"])
+    # cond_max = stage_diff_gt_1foot["max_stage_diff"] == max_stage_diff
+    # max_mid = int(stage_diff_gt_1foot[cond_max]["model_id"])
+    # max_fid = int(stage_diff_gt_1foot[cond_max]["feature_id"])
+    # max_index = int(stage_diff_gt_1foot[cond_max]["max_indx"])
+    # RLOG.lprint(f"Please Note that the max stage difference is {max_stage_diff} feet")
+    # RLOG.lprint(f"detected in model {max_mid} (feature_id = {max_fid}) in flow number {max_index}")
+
+    path_stage_diff = os.path.join(
+        path_unit_folder, sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES, f"warning_stage_diff_gt_1ft_{huc8}.csv"
+    )
+    stage_diff_gt_1foot.to_csv(path_stage_diff, index=False)
+
+    RLOG.lprint("")
     RLOG.success("Complete")
 
 

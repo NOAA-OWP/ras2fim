@@ -95,7 +95,8 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
 
     RLOG.lprint("===================================================================")
     print("")
-    RLOG.notice(f"Uploading folder from {src_path}\n" f"                  to  {s3_full_target_path}")
+    RLOG.notice(f"Uploading folder from {src_path}")
+    RLOG.notice(f"                 to  {s3_full_target_path}")
     print()
     RLOG.notice("Hang in there. This can take between 2 to 10 mins depending on folder size")
 
@@ -316,9 +317,8 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
     try:
         RLOG.lprint("===================================================================")
         print("")
-        RLOG.notice(
-            f"Moving folder from {s3_src_folder_path}\n" f"                to {s3_target_folder_path}"
-        )
+        RLOG.notice(f"Moving folder from {s3_src_folder_path}"
+                    f"                to  {s3_target_folder_path}")
         print()
         print(
             f"{cl.fg('dodger_blue_1')}"
@@ -458,6 +458,8 @@ def download_folders(list_folders):
 
             num_completed = 0
             for download_args in list_folders:
+                download_args["s3_src_folder"] = download_args["s3_src_folder"].replace("\\", "/")
+
                 item = {
                     "bucket_name": download_args["bucket_name"],
                     "folder_id": download_args["folder_id"],
@@ -813,6 +815,9 @@ def get_file_list(bucket_name, s3_src_folder_path, search_key="", is_verbose=Fal
     # search_key = "*12090301*"
 
     try:
+        s3_src_folder_path = s3_src_folder_path.replace("\\", "/")
+        search_key = search_key.replace("\\", "/")
+
         if is_verbose is True:
             print("")
             RLOG.lprint(
@@ -1129,112 +1134,6 @@ def does_s3_bucket_exist(bucket_name):
         sys.exit(1)
 
     # other exceptions can be passed through
-
-
-# -------------------------------------------------
-def parse_unit_folder_name(unit_folder_name):
-    """
-    Overview:
-        While all uses of this function pass back errors if invalid the calling code can decide if it is
-        an exception. Sometimes it doesn't, it just want to check to see if the key is a huc crs key.
-
-    Input:
-        unit_folder_name: migth be a full s3 string, or full local the folder name
-           e.g.  s3://xzy/output_ras2fim/12090301_2277_ble_230811
-           or c://my_ras_data/output_ras2fim/12090301_2277_ble_230811
-
-    Output:
-        A dictionary with records of:
-                       key_huc,
-                       key_crs_number,
-                       key_source_code,
-                       key_unit_id,  (12090301_2277_ble)
-                       key_unit_version_as_str (date string eg: 230811),
-                       key_unit_version_as_dt  (date obj for 230811)
-                       unit_folder_name (12090301_2277_ble_230811) (cleaned version)
-        OR
-        If in error, dictionary will have only one key of "error", saying why it the
-           reason for the error. It lets the calling code to decide if it wants to raise
-           and exception.
-           Why? There are some incoming folders that will not match the pattern and the
-           calling code will want to know that and may just continue on
-
-        BUT: if the incoming param doesn't exist, that raises an exception
-    """
-
-    rtn_dict = {}
-
-    if unit_folder_name == "":
-        raise ValueError("unit_folder_name can not be empty")
-
-    unit_folder_name = unit_folder_name.replace("\\", "/")
-
-    # cut off the s3 part if there is any.
-    unit_folder_name = unit_folder_name.replace("s3://", "")
-
-    # s3_folder_path and we want to strip the first one only. (can be deeper levels)
-    if unit_folder_name.endswith("/"):
-        unit_folder_name = unit_folder_name[:-1]  # strip the ending slash
-
-    # see if there / in it and split out based on the last one (might not be one)
-    unit_folder_segs = unit_folder_name.rsplit("/", 1)
-    if len(unit_folder_segs) > 1:
-        unit_folder_name = unit_folder_segs[-1]
-
-    # The best see if it has an underscore in it, split if based on that, then
-    # see the first chars are an 8 digit number and that it has three underscores (4 segs)
-    # and will split it to a list of tuples
-    segs = unit_folder_name.split("_")
-    if len(segs) != 4:
-        rtn_dict["error"] = "Expected four segments split by three underscores e.g. 12090301_2277_ble_230811"
-        return rtn_dict
-
-    key_huc = segs[0]
-    key_crs = segs[1]
-    key_source_code = segs[2]
-    key_date = segs[3]
-
-    if (not key_huc.isnumeric()) or (not key_crs.isnumeric()) or (not key_date.isnumeric()):
-        rtn_dict["error"] = f"The unit folder name of {unit_folder_name} is invalid."
-        " The pattern should look like '12090301_2277_ble_230811' for example."
-        return rtn_dict
-
-    if len(key_huc) != 8:
-        rtn_dict["error"] = "The first part of the four segments (huc), is not 8 digits long"
-        return rtn_dict
-
-    if (len(key_crs) < 4) or (len(key_crs) > 6):
-        rtn_dict["error"] = "Second part of the four segments (crs) is not"
-        " between 4 and 6 digits long"
-        return rtn_dict
-
-    if len(key_date) != 6:
-        rtn_dict["error"] = "Last part of the four segments (date) is not 6 digits long"
-        return rtn_dict
-
-    # test date format
-    # format should come in as yymmdd  e.g. 230812
-    # If successful, the actual date object be added
-    dt_key_date = None
-    try:
-        dt_key_date = datetime.strptime(key_date, "%y%m%d")
-    except Exception:
-        # don't log it
-        rtn_dict["error"] = (
-            "Last part of the four segments (date) does not appear"
-            " to be in the pattern of yymmdd eg 230812"
-        )
-        return rtn_dict
-
-    rtn_dict["key_huc"] = key_huc
-    rtn_dict["key_crs_number"] = key_crs
-    rtn_dict["key_source_code"] = key_source_code
-    rtn_dict["key_unit_id"] = f"{key_huc}_{key_crs}_{key_source_code}"
-    rtn_dict["key_unit_version_as_str"] = key_date
-    rtn_dict["key_unit_version_as_dt"] = dt_key_date
-    rtn_dict["unit_folder_name"] = unit_folder_name  # cleaned version
-
-    return rtn_dict
 
 
 # -------------------------------------------------

@@ -52,6 +52,7 @@ R2F_OUTPUT_DIR_CREATE_RATING_CURVES = "06_create_rating_curves"
 R2F_OUTPUT_DIR_METRIC_RATING_CURVES = "Rating_Curve"
 R2F_OUTPUT_DIR_METRIC_CROSS_SECTIONS = "Cross_Sections"
 R2F_OUTPUT_DIR_FINAL = "final"
+R2F_OUTPUT_DIR_GEOCURVES = "geo_rating_curves"
 R2F_OUTPUT_DIR_FINAL_GEOCURVES = r"final\geocurves"
 R2F_OUTPUT_DIR_DOMAIN_POLYGONS = "models_domain"
 
@@ -64,6 +65,11 @@ R2F_OUTPUT_DIR_RAS2RELEASE = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
 # LOGS
 LOCAL_TOOLS_OUTPUT_PATH = os.path.join(DEFAULT_BASE_DIR, "tool_outputs")
 DEFAULT_LOG_FOLDER_PATH = os.path.join(LOCAL_TOOLS_OUTPUT_PATH, "logs")
+
+
+# OUTPUT FILES
+R2F_OUTPUT_FILE_RAS2CAL_CSV = "reformat_ras_rating_curve_table.csv"
+R2F_OUTPUT_FILE_RAS2CAL_GPKG = "reformat_ras_rating_curve_points.gpkg"
 
 # S3 PATHS
 S3_DEFAULT_BUCKET_NAME = "ras2fim"
