@@ -11,6 +11,7 @@ import fiona
 import geopandas as gpd
 import pyproj
 import rasterio as rio
+from rasterio.mask import mask
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
@@ -60,8 +61,6 @@ def acquire_and_preprocess_3dep_dems(
 
     - The new domain poly (per HUC8), is submitted as a extent area to USGS which will download the DEM
       using that spatial extent area. The new output DEMs will have the HUC8 name in it.
-      After the HUC8 dem is down, we wil mask in the levee protected areas if applicable before saving.
-      If the newly created DEM already exists, it will ask the user if they want to overwrite it.
 
     - If the 'inc_upload_outputs_to_s3' flag is TRUE, it will use the s3_path to upload it. If the DEM exists
       already in S3, it will also ask if the user wants to overwrite it.
@@ -159,9 +158,7 @@ def acquire_and_preprocess_3dep_dems(
         dem_levee_file_name = f"HUC8_{huc}_w_levee_dem.tif"
         dem_levee_file_path = os.path.join(target_output_folder_path, dem_levee_file_name)
         __mask_dem_w_levee_protected_areas(dem_file_raw_path,
-                                           dem_levee_file_path,
-                                           domain_file_path,
-                                           target_projection)
+                                           dem_levee_file_path)
 
         # ------------
         if inc_upload_outputs_to_s3 is True:
@@ -218,7 +215,7 @@ def __download_usgs_dem(domain_file_path, output_dem_file_path, target_projectio
 
     print()
     RLOG.notice(f" -- Downloading DEM file for {output_dem_file_path}")
-    
+
     print(
         " *** Stand by, this may take up to 2 to 8 mins depending on computer resources.\n"
         " Note: sometimes the connection to USGS servers can be bumpy so retry if you"
@@ -239,7 +236,7 @@ def __download_usgs_dem(domain_file_path, output_dem_file_path, target_projectio
         url += r"StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
 
         with rio.open(url, 'r') as raster_vrt:
-            out_image, out_transform = rio.mask.mask(raster_vrt, geoms, crop=True)
+            out_image, out_transform = mask(raster_vrt, geoms, crop=True)
 
             out_meta = raster_vrt.meta.copy()
             out_meta.update(
@@ -273,19 +270,14 @@ def __download_usgs_dem(domain_file_path, output_dem_file_path, target_projectio
 
 
 # -------------------------------------------------
-def __mask_dem_w_levee_protected_areas(dem_file_raw_path, dem_levee_file_path, target_projection):
+def __mask_dem_w_levee_protected_areas(dem_file_raw_path, dem_levee_file_path):
     """
     Process:
-        - Create a temp version of the input levee files pre-projected to the target_projection
-          which is the current temp DEM (if required). We will check it's current projection first.
-        - Using incoming domain_file_path, we can clip out the part we need for the current DEM.
-        - Then use that clipped levee file, mask it into the DEM.
-    Inputs:
+
+        Inputs:
         (paths adjusted based on target folder arg)
         - dem_file_raw_path: ie) C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m\HUC8_12010005_dem.tif
         - dem_file_path: ie) C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m\HUC8_12010005_w_levee_dem.tif
-        - domain_file_path: ie) C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m\HUC8_12010005_domain.gpkg
-        - target_projection: ie) EPSG:5070
     """
     print()
     RLOG.notice(" -- Masking levees into DEM")
@@ -297,9 +289,9 @@ def __mask_dem_w_levee_protected_areas(dem_file_raw_path, dem_levee_file_path, t
         with fiona.open(sv.INPUT_LEVEE_PROT_AREA_FILE_PATH) as leveed:
             geoms = [feature["geometry"] for feature in leveed]
 
-            dem_masked, __ = rio.mask.mask(dem_raw, 
-                                            geoms,
-                                            invert=True)
+            dem_masked, __ = mask(dem_raw, 
+                                  geoms,
+                                  invert=True)
 
     with rio.open( dem_levee_file_path, "w", **dem_profile, BIGTIFF='YES') as dest_file:
         dest_file.write(dem_masked)
