@@ -301,7 +301,6 @@ def __upload_file_to_s3(s3_path, file_name, src_file_path):
     Checks if the file is already uploaded to S3
     """
 
-    start_dt = dt.datetime.utcnow()
     s3_file_path = s3_path + "/" + file_name
 
     print()
@@ -337,12 +336,11 @@ def __upload_file_to_s3(s3_path, file_name, src_file_path):
                 RLOG.lprint(f"\n.. You have entered an invalid response of {resp}. Program stopped.\n")
                 sys.exit(0)
 
+    print()
     print(" *** Stand by, this may take 1 to 4 minutes depending on computer resources")
     s3_sf.upload_file_to_s3(src_file_path, s3_file_path)
     print()
     RLOG.success(f"Upload to {s3_file_path} - Complete")
-    dur_msg = sf.get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
-    RLOG.lprint(dur_msg)
     print()
 
 
