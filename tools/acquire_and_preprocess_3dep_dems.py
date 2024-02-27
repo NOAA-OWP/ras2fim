@@ -161,7 +161,7 @@ def acquire_and_preprocess_3dep_dems(
         # ------------
         if inc_upload_outputs_to_s3 is True:
             print()
-            RLOG.notice(" -- We will be uploading the domain file first to S3, then the dem file.")
+            RLOG.notice(" -- We will be uploading the domain file first to S3, then the dem files.")
             # Upload Domain Files
             __upload_file_to_s3(s3_path, domain_file_name, domain_file_path)
             # Now the DEM
