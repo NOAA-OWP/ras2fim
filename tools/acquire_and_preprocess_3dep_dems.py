@@ -75,13 +75,13 @@ def acquire_and_preprocess_3dep_dems(
             1: for the domains used for the cut to USGS and
             2: the other is the actual DEM (now called a ras2fim DEM)
             3: using the DEM above, make out any levees that are in that extent.
-            
+
         Folder input and outputs are overrideable but defaulted.
         The default root output folder will be c:/ras2fim_data/inputs/dems/ras_3dep_HUC8_10m. If those file
         already exist, they will automatically be overwritten.
 
        - Each ras2fim dem output file will follow the pattern of "HUC8_{huc_number}_dem.tif"
-       - Each ras2fim dem output file with levees will follow the 
+       - Each ras2fim dem output file with levees will follow the
          pattern of "HUC8_{huc_number}_w_levee_dem.tif"
        - Each domain output file will follow a pattern "HUC8_{huc_number}_domain.gpkg"
 
@@ -126,7 +126,7 @@ def acquire_and_preprocess_3dep_dems(
     RLOG.lprint(f"  --- (-u) Upload to output to S3 ?: {inc_upload_outputs_to_s3}")
     if inc_upload_outputs_to_s3 is True:
         RLOG.lprint(f"  --- (-s3) Path to upload outputs to S3: {s3_path}")
-    RLOG.lprint(f"      Started (UTC): {sf.get_stnd_date()}")        
+    RLOG.lprint(f"      Started (UTC): {sf.get_stnd_date()}")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
     # ----------------
@@ -157,8 +157,7 @@ def acquire_and_preprocess_3dep_dems(
         # mask levee protect areas into the raw DEM. It will also remove the temp file.
         dem_levee_file_name = f"HUC8_{huc}_w_levee_dem.tif"
         dem_levee_file_path = os.path.join(target_output_folder_path, dem_levee_file_name)
-        __mask_dem_w_levee_protected_areas(dem_file_raw_path,
-                                           dem_levee_file_path)
+        __mask_dem_w_levee_protected_areas(dem_file_raw_path, dem_levee_file_path)
 
         # ------------
         if inc_upload_outputs_to_s3 is True:
@@ -171,8 +170,7 @@ def acquire_and_preprocess_3dep_dems(
             # Now the masked DEM
             __upload_file_to_s3(s3_path, dem_levee_file_name, dem_levee_file_path)
 
-            #now the levee version
-
+            # now the levee version
 
         RLOG.lprint("--------------------------------------")
         RLOG.success(f" Acquire and pre-proccess 3dep DEMs completed: {sf.get_stnd_date()}")
@@ -286,18 +284,16 @@ def __mask_dem_w_levee_protected_areas(dem_file_raw_path, dem_levee_file_path):
     RLOG.notice(" -- Masking levees into DEM")
 
     with rio.open(dem_file_raw_path) as dem_raw:
-
         dem_profile = dem_raw.profile.copy()
 
         with fiona.open(sv.INPUT_LEVEE_PROT_AREA_FILE_PATH) as leveed:
             geoms = [feature["geometry"] for feature in leveed]
 
-            dem_masked, __ = mask(dem_raw, 
-                                  geoms,
-                                  invert=True)
+            dem_masked, __ = mask(dem_raw, geoms, invert=True)
 
-    with rio.open( dem_levee_file_path, "w", **dem_profile, BIGTIFF='YES') as dest_file:
+    with rio.open(dem_levee_file_path, "w", **dem_profile, BIGTIFF='YES') as dest_file:
         dest_file.write(dem_masked)
+
 
 # -------------------------------------------------
 def __upload_file_to_s3(s3_path, file_name, src_file_path):
@@ -349,16 +345,12 @@ def __upload_file_to_s3(s3_path, file_name, src_file_path):
     RLOG.lprint(dur_msg)
     print()
 
+
 # ------------
 # Validation (at this point, there are no new derived variables)
-def __validate_input(huc,
-                     path_wbd_huc12s_gpkg,
-                     target_output_folder_path,
-                     inc_upload_outputs_to_s3,
-                     s3_path,
-                     target_projection):
-    
-
+def __validate_input(
+    huc, path_wbd_huc12s_gpkg, target_output_folder_path, inc_upload_outputs_to_s3, s3_path, target_projection
+):
     # target_output_folder_path (no validation needed)
 
     if os.path.exists(path_wbd_huc12s_gpkg) is False:

@@ -4,7 +4,6 @@ import os
 import sys
 import traceback
 
-import colored as cl
 import geopandas as gpd
 
 
