@@ -588,9 +588,9 @@ def download_single_folder(
 
             args = {
                 "bucket_name": bucket_name,
+                "s3_file": src_file,                
                 "trg_file": trg_file,
-                "s3_client": s3_client,
-                "s3_file": src_file,
+                "s3_client": s3_client
             }
             if use_multi_thread is False:  # no MT here, just serially
                 try:
@@ -646,9 +646,9 @@ def download_single_folder(
 
             args = {
                 "bucket_name": bucket_name,
+                "s3_file": src_file,                
                 "trg_file": trg_file,
-                "s3_client": s3_client,
-                "s3_file": src_file,
+                "s3_client": s3_client
             }
             if use_multi_thread is False:  # no MT here, just serially
                 try:
@@ -683,7 +683,6 @@ def download_files_from_list(bucket_name, lst_files, is_verbose):
         bucket_name:
         lst_files: A list of dictionary items (e.g. ...
             - "s3_file": "output_ras2fim/12090301_2277_ble_230923/run_arguments.txt"
-                (can't have the value of 's3://' or the bucket name)
             - "trg_file: "C:\ras2fim_data\output_ras2fim\12090301_2277_ble_240206\run_arguments.txt"
     Output:
         - Same list of dictionaries returned with two new fields.
@@ -697,17 +696,27 @@ def download_files_from_list(bucket_name, lst_files, is_verbose):
     # so all calls share this client and it is much faster.
     s3_client = boto3.client('s3')
     for item in lst_files:
-        src_file = item["s3_file"]
-        trg_file = item["trg_file"]
 
+        src_file = item["s3_file"]
+
+        # This might come in with the s3://bucket name or might
+        # start after the bucket name. We need to cut off the
+        # s3 and bucket
+        # may or may not have s3 in front (and worry about case)
+        src_file = src_file.replace("S3://", "")
+        src_file = src_file.replace("s3://", "")
+        src_file = src_file.replace(bucket_name, "", 1)
+        
         if src_file.startswith("/"):
-            src_file = src_file[1:]  # cut off the front slash
+            src_file = src_file.lstrip("/")  # cut off the front slash
+
+        trg_file = item["trg_file"]
 
         # just catch them and log why they failed, we don't want to assume
         # the calling function wants to shut down the process
         msg = f"Downloading s3://{bucket_name}/{src_file} to {trg_file}"
         try:
-            download_one_file(bucket_name, trg_file, s3_client, src_file)
+            download_one_file(bucket_name, src_file, trg_file, s3_client)
             item["success"] = "True"
             item["fail_reason"] = ""
             msg = "Success : " + msg
@@ -730,17 +739,18 @@ def download_files_from_list(bucket_name, lst_files, is_verbose):
 
 
 # -------------------------------------------------
-def download_one_file(bucket_name: str, trg_file: str, s3_client: boto3.client, s3_file: str):
+def download_one_file(bucket_name: str, s3_file: str, trg_file: str, s3_client: boto3 = None):
     """
     Download a single file from S3
     Args:
         bucket_name (str):
-        trg_file (str):
         s3_file (str): S3 object name (full s3 path less bucket name)
             e.g. output_ras2fim/12030101_2276_ble_230925/myfile.txt
+        trg_file (str):            
         s3_client (boto3.client):
     """
     try:
+
         # Why extract the directory name? the key might have subfolder
         # names right in the key
         # print(f"... trg_file is {trg_file}")
@@ -752,6 +762,14 @@ def download_one_file(bucket_name: str, trg_file: str, s3_client: boto3.client, 
 
         # raise Exception("Rob you goofer") Testing exceptions
         s3_file = s3_file.replace("\\", "/")
+
+        if s3_client is None:
+            
+            # TODO:  MAKE SURE THIS isn't used by download_files_from_list
+            # It should provide it
+            RLOG.error("Opps.. (maybe).. s3 client create")
+            
+            s3_client = boto3.client('s3')
 
         with open(trg_file, 'wb') as f:
             s3_client.download_fileobj(Bucket=bucket_name, Key=s3_file, Fileobj=f)

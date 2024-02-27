@@ -4,7 +4,9 @@ import argparse
 import datetime as dt
 import glob
 import os
+import shutil
 import sys
+import time
 import traceback
 from pathlib import Path
 
@@ -14,10 +16,10 @@ import pandas as pd
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import ras2inundation as ri
-import s3_shared_functions as s3_sf
-from evaluate_ras2fim_unit import evaluate_unit_results
-
 import shared_variables as sv
+import s3_shared_functions as s3_sf
+
+from evaluate_ras2fim_unit import evaluate_unit_results
 from shared_functions import get_date_time_duration_msg, get_date_with_milli, get_stnd_date
 
 
@@ -31,10 +33,10 @@ TODO:  explain how this works
 This tool can already work in auto mode. No runtime questions are asked.
 
 TODO: Later, do we optionally load this back up to S3?
-   For now.. manually upload C:\ras2fim_data\gval\evaluations\PROD\12030103_2276_ble (to the unit level)
-
-TODO: If already has the master metics for the unit in S3. How do we remember to pull it down before
-   running an inundatoin test.  Maybe pull it down as a seperate step?
+   For now.. manually upload C:\ras2fim_data\gval\evaluations\PROD\12030103_2276_ble\230923 (to the unit level)
+   Also upload the unit level master metrics to S3. e.g. 
+      C:\ras2fim_data\gval\evaluations\PROD\12030103_2276_ble\12030105_2276_ble_unit_metrics.csv  (notice not 
+      in the version subfolder.)
 
 """
 
@@ -54,6 +56,7 @@ def run_unit_benchmark_tests(
     trg_gval_root,
     trg_output_override_path,
     src_benchmark_data_path,
+    unit_metrics,
 ):
     """
     TODO Processing notes (lots of permuations)
@@ -65,6 +68,7 @@ def run_unit_benchmark_tests(
         trg_gval_root: e.g. c:\ras2fim_data\gval
         trg_output_override_path: e.g.(blank) or c:\my_ras\inundation_files
         src_benchmark_data_path: e.g. C:\ras2fim_data\gval\benchmark_data
+        unit_metrics: e.g. none or various S3 or local paths
     """
 
     arg_values = locals().copy()
@@ -78,8 +82,12 @@ def run_unit_benchmark_tests(
     RLOG.lprint(f"  (-sg): Source unit local path for the 'final' folder: {src_unit_final_path}")
     RLOG.lprint(f"  (-b):  Source benchmark data path: {src_benchmark_data_path}")
     RLOG.lprint(f"  (-e):  Environment type: {enviro}")
-    RLOG.lprint(f"  (-tg): Local target gval root path: {trg_gval_root}")
-    RLOG.lprint(f"  (-to): Local target output override path: {trg_output_override_path}")
+    if trg_gval_root != "":
+        RLOG.lprint(f"  (-tg): Local target gval root path: {trg_gval_root}")
+    if trg_output_override_path != "":
+        RLOG.lprint(f"  (-to): Local target output override path: {trg_output_override_path}")
+    if unit_metrics != "" and unit_metrics != "not_set":
+        RLOG.lprint(f"  (-m): Path to unit metrics file: {trg_output_override_path}")        
     RLOG.lprint(f" Started (UTC): {get_stnd_date()}")
     print()
     print("NOTE: All output inundation and benchmark results files will be overwritten")
@@ -87,39 +95,45 @@ def run_unit_benchmark_tests(
 
 
     RLOG.notice("********************************************************************")
-    RLOG.notice("***  IMPORTANT NOTE about unit level roll up metrics files\n")
-    RLOG.lprint(" Each unit (ie. 12030105_2276_ble) can have multiple versions over time.")
-    RLOG.lprint("     ie) 230923 or 240217")    
-    RLOG.lprint(" This tool processes one unit and version at this time.")
-    RLOG.lprint("     ie) 12030105_2276_ble_230923 or 12030105_2276_ble_240217")
-    RLOG.lprint(" This tool processes one unit and version at this time.")
-    RLOG.lprint(r"    ie). C:\ras2fim_data\output_ras2fim\12030105_2276_ble_230923.")
+    RLOG.notice("***  IMPORTANT NOTE about roll up metrics files\n")
+    print(" Each unit (ie. 12030105_2276_ble) can have multiple versions over time.")
+    print("     ie) 230923 or 240217")    
+    print(" This tool processes one unit and version at this time.")
+    print("     ie) 12030105_2276_ble_230923 or 12030105_2276_ble_240217")
+    print(" Saved at: ")
+    print(r"    ie). C:\ras2fim_data\output_ras2fim\12030105_2276_ble_230923.")
     print()
-    RLOG.lprint(" When it is saved in the evalution folders, it keeps the unit name and version"
-                " in seperate folders")
-    RLOG.lprint(r"     ie) C:\ras2fim_data\gval\evaluations\PROD\12030103_2276_ble\230923")
-    RLOG.lprint(" This tool creates a metrics records created during this run for"
-    " for each benchmark source and magnitude.")
-    RLOG.lprint(" It will also attempt to create a rollup of those metrics data into"
-                " a unit level metrics.")
-    RLOG.lprint(r"     ie) C:\ras2fim_data\gval\evaluations\PROD"
-                r"\12030105_2276_ble\12030105_2276_ble_unit_metrics.csv")
-    RLOG.lprint(" This means the unit level metrics has all benchmark metrics for"
-                " all versions and runs.")
+    print(" When it is completing the evaluations, the eval outputs will be saved"
+          " in a unit version subfolder.")
+    print(r"     ie) C:\ras2fim_data\gval\evaluations\PROD\12030103_2276_ble\230923")
     print()
-    RLOG.lprint(" HOWEVER: At this point, the program does not have a feature to check S3"
-    " to see if the file already exists and does not attempt to download it.")
+    print(" This tool create a couple of metrics (.csv) files created.")
+    print("   - One file is at the unit level which covers all metrics for all evaluations"
+          "  (benchmark and magnitude) and unit versions (ie. 230923, 240228)")
+    print(r"       ie) C:\ras2fim_data\gval\evaluations\PROD"
+          r"\12030105_2276_ble\12030105_2276_ble_unit_metrics.csv")
     print()
-    RLOG.lprint(" For now, please check S3 to see if this unit already as a metrics file"
-    " and download to the unit folder. Otherwise you can manually merge those files later."
-    " Make sure you upload it when you are done.")
+    print("   - The second file is at the unit version level which covers all metrics created"
+                " during this run.")
+    print(r"       ie) C:\ras2fim_data\gval\evaluations\PROD"
+                r"\12030105_2276_ble\240228\12030105_2276_ble_240228_metrics.csv")
+    print()
+    if unit_metrics == "" or unit_metrics == "not_set":
+        print(" Remember can optionally use the (-m) with to point to an existing"
+              " unit level metrics file that can be downloaded or copied and be appended."
+              " It can be an s3 url file path or a local file sytem file path.")
     print()
     RLOG.notice("********************************************************************")
 
     # TODO: test permuations of the input args
+
+    RLOG.notice("NOTE: As of Feb 23, 2023, some of the testing for non-defaulted args has"
+                " not yet been completed")
     print()
-    RLOG.lprint("NOTE: Some of the testing for non-defaulted args has not yet been completed")
     print()
+
+    # give the users 10 seconds to read this before continuing
+    time.sleep(10)
 
     # ----------------
     # validate input variables and setup key variables
@@ -195,6 +209,7 @@ def run_unit_benchmark_tests(
         rd["src_models_file"],
         rd["trg_inun_file_path"],
         rd["local_benchmark_data_path"],
+        rd["trg_unit_metrics_path"]
     )
 
     print()
@@ -217,6 +232,7 @@ def __run_tests(
     src_models_file,
     trg_inun_file_path,
     local_benchmark_data_path,
+    trg_unit_metrics_file_path
 ):
     """
     Process: Iterates the incoming local benchmark and run them against evaluate_ras2fim_unit.py
@@ -231,6 +247,10 @@ def __run_tests(
             e.g. C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\230923
         local_benchmark_data_path: (we use this to re-calc pathing for the output folders)
             e.g. C:\ras2fim_data\gval\benchmark_data.
+        trg_unit_metrics_file_path: the name and path of the unit level metrics file to be used:
+            e.g. C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\12030105_2276_ble_unit_metrics.csv
+            (root path "C:\ras2fim_data\gval" and final file 
+            name "12030105_2276_ble_unit_metrics.csv" might be different)
     """
 
     print("--------------------------")
@@ -284,7 +304,7 @@ def __run_tests(
             #     12090301_2277_ble_230923\final\models_domain\dissolved_conflated_models.gpkg
 
         except Exception as ex:
-            err_msg = f"An error occured while settign up info unit benchmark tests for {unit_folder_name}"
+            err_msg = f"An error occured while setting up info unit benchmark tests for {unit_folder_name}"
             RLOG.critical(err_msg)
             raise ex
 
@@ -355,38 +375,74 @@ def __run_tests(
         metric_files.append(metrics_file_path)
 
         # merge this wil the unit master csv
-    __merge_metrics_files(metric_files, ud["key_unit_id"], ud["key_unit_version_as_str"], trg_unit_folder)
+    __merge_metrics_files(metric_files,
+                          ud["key_unit_id"],
+                          ud["key_unit_version_as_str"],
+                          trg_unit_folder,
+                          trg_unit_metrics_file_path)
 
 
 # -------------------------------------------------
-def __merge_metrics_files(metric_files, unit_name, unit_version, trg_unit_folder):
-    # All of the individual benchmark tests folder have their own metrics,
-    # but we will roll them up to a unit level "master" metrics.
-    # If it finds records that already exist with that version (ie. 230914),
-    # it will delete them first so we don't have dup sets of one version records
+def __merge_metrics_files(metric_files, unit_name, unit_version, trg_unit_folder, unit_metrics_path):
+    """
+    All of the individual benchmark tests folder have their own metrics,
+    but we will roll them up to a unit level "master" metrics.
+    If it finds records that already exist with that version (ie. 230914),
+    it will delete them first so we don't have dup sets of one version records
 
-    # And will be saved to :
-    #    ie) C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\12030105_2276_ble_unit_metrics.csv
+    There two metrics file that will be created. One at the unit level
+        ie) C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\12030105_2276_ble_unit_metrics.csv
+    And a second one at the unit_version level (for just this run)
+        ie) C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\
+            230923\12030105_2276_ble_230923_metrics.csv
 
-    # TODO: What if the rollup metrics file in S3 but not local
+    Inputs:
+        - metric_files: a list of the full pathed just created metrics (one per sourc / magnitude)
+        - unit_name: e.g. 12030105_2276_ble
+        - unit_version: e.g. 230923
+        - trg_unit_folder: e.g. C:\my_ras2fim\gval_test\evaluations\PROD\12030105_2276_ble
+        - unit_metrics_path: A full path to the unit level metrics.
+             e.g. C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\12030105_2276_ble_unit_metrics.csv
 
-    unit_metrics_file_name = f"{unit_name}_unit_metrics.csv"
-    unit_metrics_path = os.path.join(trg_unit_folder, unit_metrics_file_name)
+        (Note: Users can override the name of the version level metrics file, just the root local gval path)
+    """
+
+    unit_version_metrics_file_path = f"{unit_name}_{unit_version}_metrics.csv"
+    unit_version_metrics_path = os.path.join(trg_unit_folder, unit_version, unit_version_metrics_file_path)    
 
     unit_metrics_df = pd.DataFrame()
+    unit_version_metrics_df = pd.DataFrame()
     for idx, metrics_file in enumerate(metric_files):
         if idx == 0:
             if os.path.exists(unit_metrics_path) is True:
                 RLOG.trace(
-                    f"Merging new metrics file of {metrics_file}" " to unit master at {unit_metrics_path}"
+                    f"Merging new metrics file of {metrics_file} to unit master at {unit_metrics_path}"
                 )
                 unit_metrics_df = pd.read_csv(unit_metrics_path)
-                # if it already exists, check to see if it already has records
+                # if the master unit metrics already exists, check to see if it already has records
                 # for the incoming version and remove them, as we will replace them.
+
+                #unit_metrics_df = unit_metrics_df.drop(
+                #    unit_metrics_df[unit_metrics_df['unit_version'].astype("string") == unit_version].index
+                #)
+
+                """
                 unit_metrics_df = unit_metrics_df.drop(
-                    unit_metrics_df[unit_metrics_df['unit_version'].astype("string") == unit_version].index
+                    unit_metrics_df[ 
+                        (unit_metrics_df['unit_version'].astype("string") == unit_version) and
+                        (unit_metrics_df['unit_name'] == unit_name)
+                        ].index
                 )
-                # unit_metrics_df = unit_metrics_df.loc[unit_metrics_df['unit_version'] != unit_version]
+                """
+                indexes_lst = unit_metrics_df[ 
+                        (unit_metrics_df['unit_version'].astype("string") == unit_version) &
+                        (unit_metrics_df['unit_name'] == unit_name)
+                        ].index
+                unit_metrics_df.drop(indexes_lst , inplace=True)
+                #print("dup indexes")
+                #print(indexes_lst)
+
+
 
                 metrics_df = pd.read_csv(metrics_file)
                 # I heard it not good to write directly back to a df progress of concat
@@ -397,12 +453,20 @@ def __merge_metrics_files(metric_files, unit_name, unit_version, trg_unit_folder
                 RLOG.trace("Unit master metrics file does not exist.")
                 RLOG.trace(f"Loading the first one, metrics file of {metrics_file}")
                 unit_metrics_df = pd.read_csv(metrics_file)
+
+                # and for the version level too (which we will overwrite if it exists)
+                unit_version_metrics_df = pd.read_csv(metrics_file)
         else:
             RLOG.trace(f"Concatenating metrics file of {metrics_file}")
             metrics_df = pd.read_csv(metrics_file)
+
             # I heard it not good to write directly back to a df progress of concat
             con_df = pd.concat([unit_metrics_df, metrics_df], ignore_index=True)
             unit_metrics_df = con_df
+
+            # concat to the version level metrics as well.
+            con_df = pd.concat([unit_version_metrics_df, metrics_df], ignore_index=True)
+            unit_version_metrics_df = con_df            
 
     if len(unit_metrics_df) == 0:
         raise Exception("The unit master metrics file is empty. Please review code")
@@ -410,9 +474,16 @@ def __merge_metrics_files(metric_files, unit_name, unit_version, trg_unit_folder
     print()
     unit_metrics_df.to_csv(unit_metrics_path, index=False)
     RLOG.notice(
-        "Created or Updated the rolled up unit level metrics file"
+        "Created or updated the rolled up unit level metrics file"
         f" at {unit_metrics_path}. All new metrics files have been added to this file."
     )
+
+    print()
+    unit_version_metrics_df.to_csv(unit_version_metrics_path, index=False)
+    RLOG.notice(
+        "The rolled up metrics file for this specific unit and unit version have"
+        f" been created as well. It has been saved to {unit_version_metrics_path}."
+    )    
 
 
 # -------------------------------------------------
@@ -454,8 +525,8 @@ def parse_bench_file_name(file_path, local_benchmark_data_path):
         magnitude = split_paths[2]
     elif bench_source == "ras2fim":
         # becomes ras2f_100yr
-        bench_prefix = f"ras2fim_{split_paths[2]}"
-        magnitude = split_paths[2]
+       bench_prefix = f"ras2fim_{split_paths[2]}"
+       magnitude = split_paths[2]
     elif bench_source == "usgs":
         # becomes nws_nchn3_minor
         bench_prefix = f"usgs_{split_paths[2]}_{split_paths[3]}"
@@ -621,6 +692,7 @@ def __validate_input(
     trg_gval_root,
     trg_output_override_path,
     src_benchmark_data_path,
+    unit_metrics,
 ):
     """
     Summary: Will raise Exception if some are found
@@ -751,7 +823,104 @@ def __validate_input(
     rtn_dict["is_s3_path"] = is_s3_path
     rtn_dict["src_benchmark_data_path"] = src_benchmark_data_path  # could be S3 or local
 
+    # ----------------
+    # calc path for where the master unit metrics will exist. This may be creating
+    # a default one, downloading it from S3, or copy an existing one from somewhere on the file
+    rtn_dict["trg_unit_metrics_path"] = __calc_path_unit_metrics_file(unit_metrics,
+                                                                      rtn_dict["unit_id"],
+                                                                      trg_unit_folder)
+
     return rtn_dict
+
+
+# -------------------------------------------------
+def __calc_path_unit_metrics_file(unit_metrics, unit_id, trg_unit_folder):
+    
+    """
+    This function will return the a target path and name for the unit level metrics csv file.
+    The user can optionally tell us to download or copy a previous version, so new records can be
+    appended it (assuming a previous one already existed).
+    The previous metrics file path can be from S3 in which we will attempt to download it.
+    OR a local drive and we can copy it to the required processing folder. 
+    If no previous unit level metrics file exists, it will start a new one.
+
+    In both cases of the unit_metrics arg being passed in, it will keep the provided file name
+    but save it to the required local folder pathing (with the root folder being changeable
+    via the -tg arg).
+    
+    e.g. C:\my_ras\gval\evaluations\PROD\12030105_2276_ble\test_rollup_unit_metrics.csv
+
+    This function covers the unit level metrics file only and not the subfolder unit version
+    file name.
+
+    Inputs:
+        unit_metrics: e.g. "not_set" or s3://ras2fim-dev/test_unit_rollup_metrics.csv (or local path)
+        unit_id: e.g. 12030105_2276_ble
+        trg_unit_folder: e.g. C:\my_ras\gval\evaluations\PROD\12030105_2276_ble
+    """
+    # TODO: It woudl be good to have it auto search S3 for a unit metrics file. But..
+    # we don't have any input arg for either the root s3 bucket or the bucket and folder to 
+    # evaluations.
+
+    default_unit_metrics_file_name = f"{unit_id}_unit_metrics.csv" 
+
+    if unit_metrics == "not_set" or unit_metrics == "":
+        # set it to the default local of where it will located.
+        trg_unit_metrics_path = os.path.join(trg_unit_folder, default_unit_metrics_file_name)
+    else:
+        if (unit_metrics.startswith("s3:") or unit_metrics.startswith("S3:")):
+            unit_metrics = unit_metrics.replace("S3:", "s3:") # may or not already be in the case
+            unit_metrics = unit_metrics.replace("\\", "/") # fix to url forward slashes
+            # let's see if the file exists.
+            if s3_sf.is_valid_s3_file(unit_metrics) is False:
+                # set to default:
+                raise ValueError(f"{unit_metrics} does not exist.")
+            else:
+                # download it and copy to the local default path. (keeping the file name)
+                bucket_name, s3_file_path = s3_sf.parse_bucket_and_folder_name(unit_metrics)
+
+                # keep the original file name S3.
+                file_name = unit_metrics.rsplit("/", 1)
+                trg_unit_metrics_path = os.path.join(trg_unit_folder, file_name)
+                s3_sf.download_one_file(bucket_name, s3_file_path, trg_unit_metrics_path)
+
+        else:  
+            # unit_metrics value has been supplied (local path)
+
+            # ensure it is a csv file name.
+            file_dir = os.path.dirname(unit_metrics)
+            file_name = os.path.basename(unit_metrics)
+            file_ext = os.path.splitext(unit_metrics)
+            file_ext = file_ext[1].lower()
+            if ".csv" not in file_name:
+                raise ValueError(f"The provided metrics file path (-m) value of {unit_metrics}"
+                                    " is not a .csv file.")
+
+            # They gave us a full file local path.  (ie.. not S3)
+            if os.path.exists(unit_metrics) is False:
+
+                # They might be telling us what they want the file name to be
+                trg_unit_metrics_path = os.path.join(trg_unit_folder, default_unit_metrics_file_name)
+                # they could have given us the default value
+                if unit_metrics.lower() != trg_unit_metrics_path.lower():
+                    RLOG.warning(f"Can not find {unit_metrics}. A metrics file will be created"
+                                f" using the default {trg_unit_metrics_path}.")
+                    time.sleep(10) # give the user time to react (abort, ignore, whatever)
+                # else: already defaulted just above the if test
+                
+            else:  # file exists, so just copy it over, keep it's name but use our path
+                # need to create the dir if not already there.
+                if not os.path.isdir(file_dir):
+                    os.mkdirs(file_dir)
+
+                # keep the file name but copy to a the default location
+                trg_unit_metrics_path = os.path.join(trg_unit_folder, file_name)                        
+                shutil.copy2(unit_metrics, trg_unit_metrics_path)
+                print()                    
+                RLOG.lprint(f"{unit_metrics} was copied to {trg_unit_metrics_path}")
+                print()
+
+    return trg_unit_metrics_path
 
 
 # -------------------------------------------------
@@ -835,6 +1004,26 @@ if __name__ == "__main__":
         "If the benchmark data is downloaded from S3, it will put it in the default local gval pathing.\n"
         f"Defaults to {sv.S3_GVAL_BENCHMARK_PATH}",
         default=sv.S3_GVAL_BENCHMARK_PATH,
+        required=False,
+        metavar="",
+    )
+
+    parser.add_argument(
+        "-m",
+        "--unit_metrics",
+        help="OPTIONAL: This script will create a couple benchmark eval metrics rollup files.\n"
+        "One of the metric csv files is at the unit level (not including unit version)."
+        " ie) 12030101_2276_ble\n"
+        "The unit metrics file may or may not previously exist. If you want this current"
+        " set of tests to append it's results to the master unit rollup, please add the path it here."
+        " Local pre-existing files will copied to the standard pathing to be updated."
+        "*** NOTE:This can be a local path OR an S3 path, default will check S3 to see"
+        " if it exists there and download it.\n"
+        r" e.g. C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\12030105_2276_ble_unit_metrics.csv"
+        r" OR C:\ras2fim_data\test_unit_metrics.csv"
+        " OR s3://ras2fim/gval/evaluations/PROD (or"
+        " DEV)/12030105_2276_ble/12030105_2276_ble_unit_metrics.csv.",
+        default="not_set",
         required=False,
         metavar="",
     )
