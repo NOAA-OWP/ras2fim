@@ -9,6 +9,10 @@ Add levee masking to ras2fim DEMs using X-National_Datasets\Leveed_Areas_NLDFS_5
 
 Also removed the clip dem buffer as it is no longer relevant (with the larger DEMs with the huc8 extent and all surrounding HUC12s.
 
+The tool builds the file locally then uploads them to S3 based on the s3 path (which is defaulted to ras2fim).
+
+If you don't want to upload the output file to S3, add the -skips3 argument.
+
 ### Changes  
 - `src`
     - `clip_dem_from_shape.py`: Remove buffer system.
