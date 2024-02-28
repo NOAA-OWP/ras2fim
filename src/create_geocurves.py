@@ -128,7 +128,7 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
     RLOG.trace("Start processing conflated models for each model")
     # Loop through each model
     for index, model in conflated_ras_models.iterrows():
-        RLOG.trace(f"-- conflated_ras_models index[index] - {model.ras_path}")
+        RLOG.trace(f"-- conflated_ras_models index[{index}] - {model.ras_path}")
         RLOG.lprint("-----------------------------------------------")
 
         model_nwm_streams_ln = nwm_streams_ln[nwm_streams_ln.ras_path == model.ras_path]
@@ -217,6 +217,11 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
                 )
                 nwm_reach_inundation_masks.append(final_inundation_poly)
 
+        if len(nwm_reach_inundation_masks) == 0:
+            RLOG.warning(" -- nwm_reach_inundation_masks as no records"
+                        f" for model {name_mid} : {model.ras_path}")
+            continue
+
         # nwm_reach_inundation_masks at this point is a list, but using pd.concat
         # it is rolling it up to one dataframe which is fed into a geodataframe
         nwm_reach_inundation_masks_comb = gpd.GeoDataFrame(
@@ -224,13 +229,14 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
         )
 
         # Use max depth extent polygon as mask for other depths
-        RLOG.lprint("Getting the inundation extents from each flow")
+        RLOG.lprint("Getting the inundation extents from each flow (depth grids)"
+                    " This part can be a bit slow.")
         depth_tif_list = [f for f in model_depths_dir.iterdir() if f.suffix == '.tif']
         depth_tif_list.sort()
 
         geocurve_df_list = []
         for depth_tif in depth_tif_list:
-            RLOG.lprint(f"... Processing depth tif {depth_tif.name}")
+            RLOG.trace(f"... Processing depth tif {depth_tif.name}")
 
             # This is the regex for the profile number. It finds the numbers after 'flow' in the TIF name
             flow_search = re.search('\(flow\d*\.*\d*_', depth_tif.name).group()
