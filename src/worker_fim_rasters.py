@@ -232,6 +232,8 @@ def compute_boundray_condition_wse(
 ):
     list_bc_target_xs_huc8 = []
     for path_in in range(len(ls_path_to_flow_file_wse)):
+
+        RLOG.trace(f"Computing WSE boundary conditions for {ls_path_to_flow_file_wse[path_in]}")
         # Get max flow for each xs in which flow changes in a dataframe format
         max_flow_df_wse = fn_get_flow_dataframe(ls_path_to_flow_file_wse[path_in])
 
@@ -348,9 +350,9 @@ def compute_boundray_condition_wse(
         for geoline in lines_geo:
             if geoline[:14] == 'Type RM Length':
                 target_line = geoline.split(",")
-                counter_xs = int(target_line[1])
+                counter_xs1 = int(target_line[1])
 
-                if counter_xs == int(str_target_xs_min_elev):  # str_target_xs
+                if counter_xs1 == int(str_target_xs_min_elev):  # str_target_xs
                     # read "XS GIS Cut Line" for the target xs
 
                     tls = j + 4  # "XS GIS Cut Line" line number
@@ -358,13 +360,18 @@ def compute_boundray_condition_wse(
 
                     if num_xs_cut_line % 2 != 0:  # if num_xs_cut_line is odd
                         num_xs_cut_line2 = num_xs_cut_line + 1
-                        num_sta_elev_line = tls + 2 + (num_xs_cut_line2 / 2)
-                        sta_elev_line = lines_geo[int(num_sta_elev_line)]
+                        num_sta_elev_line0 = tls + 1 + (num_xs_cut_line2 / 2)
                     else:
-                        num_sta_elev_line = tls + 2 + (num_xs_cut_line / 2)
-                        sta_elev_line = lines_geo[int(num_sta_elev_line)]
+                        num_sta_elev_line0 = tls + 1 + (num_xs_cut_line / 2)
 
+                    if lines_geo[int(num_sta_elev_line0)][0:9] == "#Sta/Elev":
+                        num_sta_elev_line = num_sta_elev_line0
+                    else:
+                        num_sta_elev_line = num_sta_elev_line0 + 1
+                    
+                    sta_elev_line = lines_geo[int(num_sta_elev_line)]
                     num_stat_elev = int(sta_elev_line[10:])
+                    # print(num_stat_elev)
 
                     if num_stat_elev % 5 == 0:  # 10 numbers in each row
                         len_stat_elev_ls = [
@@ -1320,6 +1327,7 @@ def create_datasets_2ndpass(unit_output_folder, flt_interval):
     ls_second_pass_flows_xs_df = [0] * len(folder_1stpass_models)
     nsindx = 0
     for folder in folder_1stpass_models:
+        
         RLOG.lprint("Computing number of the steps and flow profiles for " + folder + " model")
         path_all_x_sections_info = os.path.join(
             path_to_1st_pass_output, folder, "all_x_sections_info_" + folder + ".csv"

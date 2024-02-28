@@ -75,8 +75,9 @@ def fn_create_fim_rasters(
     ls_run_hecras_inputs = []
     ctr = 0
     for model_folder in names_created_ras_models:
+
         folder_mame_splt = model_folder.split("_")
-        project_file_name = folder_mame_splt[1]
+        project_file_name = "_".join(folder_mame_splt[1:])
 
         str_ras_projectpath = os.path.join(path_created_ras_models, model_folder, project_file_name + ".prj")
 
@@ -165,7 +166,7 @@ def fn_create_fim_rasters(
         model_folder2 = names_created_ras_models[mf2]
 
         folder_mame_splt2 = model_folder2.split("_")
-        project_file_name2 = folder_mame_splt2[1]
+        project_file_name2 = "_".join(folder_mame_splt2[1:])
 
         str_ras_projectpath2 = os.path.join(
             path_created_ras_models, model_folder2, project_file_name2 + ".prj"
