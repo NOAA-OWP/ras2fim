@@ -139,7 +139,8 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
         model_output_dir = [f for f in hecras_output.iterdir() if re.match(f"^{model.model_id}_", f.name)][0]
         name_mid = model_output_dir.name
         RLOG.lprint(f"Creating geo rating curves for model {name_mid}")
-        model_name = name_mid.split("_")[1]
+        model_name0 = name_mid.split("_")[1:]
+        model_name = "_".join(model_name0)
         model_depths_dir = Path(model_output_dir, model_name)
         max_inundation_shp = [f for f in model_depths_dir.glob("Inundation Boundary*.shp")][0]
 
