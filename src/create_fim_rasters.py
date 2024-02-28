@@ -9,6 +9,7 @@
 # ************************************************************
 import argparse
 import datetime as dt
+import math
 import multiprocessing as mp
 import os
 import shutil
@@ -75,7 +76,6 @@ def fn_create_fim_rasters(
     ls_run_hecras_inputs = []
     ctr = 0
     for model_folder in names_created_ras_models:
-
         folder_mame_splt = model_folder.split("_")
         project_file_name = "_".join(folder_mame_splt[1:])
 
@@ -97,7 +97,9 @@ def fn_create_fim_rasters(
         ctr += 1
 
     # create a pool of processors
-    num_processors = mp.cpu_count() - 2
+    # num_processors = mp.cpu_count() - 2
+    num_processors = round(math.floor(mp.cpu_count() * 0.90))
+
     import sys
 
     with ProcessPoolExecutor(max_workers=num_processors) as executor:

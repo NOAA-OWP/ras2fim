@@ -247,6 +247,7 @@ def fn_get_list_of_lists_to_compute(hecras_output_dir):
     list_of_lists_files_for_stats = []
 
     for str_rasmap_path in list_file_paths:
+        RLOG.trace(f"Getting list of file to compute stats from {str_rasmap_path}")
         list_current_abs_paths = []
 
         # get the name of the input file (without extenstion)
@@ -295,7 +296,7 @@ def fn_get_stats_dataseries(list_files_for_stats):
     # convert data series to list
     list_stats_dataseries = pd_series_stats.tolist()
 
-    sleep(0.01)  # this allows the tqdm progress bar to update
+    sleep(0.1)  # this allows the tqdm progress bar to update
 
     return list_stats_dataseries
 
@@ -321,6 +322,10 @@ def fn_calculate_all_terrain_stats(hecras_output_dir):
     #    time.sleep(1)  # 1 seconds
 
     # os.mkdir(hecras_output_dir)
+
+    RLOG.lprint(
+        "Stand by.. this part can be slow and sometime appear to be hung" " but it should be 20 minutes (ish)"
+    )
 
     list_of_list_processed = fn_get_list_of_lists_to_compute(hecras_output_dir)
 

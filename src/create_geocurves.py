@@ -125,9 +125,10 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
     )
     cross_section_ln = gpd.read_file(cross_section_ln_shp)
 
+    RLOG.trace("Start processing conflated models for each model")
     # Loop through each model
     for index, model in conflated_ras_models.iterrows():
-
+        RLOG.trace(f"-- conflated_ras_models index[index] - {model.ras_path}")
         RLOG.lprint("-----------------------------------------------")
 
         model_nwm_streams_ln = nwm_streams_ln[nwm_streams_ln.ras_path == model.ras_path]
@@ -159,6 +160,8 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
         # Create max flow inundation masks for each NWM reach
         nwm_reach_inundation_masks = []
         for index, nwm_reach in model_nwm_streams_ln.iterrows():
+            RLOG.trace(f"-- model_nwm_streams_ln index [{index} - {nwm_reach.feature_id}")
+
             nwm_reach = gpd.GeoDataFrame(nwm_reach.to_dict(), index=[0]).set_geometry(
                 'geometry', crs=model_nwm_streams_ln.crs
             )
@@ -213,16 +216,21 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
                 )
                 nwm_reach_inundation_masks.append(final_inundation_poly)
 
-        nwm_reach_inundation_masks = gpd.GeoDataFrame(
+        # nwm_reach_inundation_masks at this point is a list, but using pd.concat
+        # it is rolling it up to one dataframe which is fed into a geodataframe
+        nwm_reach_inundation_masks_comb = gpd.GeoDataFrame(
             pd.concat(nwm_reach_inundation_masks, ignore_index=True)
         )
 
         # Use max depth extent polygon as mask for other depths
         RLOG.lprint("Getting the inundation extents from each flow")
         depth_tif_list = [f for f in model_depths_dir.iterdir() if f.suffix == '.tif']
+        depth_tif_list.sort()
 
         geocurve_df_list = []
         for depth_tif in depth_tif_list:
+            RLOG.lprint(f"... Processing depth tif {depth_tif.name}")
+
             # This is the regex for the profile number. It finds the numbers after 'flow' in the TIF name
             flow_search = re.search('\(flow\d*\.*\d*_', depth_tif.name).group()
             profile_num = float(re.search('\d+\.*\d*', flow_search).group())
@@ -232,7 +240,7 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
                 depth_grid_crs = depth_grid_rast.crs
 
                 # Mask raster using rasterio for each NWM reach
-                for index, nwm_feature in nwm_reach_inundation_masks.iterrows():
+                for index, nwm_feature in nwm_reach_inundation_masks_comb.iterrows():
                     # Load the rating curve
                     rating_curve_dir = Path(
                         ras2fim_huc_dir,
@@ -313,12 +321,19 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
                             unit_name=unit_name,
                             unit_version=unit_version,
                             source_code=source_code,
-                            source=source1
+                            source=source1,
                         )
                         extent_poly_diss = extent_poly_diss.reindex(
-                            columns=['version', 'unit_name', 'unit_version', 
-                                     'source_code', 'source', 'geometry', 'profile_num']
-                            )
+                            columns=[
+                                'version',
+                                'unit_name',
+                                'unit_version',
+                                'source_code',
+                                'source',
+                                'geometry',
+                                'profile_num',
+                            ]
+                        )
                         # TODO: Does not exist anymore
                         # extent_poly_diss = extent_poly_diss.drop(columns='extent')
 
@@ -332,9 +347,12 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
 
         if rating_curve_dir.exists():
             geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
-            geocurve_df = geocurve_df.sort_values(by=['feature_id','discharge_cfs'])
+            geocurve_df = geocurve_df.sort_values(by=['feature_id', 'discharge_cfs'])
             path_geocurve = os.path.join(
-                ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES, f'{name_mid}_geocurve.csv'
+                ras2fim_huc_dir,
+                sv.R2F_OUTPUT_DIR_FINAL,
+                sv.R2F_OUTPUT_DIR_GEOCURVES,
+                f'{name_mid}_geocurve.csv',
             )
             geocurve_df.to_csv(path_geocurve, index=False)
 
