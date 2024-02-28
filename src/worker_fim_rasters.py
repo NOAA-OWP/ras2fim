@@ -249,7 +249,7 @@ def compute_boundray_condition_wse(
                 first_pass_flows_xs_wse.append(list_first_pass_flows)
 
             first_pass_flows_xs_wse_df = pd.DataFrame(first_pass_flows_xs_wse).T
-            first_pass_flows_xs_wse_df.columns = [j for j in max_flow_df_wse['start_xs']]
+            first_pass_flows_xs_wse_df.columns = [int(j) for j in max_flow_df_wse['start_xs']]
 
             # -------------------------------------------------
             # Get all flow data from the current plan's (parent models) flow file
@@ -302,7 +302,7 @@ def compute_boundray_condition_wse(
                 df_all_flow_values.columns = column_names
 
                 all_flow_info_df = pd.concat([max_flow_df_wse, df_all_flow_values], axis=1)
-                target_xs = list(all_flow_info_df['start_xs'])[-1]  # last xs in which flow changes
+                target_xs = int(list(all_flow_info_df['start_xs'])[-1])  # last xs in which flow changes
                 # str_target_xs = str(target_xs)
 
                 # -------------------------------------------------
@@ -338,7 +338,7 @@ def compute_boundray_condition_wse(
                 for gline in lines_geo:
                     if gline[:14] == 'Type RM Length':
                         target_line = gline.split(",")
-                        counter_xs = target_line[1]
+                        counter_xs = int(target_line[1])
 
             # Last XS for min elevation
             str_target_xs_min_elev = counter_xs
@@ -350,9 +350,9 @@ def compute_boundray_condition_wse(
             for geoline in lines_geo:
                 if geoline[:14] == 'Type RM Length':
                     target_line = geoline.split(",")
-                    counter_xs1 = target_line[1]
+                    counter_xs1 = int(target_line[1])
 
-                    if counter_xs1 == str_target_xs_min_elev:  # str_target_xs
+                    if counter_xs1 == int(str_target_xs_min_elev):  # str_target_xs
                         # read "XS GIS Cut Line" for the target xs
 
                         tls = j + 4  # "XS GIS Cut Line" line number
@@ -516,7 +516,7 @@ def compute_boundray_condition_nd(int_fn_starting_flow, int_number_of_steps, ls_
             first_pass_flows_xs_nd.append(list_first_pass_flows2)
 
         first_pass_flows_xs_nd_df = pd.DataFrame(first_pass_flows_xs_nd).T
-        first_pass_flows_xs_nd_df.columns = [j2 for j2 in max_flow_df_nd['start_xs']]
+        first_pass_flows_xs_nd_df.columns = [int(j2) for j2 in max_flow_df_nd['start_xs']]
 
         list_first_pass_flows_xs_nd.append(first_pass_flows_xs_nd)
 
@@ -656,7 +656,7 @@ def create_ras_flow_file_nd(
             # list of the first pass flows
             list_firstflows2 = list_first_pass_flows_xs_nd[path_in][fc2]
 
-            str_xs_upstream_nd = str(max_flow_df_nd['start_xs'][fc2])
+            str_xs_upstream_nd = str(int(max_flow_df_nd['start_xs'][fc2]))
             str_flowfile2 += str_river + "," + str_reach + "," + str_xs_upstream_nd + "\n"
 
             str_flowfile2 += fn_format_flow_values(list_firstflows2) + "\n"
@@ -823,7 +823,7 @@ def create_ras_flow_file_wse(
             # list of the first pass flows
             list_firstflows = first_pass_flows_xs_wse[fc]
 
-            str_xs_upstream = str(max_flow_df_wse['start_xs'][fc])
+            str_xs_upstream = str(int(max_flow_df_wse['start_xs'][fc]))
             str_flowfile += str_river + "," + str_reach + "," + str_xs_upstream + "\n"
 
             str_flowfile += fn_format_flow_values(list_firstflows) + "\n"
@@ -1424,7 +1424,7 @@ def create_datasets_2ndpass(unit_output_folder, flt_interval):
         ls_number_of_steps_2ndpass[nsindx] = int_number_of_steps_2ndpass
 
         second_pass_flows_xs_df = pd.DataFrame(ls_second_pass_flows_xs).T
-        second_pass_flows_xs_df.columns = [k1 for k1 in df_peak_flows_xs["Xsection_name"]]
+        second_pass_flows_xs_df.columns = [int(k1) for k1 in df_peak_flows_xs["Xsection_name"]]
         ls_second_pass_flows_xs_df[nsindx] = second_pass_flows_xs_df
 
         nsindx += 1
@@ -1603,12 +1603,12 @@ def create_all_2ndpass_flow_files(
         for fc2 in range(int_num_of_flow_change_xs):
             # list of the second pass flows
             ls_second_pass_flows_xs2 = sorted(ls_second_pass_flows_xs[fc2])
-            ls_second_pass_flows_xs_int = [y1 for y1 in ls_second_pass_flows_xs2]
+            ls_second_pass_flows_xs_int = [int(y1) for y1 in ls_second_pass_flows_xs2]
             ls_second_pass_flows_xs_int = [1 if y2 == 0 else y2 for y2 in ls_second_pass_flows_xs_int]
 
             list_firstflows2 = ls_second_pass_flows_xs_int
 
-            str_xs_upstream_nd = str(df_peak_flows_xs['Xsection_name'][fc2])
+            str_xs_upstream_nd = str(int(df_peak_flows_xs['Xsection_name'][fc2]))
             str_flowfile2 += str_river + "," + str_reach + "," + str_xs_upstream_nd + "\n"
 
             str_flowfile2 += fn_format_flow_values(list_firstflows2) + "\n"
