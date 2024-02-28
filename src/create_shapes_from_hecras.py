@@ -35,7 +35,7 @@ import shared_variables as sv
 
 
 # windows component object model for interaction with HEC-RAS API
-# This routine uses RAS60.HECRASController (HEC-RAS v6.3.0 must be
+# This routine uses RAS63.HECRASController (HEC-RAS v6.3.0 must be
 # installed on this machine prior to execution)
 
 # h5py for extracting data from the HEC-RAS g**.hdf files
@@ -67,6 +67,22 @@ def fn_open_hecras(rlog_file_path, rlog_file_prefix, str_ras_project_path):
 
         if os.path.exists(str_ras_project_path) is False:
             raise Exception(f"str_ras_project_path value of {str_ras_project_path} does not exist")
+
+        # Make sure that the plan referenced files (in .g## form) are present
+        # Poorly and agressivly addressing errors arising from i.e. https://github.com/NOAA-OWP/ras2fim/issues/300;
+        with open(str_ras_project_path) as f:
+            file_contents = f.read()
+        
+        # Look at extentions for state files
+        file_matches = re.findall(r"File=(\w{3})", file_contents)
+        if any(string[-1] != "1" for string in file_matches):
+            MP_LOG.critical("model points at bad state file")
+            raise Exception("plan file pointed to bad model state files")
+        # Look at extentions for plan file
+        file_matches = re.findall(r"Plan=(\w{3})", file_contents)
+        if any(string[-1] != "1" for string in file_matches):
+            MP_LOG.critical("model points at bad plan file")
+            raise Exception("plan file pointed to plan higher than 1")
 
         hec = win32com.client.Dispatch("RAS630.HECRASController")
 
