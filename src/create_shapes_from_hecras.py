@@ -69,7 +69,7 @@ def fn_open_hecras(rlog_file_path, rlog_file_prefix, str_ras_project_path):
             raise Exception(f"str_ras_project_path value of {str_ras_project_path} does not exist")
 
         # Make sure that the plan referenced files (in .g## form) are present
-        # Poorly and agressivly addressing errors arising from 
+        # Poorly and agressivly addressing errors arising from
         # i.e. https://github.com/NOAA-OWP/ras2fim/issues/300;
 
         """
