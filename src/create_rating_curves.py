@@ -268,6 +268,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             cond_fid_lst = mid_xs_info_fid_lst.index.get_level_values('feature_id') == fids
             fid_mid_x_sections_info_lst = mid_xs_info_fid_lst.iloc[cond_fid_lst]
 
+
             xs_us_fid = fid_mid_x_sections_info_1st['Xsection_name']
             xs_us_fid = pd.DataFrame(xs_us_fid).rename(columns={'Xsection_name': 'xs_us'})
             xs_ds_fid = fid_mid_x_sections_info_lst['Xsection_name']
