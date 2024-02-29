@@ -218,8 +218,9 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
                 nwm_reach_inundation_masks.append(final_inundation_poly)
 
         if len(nwm_reach_inundation_masks) == 0:
-            RLOG.warning(" -- nwm_reach_inundation_masks as no records"
-                        f" for model {name_mid} : {model.ras_path}")
+            RLOG.warning(
+                " -- nwm_reach_inundation_masks as no records" f" for model {name_mid} : {model.ras_path}"
+            )
             continue
 
         # nwm_reach_inundation_masks at this point is a list, but using pd.concat
@@ -229,8 +230,9 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
         )
 
         # Use max depth extent polygon as mask for other depths
-        RLOG.lprint("Getting the inundation extents from each flow (depth grids)"
-                    " This part can be a bit slow.")
+        RLOG.lprint(
+            "Getting the inundation extents from each flow (depth grids)" " This part can be a bit slow."
+        )
         depth_tif_list = [f for f in model_depths_dir.iterdir() if f.suffix == '.tif']
         depth_tif_list.sort()
 

@@ -69,10 +69,13 @@ def fn_open_hecras(rlog_file_path, rlog_file_prefix, str_ras_project_path):
             raise Exception(f"str_ras_project_path value of {str_ras_project_path} does not exist")
 
         # Make sure that the plan referenced files (in .g## form) are present
-        # Poorly and agressivly addressing errors arising from i.e. https://github.com/NOAA-OWP/ras2fim/issues/300;
+        # Poorly and agressivly addressing errors arising from 
+        # i.e. https://github.com/NOAA-OWP/ras2fim/issues/300;
+
+        """
         with open(str_ras_project_path) as f:
             file_contents = f.read()
-        
+
         # Look at extentions for state files
         file_matches = re.findall(r"File=(\w{3})", file_contents)
         if any(string[-1] != "1" for string in file_matches):
@@ -83,6 +86,7 @@ def fn_open_hecras(rlog_file_path, rlog_file_prefix, str_ras_project_path):
         if any(string[-1] != "1" for string in file_matches):
             MP_LOG.critical("model points at bad plan file")
             raise Exception("plan file pointed to plan higher than 1")
+        """
 
         hec = win32com.client.Dispatch("RAS630.HECRASController")
 
@@ -577,7 +581,7 @@ def fn_cut_stream_downstream(gdf_return_stream_fn, df_xs_fn):
     # flt_ds_xs = df_xs_fn["stream_stn"].min()
     # gdf_ds_xs = df_xs_fn.query("stream_stn==@flt_ds_xs")
     flt_ds_xs = df_xs_fn["stream_stn"].min()
-    gdf_ds_xs = df_xs_fn[df_xs_fn['stream_stn'] == flt_ds_xs]
+    gdf_ds_xs = df_xs_fn[df_xs_fn["stream_stn"] == flt_ds_xs]
 
     # reset the index of the sampled cross section
     gdf_ds_xs = gdf_ds_xs.reset_index()
@@ -591,7 +595,7 @@ def fn_cut_stream_downstream(gdf_return_stream_fn, df_xs_fn):
     # first splitted segment intersect the most upstream xsection or not
 
     flt_us_xs = df_xs_fn["stream_stn"].max()
-    gdf_us_xs = df_xs_fn[df_xs_fn['stream_stn'] == flt_us_xs]
+    gdf_us_xs = df_xs_fn[df_xs_fn["stream_stn"] == flt_us_xs]
 
     result = split(stream_line, ds_xs_line)
 
@@ -679,29 +683,41 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
     # *****MAIN******
     # get a list of all HEC-RAS prj files in a directory
 
+    # we need to not walk but get the dirs and get the files on each. Why? some
+    # dirs can be removed based on its dir name
+
     list_files = []
 
-    for root, dirs, files in os.walk(input_models_path):
-        for file in files:
-            if file.endswith(".prj") or file.endswith(".PRJ"):
-                # Note the case sensitive issue
-                str_file_path = os.path.join(root, file)
+    for root, dirs, __ in os.walk(input_models_path):
+        for folder_name in dirs:
+            # check the model folder name and see if it's "g" number is anything but "g01"
+            # If not.. drop the model.  aka.. 292972_BECK BRANCH_g01_1701646035 will continue
+            # but 292972_BECK BRANCH_g02_1701646035 (just an example wil drop out here)
+            if "_g01" not in folder_name and "_G01" not in folder_name:
+                RLOG.warning(f"model folder name is not a 'g01' folder ({folder_name})")
+                continue
 
-                with open(str_file_path) as f:
-                    first_file_line = f.read()
+            else:  # load its child files
+                model_path = os.path.join(root, folder_name)
+                files = os.listdir(model_path)
+                for file_name in files:
+                    if file_name.endswith(".prj") or file_name.endswith(".PRJ"):
+                        str_file_path = os.path.join(model_path, file_name)
 
-                # skip projection files
-                if any(x in first_file_line for x in ["PROJCS", "GEOGCS", "DATUM", "PROJECTION"]):
-                    continue
+                        with open(str_file_path) as f:
+                            first_file_line = f.read()
 
-                list_files.append(str_file_path)
+                        # skip projection files
+                        if any(x in first_file_line for x in ["PROJCS", "GEOGCS", "DATUM", "PROJECTION"]):
+                            continue
+
+                        list_files.append(str_file_path)
 
     # -----
     # checking to see if 'prj' files are not binary and
     # valid HEC-RAS prj files.  This should exclude all other
     # prj files
     # skip projection files
-
     textchars = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F})
     is_binary_string = lambda bytes: bool(bytes.translate(None, textchars))
 
@@ -749,7 +765,13 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
             # multi-process the HEC-RAS calculation of these models
             executor.map(fn_open_hecras_partial, list_models_to_compute)
 
-        # Now that multi-proc is done, lets merge all of the independent log file from each
+        # TODO: We have a probem of ALL of the mp's fail in here
+        # we also need to add teh "futures" system so can return some way to know if failed so we can update
+
+        # Now that multi-proc is done, lets merge all of the independent log file
+        # from each list_files_valid_prj
+        # that one is easy as we can use "futures.result" to show us if it failed.
+        # we have example code in this product.
         RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
 
     # -----
@@ -868,7 +890,7 @@ if __name__ == "__main__":
         # to have setup the logger.
 
         # creates the log file name as the script name
-        script_file_name = os.path.basename(__file__).split('.')[0]
+        script_file_name = os.path.basename(__file__).split(".")[0]
         # Assumes RLOG has been added as a global var.
         RLOG.setup(os.path.join(log_file_folder, script_file_name + ".log"))
 

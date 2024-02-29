@@ -32,8 +32,8 @@ find that you only need to setup yoru machine once with 'aws configure' and not 
 """
 
 # TODO: Feb 5, 2024
-# As this tool asks for user input as it progresses, it needs an "auto" mode, which 
-# will default all answer so none are asked of the user. This is need for automation or 
+# As this tool asks for user input as it progresses, it needs an "auto" mode, which
+# will default all answer so none are asked of the user. This is need for automation or
 # larger "pipeline modes".
 
 
