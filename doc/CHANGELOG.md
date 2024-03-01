@@ -5,7 +5,7 @@ We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 Add levee masking to ras2fim DEMs using X-National_Datasets\Leveed_Areas_NLDFS_5070_230314.gpkg.
 
-**This now creates a second DEM file called HUC8_{huc number}_w_levee_dem.tif which the one that ras2fim will now use.**
+**This now creates a second DEM file called HUC8_{huc number}_w_levee_dem.tif. ras2fim will continue to auto look for the original DEM but as always, ras2fim has an arg to override which DEM can be used. Later we might change the levee version of the DEM as the default but not yet.**
 
 Also removed the clip dem buffer as it is no longer relevant (with the larger DEMs with the huc8 extent and all surrounding HUC12s.
 
