@@ -686,32 +686,145 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
     # we need to not walk but get the dirs and get the files on each. Why? some
     # dirs can be removed based on its dir name
 
-    list_files = []
-
+    """
+    list_prj_files = []
     for root, dirs, __ in os.walk(input_models_path):
         for folder_name in dirs:
             # check the model folder name and see if it's "g" number is anything but "g01"
             # If not.. drop the model.  aka.. 292972_BECK BRANCH_g01_1701646035 will continue
             # but 292972_BECK BRANCH_g02_1701646035 (just an example wil drop out here)
-            if "_g01" not in folder_name and "_G01" not in folder_name:
+            if "_g01_" not in folder_name and "_G01_)" not in folder_name:
                 RLOG.warning(f"model folder name is not a 'g01' folder ({folder_name})")
                 continue
 
-            else:  # load its child files
-                model_path = os.path.join(root, folder_name)
-                files = os.listdir(model_path)
-                for file_name in files:
-                    if file_name.endswith(".prj") or file_name.endswith(".PRJ"):
-                        str_file_path = os.path.join(model_path, file_name)
+            # load its child files
+            model_path = os.path.join(root, folder_name)
+            files = os.listdir(model_path)
+            for file_name in files:
 
-                        with open(str_file_path) as f:
-                            first_file_line = f.read()
+                # -----------------------
+                # test and cleanup all files in the directory
+                str_file_path = os.path.join(model_path, file_name)
 
-                        # skip projection files
-                        if any(x in first_file_line for x in ["PROJCS", "GEOGCS", "DATUM", "PROJECTION"]):
-                            continue
+                # These tests are primarily about update the prj file
+                # but removing the files helps too (less mess)
+                file_ext_split = os.path.splitext(file_name)
+                if len(file_ext_split) != 2:
+                    RLOG.warning(f"model file of {str_file_path} skipped - invalid extension")
+                    continue
+                file_ext = file_ext_split[1].replace(".", "")
 
-                        list_files.append(str_file_path)
+                # Matches all extensions starting with g, f, or p followed by a range of 02 to 99
+                # we want to only keep g01, f01, p01
+                # ie. Remove files like g03, or f11, or p26, etc
+                #regex_first_char_pattern = "^[g|f|p][0-9][0-9]"
+                #regex_last_chars_pattern = "[0-9][]"
+
+                first_char = file_ext[0]
+                remaining_str = file_ext[1:]
+                if (first_char in ['f','g','p']) and (remaining_str.isnumeric()):
+                    if remaining_str != "01":
+                        # remove the file and continue
+                        os.remove(str_file_path)
+                        RLOG.warning(f"model file of {str_file_path} removed - invalid extension")
+                        continue
+                # if it is an .hdf file, we want to delete so it can be regenerated.
+                if file_ext == "hdf":
+                    os.remove(str_file_path)
+                    continue
+
+                # we don't want to keep files that are not prj or PRJ files.
+                if (file_ext != "prj") and (file_ext != "PRJ"):
+                    continue
+
+                # -----------------------
+                # Check for valid prj files which might have some lines removed
+                # Don't rely on the fact that the file may or may not have existed
+                is_a_valid_prj_file = True
+                new_file_lines = [] # we will rewrite the file out with the dropped lines if applic
+                has_lines_removed = False
+                with open(str_file_path, 'r') as f:
+                    file_lines = f.readlines()
+                    for idx, line in enumerate(file_lines):
+                        line = line.strip()  # removed new line characters
+                        if idx == 0:
+                            # skip projection files if it has any of those four values
+                            # in the first line
+                            if any(x in line[idx] for x in ["PROJCS", "GEOGCS", "DATUM", "PROJECTION"]):
+                                is_a_valid_prj_file = False
+                                continue
+
+                            new_file_lines.append(line + "\n")
+
+                        else:  # any line second line or more
+                            if (line.startswith("Geom File=") or line.startswith("Flow File=") or
+                                line.startswith("Plan File=")):
+
+                                # strip off last three
+                                last_three_chars = line[-3:]
+                                if (last_three_chars != "g01") and (
+                                    last_three_chars != "p01") and (
+                                    last_three_chars != "f01"):
+                                    # aka.. can't be g02, g10, f21, etc.
+                                    has_lines_removed = True
+                                else:
+                                    new_file_lines.append(line + "\n")
+                            else:
+                                new_file_lines.append(line + "\n")
+                # end of the "with"
+
+                if is_a_valid_prj_file: # it is a valid prj file
+                    list_prj_files.append(str_file_path)
+
+                    if has_lines_removed: # Then we want to rewrite the file with the lines removed
+                        # Re-write the adjusted prj file.
+                        with open(str_file_path, 'w') as f:
+                            f.writelines(new_file_lines)
+
+    """
+
+    list_files = []
+
+    for root, dirs, files in os.walk(input_models_path):
+        for folder_name in dirs:
+            # check the model folder name and see if it's "g" number is anything but "g01"
+            # If not.. drop the model.  aka.. 292972_BECK BRANCH_g01_1701646035 will continue
+            # but 292972_BECK BRANCH_g02_1701646035 (just an example wil drop out here)
+            if "_g01_" not in folder_name and "_G01_)" not in folder_name:
+                RLOG.warning(f"model folder name is not a 'g01' folder ({folder_name})")
+                continue
+
+            # load its child files
+            model_path = os.path.join(root, folder_name)
+            files = os.listdir(model_path)
+            for file_name in files:
+                # -----------------------
+                # test and cleanup all files in the directory
+                str_file_path = os.path.join(model_path, file_name)
+
+                # These tests are primarily about update the prj file
+                # but removing the files helps too (less mess)
+                file_ext_split = os.path.splitext(file_name)
+                if len(file_ext_split) != 2:
+                    RLOG.warning(f"model file of {str_file_path} skipped - invalid extension")
+                    continue
+                file_ext = file_ext_split[1].replace(".", "")
+
+                # we don't want to keep files that are not prj or PRJ files.
+                if (file_ext != "prj") and (file_ext != "PRJ"):
+                    continue
+
+                # Note the case sensitive issue
+                str_file_path = os.path.join(model_path, file_name)
+
+                with open(str_file_path) as f:
+                    first_file_line = f.read()
+
+                    # skip projection files
+                    if any(x in first_file_line for x in ["PROJCS", "GEOGCS", "DATUM", "PROJECTION"]):
+                        continue
+
+                list_files.append(str_file_path)
 
     # -----
     # checking to see if 'prj' files are not binary and
@@ -724,6 +837,7 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
     str_check = "Current Plan"
     list_files_valid_prj = []
 
+    # for str_file_path in list_prj_files:
     for str_file_path in list_files:
         if not is_binary_string(open(str_file_path, "rb").read(1024)):
             with open(str_file_path, "r") as file_prj:
@@ -740,17 +854,16 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
     # Run all the HEC-RAS models that do not have the geom HDF files
     list_models_to_compute = []
 
-    for str_prj in list_files:
+    for str_prj in list_files_valid_prj:
         # print("processing:"+str_prj)
         str_path_to_geom_hdf = fn_get_active_geom(str_prj) + ".hdf"
         if not path.exists(str_path_to_geom_hdf):
             # the hdf file does not exist - add to list of models to compute
             list_models_to_compute.append(str_prj)
 
-    RLOG.lprint(f"len of list_models_to_compute is {len(list_models_to_compute)}")
-    if len(list_models_to_compute) > 0:
-        RLOG.lprint("Compute HEC-RAS Models: " + str(len(list_models_to_compute)))
+    RLOG.lprint(f"Number of HEC-RAS Models (hdf) files to compute is {len(list_models_to_compute)}")
 
+    if len(list_models_to_compute) > 0:
         # -------------------------------------------------
         # A "partial" just extends the original function to add extra params on the fly
         # e.g. The original fn_open_hecras has only list_models_to_compute being
@@ -775,7 +888,6 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
         RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
 
     # -----
-
     list_geodataframes_stream = []
     list_geodataframes_cross_sections = []
     len_valid_prj_files = len(list_files_valid_prj)

@@ -225,14 +225,18 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
 
         # nwm_reach_inundation_masks at this point is a list, but using pd.concat
         # it is rolling it up to one dataframe which is fed into a geodataframe
-        nwm_reach_inundation_masks_comb = gpd.GeoDataFrame(
+        all_nwm_reach_inundation_masks = gpd.GeoDataFrame(
             pd.concat(nwm_reach_inundation_masks, ignore_index=True)
         )
 
         # Use max depth extent polygon as mask for other depths
-        RLOG.lprint(
-            "Getting the inundation extents from each flow (depth grids)" " This part can be a bit slow."
+        RLOG.lprint("Getting the inundation extents from each flow (depth grids)")
+        RLOG.lprint(f" -- {len(all_nwm_reach_inundation_masks)} to process")
+        print(
+            "This part can be a bit slow. Most can take just a minute or less, but we have seen a few"
+            " anonomlies take over one hour"
         )
+
         depth_tif_list = [f for f in model_depths_dir.iterdir() if f.suffix == '.tif']
         depth_tif_list.sort()
 
@@ -249,8 +253,11 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
                 depth_grid_crs = depth_grid_rast.crs
 
                 # Mask raster using rasterio for each NWM reach
-                for index, nwm_feature in nwm_reach_inundation_masks_comb.iterrows():
+                for index, nwm_feature in all_nwm_reach_inundation_masks.iterrows():
                     # Load the rating curve
+                    RLOG.lprint(
+                        f"Processing {name_mid} for {depth_tif}:" f" feature ID = {nwm_feature.feature_id}"
+                    )
                     rating_curve_dir = Path(
                         ras2fim_huc_dir,
                         sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES,

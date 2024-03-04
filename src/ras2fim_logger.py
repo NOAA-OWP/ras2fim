@@ -223,6 +223,7 @@ class RAS2FIM_logger:
             log_file_list.sort()
 
             # self.lprint(".. merging log files")
+            # we are merging them in order (reg files, then warnings, then errors)
 
             # open and write to the parent log
             # This will write all logs including errors and warning
@@ -258,12 +259,13 @@ class RAS2FIM_logger:
 
         # now delete the all file with same prefix (reg, error and warning)
         # iterate through them a second time (do it doesn't mess up the for loop above)
-        for temp_log_file in log_file_list:
-            try:
-                os.remove(temp_log_file)
-            except OSError:
-                self.error(f"Error deleting {temp_log_file}")
-                self.error(traceback.format_exc())
+        if len(log_file_list) > 0:
+            for temp_log_file in log_file_list:
+                try:
+                    os.remove(temp_log_file)
+                except OSError:
+                    self.error(f"Error deleting {temp_log_file}")
+                    self.error(traceback.format_exc())
 
     # -------------------------------------------------
     def setup_custom_log(self, key_name, file_path_and_name):

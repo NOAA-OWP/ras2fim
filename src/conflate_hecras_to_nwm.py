@@ -366,7 +366,7 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
     list_dataframe_args_snap = df_points_within_buffer.values.tolist()
 
     RLOG.lprint("+-----------------------------------------------------------------+")
-
+    list_df_points_projected = []
     with Pool(processes=(mp.cpu_count() - 2)) as executor:
         list_df_points_projected = list(
             tqdm.tqdm(
@@ -380,6 +380,11 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
             )
         )
     print()
+
+    if len(list_df_points_projected) == 0:
+        RLOG.critical("There are no points that can be snapped.")
+        RLOG.critical("One possiblility is that you have an incorrect crs.")
+        sys.exit(1)
 
     gdf_points_snap_to_ble = gpd.GeoDataFrame(pd.concat(list_df_points_projected, ignore_index=True))
 

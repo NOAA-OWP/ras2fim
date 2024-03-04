@@ -118,7 +118,8 @@ def init_and_run_ras2fim(
     unit_output_path = os.path.join(r2f_output_dir, unit_folder_name)
 
     if os.path.exists(unit_output_path) is True:
-        raise ValueError(f"The path of {unit_output_path} already exists. Please delete it and restart.")
+        # raise ValueError(f"The path of {unit_output_path} already exists. Please delete it and restart.")
+        shutil.rmtree(unit_output_path)
 
     # -------------------
     # -n  (ie: inputs\\X-National_Datasets)
@@ -259,7 +260,7 @@ def fn_run_ras2fim(
 ):
     start_dt = dt.datetime.utcnow()
 
-    RLOG.lprint("")
+    print()
     RLOG.lprint("+=================================================================+")
     RLOG.notice("          RUN RAS2FIM FOR A HEC-RAS 1-D DATASET (HUC8)")
     RLOG.lprint("     Created by Andy Carter, PE of the National Water Center")
@@ -287,7 +288,7 @@ def fn_run_ras2fim(
 
     # ---- Step 1: create_shapes_from_hecras ----
     # create a folder for the shapefiles from hec-ras
-    RLOG.lprint("")
+    print()
     RLOG.notice("+++++++ Processing: STEP 1 (create_shapes_from_hecras) +++++++")
 
     dir_shapes_from_hecras = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS)
@@ -300,7 +301,7 @@ def fn_run_ras2fim(
     # -------------------------------------------
 
     # ------ Step 2: conflate_hecras_to_nwm -----
-    RLOG.lprint("")
+    print()
     RLOG.notice("+++++++ Processing: STEP 2 (conflate_hecras_to_nwm) +++++++")
 
     dir_shapes_from_conflation = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF)
@@ -315,7 +316,7 @@ def fn_run_ras2fim(
     # -------------------------------------------
 
     # ------ Step 3: clip_dem_from_shape ----
-    RLOG.lprint("")
+    print()
     RLOG.notice("+++++++ Processing: STEP 3 (cut terrain DEM) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
@@ -350,7 +351,7 @@ def fn_run_ras2fim(
     if not os.path.exists(dir_hecras_terrain):
         os.mkdir(dir_hecras_terrain)
 
-    RLOG.lprint("")
+    print()
     RLOG.notice("+++++++ Processing: STEP 4 (convert tif to ras hdf5) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
@@ -364,7 +365,7 @@ def fn_run_ras2fim(
 
     # -------------------------------------------
     # ------ Step 5: create_fim_rasters -----
-    RLOG.lprint("")
+    print()
     RLOG.notice("+++++++ Processing: STEP 5 (create fim rasters) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
@@ -373,18 +374,24 @@ def fn_run_ras2fim(
 
     # -------------------------------------------
     # --- Step 6: create_rating_curves_for_fids ---
-    RLOG.lprint("")
+    print()
     RLOG.notice("+++++++ Processing: STEP 6 (create rating curves per fid) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
     fn_create_rating_curves(huc8, unit_output_path)
 
+    # -------------------------------------------------
     # calculate terrain statistics for HEC-RAS models
-    print()
-    RLOG.notice("+++++++ Processing: STEP 6.b (calculate terrain statistics for HEC-RAS models) +++++++")
-    RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
-    hecras_output_dir = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-    fn_calculate_all_terrain_stats(hecras_output_dir)
+    if os.getenv("RUN_TERRAIN_STATS") == "True":
+        print()
+        RLOG.notice("+++++++ Processing: STEP 6.b (calculate terrain statistics for HEC-RAS models) +++++++")
+        RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
+        hecras_output_dir = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+        fn_calculate_all_terrain_stats(hecras_output_dir)
+
+        terrain_stats_csv = os.path.join(hecras_output_dir, "terrain_stats.csv")
+        if os.path.exists(terrain_stats_csv):
+            shutil.copy2(terrain_stats_csv, r2f_final_dir)
 
     # -------------------------------------------------
     # Produce geocurves
@@ -395,7 +402,7 @@ def fn_run_ras2fim(
 
     # -------------------------------------------------
     if os.getenv("CREATE_RAS_DOMAIN_POLYGONS") == "True":
-        RLOG.lprint("")
+        print()
         RLOG.notice("+++++++ Processing: STEP: Create polygons for HEC-RAS models domains +++++++")
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
@@ -418,7 +425,7 @@ def fn_run_ras2fim(
 
     # -------------------------------------------------
     if os.getenv("RUN_RAS2CALIBRATION") == "True":
-        RLOG.lprint("")
+        print()
         RLOG.notice(
             "+++++++ Processing: STEP: Post-processing rating curves for HAND-FIM calibration +++++++"
         )

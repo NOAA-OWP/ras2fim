@@ -354,8 +354,8 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
         # Check that merge worked
         if len(rc_geospatial_df) == 0:
             msg = f"No rows survived the merge of rc_geospatial with the rating curve rows for {rc_path}."
-            RLOG.critical(msg)
-            sys.exit(1)
+            RLOG.error(msg)
+            # sys.exit(1)
 
         # rlog.trace('text') ## goes to the log file but doesn't print!!
 

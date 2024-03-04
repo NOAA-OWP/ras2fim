@@ -107,7 +107,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
     RLOG.lprint("+=================================================================+")
     RLOG.notice("|               CREATING SYNTHETIC RATING CURVES                  |")
     RLOG.lprint("+-----------------------------------------------------------------+")
-
+    print()
     # Reading data_summary from step 2
     str_path_to_fid_xs = os.path.join(
         path_unit_folder, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc8}_stream_qc_fid_xs.csv"
@@ -164,7 +164,6 @@ def fn_create_rating_curves(huc8, path_unit_folder):
     stage_diff_gt_1foot = pd.DataFrame(columns=["model_id", "feature_id", "max_stage_diff", "max_indx"])
     for infoind in range(len(path_to_all_x_sections_info)):
         model_name_id = path_to_all_x_sections_info[infoind].split("\\")[-2]
-        RLOG.lprint("")
         RLOG.lprint(f"Creating rating curves for model {model_name_id}")
         mid_x_sections_info = pd.read_csv(path_to_all_x_sections_info[infoind])
         mid_x_sections_info = mid_x_sections_info.rename(columns={'fid_xs': 'mid_xs', 'modelid': 'model_id'})
