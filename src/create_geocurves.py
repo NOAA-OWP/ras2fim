@@ -125,11 +125,20 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
     )
     cross_section_ln = gpd.read_file(cross_section_ln_shp)
 
+    print()
+    print(
+        "This parts of this section can be a bit slow. Most can take just a minute or less,"
+        " but we have seen a few anonomlies take over one hour.\n"
+        "You can quickly copy/paste the log file to see how it is progressing. CAUTION: "
+        "Don't open the WIP log file as it be written too constantly (just quick copy/paste file)."
+    )
+    print()
+
     RLOG.trace("Start processing conflated models for each model")
     # Loop through each model
     for index, model in conflated_ras_models.iterrows():
-        RLOG.trace(f"-- conflated_ras_models index[{index}] - {model.ras_path}")
         RLOG.lprint("-----------------------------------------------")
+        RLOG.trace(f"-- conflated_ras_models index[{index}] - {model.ras_path}")
 
         model_nwm_streams_ln = nwm_streams_ln[nwm_streams_ln.ras_path == model.ras_path]
         model_cross_section_ln = cross_section_ln[cross_section_ln.ras_path == model.ras_path]
@@ -156,6 +165,7 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
             index=disconnected_inundation_poly.length.idxmax()
         )
 
+        RLOG.lprint("---------")
         RLOG.lprint(f"Loading the max inundation extent for each NWM reach for model {name_mid}")
 
         # Create max flow inundation masks for each NWM reach
@@ -219,7 +229,7 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
 
         if len(nwm_reach_inundation_masks) == 0:
             RLOG.warning(
-                " -- nwm_reach_inundation_masks as no records" f" for model {name_mid} : {model.ras_path}"
+                f" -- nwm_reach_inundation_masks as no records for model {name_mid} : {model.ras_path}"
             )
             continue
 
@@ -230,12 +240,11 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
         )
 
         # Use max depth extent polygon as mask for other depths
+        print()
+        RLOG.lprint("-----------------------------------------------")
         RLOG.lprint("Getting the inundation extents from each flow (depth grids)")
-        RLOG.lprint(f" -- {len(all_nwm_reach_inundation_masks)} to process")
-        print(
-            "This part can be a bit slow. Most can take just a minute or less, but we have seen a few"
-            " anonomlies take over one hour"
-        )
+        RLOG.lprint(f"Number of models to process is {len(all_nwm_reach_inundation_masks)}")
+        print()
 
         depth_tif_list = [f for f in model_depths_dir.iterdir() if f.suffix == '.tif']
         depth_tif_list.sort()
@@ -255,7 +264,7 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
                 # Mask raster using rasterio for each NWM reach
                 for index, nwm_feature in all_nwm_reach_inundation_masks.iterrows():
                     # Load the rating curve
-                    RLOG.lprint(
+                    RLOG.trace(
                         f"Processing {name_mid} for {depth_tif}:" f" feature ID = {nwm_feature.feature_id}"
                     )
                     rating_curve_dir = Path(
@@ -387,8 +396,6 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     changelog_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), os.pardir, 'doc', 'CHANGELOG.md')
     )
-    version = sf.get_changelog_version(changelog_path)
-    RLOG.lprint("Version found: " + version)
 
     print()
     RLOG.lprint("+=================================================================+")

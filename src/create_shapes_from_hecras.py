@@ -851,6 +851,9 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
                     list_files_valid_prj.append(str_file_path)
     # -----
 
+    RLOG.lprint(f"Number of valid prj files is {len(list_files_valid_prj)}")
+    print()
+
     # Run all the HEC-RAS models that do not have the geom HDF files
     list_models_to_compute = []
 
@@ -860,8 +863,6 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
         if not path.exists(str_path_to_geom_hdf):
             # the hdf file does not exist - add to list of models to compute
             list_models_to_compute.append(str_prj)
-
-    RLOG.lprint(f"Number of HEC-RAS Models (hdf) files to compute is {len(list_models_to_compute)}")
 
     if len(list_models_to_compute) > 0:
         # -------------------------------------------------

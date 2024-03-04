@@ -96,6 +96,9 @@ def fn_create_fim_rasters(
         ls_run_hecras_inputs.append(run_hecras_inputs)
         ctr += 1
 
+    RLOG.lprint(f"Number of models to process (first pass) is {len(ls_run_hecras_inputs)}")
+    print()
+
     # create a pool of processors
     # num_processors = mp.cpu_count() - 2
     num_processors = round(math.floor(mp.cpu_count() * 0.90))
@@ -115,7 +118,7 @@ def fn_create_fim_rasters(
     # Now that multi-proc is done, lets merge all of the independent log file from each
     RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
 
-    RLOG.lprint("")
+    print()
     RLOG.notice("          PROCESSING FIRST-PASS HEC-RAS MODELS COMPLETED           ")
 
     # -------------------------------------------------
@@ -123,12 +126,13 @@ def fn_create_fim_rasters(
     # Running created HEC-RAS models (multi-processing)
     # -------------------------------------------------
 
-    RLOG.lprint("")
+    print()
     RLOG.lprint("+=================================================================+")
     RLOG.notice("|              CREATING SECOND-PASS HEC-RAS MODELS                |")
     RLOG.lprint("+-----------------------------------------------------------------+")
     RLOG.lprint("  ---(w) HUC-8 WATERSHED: " + huc8_num)
     RLOG.lprint("  ---(o) OUTPUT PATH: " + unit_output_folder)
+    print()
 
     flt_interval = 0.5  # feet
 
@@ -155,12 +159,13 @@ def fn_create_fim_rasters(
     )
 
     RLOG.lprint("*** All SECOND-PASS HEC-RAS Models Created ***")
-    RLOG.lprint("")
-    RLOG.lprint("")
+    print()
+    print()
     RLOG.lprint("+=================================================================+")
     RLOG.notice("|             PROCESSING SECOND-PASS HEC-RAS MODELS               |")
     RLOG.notice("|          AND CREATING DEPTH GRIDS FOR HEC-RAS STREAMS           |")
     RLOG.lprint("+-----------------------------------------------------------------+")
+    print()
 
     ls_run_hecras_inputs_2nd = []
     ctr2 = 0
@@ -189,6 +194,9 @@ def fn_create_fim_rasters(
         ls_run_hecras_inputs_2nd.append(run_hecras_inputs_2nd)
         ctr2 += 1
 
+    RLOG.lprint(f"Number of models to process (second pass) is {len(ls_run_hecras_inputs_2nd)}")
+    print()
+
     import sys
 
     # Create a pool of processors
@@ -206,7 +214,7 @@ def fn_create_fim_rasters(
     # Now that multi-proc is done, lets merge all of the independent log file from each
     RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
 
-    RLOG.lprint("")
+    print()
     RLOG.success(" COMPLETE: ALL HEC-RASS MODELS WERE PROCESSED ")
 
     dur_msg = sf.get_date_time_duration_msg(start_dt, dt.datetime.utcnow())

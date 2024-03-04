@@ -107,7 +107,6 @@ def fn_create_rating_curves(huc8, path_unit_folder):
     RLOG.lprint("+=================================================================+")
     RLOG.notice("|               CREATING SYNTHETIC RATING CURVES                  |")
     RLOG.lprint("+-----------------------------------------------------------------+")
-    print()
     # Reading data_summary from step 2
     str_path_to_fid_xs = os.path.join(
         path_unit_folder, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc8}_stream_qc_fid_xs.csv"
@@ -142,6 +141,8 @@ def fn_create_rating_curves(huc8, path_unit_folder):
         conflated_model_names_id, columns=["final_name_key", "model_id"]
     )
 
+    RLOG.lprint(f"Number of conflated models to process is {len(conflated_model_names_id_df)}")
+
     df_fid_xs_huc8 = pd.concat([fid_xs_huc8, conflated_model_names_id_df], axis=1)
 
     # -------------------------------------------------
@@ -162,6 +163,10 @@ def fn_create_rating_curves(huc8, path_unit_folder):
     # Creating a for loop going through all all_x_sections_info
     # for each confalted stream (step 5 results)
     stage_diff_gt_1foot = pd.DataFrame(columns=["model_id", "feature_id", "max_stage_diff", "max_indx"])
+
+    RLOG.lprint(f"Number of x-sections files to process is {len(path_to_all_x_sections_info)}")
+    print()
+
     for infoind in range(len(path_to_all_x_sections_info)):
         model_name_id = path_to_all_x_sections_info[infoind].split("\\")[-2]
         RLOG.lprint(f"Creating rating curves for model {model_name_id}")

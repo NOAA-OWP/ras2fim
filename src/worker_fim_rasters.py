@@ -1840,7 +1840,6 @@ def fn_run_one_ras_model(
         log_file_name = f"{log_file_prefix}-{file_id}.log"
         MP_LOG.setup(os.path.join(log_default_folder, log_file_name))
 
-        MP_LOG.lprint(f"Processing Model Number {index_number+1} Out Of {total_number_models}")
         MP_LOG.lprint(f"Starting Processing {model_folder} Model")
         MP_LOG.trace(str_ras_projectpath)
 

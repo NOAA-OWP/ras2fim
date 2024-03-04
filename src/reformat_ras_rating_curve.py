@@ -321,6 +321,8 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
         RLOG.critial("ERROR: No 'all_xs_info_fid_*' files found in rating curve path list.")
         sys.exit(1)
 
+    RLOG.lprint(f"Number of models rating curves to process is {len(rc_path_list)}")
+    print()
     for i in range(len(rc_path_list)):
         rc_path = rc_path_list[i]
 

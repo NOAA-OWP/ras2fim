@@ -396,6 +396,7 @@ def fn_run_ras2fim(
     # -------------------------------------------------
     # Produce geocurves
     if os.getenv("PRODUCE_GEOCURVES") == "True":
+        print()
         RLOG.notice("+++++++ Processing: STEP: Producing Geocurves +++++++")
         RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
         manage_geo_rating_curves_production(unit_output_path, overwrite=False)
@@ -446,7 +447,9 @@ def fn_run_ras2fim(
     RLOG.success("  RUN RAS2FIM - Completed                                         |")
     dur_msg = sf.get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
+    print(f"log files saved to {RLOG.LOG_FILE_PATH}")
     RLOG.lprint("+-----------------------------------------------------------------+")
+    print()
 
 
 # -------------------------------------------------
