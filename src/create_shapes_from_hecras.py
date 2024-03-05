@@ -686,7 +686,6 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
     # we need to not walk but get the dirs and get the files on each. Why? some
     # dirs can be removed based on its dir name
 
-    """
     list_prj_files = []
     for root, dirs, __ in os.walk(input_models_path):
         for folder_name in dirs:
@@ -729,9 +728,9 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
                         RLOG.warning(f"model file of {str_file_path} removed - invalid extension")
                         continue
                 # if it is an .hdf file, we want to delete so it can be regenerated.
-                if file_ext == "hdf":
-                    os.remove(str_file_path)
-                    continue
+                #if file_ext == "hdf":
+                #    os.remove(str_file_path)
+                #    continue
 
                 # we don't want to keep files that are not prj or PRJ files.
                 if (file_ext != "prj") and (file_ext != "PRJ"):
@@ -747,30 +746,26 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
                     file_lines = f.readlines()
                     for idx, line in enumerate(file_lines):
                         line = line.strip()  # removed new line characters
-                        if idx == 0:
-                            # skip projection files if it has any of those four values
-                            # in the first line
-                            if any(x in line[idx] for x in ["PROJCS", "GEOGCS", "DATUM", "PROJECTION"]):
-                                is_a_valid_prj_file = False
-                                continue
+                        if any(x in line for x in ["PROJCS", "GEOGCS", "DATUM", "PROJECTION"]):
+                            is_a_valid_prj_file = False
+                            continue
+                        
+                        if (line.startswith("Geom File=") or line.startswith("Flow File=") or
+                            line.startswith("Plan File=")):
 
-                            new_file_lines.append(line + "\n")
-
-                        else:  # any line second line or more
-                            if (line.startswith("Geom File=") or line.startswith("Flow File=") or
-                                line.startswith("Plan File=")):
-
-                                # strip off last three
-                                last_three_chars = line[-3:]
-                                if (last_three_chars != "g01") and (
-                                    last_three_chars != "p01") and (
-                                    last_three_chars != "f01"):
-                                    # aka.. can't be g02, g10, f21, etc.
-                                    has_lines_removed = True
-                                else:
-                                    new_file_lines.append(line + "\n")
+                            # strip off last three
+                            last_three_chars = line[-3:]
+                            if (last_three_chars != "g01") and (
+                                last_three_chars != "p01") and (
+                                last_three_chars != "f01"):
+                                # aka.. can't be g02, g10, f21, etc.
+                                has_lines_removed = True
                             else:
                                 new_file_lines.append(line + "\n")
+                                #new_file_lines.append(line)
+                        else:
+                            #new_file_lines.append(line + "\n")
+                            new_file_lines.append(line + "\n")
                 # end of the "with"
 
                 if is_a_valid_prj_file: # it is a valid prj file
@@ -782,7 +777,6 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
                             f.writelines(new_file_lines)
 
     """
-
     list_files = []
 
     for root, dirs, files in os.walk(input_models_path):
@@ -814,9 +808,6 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
                 if (file_ext != "prj") and (file_ext != "PRJ"):
                     continue
 
-                # Note the case sensitive issue
-                str_file_path = os.path.join(model_path, file_name)
-
                 with open(str_file_path) as f:
                     first_file_line = f.read()
 
@@ -826,6 +817,56 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
 
                 list_files.append(str_file_path)
 
+                # -----------------------
+                # test and cleanup all files in the directory for
+                # models that made it this far.
+
+                # These tests are primarily about update the prj file
+                # but removing the files helps too (less mess)
+
+                # Matches all extensions starting with g, f, or p followed by a range of 02 to 99
+                # we want to only keep g01, f01, p01
+                # ie. Remove files like g03, or f11, or p26, etc
+                #regex_first_char_pattern = "^[g|f|p][0-9][0-9]"
+                #regex_last_chars_pattern = "[0-9][]"
+
+                first_char = file_ext[0]
+                remaining_str = file_ext[1:]
+                if (first_char in ['f','g','p']) and (remaining_str.isnumeric()):
+                    if remaining_str != "01":
+                        # remove the file and continue
+                        os.remove(str_file_path)
+                        RLOG.warning(f"model file of {str_file_path} removed - invalid extension")
+                        continue
+
+                # -----------------------
+                # Don't rely on the fact that the file may or may not have existed
+                new_file_lines = [] # we will rewrite the file out with the dropped lines if applic
+                has_lines_removed = False
+                with open(str_file_path, 'r') as f:
+                    file_lines = f.readlines()
+                    for idx, line in enumerate(file_lines):
+                        if (line.startswith("Geom File=") or line.startswith("Flow File=") or
+                            line.startswith("Plan File=")):
+
+                            # strip off last three
+                            last_three_chars = line[-3:]
+                            if (last_three_chars != "g01") and (
+                                last_three_chars != "p01") and (
+                                last_three_chars != "f01"):
+                                # aka.. can't be g02, g10, f21, etc.
+                                has_lines_removed = True
+                            else:
+                                new_file_lines.append(line + "\n")
+                        else:
+                            new_file_lines.append(line + "\n")
+                    # end of the "with"
+
+                if has_lines_removed: # Then we want to rewrite the file with the lines removed
+                    # Re-write the adjusted prj file.
+                    with open(str_file_path, 'w') as f:
+                        f.writelines(new_file_lines)
+    """
     # -----
     # checking to see if 'prj' files are not binary and
     # valid HEC-RAS prj files.  This should exclude all other
@@ -838,7 +879,7 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
     list_files_valid_prj = []
 
     # for str_file_path in list_prj_files:
-    for str_file_path in list_files:
+    for str_file_path in list_prj_files:
         if not is_binary_string(open(str_file_path, "rb").read(1024)):
             with open(str_file_path, "r") as file_prj:
                 b_found_match = False

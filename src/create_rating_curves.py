@@ -3,6 +3,7 @@
 
 # -------------------------------------------------
 import argparse
+import datetime as dt
 import os
 import traceback
 from datetime import date
@@ -102,6 +103,8 @@ def cast_to_int(x):
 # -------------------------------------------------
 def fn_create_rating_curves(huc8, path_unit_folder):
     model_unit = 'feet'
+
+    overall_start_time = dt.datetime.utcnow()
 
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
@@ -385,8 +388,13 @@ def fn_create_rating_curves(huc8, path_unit_folder):
     )
     stage_diff_gt_1foot.to_csv(path_stage_diff, index=False)
 
-    RLOG.lprint("")
+    print()
     RLOG.success("Complete")
+    end_time = dt.datetime.utcnow()
+    dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    RLOG.lprint(f"Ended : {dt_string}")
+    time_duration = end_time - overall_start_time
+    RLOG.lprint(f"Duration: {str(time_duration).split('.')[0]}")
 
 
 # -------------------------------------------------

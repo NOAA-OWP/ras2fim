@@ -329,7 +329,7 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
         parent_dir = os.path.dirname(rc_path).split("\\")[-1]
         file_name = os.path.basename(rc_path)
         file_and_parent = parent_dir + "\\" + file_name
-        RLOG.lprint(f"-- Processing: {file_and_parent}")
+        RLOG.trace(f"-- Processing: {file_and_parent}")
 
         # ---------------------------------------------------------------------------------
         # Read compiled rating curve and append huc8 from intersections

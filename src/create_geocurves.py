@@ -114,6 +114,7 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
         ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, "conflated_ras_models.csv"
     )
     conflated_ras_models = pd.read_csv(conflated_ras_models_csv, index_col=0)
+    conflated_ras_models.sort_values(by=['final_name_key'])
 
     nwm_streams_ln_shp = os.path.join(
         ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc_name}_nwm_streams_ln.shp"
@@ -128,9 +129,9 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
     print()
     print(
         "This parts of this section can be a bit slow. Most can take just a minute or less,"
-        " but we have seen a few anonomlies take over one hour.\n"
-        "You can quickly copy/paste the log file to see how it is progressing. CAUTION: "
-        "Don't open the WIP log file as it be written too constantly (just quick copy/paste file)."
+        " but we have seen a few anonomlies take over one hour.\n\n"
+        "You can quickly copy/paste the log file to see how it is progressing.\n CAUTION: "
+        "Don't open the log file as it is being updated constantly (just quick copy/paste file)."
     )
     print()
 
@@ -165,7 +166,6 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
             index=disconnected_inundation_poly.length.idxmax()
         )
 
-        RLOG.lprint("---------")
         RLOG.lprint(f"Loading the max inundation extent for each NWM reach for model {name_mid}")
 
         # Create max flow inundation masks for each NWM reach
@@ -240,8 +240,6 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
         )
 
         # Use max depth extent polygon as mask for other depths
-        print()
-        RLOG.lprint("-----------------------------------------------")
         RLOG.lprint("Getting the inundation extents from each flow (depth grids)")
         RLOG.lprint(f"Number of models to process is {len(all_nwm_reach_inundation_masks)}")
         print()
@@ -396,6 +394,8 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     changelog_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), os.pardir, 'doc', 'CHANGELOG.md')
     )
+    # Get the code version
+    code_version = sf.get_changelog_version(changelog_path)
 
     print()
     RLOG.lprint("+=================================================================+")
@@ -405,7 +405,6 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     RLOG.lprint(f"  ---(p) ras2fim_huc_dir: {ras2fim_huc_dir}")
     RLOG.lprint(f"  ---(o) overwrite: {overwrite}")
 
-    print("")
     overall_start_time = datetime.utcnow()
     dt_string = datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
     RLOG.lprint(f"Started (UTC): {dt_string}")
@@ -414,9 +413,6 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     if not os.path.exists(ras2fim_huc_dir):
         RLOG.error(f"{ras2fim_huc_dir} does not exist")
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), ras2fim_huc_dir)
-
-    # Get the code version
-    code_version = sf.get_changelog_version(changelog_path)
 
     # Make geocurves_dir
     geocurves_dir = os.path.join(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES)
