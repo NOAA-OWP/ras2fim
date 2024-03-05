@@ -148,7 +148,7 @@ def fn_cut_dems_from_shapes(
         conflated_model_ids,
         total=len(conflated_model_ids),
         desc="Clipping DEMs",
-        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
+        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
         ncols=65,
     ):
         RLOG.trace(f"Processing model_id of {model_id}")

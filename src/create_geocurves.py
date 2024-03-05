@@ -1,9 +1,11 @@
 import argparse
 import errno
 import math
+import multiprocessing as mp
 import os
 import re
 import shutil
+import sys
 import traceback
 
 # import warnings
@@ -14,20 +16,21 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import rasterio
+import tqdm
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from rasterio.features import shapes
 from rasterio.mask import mask
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.ops import split
 
+import ras2fim_logger
 import shared_functions as sf
 import shared_variables as sv
 
 
-# from shapely.validation import make_valid
-
-
 # Global Variables
 RLOG = sv.R2F_LOG  # the non mp version
+MP_LOG = ras2fim_logger.RAS2FIM_logger()  # the mp version
 
 GEOMETRY_COL = 'geometry'
 # This is the distance to extent the boundary cross-sections to ensure that the inundation polygon is split
@@ -95,11 +98,165 @@ def extend_cross_section(geom, extension_distance):
     )
     return LineString([start_pnt] + coords + [end_pnt])
 
+# -------------------------------------------------
+def mp_process_depth_grid_tif(var_d: dict):
+
+    try:
+
+        depth_tif_win_path = var_d["depth_tif_win_path"]
+        all_nwm_reach_inundation_masks_gdf = var_d["all_nwm_reach_inundation_masks_gdf"]
+        name_mid = var_d["name_mid"]
+        unit_output_path = var_d["unit_output_path"]
+        code_version = var_d["code_version"]
+        huc_name = var_d["huc_name"]
+        unit_name = var_d["unit_name"]
+        unit_version = var_d["unit_version"]
+        source_code = var_d["source_code"]
+        source1 = var_d["source1"]
+        log_file_prefix = var_d["log_file_prefix"]
+        rlog_file_path = var_d["rlog_file_path"]
+
+        file_id = sf.get_date_with_milli()
+        log_file_name = f"{log_file_prefix}-{file_id}.log"
+        MP_LOG.setup(os.path.join(rlog_file_path, log_file_name))
+
+        MP_LOG.trace(f"... Processing depth tif {depth_tif_win_path.name}")
+
+        # This is the regex for the profile number. It finds the numbers after 'flow' in the TIF name
+        flow_search = re.search('\(flow\d*\.*\d*_', depth_tif_win_path.name).group()
+        profile_num = float(re.search('\d+\.*\d*', flow_search).group())
+
+        with rasterio.open(depth_tif_win_path) as depth_grid_rast:
+            depth_grid_nodata = depth_grid_rast.profile['nodata']
+            depth_grid_crs = depth_grid_rast.crs
+
+            # Mask raster using rasterio for each NWM reach
+            for index, nwm_feature in all_nwm_reach_inundation_masks_gdf.iterrows():
+                # Load the rating curve
+                MP_LOG.trace(
+                    f"Processing {name_mid} for {depth_tif_win_path}:" f" feature ID = {nwm_feature.feature_id}"
+                )
+                rating_curve_dir = Path(
+                    unit_output_path,
+                    sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES,
+                    name_mid,
+                    f'rating_curve_{nwm_feature.feature_id}.csv',
+                )
+
+                if rating_curve_dir.exists() is False:
+                    continue
+
+                mask_shapes = list([nwm_feature.geometry])
+                masked_inundation, masked_inundation_transform = mask(
+                    depth_grid_rast, mask_shapes, crop=True
+                )
+                masked_inundation = masked_inundation[0]
+                # Create binary raster
+                binary_arr = np.where(
+                    (masked_inundation > 0) & (masked_inundation != depth_grid_nodata), 1, 0
+                ).astype("uint8")
+                # TODO: # if the array only has values of zero, then skip it
+                # (aka.. no heights above surface)
+                # if np.min(binary_arr) == 0 and np.max(binary_arr) == 0:
+                #     RLOG.warning(
+                #       f"depth_grid of {depth_tif} does not have any heights above surface.")
+                #     continue
+
+                results = (
+                    {"properties": {"extent": 1}, "geometry": s}
+                    for i, (s, v) in enumerate(
+                        shapes(
+                            binary_arr,
+                            mask=binary_arr > 0,
+                            transform=masked_inundation_transform,
+                            connectivity=8,
+                        )
+                    )
+                )
+
+                results_ls = list(results)
+                results_df = pd.DataFrame(results_ls)
+
+                poly_coordinates = []
+                for pc in range(len(results_df)):
+                    coords = Polygon(results_df['geometry'][pc]['coordinates'][0])
+                    poly_coordinates.append(coords)
+
+                poly_coordinates_df = pd.DataFrame(poly_coordinates, columns=["geometry"])
+
+                # Convert list of shapes to polygon, then dissolve
+                extent_poly = gpd.GeoDataFrame(poly_coordinates_df, crs=depth_grid_crs)
+                try:
+                    # extent_poly_diss = extent_poly.dissolve(by="extent")
+                    extent_poly_diss = extent_poly.dissolve()
+                    # multipoly_inundation = [
+                    #     MultiPolygon([feature]) if type(feature) == Polygon else feature
+                    #     for feature in extent_poly_diss["geometry"]
+                    # ]
+
+                    # # TODO: 'list' object has no attribute 'is_valid'
+                    # if not multipoly_inundation[0].is_valid:
+                    #     multipoly_inundation[0] = make_valid(multipoly_inundation[0])
+                    # extent_poly_diss["geometry"] = multipoly_inundation
+
+                except AttributeError as ae:
+                    # TODO (from v1) why does this happen? I suspect bad geometry. Small extent?
+                    MP_LOG.lprint("^^^^^^^^^^^^^^^^^^")
+                    msg = "Warning...\n"
+                    msg += f"  huc is {huc_name}; "
+                    msg += f"feature_id = {nwm_feature.feature_id}; "
+                    msg += f"depth_grid = {depth_tif_win_path}\n"
+                    msg += f"  Details: {ae}"
+                    MP_LOG.warning(msg)
+                    MP_LOG.warning(traceback.format_exc())
+                    MP_LOG.lprint("^^^^^^^^^^^^^^^^^^")
+                    continue
+
+                # Add the feature_id, profile_num, and code_version columns
+                extent_poly_diss = extent_poly_diss.assign(
+                    profile_num=profile_num,
+                    version=code_version,
+                    unit_name=unit_name,
+                    unit_version=unit_version,
+                    source_code=source_code,
+                    source=source1,
+                )
+                extent_poly_diss = extent_poly_diss.reindex(
+                    columns=[
+                        'version',
+                        'unit_name',
+                        'unit_version',
+                        'source_code',
+                        'source',
+                        'geometry',
+                        'profile_num',
+                    ]
+                )
+                # TODO: Does not exist anymore
+                # extent_poly_diss = extent_poly_diss.drop(columns='extent')
+
+                rating_curve_df = pd.read_csv(rating_curve_dir)
+
+                # Join the geometry to the rating curve
+                feature_id_rating_curve_geo = pd.merge(
+                    rating_curve_df, extent_poly_diss, on="profile_num", how="right"
+                )
+                # geocurve_df_list.append(feature_id_rating_curve_geo)
+
+        return feature_id_rating_curve_geo
+    
+    except Exception:
+        if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
+            MP_LOG.critical(traceback.format_exc())
+        else:
+            print(traceback.format_exc())
+        sys.exit(1)
+
 
 # -------------------------------------------------
-def create_geocurves(ras2fim_huc_dir: str, code_version: str):
+def create_geocurves(unit_output_path: str, code_version: str):
     # Get HUC 8
-    dir_name = Path(ras2fim_huc_dir).name
+    dir_name = Path(unit_output_path).name
     huc_name = re.match("^\d{8}", dir_name).group()
 
     # Get the unit name and version
@@ -111,32 +268,31 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
 
     # Read the conflated models list
     conflated_ras_models_csv = os.path.join(
-        ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, "conflated_ras_models.csv"
+        unit_output_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, "conflated_ras_models.csv"
     )
     conflated_ras_models = pd.read_csv(conflated_ras_models_csv, index_col=0)
     conflated_ras_models.sort_values(by=['final_name_key'])
 
     nwm_streams_ln_shp = os.path.join(
-        ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc_name}_nwm_streams_ln.shp"
+        unit_output_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc_name}_nwm_streams_ln.shp"
     )
     nwm_streams_ln = gpd.read_file(nwm_streams_ln_shp)
 
     cross_section_ln_shp = os.path.join(
-        ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS, "cross_section_LN_from_ras.shp"
+        unit_output_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS, "cross_section_LN_from_ras.shp"
     )
     cross_section_ln = gpd.read_file(cross_section_ln_shp)
 
     print()
     print(
         "This parts of this section can be a bit slow. Most can take just a minute or less,"
-        " but we have seen a few anonomlies take over one hour.\n\n"
-        "You can quickly copy/paste the log file to see how it is progressing.\n CAUTION: "
-        "Don't open the log file as it is being updated constantly (just quick copy/paste file)."
-    )
+        " but we have seen a few anonomlies take over one hour.")
     print()
 
     RLOG.trace("Start processing conflated models for each model")
+    RLOG.lprint(f"-- Number of models to process are {len(conflated_ras_models)}")    
     # Loop through each model
+    len_conflated_ras_models = len(conflated_ras_models)
     for index, model in conflated_ras_models.iterrows():
         RLOG.lprint("-----------------------------------------------")
         RLOG.trace(f"-- conflated_ras_models index[{index}] - {model.ras_path}")
@@ -145,10 +301,11 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
         model_cross_section_ln = cross_section_ln[cross_section_ln.ras_path == model.ras_path]
 
         # Load max depth boundary
-        hecras_output = Path(ras2fim_huc_dir, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
+        hecras_output = Path(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
         model_output_dir = [f for f in hecras_output.iterdir() if re.match(f"^{model.model_id}_", f.name)][0]
         name_mid = model_output_dir.name
-        RLOG.lprint(f"Creating geo rating curves for model {name_mid}")
+        RLOG.lprint(f"Creating geo rating curves for model {name_mid}"
+                    f"  (Number {index + 1} of {len_conflated_ras_models})")
         model_name0 = name_mid.split("_")[1:]
         model_name = "_".join(model_name0)
         model_depths_dir = Path(model_output_dir, model_name)
@@ -235,149 +392,73 @@ def create_geocurves(ras2fim_huc_dir: str, code_version: str):
 
         # nwm_reach_inundation_masks at this point is a list, but using pd.concat
         # it is rolling it up to one dataframe which is fed into a geodataframe
-        all_nwm_reach_inundation_masks = gpd.GeoDataFrame(
+        all_nwm_reach_inundation_masks_gdf = gpd.GeoDataFrame(
             pd.concat(nwm_reach_inundation_masks, ignore_index=True)
         )
-
-        # Use max depth extent polygon as mask for other depths
-        RLOG.lprint("Getting the inundation extents from each flow (depth grids)")
-        RLOG.lprint(f"Number of models to process is {len(all_nwm_reach_inundation_masks)}")
-        print()
 
         depth_tif_list = [f for f in model_depths_dir.iterdir() if f.suffix == '.tif']
         depth_tif_list.sort()
 
-        geocurve_df_list = []
+        # Use max depth extent polygon as mask for other depths
+        RLOG.lprint("Getting the inundation extents from each flow (depth grids)")
+        RLOG.lprint(f"Number of depth grid tifs to process is {len(depth_tif_list)}")
+        print()
+
+        log_file_prefix = "mp_create_geocurves"
+        depth_grid_args = [] # list of dictionaries
         for depth_tif in depth_tif_list:
-            RLOG.trace(f"... Processing depth tif {depth_tif.name}")
+            arg_item = {"depth_tif_win_path": depth_tif,
+                        "all_nwm_reach_inundation_masks_gdf": all_nwm_reach_inundation_masks_gdf,
+                        "name_mid": name_mid,
+                        "unit_output_path": unit_output_path,
+                        "code_version": code_version,
+                        "huc_name": huc_name,
+                        "unit_name" : unit_name,
+                        "unit_version": unit_version,
+                        "source_code" : source_code,
+                        "source1": source1,
+                        "log_file_prefix": log_file_prefix,
+                        "rlog_file_path": RLOG.LOG_DEFAULT_FOLDER,
+            }
+            depth_grid_args.append(arg_item)
 
-            # This is the regex for the profile number. It finds the numbers after 'flow' in the TIF name
-            flow_search = re.search('\(flow\d*\.*\d*_', depth_tif.name).group()
-            profile_num = float(re.search('\d+\.*\d*', flow_search).group())
+        geocurve_df_list = []
+        len_depth_tifs = len(depth_grid_args)
+        if (len_depth_tifs > 0):
+            num_processors = mp.cpu_count() - 2
+            geocurve_df_list = []
+            with ProcessPoolExecutor(max_workers=num_processors) as executor:
+                with tqdm.tqdm(total=len_depth_tifs,
+                               bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}% ",
+                               desc="Processing Depth Grids",
+                               ncols=80) as pbar:
+                    futures = {}
+                    for idx, dict_args in enumerate(depth_grid_args):
+                        future = executor.submit(mp_process_depth_grid_tif, dict_args)
+                        futures[future] = idx
 
-            with rasterio.open(depth_tif) as depth_grid_rast:
-                depth_grid_nodata = depth_grid_rast.profile['nodata']
-                depth_grid_crs = depth_grid_rast.crs
+                    for future in as_completed(futures):
+                        if future is not None:
+                            if not future.exception():
+                                geocurve_df_list.append(future.result())
+                        pbar.update(1) # advance by 1
 
-                # Mask raster using rasterio for each NWM reach
-                for index, nwm_feature in all_nwm_reach_inundation_masks.iterrows():
-                    # Load the rating curve
-                    RLOG.trace(
-                        f"Processing {name_mid} for {depth_tif}:" f" feature ID = {nwm_feature.feature_id}"
-                    )
-                    rating_curve_dir = Path(
-                        ras2fim_huc_dir,
-                        sv.R2F_OUTPUT_DIR_CREATE_RATING_CURVES,
-                        name_mid,
-                        f'rating_curve_{nwm_feature.feature_id}.csv',
-                    )
+            # Now that multi-proc is done, lets merge all of the independent log file from each
+            RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
 
-                    if rating_curve_dir.exists():
-                        mask_shapes = list([nwm_feature.geometry])
-                        masked_inundation, masked_inundation_transform = mask(
-                            depth_grid_rast, mask_shapes, crop=True
-                        )
-                        masked_inundation = masked_inundation[0]
-                        # Create binary raster
-                        binary_arr = np.where(
-                            (masked_inundation > 0) & (masked_inundation != depth_grid_nodata), 1, 0
-                        ).astype("uint8")
-                        # TODO: # if the array only has values of zero, then skip it
-                        # (aka.. no heights above surface)
-                        # if np.min(binary_arr) == 0 and np.max(binary_arr) == 0:
-                        #     RLOG.warning(
-                        #       f"depth_grid of {depth_tif} does not have any heights above surface.")
-                        #     continue
 
-                        results = (
-                            {"properties": {"extent": 1}, "geometry": s}
-                            for i, (s, v) in enumerate(
-                                shapes(
-                                    binary_arr,
-                                    mask=binary_arr > 0,
-                                    transform=masked_inundation_transform,
-                                    connectivity=8,
-                                )
-                            )
-                        )
-
-                        results_ls = list(results)
-                        results_df = pd.DataFrame(results_ls)
-
-                        poly_coordinates = []
-                        for pc in range(len(results_df)):
-                            coords = Polygon(results_df['geometry'][pc]['coordinates'][0])
-                            poly_coordinates.append(coords)
-                        poly_coordinates_df = pd.DataFrame(poly_coordinates, columns=["geometry"])
-
-                        # Convert list of shapes to polygon, then dissolve
-                        extent_poly = gpd.GeoDataFrame(poly_coordinates_df, crs=depth_grid_crs)
-                        try:
-                            # extent_poly_diss = extent_poly.dissolve(by="extent")
-                            extent_poly_diss = extent_poly.dissolve()
-                            # multipoly_inundation = [
-                            #     MultiPolygon([feature]) if type(feature) == Polygon else feature
-                            #     for feature in extent_poly_diss["geometry"]
-                            # ]
-
-                            # # TODO: 'list' object has no attribute 'is_valid'
-                            # if not multipoly_inundation[0].is_valid:
-                            #     multipoly_inundation[0] = make_valid(multipoly_inundation[0])
-                            # extent_poly_diss["geometry"] = multipoly_inundation
-
-                        except AttributeError as ae:
-                            # TODO (from v1) why does this happen? I suspect bad geometry. Small extent?
-                            RLOG.lprint("^^^^^^^^^^^^^^^^^^")
-                            msg = "Warning...\n"
-                            msg += f"  huc is {huc_name}; "
-                            msg += f"feature_id = {nwm_feature.feature_id}; "
-                            msg += f"depth_grid = {depth_tif}\n"
-                            msg += f"  Details: {ae}"
-                            RLOG.warning(msg)
-                            RLOG.lprint("^^^^^^^^^^^^^^^^^^")
-                            continue
-
-                        # Add the feature_id, profile_num, and code_version columns
-                        extent_poly_diss = extent_poly_diss.assign(
-                            profile_num=profile_num,
-                            version=code_version,
-                            unit_name=unit_name,
-                            unit_version=unit_version,
-                            source_code=source_code,
-                            source=source1,
-                        )
-                        extent_poly_diss = extent_poly_diss.reindex(
-                            columns=[
-                                'version',
-                                'unit_name',
-                                'unit_version',
-                                'source_code',
-                                'source',
-                                'geometry',
-                                'profile_num',
-                            ]
-                        )
-                        # TODO: Does not exist anymore
-                        # extent_poly_diss = extent_poly_diss.drop(columns='extent')
-
-                        rating_curve_df = pd.read_csv(rating_curve_dir)
-
-                        # Join the geometry to the rating curve
-                        feature_id_rating_curve_geo = pd.merge(
-                            rating_curve_df, extent_poly_diss, on="profile_num", how="right"
-                        )
-                        geocurve_df_list.append(feature_id_rating_curve_geo)
-
-        if rating_curve_dir.exists():
-            geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
-            geocurve_df = geocurve_df.sort_values(by=['feature_id', 'discharge_cfs'])
+        if len(geocurve_df_list) != 0:
             path_geocurve = os.path.join(
-                ras2fim_huc_dir,
+                unit_output_path,
                 sv.R2F_OUTPUT_DIR_FINAL,
                 sv.R2F_OUTPUT_DIR_GEOCURVES,
-                f'{name_mid}_geocurve.csv',
-            )
+                f'{name_mid}_geocurve.csv')
+
+            geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
+            geocurve_df = geocurve_df.sort_values(by=['feature_id', 'discharge_cfs'])
             geocurve_df.to_csv(path_geocurve, index=False)
+        else:
+            RLOG.warning(f"geocurve_df_list is empty for {name_mid}")
 
 
 # -------------------------------------------------

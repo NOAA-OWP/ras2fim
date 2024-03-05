@@ -54,16 +54,24 @@ def fn_open_hecras(rlog_file_path, rlog_file_prefix, str_ras_project_path):
     # WHY? this stops file open concurrency as each proc has its own.
     # We attempt to keep them somewhat sorted by using YYMMDD_HHMMSECMillecond)
 
+    # This function is used as part of a multiproc in one place but not part of a
+    # multi proc in another. When not MP, the rlog_file_path and rlog_file_prefix will be empty
+
     hec = None
     has_exception = False
 
-    try:
-        file_id = sf.get_date_with_milli()
-        log_file_name = f"{rlog_file_prefix}-{file_id}.log"
-        MP_LOG.setup(os.path.join(rlog_file_path, log_file_name))
+    is_multi_proc = (rlog_file_prefix == "")
 
-        # opening HEC-RAS
-        MP_LOG.trace(f"ras project path is {str_ras_project_path}")
+    try:
+        if is_multi_proc:
+            file_id = sf.get_date_with_milli()
+            log_file_name = f"{rlog_file_prefix}-{file_id}.log"
+            MP_LOG.setup(os.path.join(rlog_file_path, log_file_name))
+
+            # opening HEC-RAS
+            MP_LOG.trace(f"ras project path is {str_ras_project_path}")
+        else:
+            RLOG.trace(f"ras project path is {str_ras_project_path}")
 
         if os.path.exists(str_ras_project_path) is False:
             raise Exception(f"str_ras_project_path value of {str_ras_project_path} does not exist")
@@ -107,10 +115,17 @@ def fn_open_hecras(rlog_file_path, rlog_file_prefix, str_ras_project_path):
         # re-raise it as error handling is farther up the chain
         # but I do need the finally to ensure the hec.QuitRas() is run
         print("")
-        MP_LOG.critical("++++++++++++++++++++++++")
-        MP_LOG.critical("An exception occurred with the HEC-RAS engine or its parameters.")
-        MP_LOG.critical(f"str_ras_project_path is {str_ras_project_path}")
-        MP_LOG.critical(traceback.format_exc())
+        if is_multi_proc: 
+            MP_LOG.critical("++++++++++++++++++++++++")
+            MP_LOG.critical("An exception occurred with the HEC-RAS engine or its parameters.")
+            MP_LOG.critical(f"str_ras_project_path is {str_ras_project_path}")
+            MP_LOG.critical(traceback.format_exc())
+        else:
+            RLOG.critical("++++++++++++++++++++++++")
+            RLOG.critical("An exception occurred with the HEC-RAS engine or its parameters.")
+            RLOG.critical(f"str_ras_project_path is {str_ras_project_path}")
+            RLOG.critical(traceback.format_exc())
+
         print("")
         has_exception = True
 
@@ -124,12 +139,17 @@ def fn_open_hecras(rlog_file_path, rlog_file_prefix, str_ras_project_path):
             try:
                 hec.QuitRas()  # close HEC-RAS no matter watch
             except Exception as ex2:
-                MP_LOG.warning("--- An error occured trying to close the HEC-RAS window process")
-                MP_LOG.warning(f"str_ras_project_path is {str_ras_project_path}")
-                MP_LOG.warning(f"--- Details: {ex2}")
-                MP_LOG.warning("")
+                if is_multi_proc:  # meaning used by the non MP call
+                    MP_LOG.warning("--- An error occured trying to close the HEC-RAS window process")
+                    MP_LOG.warning(f"str_ras_project_path is {str_ras_project_path}")
+                    MP_LOG.warning(f"--- Details: {ex2}")
+                else:
+                    RLOG.warning("--- An error occured trying to close the HEC-RAS window process")
+                    RLOG.warning(f"str_ras_project_path is {str_ras_project_path}")
+                    RLOG.warning(f"--- Details: {ex2}")
+
                 # do nothing
-        if has_exception:
+        if has_exception and is_multi_proc:
             sys.exit(1)
 
 
@@ -137,43 +157,50 @@ def fn_open_hecras(rlog_file_path, rlog_file_prefix, str_ras_project_path):
 def fn_get_active_geom(str_path_hecras_project_fn2):
     # Fuction - gets the path of the active geometry HDF file
 
-    # read the HEC-RAS project file
-    with open(str_path_hecras_project_fn2) as f:
-        file_contents = f.read()
+    try:
+        # read the HEC-RAS project file
+        with open(str_path_hecras_project_fn2) as f:
+            file_contents = f.read()
 
-    # Find the current plan
-    pattern = re.compile(r"Current Plan=.*")
-    matches = pattern.finditer(file_contents)
+        # Find the current plan
+        pattern = re.compile(r"Current Plan=.*")
+        matches = pattern.finditer(file_contents)
 
-    if re.search("Current Plan=", file_contents) is None:
-        RLOG.critical(" -- ALERT: Reconnect files for " + str_path_hecras_project_fn2)
-        raise SystemExit(0)
+        if re.search("Current Plan=", file_contents) is None:
+            RLOG.critical(" -- ALERT: Reconnect files for " + str_path_hecras_project_fn2)
+            raise SystemExit(0)
 
-    # close the HEC-RAS project file
-    # f.close()
+        # close the HEC-RAS project file
+        # f.close()
 
-    for match in matches:
-        str_current_plan = match.group(0)[-3:]
+        for match in matches:
+            str_current_plan = match.group(0)[-3:]
 
-    str_path_to_current_plan = str_path_hecras_project_fn2[:-3] + str_current_plan
+        str_path_to_current_plan = str_path_hecras_project_fn2[:-3] + str_current_plan
 
-    # read the current plan
-    with open(str_path_to_current_plan) as f:
-        file_contents = f.read()
+        # read the current plan
+        with open(str_path_to_current_plan) as f:
+            file_contents = f.read()
 
-    # Find the current geometry
-    pattern = re.compile(r"Geom File=.*")
-    matches = pattern.finditer(file_contents)
+        # Find the current geometry
+        pattern = re.compile(r"Geom File=.*")
+        matches = pattern.finditer(file_contents)
 
-    # close the HEC-RAS plan file
-    # f.close()
+        # close the HEC-RAS plan file
+        # f.close()
 
-    for match in matches:
-        str_current_geom = match.group(0)[-3:]
+        for match in matches:
+            str_current_geom = match.group(0)[-3:]
 
-    str_path_to_current_geom = str_path_hecras_project_fn2[:-3] + str_current_geom
+        str_path_to_current_geom = str_path_hecras_project_fn2[:-3] + str_current_geom
 
-    return str_path_to_current_geom
+        return str_path_to_current_geom
+    
+    except Exception:
+        RLOG.error(f"An error occurred while processing {str_path_hecras_project_fn2}")
+        RLOG.error(traceback.format_exc())
+        print("")
+        return ""
 
 
 # -------------------------------------------------
@@ -190,7 +217,7 @@ def fn_geodataframe_cross_sections(str_path_hecras_project_fn, STR_CRS_MODEL):
         hf = h5py.File(str_path_to_geom_hdf, "r")
     else:
         # run hec-ras and then open the geom file
-        fn_open_hecras(str_path_hecras_project_fn)
+        fn_open_hecras("", "", str_path_hecras_project_fn)
         hf = h5py.File(str_path_to_geom_hdf, "r")
 
     # get data from HEC-RAS hdf5 files
@@ -317,7 +344,7 @@ def fn_geodataframe_stream_centerline(str_path_hecras_project_fn, STR_CRS_MODEL)
         hf = h5py.File(str_path_to_geom_hdf, "r")
     else:
         # run hec-ras and then open the geom file
-        fn_open_hecras(str_path_hecras_project_fn)
+        fn_open_hecras("", "", str_path_hecras_project_fn)
         hf = h5py.File(str_path_to_geom_hdf, "r")
 
     # XY points of the stream centerlines
@@ -686,9 +713,21 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
     # we need to not walk but get the dirs and get the files on each. Why? some
     # dirs can be removed based on its dir name
 
+    # Some models can not be processed and we are unable to trap them at this time, so we will
+    # manually add an exception list to drop them
+
+    bad_models_lst = ["1292972_BECK BRANCH_g01_1701646035",
+                      "1293152_DUCK CREEK_g01_1701646019"
+                      ]
+
     list_prj_files = []
     for root, dirs, __ in os.walk(input_models_path):
         for folder_name in dirs:
+
+            if folder_name in bad_models_lst:
+                RLOG.warning(f"model folder name is on the 'bad model list' ({folder_name})")
+                continue
+
             # check the model folder name and see if it's "g" number is anything but "g01"
             # If not.. drop the model.  aka.. 292972_BECK BRANCH_g01_1701646035 will continue
             # but 292972_BECK BRANCH_g02_1701646035 (just an example wil drop out here)
@@ -776,97 +815,6 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
                         with open(str_file_path, 'w') as f:
                             f.writelines(new_file_lines)
 
-    """
-    list_files = []
-
-    for root, dirs, files in os.walk(input_models_path):
-        for folder_name in dirs:
-            # check the model folder name and see if it's "g" number is anything but "g01"
-            # If not.. drop the model.  aka.. 292972_BECK BRANCH_g01_1701646035 will continue
-            # but 292972_BECK BRANCH_g02_1701646035 (just an example wil drop out here)
-            if "_g01_" not in folder_name and "_G01_)" not in folder_name:
-                RLOG.warning(f"model folder name is not a 'g01' folder ({folder_name})")
-                continue
-
-            # load its child files
-            model_path = os.path.join(root, folder_name)
-            files = os.listdir(model_path)
-            for file_name in files:
-                # -----------------------
-                # test and cleanup all files in the directory
-                str_file_path = os.path.join(model_path, file_name)
-
-                # These tests are primarily about update the prj file
-                # but removing the files helps too (less mess)
-                file_ext_split = os.path.splitext(file_name)
-                if len(file_ext_split) != 2:
-                    RLOG.warning(f"model file of {str_file_path} skipped - invalid extension")
-                    continue
-                file_ext = file_ext_split[1].replace(".", "")
-
-                # we don't want to keep files that are not prj or PRJ files.
-                if (file_ext != "prj") and (file_ext != "PRJ"):
-                    continue
-
-                with open(str_file_path) as f:
-                    first_file_line = f.read()
-
-                    # skip projection files
-                    if any(x in first_file_line for x in ["PROJCS", "GEOGCS", "DATUM", "PROJECTION"]):
-                        continue
-
-                list_files.append(str_file_path)
-
-                # -----------------------
-                # test and cleanup all files in the directory for
-                # models that made it this far.
-
-                # These tests are primarily about update the prj file
-                # but removing the files helps too (less mess)
-
-                # Matches all extensions starting with g, f, or p followed by a range of 02 to 99
-                # we want to only keep g01, f01, p01
-                # ie. Remove files like g03, or f11, or p26, etc
-                #regex_first_char_pattern = "^[g|f|p][0-9][0-9]"
-                #regex_last_chars_pattern = "[0-9][]"
-
-                first_char = file_ext[0]
-                remaining_str = file_ext[1:]
-                if (first_char in ['f','g','p']) and (remaining_str.isnumeric()):
-                    if remaining_str != "01":
-                        # remove the file and continue
-                        os.remove(str_file_path)
-                        RLOG.warning(f"model file of {str_file_path} removed - invalid extension")
-                        continue
-
-                # -----------------------
-                # Don't rely on the fact that the file may or may not have existed
-                new_file_lines = [] # we will rewrite the file out with the dropped lines if applic
-                has_lines_removed = False
-                with open(str_file_path, 'r') as f:
-                    file_lines = f.readlines()
-                    for idx, line in enumerate(file_lines):
-                        if (line.startswith("Geom File=") or line.startswith("Flow File=") or
-                            line.startswith("Plan File=")):
-
-                            # strip off last three
-                            last_three_chars = line[-3:]
-                            if (last_three_chars != "g01") and (
-                                last_three_chars != "p01") and (
-                                last_three_chars != "f01"):
-                                # aka.. can't be g02, g10, f21, etc.
-                                has_lines_removed = True
-                            else:
-                                new_file_lines.append(line + "\n")
-                        else:
-                            new_file_lines.append(line + "\n")
-                    # end of the "with"
-
-                if has_lines_removed: # Then we want to rewrite the file with the lines removed
-                    # Re-write the adjusted prj file.
-                    with open(str_file_path, 'w') as f:
-                        f.writelines(new_file_lines)
-    """
     # -----
     # checking to see if 'prj' files are not binary and
     # valid HEC-RAS prj files.  This should exclude all other
@@ -890,8 +838,7 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
                         break
                 if b_found_match:
                     list_files_valid_prj.append(str_file_path)
-    # -----
-
+    
     RLOG.lprint(f"Number of valid prj files is {len(list_files_valid_prj)}")
     print()
 
@@ -940,29 +887,34 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
     i = 0
 
     for ras_path in list_files_valid_prj:
-        # print(ras_path)
-        gdf_return_stream = fn_geodataframe_stream_centerline(ras_path, projection)
+        try:
+            # print(ras_path)
+            gdf_return_stream = fn_geodataframe_stream_centerline(ras_path, projection)
 
-        df_flows = fn_get_flow_dataframe(fn_get_active_flow(ras_path))
-        df_xs = fn_geodataframe_cross_sections(ras_path, projection)
-        if df_xs.empty:
-            RLOG.warning("Empty geometry in " + ras_path)
-            continue
+            df_flows = fn_get_flow_dataframe(fn_get_active_flow(ras_path))
+            df_xs = fn_geodataframe_cross_sections(ras_path, projection)
+            if df_xs.empty:
+                RLOG.warning("Empty geometry in " + ras_path)
+                continue
 
-        # Fix interpolated cross section names (ends with *)
-        for index, row in df_xs.iterrows():
-            str_check = row["stream_stn"]
-            if str_check[-1] == "*":
-                # Overwrite the value to remove '*'
-                df_xs.at[index, "stream_stn"] = str_check[:-1]
+            # Fix interpolated cross section names (ends with *)
+            for index, row in df_xs.iterrows():
+                str_check = row["stream_stn"]
+                if str_check[-1] == "*":
+                    # Overwrite the value to remove '*'
+                    df_xs.at[index, "stream_stn"] = str_check[:-1]
 
-        df_xs["stream_stn"] = df_xs["stream_stn"].astype(float)
-        gdf_xs_flows = fn_gdf_append_xs_with_max_flow(df_xs, df_flows)
+            df_xs["stream_stn"] = df_xs["stream_stn"].astype(float)
+            gdf_xs_flows = fn_gdf_append_xs_with_max_flow(df_xs, df_flows)
 
-        gdf_return_stream = fn_cut_stream_downstream(gdf_return_stream, df_xs)
+            gdf_return_stream = fn_cut_stream_downstream(gdf_return_stream, df_xs)
 
-        list_geodataframes_stream.append(gdf_return_stream)
-        list_geodataframes_cross_sections.append(gdf_xs_flows)
+            list_geodataframes_stream.append(gdf_return_stream)
+            list_geodataframes_cross_sections.append(gdf_xs_flows)
+        except Exception:
+            RLOG.error(f"An error occurred while processing {ras_path}")
+            RLOG.error(traceback.format_exc())
+            print("")
 
         time.sleep(0.03)
         i += 1

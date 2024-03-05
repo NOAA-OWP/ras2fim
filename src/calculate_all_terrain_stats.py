@@ -336,7 +336,7 @@ def fn_calculate_all_terrain_stats(hecras_output_dir):
                 executor.imap(fn_get_stats_dataseries, list_of_list_processed),
                 total=len_processed,
                 desc="Computing Stats",
-                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
+                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
                 ncols=65,
             )
         )
