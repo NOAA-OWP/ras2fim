@@ -60,7 +60,7 @@ def fn_open_hecras(rlog_file_path, rlog_file_prefix, str_ras_project_path):
     hec = None
     has_exception = False
 
-    is_multi_proc = (rlog_file_prefix == "")
+    is_multi_proc = rlog_file_prefix == ""
 
     try:
         if is_multi_proc:
@@ -115,7 +115,7 @@ def fn_open_hecras(rlog_file_path, rlog_file_prefix, str_ras_project_path):
         # re-raise it as error handling is farther up the chain
         # but I do need the finally to ensure the hec.QuitRas() is run
         print("")
-        if is_multi_proc: 
+        if is_multi_proc:
             MP_LOG.critical("++++++++++++++++++++++++")
             MP_LOG.critical("An exception occurred with the HEC-RAS engine or its parameters.")
             MP_LOG.critical(f"str_ras_project_path is {str_ras_project_path}")
@@ -195,7 +195,7 @@ def fn_get_active_geom(str_path_hecras_project_fn2):
         str_path_to_current_geom = str_path_hecras_project_fn2[:-3] + str_current_geom
 
         return str_path_to_current_geom
-    
+
     except Exception:
         RLOG.error(f"An error occurred while processing {str_path_hecras_project_fn2}")
         RLOG.error(traceback.format_exc())
@@ -716,14 +716,11 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
     # Some models can not be processed and we are unable to trap them at this time, so we will
     # manually add an exception list to drop them
 
-    bad_models_lst = ["1292972_BECK BRANCH_g01_1701646035",
-                      "1293152_DUCK CREEK_g01_1701646019"
-                      ]
+    bad_models_lst = ["1292972_BECK BRANCH_g01_1701646035", "1293152_DUCK CREEK_g01_1701646019"]
 
     list_prj_files = []
     for root, dirs, __ in os.walk(input_models_path):
         for folder_name in dirs:
-
             if folder_name in bad_models_lst:
                 RLOG.warning(f"model folder name is on the 'bad model list' ({folder_name})")
                 continue
@@ -739,7 +736,6 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
             model_path = os.path.join(root, folder_name)
             files = os.listdir(model_path)
             for file_name in files:
-
                 # -----------------------
                 # test and cleanup all files in the directory
                 str_file_path = os.path.join(model_path, file_name)
@@ -755,19 +751,19 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
                 # Matches all extensions starting with g, f, or p followed by a range of 02 to 99
                 # we want to only keep g01, f01, p01
                 # ie. Remove files like g03, or f11, or p26, etc
-                #regex_first_char_pattern = "^[g|f|p][0-9][0-9]"
-                #regex_last_chars_pattern = "[0-9][]"
+                # regex_first_char_pattern = "^[g|f|p][0-9][0-9]"
+                # regex_last_chars_pattern = "[0-9][]"
 
                 first_char = file_ext[0]
                 remaining_str = file_ext[1:]
-                if (first_char in ['f','g','p']) and (remaining_str.isnumeric()):
+                if (first_char in ['f', 'g', 'p']) and (remaining_str.isnumeric()):
                     if remaining_str != "01":
                         # remove the file and continue
                         os.remove(str_file_path)
                         RLOG.warning(f"model file of {str_file_path} removed - invalid extension")
                         continue
                 # if it is an .hdf file, we want to delete so it can be regenerated.
-                #if file_ext == "hdf":
+                # if file_ext == "hdf":
                 #    os.remove(str_file_path)
                 #    continue
 
@@ -779,7 +775,7 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
                 # Check for valid prj files which might have some lines removed
                 # Don't rely on the fact that the file may or may not have existed
                 is_a_valid_prj_file = True
-                new_file_lines = [] # we will rewrite the file out with the dropped lines if applic
+                new_file_lines = []  # we will rewrite the file out with the dropped lines if applic
                 has_lines_removed = False
                 with open(str_file_path, 'r') as f:
                     file_lines = f.readlines()
@@ -788,29 +784,33 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
                         if any(x in line for x in ["PROJCS", "GEOGCS", "DATUM", "PROJECTION"]):
                             is_a_valid_prj_file = False
                             continue
-                        
-                        if (line.startswith("Geom File=") or line.startswith("Flow File=") or
-                            line.startswith("Plan File=")):
 
+                        if (
+                            line.startswith("Geom File=")
+                            or line.startswith("Flow File=")
+                            or line.startswith("Plan File=")
+                        ):
                             # strip off last three
                             last_three_chars = line[-3:]
-                            if (last_three_chars != "g01") and (
-                                last_three_chars != "p01") and (
-                                last_three_chars != "f01"):
+                            if (
+                                (last_three_chars != "g01")
+                                and (last_three_chars != "p01")
+                                and (last_three_chars != "f01")
+                            ):
                                 # aka.. can't be g02, g10, f21, etc.
                                 has_lines_removed = True
                             else:
                                 new_file_lines.append(line + "\n")
-                                #new_file_lines.append(line)
+                                # new_file_lines.append(line)
                         else:
-                            #new_file_lines.append(line + "\n")
+                            # new_file_lines.append(line + "\n")
                             new_file_lines.append(line + "\n")
                 # end of the "with"
 
-                if is_a_valid_prj_file: # it is a valid prj file
+                if is_a_valid_prj_file:  # it is a valid prj file
                     list_prj_files.append(str_file_path)
 
-                    if has_lines_removed: # Then we want to rewrite the file with the lines removed
+                    if has_lines_removed:  # Then we want to rewrite the file with the lines removed
                         # Re-write the adjusted prj file.
                         with open(str_file_path, 'w') as f:
                             f.writelines(new_file_lines)
@@ -838,7 +838,7 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
                         break
                 if b_found_match:
                     list_files_valid_prj.append(str_file_path)
-    
+
     RLOG.lprint(f"Number of valid prj files is {len(list_files_valid_prj)}")
     print()
 

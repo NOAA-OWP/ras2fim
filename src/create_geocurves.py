@@ -7,6 +7,7 @@ import re
 import shutil
 import sys
 import traceback
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # import warnings
 from datetime import datetime
@@ -17,7 +18,6 @@ import numpy as np
 import pandas as pd
 import rasterio
 import tqdm
-from concurrent.futures import ProcessPoolExecutor, as_completed
 from rasterio.features import shapes
 from rasterio.mask import mask
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
@@ -98,11 +98,10 @@ def extend_cross_section(geom, extension_distance):
     )
     return LineString([start_pnt] + coords + [end_pnt])
 
+
 # -------------------------------------------------
 def mp_process_depth_grid_tif(var_d: dict):
-
     try:
-
         depth_tif_win_path = var_d["depth_tif_win_path"]
         all_nwm_reach_inundation_masks_gdf = var_d["all_nwm_reach_inundation_masks_gdf"]
         name_mid = var_d["name_mid"]
@@ -134,7 +133,8 @@ def mp_process_depth_grid_tif(var_d: dict):
             for index, nwm_feature in all_nwm_reach_inundation_masks_gdf.iterrows():
                 # Load the rating curve
                 MP_LOG.trace(
-                    f"Processing {name_mid} for {depth_tif_win_path}:" f" feature ID = {nwm_feature.feature_id}"
+                    f"Processing {name_mid} for {depth_tif_win_path}:"
+                    f" feature ID = {nwm_feature.feature_id}"
                 )
                 rating_curve_dir = Path(
                     unit_output_path,
@@ -147,9 +147,7 @@ def mp_process_depth_grid_tif(var_d: dict):
                     continue
 
                 mask_shapes = list([nwm_feature.geometry])
-                masked_inundation, masked_inundation_transform = mask(
-                    depth_grid_rast, mask_shapes, crop=True
-                )
+                masked_inundation, masked_inundation_transform = mask(depth_grid_rast, mask_shapes, crop=True)
                 masked_inundation = masked_inundation[0]
                 # Create binary raster
                 binary_arr = np.where(
@@ -244,7 +242,7 @@ def mp_process_depth_grid_tif(var_d: dict):
                 # geocurve_df_list.append(feature_id_rating_curve_geo)
 
         return feature_id_rating_curve_geo
-    
+
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:
             MP_LOG.critical(traceback.format_exc())
@@ -286,11 +284,12 @@ def create_geocurves(unit_output_path: str, code_version: str):
     print()
     print(
         "This parts of this section can be a bit slow. Most can take just a minute or less,"
-        " but we have seen a few anonomlies take over one hour.")
+        " but we have seen a few anonomlies take over one hour."
+    )
     print()
 
     RLOG.trace("Start processing conflated models for each model")
-    RLOG.lprint(f"-- Number of models to process are {len(conflated_ras_models)}")    
+    RLOG.lprint(f"-- Number of models to process are {len(conflated_ras_models)}")
     # Loop through each model
     len_conflated_ras_models = len(conflated_ras_models)
     for index, model in conflated_ras_models.iterrows():
@@ -304,8 +303,10 @@ def create_geocurves(unit_output_path: str, code_version: str):
         hecras_output = Path(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
         model_output_dir = [f for f in hecras_output.iterdir() if re.match(f"^{model.model_id}_", f.name)][0]
         name_mid = model_output_dir.name
-        RLOG.lprint(f"Creating geo rating curves for model {name_mid}"
-                    f"  (Number {index + 1} of {len_conflated_ras_models})")
+        RLOG.lprint(
+            f"Creating geo rating curves for model {name_mid}"
+            f"  (Number {index + 1} of {len_conflated_ras_models})"
+        )
         model_name0 = name_mid.split("_")[1:]
         model_name = "_".join(model_name0)
         model_depths_dir = Path(model_output_dir, model_name)
@@ -405,33 +406,36 @@ def create_geocurves(unit_output_path: str, code_version: str):
         print()
 
         log_file_prefix = "mp_create_geocurves"
-        depth_grid_args = [] # list of dictionaries
+        depth_grid_args = []  # list of dictionaries
         for depth_tif in depth_tif_list:
-            arg_item = {"depth_tif_win_path": depth_tif,
-                        "all_nwm_reach_inundation_masks_gdf": all_nwm_reach_inundation_masks_gdf,
-                        "name_mid": name_mid,
-                        "unit_output_path": unit_output_path,
-                        "code_version": code_version,
-                        "huc_name": huc_name,
-                        "unit_name" : unit_name,
-                        "unit_version": unit_version,
-                        "source_code" : source_code,
-                        "source1": source1,
-                        "log_file_prefix": log_file_prefix,
-                        "rlog_file_path": RLOG.LOG_DEFAULT_FOLDER,
+            arg_item = {
+                "depth_tif_win_path": depth_tif,
+                "all_nwm_reach_inundation_masks_gdf": all_nwm_reach_inundation_masks_gdf,
+                "name_mid": name_mid,
+                "unit_output_path": unit_output_path,
+                "code_version": code_version,
+                "huc_name": huc_name,
+                "unit_name": unit_name,
+                "unit_version": unit_version,
+                "source_code": source_code,
+                "source1": source1,
+                "log_file_prefix": log_file_prefix,
+                "rlog_file_path": RLOG.LOG_DEFAULT_FOLDER,
             }
             depth_grid_args.append(arg_item)
 
         geocurve_df_list = []
         len_depth_tifs = len(depth_grid_args)
-        if (len_depth_tifs > 0):
+        if len_depth_tifs > 0:
             num_processors = mp.cpu_count() - 2
             geocurve_df_list = []
             with ProcessPoolExecutor(max_workers=num_processors) as executor:
-                with tqdm.tqdm(total=len_depth_tifs,
-                               bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}% ",
-                               desc="Processing Depth Grids",
-                               ncols=80) as pbar:
+                with tqdm.tqdm(
+                    total=len_depth_tifs,
+                    bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}% ",
+                    desc="Processing Depth Grids",
+                    ncols=80,
+                ) as pbar:
                     futures = {}
                     for idx, dict_args in enumerate(depth_grid_args):
                         future = executor.submit(mp_process_depth_grid_tif, dict_args)
@@ -441,18 +445,18 @@ def create_geocurves(unit_output_path: str, code_version: str):
                         if future is not None:
                             if not future.exception():
                                 geocurve_df_list.append(future.result())
-                        pbar.update(1) # advance by 1
+                        pbar.update(1)  # advance by 1
 
             # Now that multi-proc is done, lets merge all of the independent log file from each
             RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
-
 
         if len(geocurve_df_list) != 0:
             path_geocurve = os.path.join(
                 unit_output_path,
                 sv.R2F_OUTPUT_DIR_FINAL,
                 sv.R2F_OUTPUT_DIR_GEOCURVES,
-                f'{name_mid}_geocurve.csv')
+                f'{name_mid}_geocurve.csv',
+            )
 
             geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
             geocurve_df = geocurve_df.sort_values(by=['feature_id', 'discharge_cfs'])
