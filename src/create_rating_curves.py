@@ -77,10 +77,10 @@ def plot_src(
     plt.xticks(rotation=90)
 
     if model_unit == "meter":
-        plt.ylabel("Average Depth (m)")
+        plt.ylabel("Avg Water Surface Elevation (m)")
         plt.xlabel("Discharge (cms)")
     else:
-        plt.ylabel("Average Depth (ft)")
+        plt.ylabel("Avg Water Surface Elevation (ft)")
         plt.xlabel("Discharge (cfs)")
 
     plt.grid(True)
