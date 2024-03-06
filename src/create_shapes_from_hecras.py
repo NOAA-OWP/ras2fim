@@ -60,7 +60,7 @@ def fn_open_hecras(rlog_file_path, rlog_file_prefix, str_ras_project_path):
     hec = None
     has_exception = False
 
-    is_multi_proc = rlog_file_prefix == ""
+    is_multi_proc = (rlog_file_prefix != "")
 
     try:
         if is_multi_proc:
@@ -116,12 +116,10 @@ def fn_open_hecras(rlog_file_path, rlog_file_prefix, str_ras_project_path):
         # but I do need the finally to ensure the hec.QuitRas() is run
         print("")
         if is_multi_proc:
-            MP_LOG.critical("++++++++++++++++++++++++")
             MP_LOG.critical("An exception occurred with the HEC-RAS engine or its parameters.")
             MP_LOG.critical(f"str_ras_project_path is {str_ras_project_path}")
             MP_LOG.critical(traceback.format_exc())
         else:
-            RLOG.critical("++++++++++++++++++++++++")
             RLOG.critical("An exception occurred with the HEC-RAS engine or its parameters.")
             RLOG.critical(f"str_ras_project_path is {str_ras_project_path}")
             RLOG.critical(traceback.format_exc())
@@ -158,6 +156,10 @@ def fn_get_active_geom(str_path_hecras_project_fn2):
     # Fuction - gets the path of the active geometry HDF file
 
     try:
+        if os.path.exists(str_path_hecras_project_fn2) is False:
+            RLOG.warning(f"str_path_hecras_project_fn2 ({str_path_hecras_project_fn2}) does not exist")
+            return ""
+
         # read the HEC-RAS project file
         with open(str_path_hecras_project_fn2) as f:
             file_contents = f.read()
@@ -194,7 +196,7 @@ def fn_get_active_geom(str_path_hecras_project_fn2):
 
         str_path_to_current_geom = str_path_hecras_project_fn2[:-3] + str_current_geom
 
-        return str_path_to_current_geom
+        return str_path_to_current_geom # file name with the extension stripped off
 
     except Exception:
         RLOG.error(f"An error occurred while processing {str_path_hecras_project_fn2}")
@@ -210,7 +212,12 @@ def fn_geodataframe_cross_sections(str_path_hecras_project_fn, STR_CRS_MODEL):
 
     RLOG.trace(f"Creating gdf of cross sections for {str_path_hecras_project_fn}" f" and {STR_CRS_MODEL}")
 
-    str_path_to_geom_hdf = (fn_get_active_geom(str_path_hecras_project_fn)) + ".hdf"
+    file_name = fn_get_active_geom(str_path_hecras_project_fn)
+    if file_name == "":
+        RLOG.warning("failure while getting active geometry")
+        return gpd.GeoDataFrame()
+    
+    str_path_to_geom_hdf = file_name + ".hdf"
 
     if path.exists(str_path_to_geom_hdf):
         # open the geom hdf file
@@ -760,7 +767,7 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
                     if remaining_str != "01":
                         # remove the file and continue
                         os.remove(str_file_path)
-                        RLOG.warning(f"model file of {str_file_path} removed - invalid extension")
+                        RLOG.warning(f"model file of {str_file_path} deleted - invalid extension")
                         continue
                 # if it is an .hdf file, we want to delete so it can be regenerated.
                 # if file_ext == "hdf":
@@ -847,7 +854,10 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
 
     for str_prj in list_files_valid_prj:
         # print("processing:"+str_prj)
-        str_path_to_geom_hdf = fn_get_active_geom(str_prj) + ".hdf"
+        file_name = fn_get_active_geom(str_prj)
+        if file_name == "":
+            continue
+        str_path_to_geom_hdf = file_name + ".hdf"
         if not path.exists(str_path_to_geom_hdf):
             # the hdf file does not exist - add to list of models to compute
             list_models_to_compute.append(str_prj)

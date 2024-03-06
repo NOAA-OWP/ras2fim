@@ -101,7 +101,7 @@ def fn_create_fim_rasters(
 
     # create a pool of processors
     # num_processors = mp.cpu_count() - 2
-    num_processors = round(math.floor(mp.cpu_count() * 0.90))
+    num_processors = round(math.floor(mp.cpu_count() * 0.85))
 
     import sys
 

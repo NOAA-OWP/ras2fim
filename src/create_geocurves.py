@@ -427,7 +427,8 @@ def create_geocurves(unit_output_path: str, code_version: str):
         geocurve_df_list = []
         len_depth_tifs = len(depth_grid_args)
         if len_depth_tifs > 0:
-            num_processors = mp.cpu_count() - 2
+            #num_processors = mp.cpu_count() - 2
+            num_processors = round(math.floor(mp.cpu_count() * 0.85))            
             geocurve_df_list = []
             with ProcessPoolExecutor(max_workers=num_processors) as executor:
                 with tqdm.tqdm(
