@@ -139,7 +139,7 @@ def fn_make_domain_polygons(
     # add conflation info
     conflate_qc_df = pd.read_csv(conflation_qc_path)
     models_polygons_gdf["conflated"] = np.where(
-        models_polygons_gdf[model_name_field].isin(conflate_qc_df[model_name_field]).values, "yes")
+        models_polygons_gdf[model_name_field].isin(conflate_qc_df[model_name_field]).values, "yes", "no")
 
     # also get HUC8 number from qc file name
     models_polygons_gdf["HUC8"] = os.path.basename(conflation_qc_path).split("_stream_qc_fid_xs.csv")[0]
@@ -153,10 +153,11 @@ def fn_make_domain_polygons(
 
     models_polygons_gdf["version"] = version
     models_polygons_gdf.crs = Xsections.crs
-    models_polygons_gdf.to_file(os.path.join(output_polygon_dir, 'models_domain.gpkg'), driver="GPKG")
+    # drop the non conflated models
+    conflated_models = models_polygons_gdf[models_polygons_gdf['conflated'] == 'yes']
+    conflated_models.to_file(os.path.join(output_polygon_dir, 'models_domain.gpkg'), driver="GPKG")
 
     # also make a single dissolved polygon only for conflated models
-    conflated_models = models_polygons_gdf[models_polygons_gdf['conflated'] == 'yes']
     dissolved_conflated_models = conflated_models.dissolve(by='conflated').reset_index()
     columns_to_keep = ['geometry', 'HUC8', 'version']
     if model_huc_catalog_path.lower() != "no_catalog":
