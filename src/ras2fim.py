@@ -325,7 +325,6 @@ def fn_run_ras2fim(
 
     # run the third script
     if int_step <= 3:
-        int_buffer = 300  # buffer distance for each watershed shp
 
         # provide conflation qc file to mark the parent models that conflated to NWM reaches
         conflation_csv_path = os.path.join(dir_shapes_from_conflation, "conflated_ras_models.csv")
@@ -340,7 +339,6 @@ def fn_run_ras2fim(
             conflation_csv_path,
             terrain_file_path,
             dir_terrain,
-            int_buffer,
             model_unit,
         )
     # -------------------------------------------

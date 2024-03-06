@@ -373,7 +373,7 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
                 executor.imap(partial(mp_snap_point, shply_line), list_dataframe_args_snap),
                 total=total_points,
                 desc="Snap Points",
-                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
+                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}% ",
                 mininterval=3,
                 maxinterval=3,
                 ncols=67,
