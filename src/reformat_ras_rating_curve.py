@@ -288,7 +288,7 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
     intersection_gdf["wse_units"] = "ft"
 
     # we have some columns we don't need.
-    intersection_gdf.drop(['ras_path_1', 'ras_path_2', 'huc12', 'huc10','active'], axis=1, inplace=True)
+    intersection_gdf.drop(['ras_path_1', 'ras_path_2', 'huc12', 'huc10', 'active'], axis=1, inplace=True)
 
     # Reproject intersection_gdf_all to output SRC
     shared_variables_crs = sv.DEFAULT_RASTER_OUTPUT_CRS
@@ -382,7 +382,7 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
                 "feature_id": rc_geospatial_df["feature_id"],
                 "xsection_name": rc_geospatial_df["Xsection_name"],  # used to be Xsection_name
                 "flow_cfs": rc_geospatial_df["discharge_cfs"],
-                "wse_ft": rc_geospatial_df["wse_ft"], 
+                "wse_ft": rc_geospatial_df["wse_ft"],
                 "flow_cms": rc_geospatial_df["discharge_cfs"] * 0.3048,
                 "wse_m": rc_geospatial_df["wse_ft"] * 0.3048,
                 "location_type": source_code,  # str

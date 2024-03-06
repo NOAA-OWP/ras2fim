@@ -6,11 +6,11 @@ import os
 import sys
 import traceback
 
-import colored as cl
+import fiona
 import geopandas as gpd
 import pyproj
-import rasterio
-import rasterio.mask
+import rasterio as rio
+from rasterio.mask import mask
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
@@ -34,7 +34,6 @@ RLOG = sv.R2F_LOG
 # __USGS_3DEP_10M_VRT_URL = (
 #    r'/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt'
 # )
-
 
 # ++++++++++++++++++++++++
 
@@ -61,7 +60,6 @@ def acquire_and_preprocess_3dep_dems(
 
     - The new domain poly (per HUC8), is submitted as a extent area to USGS which will download the DEM
       using that spatial extent area. The new output DEMs will have the HUC8 name in it.
-      If the newly created DEM already exists, it will ask the user if they want to overwrite it.
 
     - If the 'inc_upload_outputs_to_s3' flag is TRUE, it will use the s3_path to upload it. If the DEM exists
       already in S3, it will also ask if the user wants to overwrite it.
@@ -72,13 +70,19 @@ def acquire_and_preprocess_3dep_dems(
 
        - The output folder can be defined but not the output file names.
 
-       - The output will create two files, one for the domains used for the cut to USGS
-         and the other is the actual DEM. Folder input and outputs are overrideable but defaulted.
-         The default root output folder will be c:/ras2fim_data/inputs/dems/ras_3dep_HUC8_10m. If those file
-         already exist, they will automatically be overwritten.
+       - The output will create three files:
+            1: for the domains used for the cut to USGS and
+            2: the other is the actual DEM (now called a ras2fim DEM)
+            3: using the DEM above, make out any levees that are in that extent.
 
-       - Each dem output file will follow the pattern of "HUC8_{huc_number}_dem.tif".
-       - Each domain output file will follow a pattern "HUC8_{huc_number}_domain.gpkg".
+        Folder input and outputs are overrideable but defaulted.
+        The default root output folder will be c:/ras2fim_data/inputs/dems/ras_3dep_HUC8_10m. If those file
+        already exist, they will automatically be overwritten.
+
+       - Each ras2fim dem output file will follow the pattern of "HUC8_{huc_number}_dem.tif"
+       - Each ras2fim dem output file with levees will follow the
+         pattern of "HUC8_{huc_number}_w_levee_dem.tif"
+       - Each domain output file will follow a pattern "HUC8_{huc_number}_domain.gpkg"
 
     Parameters
     ----------
@@ -107,12 +111,13 @@ def acquire_and_preprocess_3dep_dems(
             Defaults to EPSG:5070
     """
 
+    arg_values = locals().copy()
+
     print()
     start_dt = dt.datetime.utcnow()
 
-    RLOG.lprint("****************************************")
+    RLOG.lprint("*************************************************")
     RLOG.notice("==== Acquiring and Preprocess of HUC8 domains ===")
-    RLOG.lprint(f"      Started (UTC): {sf.get_stnd_date()}")
     RLOG.lprint(f"  --- (-huc) HUC8: {huc}")
     RLOG.lprint(f"  --- (-wbd) Path to WBD HUC12s gkpg: {path_wbd_huc12s_gpkg}")
     RLOG.lprint(f"  --- (-t) Path to output folder: {target_output_folder_path}")
@@ -120,39 +125,13 @@ def acquire_and_preprocess_3dep_dems(
     RLOG.lprint(f"  --- (-u) Upload to output to S3 ?: {inc_upload_outputs_to_s3}")
     if inc_upload_outputs_to_s3 is True:
         RLOG.lprint(f"  --- (-s3) Path to upload outputs to S3: {s3_path}")
+    RLOG.lprint(f"      Started (UTC): {sf.get_stnd_date()}")
     RLOG.lprint("+-----------------------------------------------------------------+")
 
-    # ------------
-    # Validation
-    def _validation(huc, path_wbd_huc12s_gpkg, target_projection, inc_upload_outputs_to_s3, s3_path):
-        if os.path.exists(path_wbd_huc12s_gpkg) is False:
-            raise ValueError(f"File path to {path_wbd_huc12s_gpkg} does not exist")
-
-        huc_valid, err_msg = val.is_valid_huc(huc)
-        if huc_valid is False:
-            raise ValueError(err_msg)
-
-        # ------------
-        if os.path.isfile(path_wbd_huc12s_gpkg) is False:
-            raise ValueError("File to wbd huc12 gpkg does not exist")
-
-        # ---------------
-        is_valid, err_msg, crs_number = val.is_valid_crs(target_projection)
-        if is_valid is False:
-            raise ValueError(err_msg)
-
-        # ------------
-        if inc_upload_outputs_to_s3 is True:
-            # check ras2fim output bucket exists
-
-            adj_s3_path = s3_path.replace("s3://", "")
-            path_segs = adj_s3_path.split("/")
-            bucket_name = path_segs[0]
-
-            if s3_sf.does_s3_bucket_exist(bucket_name) is False:
-                raise ValueError(f"s3 bucket of {bucket_name} ... does not exist")
-
-    _validation(huc, path_wbd_huc12s_gpkg, target_projection, inc_upload_outputs_to_s3, s3_path)
+    # ----------------
+    # validate input variables
+    # (at this point, there are no new derived variables) - some scripts to have a return dictionary
+    __validate_input(**arg_values)
 
     os.makedirs(target_output_folder_path, exist_ok=True)
 
@@ -168,20 +147,29 @@ def acquire_and_preprocess_3dep_dems(
         # ------------
         # Call USGS to create dem files
         # If it errors in here, it will stop execution
-        dem_file_name = f"HUC8_{huc}_dem.tif"
-        dem_file_path = os.path.join(target_output_folder_path, dem_file_name)
-
+        # create a temp file before masking in the Levees
+        dem_file_raw_name = f"HUC8_{huc}_dem.tif"
+        dem_file_raw_path = os.path.join(target_output_folder_path, dem_file_raw_name)
         # logging done inside function
-        __download_usgs_dem(domain_file_path, dem_file_path, target_projection)
+        __download_usgs_dem(domain_file_path, dem_file_raw_path, target_projection)
+
+        # mask levee protect areas into the raw DEM. It will also remove the temp file.
+        dem_levee_file_name = f"HUC8_{huc}_w_levee_dem.tif"
+        dem_levee_file_path = os.path.join(target_output_folder_path, dem_levee_file_name)
+        __mask_dem_w_levee_protected_areas(dem_file_raw_path, dem_levee_file_path)
 
         # ------------
         if inc_upload_outputs_to_s3 is True:
             print()
-            RLOG.notice(" -- We will be uploading the domain file first to S3, then the dem file.")
+            RLOG.notice(" -- We will be uploading the domain file first to S3, then the dem files.")
             # Upload Domain Files
             __upload_file_to_s3(s3_path, domain_file_name, domain_file_path)
             # Now the DEM
-            __upload_file_to_s3(s3_path, dem_file_name, dem_file_path)
+            __upload_file_to_s3(s3_path, dem_file_raw_name, dem_file_raw_path)
+            # Now the masked DEM
+            __upload_file_to_s3(s3_path, dem_levee_file_name, dem_levee_file_path)
+
+            # now the levee version
 
         RLOG.lprint("--------------------------------------")
         RLOG.success(f" Acquire and pre-proccess 3dep DEMs completed: {sf.get_stnd_date()}")
@@ -194,8 +182,9 @@ def acquire_and_preprocess_3dep_dems(
         print(ve)
 
     except Exception:
-        print("An exception occurred. Details:")
-        print(traceback.format_exc())
+        RLOG.critical("An exception occurred. Details:")
+        RLOG.critical(traceback.format_exc())
+        sys.exit(1)
 
 
 # -------------------------------------------------
@@ -224,34 +213,6 @@ def __download_usgs_dem(domain_file_path, output_dem_file_path, target_projectio
     print()
     RLOG.notice(f" -- Downloading DEM file for {output_dem_file_path}")
 
-    # See if file exists and ask if they want to overwrite it.
-    if os.path.exists(output_dem_file_path):  # file, not folder
-        msg = (
-            f"{cl.fore.SPRING_GREEN_2B}"
-            f"The dem file already exists at {output_dem_file_path}. \n"
-            "Do you want to overwrite it?\n\n"
-            f"{cl.style.RESET}"
-            f"   -- Type {cl.fore.SPRING_GREEN_2B}'overwrite'{cl.style.RESET}"
-            " if you want to overwrite the current file.\n"
-            f"   -- Type {cl.fore.SPRING_GREEN_2B}'skip'{cl.style.RESET}"
-            " if you want to skip overwriting the file but continue running the program.\n"
-            f"   -- Type {cl.fore.SPRING_GREEN_2B}'abort'{cl.style.RESET}"
-            " to stop the program.\n"
-            f"{cl.fore.LIGHT_YELLOW}  ?={cl.style.RESET}"
-        )
-        resp = input(msg).lower()
-
-        if (resp) == "abort":
-            RLOG.lprint(f"\n.. You have selected {resp}. Program stopped.\n")
-            sys.exit(0)
-
-        elif (resp) == "skip":
-            return
-        else:
-            if (resp) != "overwrite":
-                RLOG.lprint(f"\n.. You have entered an invalid response of {resp}. Program stopped.\n")
-                sys.exit(0)
-
     print(
         " *** Stand by, this may take up to 2 to 8 mins depending on computer resources.\n"
         " Note: sometimes the connection to USGS servers can be bumpy so retry if you"
@@ -271,8 +232,8 @@ def __download_usgs_dem(domain_file_path, output_dem_file_path, target_projectio
         url = r"/vsicurl/https://prd-tnm.s3.amazonaws.com/"
         url += r"StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
 
-        with rasterio.open(url, 'r') as raster_vrt:
-            out_image, out_transform = rasterio.mask.mask(raster_vrt, geoms, crop=True)
+        with rio.open(url, 'r') as raster_vrt:
+            out_image, out_transform = mask(raster_vrt, geoms, crop=True)
 
             out_meta = raster_vrt.meta.copy()
             out_meta.update(
@@ -289,7 +250,7 @@ def __download_usgs_dem(domain_file_path, output_dem_file_path, target_projectio
         temp_dem_file_path = output_dem_file_path.replace(".tif", "_pre_proj.tif")
         # We need to save it as a temp file with the usgs crs. Shortly, we will reload,
         # reproject and resample.
-        with rasterio.open(
+        with rio.open(
             temp_dem_file_path, "w", **out_meta, tiled=True, blockxsize=1024, blockysize=1024, BIGTIFF='YES'
         ) as dest_file:
             dest_file.write(out_image)
@@ -297,7 +258,7 @@ def __download_usgs_dem(domain_file_path, output_dem_file_path, target_projectio
         # Now we can reproject to the projection of our preference.
         sf.reproject_raster(temp_dem_file_path, output_dem_file_path, new_proj_wkt, 10)
 
-        # delete the temp file
+        # remove the temp file
         os.remove(temp_dem_file_path)
 
         RLOG.success("USGS DEM downloaded")
@@ -309,54 +270,87 @@ def __download_usgs_dem(domain_file_path, output_dem_file_path, target_projectio
 
 
 # -------------------------------------------------
+def __mask_dem_w_levee_protected_areas(dem_file_raw_path, dem_levee_file_path):
+    """
+    Process:
+
+        Inputs:
+        (paths adjusted based on target folder arg)
+        - dem_file_raw_path: ie) C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m\HUC8_12010005_dem.tif
+        - dem_file_path: ie) C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m\HUC8_12010005_w_levee_dem.tif
+    """
+    print()
+    RLOG.notice(" -- Masking levees into DEM")
+
+    with rio.open(dem_file_raw_path) as dem_raw:
+        dem_profile = dem_raw.profile.copy()
+
+        with fiona.open(sv.INPUT_LEVEE_PROT_AREA_FILE_PATH) as leveed:
+            geoms = [feature["geometry"] for feature in leveed]
+
+            dem_masked, __ = mask(dem_raw, geoms, invert=True)
+
+    with rio.open(dem_levee_file_path, "w", **dem_profile, BIGTIFF='YES') as dest_file:
+        dest_file.write(dem_masked)
+
+
+# -------------------------------------------------
 def __upload_file_to_s3(s3_path, file_name, src_file_path):
     """
     Checks if the file is already uploaded to S3
     """
 
-    start_dt = dt.datetime.utcnow()
     s3_file_path = s3_path + "/" + file_name
 
     print()
     RLOG.lprint(f"-- Start uploading {src_file_path} to {s3_file_path}")
 
-    file_exists = s3_sf.is_valid_s3_file(s3_file_path)
-    if file_exists is True:
-        # Ask if they want to overwrite it
-        print()
-        msg = (
-            f"{cl.fore.SPRING_GREEN_2B}"
-            f"The file to be uploaded already exists at {s3_file_path}. \n"
-            "Do you want to overwrite it?\n\n"
-            f"{cl.style.RESET}"
-            f"   -- Type {cl.fore.SPRING_GREEN_2B}'overwrite'{cl.style.RESET}"
-            " if you want to overwrite the s3 file.\n"
-            f"   -- Type {cl.fore.SPRING_GREEN_2B}'skip'{cl.style.RESET}"
-            " if you want to skip overwriting the file but continue running the program.\n"
-            f"   -- Type {cl.fore.SPRING_GREEN_2B}'abort'{cl.style.RESET}"
-            " to stop the program.\n"
-            f"{cl.fore.LIGHT_YELLOW}  ?={cl.style.RESET}"
-        )
-        resp = input(msg).lower()
-
-        if (resp) == "abort":
-            RLOG.lprint(f"\n.. You have selected {resp}. Program stopped.\n")
-            sys.exit(0)
-
-        elif (resp) == "skip":
-            return
-        else:
-            if (resp) != "overwrite":
-                RLOG.lprint(f"\n.. You have entered an invalid response of {resp}. Program stopped.\n")
-                sys.exit(0)
-
+    print()
     print(" *** Stand by, this may take 1 to 4 minutes depending on computer resources")
     s3_sf.upload_file_to_s3(src_file_path, s3_file_path)
     print()
     RLOG.success(f"Upload to {s3_file_path} - Complete")
-    dur_msg = sf.get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
-    RLOG.lprint(dur_msg)
     print()
+
+
+# ------------
+# Validation (at this point, there are no new derived variables)
+def __validate_input(
+    huc, path_wbd_huc12s_gpkg, target_output_folder_path, inc_upload_outputs_to_s3, s3_path, target_projection
+):
+    # target_output_folder_path (no validation needed)
+
+    if os.path.exists(path_wbd_huc12s_gpkg) is False:
+        raise ValueError(f"File path to {path_wbd_huc12s_gpkg} does not exist")
+
+    huc_valid, err_msg = val.is_valid_huc(huc)
+    if huc_valid is False:
+        raise ValueError(err_msg)
+
+    # ------------
+    if os.path.isfile(path_wbd_huc12s_gpkg) is False:
+        raise ValueError("File to wbd huc12 gpkg does not exist")
+
+    # ---------------
+    is_valid, err_msg, ___ = val.is_valid_crs(target_projection)
+    if is_valid is False:
+        raise ValueError(err_msg)
+
+    # ------------
+    if inc_upload_outputs_to_s3 is True:
+        # check ras2fim output bucket exists
+
+        adj_s3_path = s3_path.replace("s3://", "")
+        path_segs = adj_s3_path.split("/")
+        bucket_name = path_segs[0]
+
+        if s3_sf.does_s3_bucket_exist(bucket_name) is False:
+            raise ValueError(f"s3 bucket of {bucket_name} ... does not exist")
+
+    # ------------
+    # Check the levee file name and path.
+    if os.path.exists(sv.INPUT_LEVEE_PROT_AREA_FILE_PATH) is False:
+        raise ValueError(f"File path to {sv.INPUT_LEVEE_PROT_AREA_FILE_PATH} does not exist")
 
 
 # -------------------------------------------------
@@ -384,7 +378,6 @@ if __name__ == '__main__':
 
     sample (min args)
         python ./tools/acquire_and_preprocess_3dep_dems.py -huc 12090301
-
 
     Notes:
       - This is a very low use tool. So for now, this only can load 10m (1/3 arc second). For now

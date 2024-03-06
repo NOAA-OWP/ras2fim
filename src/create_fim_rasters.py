@@ -204,7 +204,7 @@ def fn_create_fim_rasters(
     RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
 
     RLOG.lprint("")
-    RLOG.success(" COMPLETE: ALL HEC-RASS MODELS WERE PROCESSED ")
+    RLOG.success(" COMPLETE: ALL HEC-RAS MODELS WERE PROCESSED ")
 
     dur_msg = sf.get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)

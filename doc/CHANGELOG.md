@@ -1,6 +1,33 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.beta.33 - 2024-03-06 - [PR#303](https://github.com/NOAA-OWP/ras2fim/pull/303)
+
+Add levee masking to ras2fim DEMs using X-National_Datasets\Leveed_Areas_NLDFS_5070_230314.gpkg.
+
+**This now creates a second DEM file called HUC8_{huc number}_w_levee_dem.tif. ras2fim will continue to auto look for the original DEM but as always, ras2fim has an arg to override which DEM can be used. Later we might change the levee version of the DEM as the default but not yet.**
+
+Also removed the clip dem buffer as it is no longer relevant (with the larger DEMs with the huc8 extent and all surrounding HUC12s.
+
+The tool builds the file locally then uploads them to S3 based on the s3 path (which is defaulted to ras2fim).
+
+If you don't want to upload the output file to S3, add the -skips3 argument.
+
+### Changes  
+- `src`
+    - `clip_dem_from_shape.py`: Remove buffer system.
+    - `conflate_hecras_to_nwm.py`: Slow down the amount of progress bar ticks.
+    - `create_fim_rasters.py`:  Fix typo
+    - `ras2fim.py`: Remove buffer system for `clip_dem_from_shape.py`
+    - `reformat_ras_rating_curves.py`:  Linting fixes
+    - `shared_variables.py`: Updates for new levee files for DEMs
+- `tools`
+    - `acquire_and_preprocess_3dep_dems.p`: As described above. 
+    - `extend_huc8_domain.py`: Removed request for user input during processing
+
+<br/><br/>
+
+
 ## v2.0.beta.32 - 2024-02-26 - [PR#302](https://github.com/NOAA-OWP/ras2fim/pull/302)
 
 Fix a couple of columns for reformat csv output. It was creating an error.
