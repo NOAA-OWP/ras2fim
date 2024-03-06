@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.beta.x - 2024-02-27 - [PR#303](https://github.com/NOAA-OWP/ras2fim/pull/303)
+## v2.0.beta.33 - 2024-03-06 - [PR#303](https://github.com/NOAA-OWP/ras2fim/pull/303)
 
 Add levee masking to ras2fim DEMs using X-National_Datasets\Leveed_Areas_NLDFS_5070_230314.gpkg.
 
