@@ -1,6 +1,58 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.0 - 2024-03-07 - [PR#305](https://github.com/NOAA-OWP/ras2fim/pull/305)
+
+This PR covers a wide range of last minute bug fixes or critical enhancements including:
+
+[304](https://github.com/NOAA-OWP/ras2fim/issues/304) - Add Multi-Proc to create_geocurves.
+
+[301](https://github.com/NOAA-OWP/ras2fim/issues/301) - Critical bug. Invalid Int error.
+
+[300](https://github.com/NOAA-OWP/ras2fim/issues/300) - Critical bug: Unable to locate g01 file  (bad _g02_, _g03_, etc).
+
+[293](https://github.com/NOAA-OWP/ras2fim/issues/293) - Sudden jump in stage in rating curves.
+
+[287](https://github.com/NOAA-OWP/ras2fim/issues/287) - Non-Monmonotonic RC in Gravelly Creek (mid10707).
+
+[308](https://github.com/NOAA-OWP/ras2fim/issues/308) - hecras looks for g02.
+
+[122](https://github.com/NOAA-OWP/ras2fim/issues/122) - SRC Issue -- Nonmonotonic RC
+
+[309](https://github.com/NOAA-OWP/ras2fim/issues/309) - Change depth to WSE in rating curves
+
+
+Other bugs fixed / enhancements:
+- Making the `create_terrain_stats` section optional to run, defaulted to false (speed up the overall processing time).
+- Enhanced logging and tracing in many places.
+- Cleanup on some progress bars which were not moving horizontally but were adding lines per progress bar increment.
+- Enhanced error trapping at critical points.
+- Fixed a logging but in `create_shapes_from_hecras.py` -> `fn_open_hecras` which is called sometimes from within a multi process and sometimes not.
+- Removing invalid files from model folders such as files starting with `g`, `f`, and `p` followed by any value that is not `01`. And adjusted the related prj file to remove related entries. This includes better testing looking for invalid models and ignoring them.
+- Fixing a bug found in the logging system.
+
+### Changes  
+- `config`
+    - `r2f_config.env`: Added line for option to run the terrain stats module.
+- `src`
+    - `calculate_all_terrain_stats.py`: logging, tracing and progress bar fixes.
+    - `clip_dem_from_shape.py` : fix progress bar issue.
+    - `conflate_hecras_to_nwm.py`: progress bar, tracing, logging, error trapping.
+    - `convert_tif_to_ras_hdf5.py`: tracing.
+    - `create_fim_rasters.py`: tracing, logging, improved multi-proc management, small pathing bug fixes.
+    - `create_geocurves.py`: Added multi-processing, logging, tracing.
+    - `create_rating_curves.py`: logging, improved to avoid nonmonotonic rating curves. added stage data. 
+    - `create_shapes_from_hecras.py`: logging, multi-proc logging fix, improved error handling, tracing, added model adjustments (removing some files, rejecting some, updating some prj files, etc).
+    - `ras2fim.py`: Allow auto overwrite when the unit output file pre-exists, make `terrain stats` section optional to run.
+    - `ras2fim_logger.py`: Bug fix for temp files.
+    - `reformat_rating_curve.py`: tracing, logging, bug fix for early exits.
+    - `shared_functions.py`: progress bar fix.
+    - `simplify_fim_rasters.py`: progress bar fix.
+    - `worker_fim_rasters.py`:  tracing, error trapping, improved compute_boundray_condition_wse and  compute_boundray_condition_nd functions to be able to read different formats of geometry files. Improved calculation of peak flow in second pass flow. improved second pass flow calculation to avoid non-monotonic rating curves. 
+
+<br/><br/>
+
+
 ## v2.0.beta.33 - 2024-03-06 - [PR#303](https://github.com/NOAA-OWP/ras2fim/pull/303)
 
 Add levee masking to ras2fim DEMs using X-National_Datasets\Leveed_Areas_NLDFS_5070_230314.gpkg.
