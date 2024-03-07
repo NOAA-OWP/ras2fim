@@ -231,247 +231,258 @@ def compute_boundray_condition_wse(
     int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_wse, ls_path_to_geo_file_wse
 ):
     list_bc_target_xs_huc8 = []
-    for path_in in range(len(ls_path_to_flow_file_wse)):
-        # Get max flow for each xs in which flow changes in a dataframe format
-        max_flow_df_wse = fn_get_flow_dataframe(ls_path_to_flow_file_wse[path_in])
-
-        # -------------------------------------------------
-        # Create firstpass flow dataframe for each xs in which flow changes
-        # Water surface elevation BC
-        first_pass_flows_xs_wse = []
-        for num_xs in range(len(max_flow_df_wse)):
-            int_fn_max_flow = int(max_flow_df_wse['max_flow'][num_xs])
-            list_first_pass_flows = fn_create_firstpass_flowlist(
-                int_fn_starting_flow, int_fn_max_flow, int_number_of_steps
-            )
-            first_pass_flows_xs_wse.append(list_first_pass_flows)
-
-        first_pass_flows_xs_wse_df = pd.DataFrame(first_pass_flows_xs_wse).T
-        first_pass_flows_xs_wse_df.columns = [int(j) for j in max_flow_df_wse['start_xs']]
-
-        # -------------------------------------------------
-        # Get all flow data from the current plan's (parent models) flow file
-        # and save it in a pandas dataframe for
-        # Water surface elevation BC
-        str_path_hecras_flow_fn = ls_path_to_flow_file_wse[path_in]
-
-        with open(str_path_hecras_flow_fn, 'r') as hecras_flow_file:
-            hecras_flow_lines = hecras_flow_file.readlines()
-            i = 0  # number of the current row
-            list_all_flow_values = []
-
-            for line in hecras_flow_lines:
-                if line[:19] == 'Number of Profiles=':
-                    # determine the number of profiles
-                    int_flow_profiles = int(line[19:])
-
-                    # determine the number of rows of flow - each row has maximum of 10
-                    int_flow_rows = int(int_flow_profiles // 10 + 1)
-
-                if line[:15] == 'River Rch & RM=':
-                    # Read the flow values line(s)
-                    list_flow_values = []
-
-                    # for each line with flow data
-                    for j in range(i + 1, i + int_flow_rows + 1):
-                        # get the current line
-                        line_flows = hecras_flow_lines[j]
-
-                        # determine the number of values on this
-                        # line from character count
-                        int_val_in_row = int((len(hecras_flow_lines[j]) - 1) / 8)
-
-                        # for each value in the row
-                        for k in range(0, int_val_in_row):
-                            # get the flow value (Max of 8 characters)
-                            str_flow = line_flows[k * 8 : k * 8 + 8].strip()
-                            # convert the string to a float
-                            flt_flow = float(str_flow)
-                            # append data to list of flow values
-                            list_flow_values.append(flt_flow)
-
-                    # print(list_flow_values)
-                    list_all_flow_values.append(list_flow_values)
-
-                i += 1
-
-            df_all_flow_values = pd.DataFrame(list_all_flow_values)
-            column_names = ['flow' + str(j + 1) for j in range(int_flow_profiles)]
-            df_all_flow_values.columns = column_names
-
-            all_flow_info_df = pd.concat([max_flow_df_wse, df_all_flow_values], axis=1)
-            target_xs = int(list(all_flow_info_df['start_xs'])[-1])  # last xs in which flow changes
-            # str_target_xs = str(target_xs)
+    try:
+        for path_in in range(len(ls_path_to_flow_file_wse)):
+            RLOG.trace(f"Computing WSE boundary conditions for {ls_path_to_flow_file_wse[path_in]}")
+            # Get max flow for each xs in which flow changes in a dataframe format
+            max_flow_df_wse = fn_get_flow_dataframe(ls_path_to_flow_file_wse[path_in])
 
             # -------------------------------------------------
-            # All flow data dataframe for the boundary condition of known WSE
-            target_xs_flows = df_all_flow_values.iloc[-1]
-            target_xs_flows_df = pd.DataFrame(target_xs_flows)
-            target_xs_flows_df.index = [k for k in range(int_flow_profiles)]
-            target_xs_flows_df.columns = ['discharge']
+            # Create firstpass flow dataframe for each xs in which flow changes
+            # Water surface elevation BC
+            first_pass_flows_xs_wse = []
+            for num_xs in range(len(max_flow_df_wse)):
+                int_fn_max_flow = int(max_flow_df_wse['max_flow'][num_xs])
+                list_first_pass_flows = fn_create_firstpass_flowlist(
+                    int_fn_starting_flow, int_fn_max_flow, int_number_of_steps
+                )
+                first_pass_flows_xs_wse.append(list_first_pass_flows)
 
-            # Get the WSE for the boundray condition (known WSE)
-            target_xs_wse = []
-            for line in hecras_flow_lines:
-                if line[:12] == 'Dn Known WS=':
-                    # determine the number of profiles
-                    WSE = float(line[12:])
-                    target_xs_wse.append(WSE)
+            first_pass_flows_xs_wse_df = pd.DataFrame(first_pass_flows_xs_wse).T
+            first_pass_flows_xs_wse_df.columns = [int(j) for j in max_flow_df_wse['start_xs']]
 
-            target_xs_wse_df = pd.DataFrame(target_xs_wse, columns=['wse'])
+            # -------------------------------------------------
+            # Get all flow data from the current plan's (parent models) flow file
+            # and save it in a pandas dataframe for
+            # Water surface elevation BC
+            str_path_hecras_flow_fn = ls_path_to_flow_file_wse[path_in]
 
-            # Dataframe of known WSE BC (flow and wse)
-            bc_df = pd.concat([target_xs_flows_df, target_xs_wse_df], axis=1)
-            bc_sort_df = bc_df.sort_values(by=['discharge'])
+            with open(str_path_hecras_flow_fn, 'r') as hecras_flow_file:
+                hecras_flow_lines = hecras_flow_file.readlines()
+                i = 0  # number of the current row
+                list_all_flow_values = []
 
-            hecras_flow_file.close()
+                for line in hecras_flow_lines:
+                    if line[:19] == 'Number of Profiles=':
+                        # determine the number of profiles
+                        int_flow_profiles = int(line[19:])
 
-        # -------------------------------------------------
-        # Finding the last cross section (target XS for min elevation)
-        # Water surface elevation BC
-        str_path_hecras_geo_fn = ls_path_to_geo_file_wse[path_in]  #
+                        # determine the number of rows of flow - each row has maximum of 10
+                        int_flow_rows = int(int_flow_profiles // 10 + 1)
 
-        with open(str_path_hecras_geo_fn, 'r') as file_geo:
-            lines_geo = file_geo.readlines()
-            for gline in lines_geo:
-                if gline[:14] == 'Type RM Length':
-                    target_line = gline.split(",")
-                    counter_xs = int(target_line[1])
+                    if line[:15] == 'River Rch & RM=':
+                        # Read the flow values line(s)
+                        list_flow_values = []
 
-        # Last XS for min elevation
-        str_target_xs_min_elev = counter_xs
+                        # for each line with flow data
+                        for j in range(i + 1, i + int_flow_rows + 1):
+                            # get the current line
+                            line_flows = hecras_flow_lines[j]
 
-        # -------------------------------------------------
-        # Finding the geometry lines for the last XS
-        # Water surface elevation BC
-        j = 0
-        for geoline in lines_geo:
-            if geoline[:14] == 'Type RM Length':
-                target_line = geoline.split(",")
-                counter_xs = int(target_line[1])
+                            # determine the number of values on this
+                            # line from character count
+                            int_val_in_row = int((len(hecras_flow_lines[j]) - 1) / 8)
 
-                if counter_xs == int(str_target_xs_min_elev):  # str_target_xs
-                    # read "XS GIS Cut Line" for the target xs
+                            # for each value in the row
+                            for k in range(0, int_val_in_row):
+                                # get the flow value (Max of 8 characters)
+                                str_flow = line_flows[k * 8 : k * 8 + 8].strip()
+                                # convert the string to a float
+                                flt_flow = float(str_flow)
+                                # append data to list of flow values
+                                list_flow_values.append(flt_flow)
 
-                    tls = j + 4  # "XS GIS Cut Line" line number
-                    num_xs_cut_line = int(lines_geo[tls][16:])  # number of xs cut lines
+                        # print(list_flow_values)
+                        list_all_flow_values.append(list_flow_values)
 
-                    if num_xs_cut_line % 2 != 0:  # if num_xs_cut_line is odd
-                        num_xs_cut_line2 = num_xs_cut_line + 1
-                        num_sta_elev_line = tls + 2 + (num_xs_cut_line2 / 2)
+                    i += 1
+
+                df_all_flow_values = pd.DataFrame(list_all_flow_values)
+                column_names = ['flow' + str(j + 1) for j in range(int_flow_profiles)]
+                df_all_flow_values.columns = column_names
+
+                all_flow_info_df = pd.concat([max_flow_df_wse, df_all_flow_values], axis=1)
+                target_xs = int(list(all_flow_info_df['start_xs'])[-1])  # last xs in which flow changes
+                # str_target_xs = str(target_xs)
+
+                # -------------------------------------------------
+                # All flow data dataframe for the boundary condition of known WSE
+                target_xs_flows = df_all_flow_values.iloc[-1]
+                target_xs_flows_df = pd.DataFrame(target_xs_flows)
+                target_xs_flows_df.index = [k for k in range(int_flow_profiles)]
+                target_xs_flows_df.columns = ['discharge']
+
+                # Get the WSE for the boundray condition (known WSE)
+                target_xs_wse = []
+                for line in hecras_flow_lines:
+                    if line[:12] == 'Dn Known WS=':
+                        # determine the number of profiles
+                        WSE = float(line[12:])
+                        target_xs_wse.append(WSE)
+
+                target_xs_wse_df = pd.DataFrame(target_xs_wse, columns=['wse'])
+
+                # Dataframe of known WSE BC (flow and wse)
+                bc_df = pd.concat([target_xs_flows_df, target_xs_wse_df], axis=1)
+                bc_sort_df = bc_df.sort_values(by=['discharge'])
+
+                hecras_flow_file.close()
+
+            # -------------------------------------------------
+            # Finding the last cross section (target XS for min elevation)
+            # Water surface elevation BC
+            str_path_hecras_geo_fn = ls_path_to_geo_file_wse[path_in]  #
+
+            with open(str_path_hecras_geo_fn, 'r') as file_geo:
+                lines_geo = file_geo.readlines()
+                for gline in lines_geo:
+                    if gline[:14] == 'Type RM Length':
+                        target_line = gline.split(",")
+                        counter_xs = int(target_line[1])
+
+            # Last XS for min elevation
+            str_target_xs_min_elev = counter_xs
+
+            # -------------------------------------------------
+            # Finding the geometry lines for the last XS
+            # Water surface elevation BC
+            j = 0
+            for geoline in lines_geo:
+                if geoline[:14] == 'Type RM Length':
+                    target_line = geoline.split(",")
+                    counter_xs1 = int(target_line[1])
+
+                    if counter_xs1 == int(str_target_xs_min_elev):  # str_target_xs
+                        # read "XS GIS Cut Line" for the target xs
+
+                        tls = j + 4  # "XS GIS Cut Line" line number
+                        num_xs_cut_line = int(lines_geo[tls][16:])  # number of xs cut lines
+
+                        if num_xs_cut_line % 2 != 0:  # if num_xs_cut_line is odd
+                            num_xs_cut_line2 = num_xs_cut_line + 1
+                            num_sta_elev_line0 = tls + 1 + (num_xs_cut_line2 / 2)
+                        else:
+                            num_sta_elev_line0 = tls + 1 + (num_xs_cut_line / 2)
+
+                        if lines_geo[int(num_sta_elev_line0)][0:9] == "#Sta/Elev":
+                            num_sta_elev_line = num_sta_elev_line0
+                        else:
+                            num_sta_elev_line = num_sta_elev_line0 + 1
+
                         sta_elev_line = lines_geo[int(num_sta_elev_line)]
-                    else:
-                        num_sta_elev_line = tls + 2 + (num_xs_cut_line / 2)
-                        sta_elev_line = lines_geo[int(num_sta_elev_line)]
+                        num_stat_elev = int(sta_elev_line[10:])
+                        # print(num_stat_elev)
 
-                    num_stat_elev = int(sta_elev_line[10:])
+                        if num_stat_elev % 5 == 0:  # 10 numbers in each row
+                            len_stat_elev_ls = [
+                                int(num_sta_elev_line + 1),
+                                int(num_sta_elev_line + 1 + (num_stat_elev / 5)),
+                            ]  # 5 station/elev sets per each row
+                        else:
+                            len_stat_elev_ls = [
+                                int(num_sta_elev_line + 1),
+                                int(num_sta_elev_line + 1 + 1 + int(num_stat_elev / 5)),
+                            ]
 
-                    if num_stat_elev % 5 == 0:  # 10 numbers in each row
-                        len_stat_elev_ls = [
-                            int(num_sta_elev_line + 1),
-                            int(num_sta_elev_line + 1 + (num_stat_elev / 5)),
-                        ]  # 5 station/elev sets per each row
-                    else:
-                        len_stat_elev_ls = [
-                            int(num_sta_elev_line + 1),
-                            int(num_sta_elev_line + 1 + 1 + int(num_stat_elev / 5)),
-                        ]
+                j += 1
 
-            j += 1
+            # Finding the min elevation from the target XS's station/elevation list
+            stat_elev_ls = lines_geo[len_stat_elev_ls[0] : len_stat_elev_ls[1]]
 
-        # Finding the min elevation from the target XS's station/elevation list
-        stat_elev_ls = lines_geo[len_stat_elev_ls[0] : len_stat_elev_ls[1]]
+            flt_stat_elev_ls = []
+            for sel in range(len(stat_elev_ls)):
+                sel_line = [float(sell) for sell in re.findall('.{1,8}', stat_elev_ls[sel])]
+                flt_stat_elev_ls.append(sel_line)
 
-        flt_stat_elev_ls = []
-        for sel in range(len(stat_elev_ls)):
-            sel_line = [float(sell) for sell in re.findall('.{1,8}', stat_elev_ls[sel])]
-            flt_stat_elev_ls.append(sel_line)
+            flt_stat_elev_nan_df = pd.DataFrame(flt_stat_elev_ls)
+            num_stat_elev_nan = int(len(flt_stat_elev_nan_df) * 5)
+            flt_stat_elev_ls_rsh = np.reshape(flt_stat_elev_nan_df, [num_stat_elev_nan, 2])
+            flt_stat_elev_df = pd.DataFrame(flt_stat_elev_ls_rsh, columns=['sta', 'elev']).dropna()
 
-        flt_stat_elev_nan_df = pd.DataFrame(flt_stat_elev_ls)
-        num_stat_elev_nan = int(len(flt_stat_elev_nan_df) * 5)
-        flt_stat_elev_ls_rsh = np.reshape(flt_stat_elev_nan_df, [num_stat_elev_nan, 2])
-        flt_stat_elev_df = pd.DataFrame(flt_stat_elev_ls_rsh, columns=['sta', 'elev']).dropna()
+            min_elev_target_xs = min(flt_stat_elev_df['elev'])
 
-        min_elev_target_xs = min(flt_stat_elev_df['elev'])
+            # -------------------------------------------------
+            # WSE boundary condition (bc) dataframe plus min elevation point
+            min_elev_flow_df = pd.DataFrame([0.01, min_elev_target_xs]).T
+            min_elev_flow_df.columns = ['discharge', 'wse']
 
-        # -------------------------------------------------
-        # WSE boundary condition (bc) dataframe plus min elevation point
-        min_elev_flow_df = pd.DataFrame([0.01, min_elev_target_xs]).T
-        min_elev_flow_df.columns = ['discharge', 'wse']
+            bc_observ_flow_wse_df = pd.concat([min_elev_flow_df, bc_sort_df], ignore_index=True)
 
-        bc_observ_flow_wse_df = pd.concat([min_elev_flow_df, bc_sort_df], ignore_index=True)
+            # -------------------------------------------------
+            # Computing WSE BC rating curve
+            stage = bc_observ_flow_wse_df['wse']
+            discharge = bc_observ_flow_wse_df['discharge']
 
-        # -------------------------------------------------
-        # Computing WSE BC rating curve
-        stage = bc_observ_flow_wse_df['wse']
-        discharge = bc_observ_flow_wse_df['discharge']
+            # curve_fit
+            z = np.polyfit(discharge[:4], stage[:4], 2)
+            poly_func = np.poly1d(z)
+            # prediction and r-squared
+            # pred1 = poly_func(discharge[:4])
+            # r2_1 = round(r2_score(stage[:4], pred1), 3)
 
-        # curve_fit
-        z = np.polyfit(discharge[:4], stage[:4], 2)
-        poly_func = np.poly1d(z)
-        # prediction and r-squared
-        # pred1 = poly_func(discharge[:4])
-        # r2_1 = round(r2_score(stage[:4], pred1), 3)
+            knot_ind = 1
+            # curve_fit
+            z2 = np.polyfit(discharge[knot_ind:], stage[knot_ind:], 2)
+            poly_func2 = np.poly1d(z2)
+            # prediction and r-squared
+            # pred2 = poly_func2(discharge[knot_ind:])
+            # r2_2 = round(r2_score(stage[knot_ind:], pred2), 3)
 
-        knot_ind = 1
-        # curve_fit
-        z2 = np.polyfit(discharge[knot_ind:], stage[knot_ind:], 2)
-        poly_func2 = np.poly1d(z2)
-        # prediction and r-squared
-        # pred2 = poly_func2(discharge[knot_ind:])
-        # r2_2 = round(r2_score(stage[knot_ind:], pred2), 3)
+            # -------------------------------------------------
+            # Generating BC for the first pass flow
+            flows1st_target_xs = first_pass_flows_xs_wse_df[target_xs]
 
-        # -------------------------------------------------
-        # Generating BC for the first pass flow
-        flows1st_target_xs = first_pass_flows_xs_wse_df[target_xs]
+            # Finding the knot point for the target xs and predicting WSE
+            knot_point = discharge[knot_ind]
+            pred_wse_flows1st_target_xs = []
+            for flows_1st in flows1st_target_xs:
+                if flows_1st <= knot_point:
+                    pred_wse_flow1st = poly_func(flows_1st)
+                else:
+                    pred_wse_flow1st = poly_func2(flows_1st)
+                pred_wse_flows1st_target_xs.append(pred_wse_flow1st)
 
-        # Finding the knot point for the target xs and predicting WSE
-        knot_point = discharge[knot_ind]
-        pred_wse_flows1st_target_xs = []
-        for flows_1st in flows1st_target_xs:
-            if flows_1st <= knot_point:
-                pred_wse_flow1st = poly_func(flows_1st)
+            # -------------------------------------------------
+            # Generating a monotonic wse for the first pass flow
+            nm_in1 = []
+            for wsei in range(len(pred_wse_flows1st_target_xs) - 1):
+                if pred_wse_flows1st_target_xs[wsei + 1] < pred_wse_flows1st_target_xs[wsei]:
+                    nm_in1.append(wsei)
+                    break
+
+            if len(nm_in1) > 0:
+                pred_wse_nm = pred_wse_flows1st_target_xs[nm_in1[0]]
+                nm_in = [nm_in1[0]]
+                nm = 0
+                for wsei2 in range(len(pred_wse_flows1st_target_xs) - nm_in1[0]):
+                    if pred_wse_flows1st_target_xs[nm + nm_in1[0]] < pred_wse_nm:
+                        nm_in.append(nm + nm_in1[0])
+                    nm += 1
+
+                nm_wse_1st = pred_wse_flows1st_target_xs[nm_in1[0]]
+                wse_last = pred_wse_flows1st_target_xs[-1]
+
+                delta_wse = (wse_last - nm_wse_1st) / (int_number_of_steps - nm_in1[0])
+                delta_indx = int_number_of_steps - nm_in1[0]
+
+                gen_mont_wse = [nm_wse_1st + (di) * delta_wse for di in range(delta_indx)]
+                mont_wse = pred_wse_flows1st_target_xs[: nm_in1[0]]
+
+                pred_wse_mont = pd.concat(
+                    [pd.DataFrame(mont_wse), pd.DataFrame(gen_mont_wse)], ignore_index=True
+                )
+
+                bc_target_xs_col = pd.concat([flows1st_target_xs, pred_wse_mont], axis=1)
             else:
-                pred_wse_flow1st = poly_func2(flows_1st)
-            pred_wse_flows1st_target_xs.append(pred_wse_flow1st)
+                bc_target_xs_col = pd.concat(
+                    [flows1st_target_xs, pd.DataFrame(pred_wse_flows1st_target_xs)], axis=1
+                )
 
-        # -------------------------------------------------
-        # Generating a monotonic wse for the first pass flow
-        nm_in1 = []
-        for wsei in range(len(pred_wse_flows1st_target_xs) - 1):
-            if pred_wse_flows1st_target_xs[wsei + 1] < pred_wse_flows1st_target_xs[wsei]:
-                nm_in1.append(wsei)
-                break
+            bc_target_xs = bc_target_xs_col.set_axis(['discharge', 'wse'], axis=1)
 
-        if len(nm_in1) > 0:
-            pred_wse_nm = pred_wse_flows1st_target_xs[nm_in1[0]]
-            nm_in = [nm_in1[0]]
-            nm = 0
-            for wsei2 in range(len(pred_wse_flows1st_target_xs) - nm_in1[0]):
-                if pred_wse_flows1st_target_xs[nm + nm_in1[0]] < pred_wse_nm:
-                    nm_in.append(nm + nm_in1[0])
-                nm += 1
-
-            nm_wse_1st = pred_wse_flows1st_target_xs[nm_in1[0]]
-            wse_last = pred_wse_flows1st_target_xs[-1]
-
-            delta_wse = (wse_last - nm_wse_1st) / (int_number_of_steps - nm_in1[0])
-            delta_indx = int_number_of_steps - nm_in1[0]
-
-            gen_mont_wse = [nm_wse_1st + (di) * delta_wse for di in range(delta_indx)]
-            mont_wse = pred_wse_flows1st_target_xs[: nm_in1[0]]
-
-            pred_wse_mont = pd.concat([pd.DataFrame(mont_wse), pd.DataFrame(gen_mont_wse)], ignore_index=True)
-
-            bc_target_xs_col = pd.concat([flows1st_target_xs, pred_wse_mont], axis=1)
-        else:
-            bc_target_xs_col = pd.concat(
-                [flows1st_target_xs, pd.DataFrame(pred_wse_flows1st_target_xs)], axis=1
-            )
-
-        bc_target_xs = bc_target_xs_col.set_axis(['discharge', 'wse'], axis=1)
-
-        list_bc_target_xs_huc8.append(bc_target_xs)
+            list_bc_target_xs_huc8.append(bc_target_xs)
+    except Exception:
+        RLOG.error(traceback.format_exc())
 
     # TODO optimize k-not point
 
@@ -1351,6 +1362,18 @@ def create_datasets_2ndpass(unit_output_folder, flt_interval):
         list_flow_steps = all_x_sections_info[cond_md_ar]["discharge"]
         list_depth_steps = all_x_sections_info[cond_md_ar]["max_depth"]
 
+        all_x_sections_info = None
+
+        # Peak flow in all cross sections in which flow changes
+        ls_peak_flows = peak_flows_all_xss.drop_duplicates(keep='first')
+        ind_targ_xs = ls_peak_flows.index
+        target_XSs_name = all_xss[ind_targ_xs]
+
+        df_peak_flows_xs = pd.concat([ls_peak_flows, target_XSs_name], axis=1)
+        df_peak_flows_xs.index = range(len(df_peak_flows_xs))
+
+        ls_peak_flows = None
+
         # -------------------------------------------------
         # Use linear interpolator (f1) to find flows coresponding to half
         # a foot WSE intervals at Xss with the max flow (target reach)
@@ -1386,14 +1409,6 @@ def create_datasets_2ndpass(unit_output_folder, flt_interval):
         # -------------------------------------------------
         int_number_of_steps_2ndpass = len(list_int_step_flows)
 
-        # Peak flow in all cross sections in which flow changes
-        ls_peak_flows = peak_flows_all_xss.drop_duplicates(keep='first')
-        ind_targ_xs = ls_peak_flows.index
-        target_XSs_name = all_xss[ind_targ_xs]
-
-        df_peak_flows_xs = pd.concat([ls_peak_flows, target_XSs_name], axis=1)
-        df_peak_flows_xs.index = range(len(df_peak_flows_xs))
-
         # -------------------------------------------------
         # Create second-pass flow dataframe for each xs where flow changes
         # 2nd pass flow ratio
@@ -1402,8 +1417,7 @@ def create_datasets_2ndpass(unit_output_folder, flt_interval):
         ls_second_pass_flows_xs = []
         for num_q in range(len(df_peak_flows_xs)):
             int_max_flow2 = df_peak_flows_xs["discharge"][num_q]
-            list_2nd_pass_flows2 = [int_max_flow2 * ratio for ratio in second_pass_ratio]  # int()
-
+            list_2nd_pass_flows2 = [int_max_flow2 * ratio for ratio in second_pass_ratio]
             ls_second_pass_flows_xs.append(list_2nd_pass_flows2)
 
         ls_ls_second_pass_flows_xs[nsindx] = ls_second_pass_flows_xs
@@ -1437,7 +1451,12 @@ def compute_boundray_condition_2ndpass(unit_output_folder, ls_second_pass_flows_
         # Read boundary condition from 1st pass flow file
         # and generate BC for the 2nd pass flow
         # -------------------------------------------------
-        second_pass_flows_xs_df = ls_second_pass_flows_xs_df[fldr]
+        second_pass_flows_xs_df0 = ls_second_pass_flows_xs_df[fldr]
+        second_pass_flows_xs_df = pd.DataFrame(
+            np.sort(second_pass_flows_xs_df0.values, axis=0),
+            index=second_pass_flows_xs_df0.index,
+            columns=second_pass_flows_xs_df0.columns,
+        )
 
         path_1stpass_flow_file = os.path.join(path_to_1st_pass_output, folder, folder[6:] + ".f01")
 
@@ -1583,7 +1602,7 @@ def create_all_2ndpass_flow_files(
 
         for fc2 in range(int_num_of_flow_change_xs):
             # list of the second pass flows
-            ls_second_pass_flows_xs2 = ls_second_pass_flows_xs[fc2]
+            ls_second_pass_flows_xs2 = sorted(ls_second_pass_flows_xs[fc2])
             ls_second_pass_flows_xs_int = [int(y1) for y1 in ls_second_pass_flows_xs2]
             ls_second_pass_flows_xs_int = [1 if y2 == 0 else y2 for y2 in ls_second_pass_flows_xs_int]
 
@@ -1821,7 +1840,6 @@ def fn_run_one_ras_model(
         log_file_name = f"{log_file_prefix}-{file_id}.log"
         MP_LOG.setup(os.path.join(log_default_folder, log_file_name))
 
-        MP_LOG.lprint(f"Processing Model Number {index_number+1} Out Of {total_number_models}")
         MP_LOG.lprint(f"Starting Processing {model_folder} Model")
         MP_LOG.trace(str_ras_projectpath)
 

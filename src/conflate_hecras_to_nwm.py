@@ -296,7 +296,7 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
                 executor.imap(fn_create_gdf_of_points_partial, sorted_list_points_aggregate),
                 total=len_points_agg,
                 desc="Points on lines",
-                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
+                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
                 ncols=67,
             )
         )
@@ -366,20 +366,25 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
     list_dataframe_args_snap = df_points_within_buffer.values.tolist()
 
     RLOG.lprint("+-----------------------------------------------------------------+")
-
+    list_df_points_projected = []
     with Pool(processes=(mp.cpu_count() - 2)) as executor:
         list_df_points_projected = list(
             tqdm.tqdm(
                 executor.imap(partial(mp_snap_point, shply_line), list_dataframe_args_snap),
                 total=total_points,
                 desc="Snap Points",
-                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
+                bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}% ",
                 mininterval=3,
-                maxinterval=3,                
+                maxinterval=3,
                 ncols=67,
             )
         )
     print()
+
+    if len(list_df_points_projected) == 0:
+        RLOG.critical("There are no points that can be snapped.")
+        RLOG.critical("One possiblility is that you have an incorrect crs.")
+        sys.exit(1)
 
     gdf_points_snap_to_ble = gpd.GeoDataFrame(pd.concat(list_df_points_projected, ignore_index=True))
 

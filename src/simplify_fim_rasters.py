@@ -338,7 +338,7 @@ def fn_simplify_fim_rasters(r2f_hecras_outputs_dir, flt_resolution, str_output_c
                     executor.imap(fn_create_grid, list_dataframe_args),
                     total=len_grids_convert,
                     desc="Convert Grids",
-                    bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
+                    bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
                     ncols=65,
                 )
             )

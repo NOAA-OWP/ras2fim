@@ -3,6 +3,7 @@
 
 # -------------------------------------------------
 import argparse
+import datetime as dt
 import os
 import traceback
 from datetime import date
@@ -76,10 +77,10 @@ def plot_src(
     plt.xticks(rotation=90)
 
     if model_unit == "meter":
-        plt.ylabel("Average Depth (m)")
+        plt.ylabel("Avg Water Surface Elevation (m)")
         plt.xlabel("Discharge (cms)")
     else:
-        plt.ylabel("Average Depth (ft)")
+        plt.ylabel("Avg Water Surface Elevation (ft)")
         plt.xlabel("Discharge (cfs)")
 
     plt.grid(True)
@@ -103,11 +104,12 @@ def cast_to_int(x):
 def fn_create_rating_curves(huc8, path_unit_folder):
     model_unit = 'feet'
 
+    overall_start_time = dt.datetime.utcnow()
+
     RLOG.lprint("")
     RLOG.lprint("+=================================================================+")
     RLOG.notice("|               CREATING SYNTHETIC RATING CURVES                  |")
     RLOG.lprint("+-----------------------------------------------------------------+")
-
     # Reading data_summary from step 2
     str_path_to_fid_xs = os.path.join(
         path_unit_folder, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc8}_stream_qc_fid_xs.csv"
@@ -142,6 +144,8 @@ def fn_create_rating_curves(huc8, path_unit_folder):
         conflated_model_names_id, columns=["final_name_key", "model_id"]
     )
 
+    RLOG.lprint(f"Number of conflated models to process is {len(conflated_model_names_id_df)}")
+
     df_fid_xs_huc8 = pd.concat([fid_xs_huc8, conflated_model_names_id_df], axis=1)
 
     # -------------------------------------------------
@@ -162,9 +166,12 @@ def fn_create_rating_curves(huc8, path_unit_folder):
     # Creating a for loop going through all all_x_sections_info
     # for each confalted stream (step 5 results)
     stage_diff_gt_1foot = pd.DataFrame(columns=["model_id", "feature_id", "max_stage_diff", "max_indx"])
+
+    RLOG.lprint(f"Number of x-sections files to process is {len(path_to_all_x_sections_info)}")
+    print()
+
     for infoind in range(len(path_to_all_x_sections_info)):
         model_name_id = path_to_all_x_sections_info[infoind].split("\\")[-2]
-        RLOG.lprint("")
         RLOG.lprint(f"Creating rating curves for model {model_name_id}")
         mid_x_sections_info = pd.read_csv(path_to_all_x_sections_info[infoind])
         mid_x_sections_info = mid_x_sections_info.rename(columns={'fid_xs': 'mid_xs', 'modelid': 'model_id'})
@@ -214,7 +221,8 @@ def fn_create_rating_curves(huc8, path_unit_folder):
         mid_x_sections_info = mid_x_sections_info.rename(columns={'Unnamed: 0': 'xs_counter'})
         mid_x_sections_info_fid = pd.concat(
             [
-                mid_x_sections_info[["mid_xs", "model_id", "xs_counter"]],
+                mid_x_sections_info["mid_xs"],
+                mid_x_sections_info[["model_id", "xs_counter"]].astype(int),
                 df_XS_name["Xsection_name"],
                 mid_x_sections_info[["discharge", "wse", "max_depth"]],
                 df_mid_fid,
@@ -272,11 +280,11 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             xs_ds_fid = fid_mid_x_sections_info_lst['Xsection_name']
             xs_ds_fid = pd.DataFrame(xs_ds_fid).rename(columns={'Xsection_name': 'xs_ds'})
 
-            fid_mid_x_sections_info_src = fid_mid_x_sections_info_avr[
-                ['model_id', 'wse', 'discharge', 'max_depth']
-            ]
+            model_id2 = fid_mid_x_sections_info_avr['model_id'].astype(int)
+
+            fid_mid_x_sections_info_src = fid_mid_x_sections_info_avr[['wse', 'discharge', 'max_depth']]
             fid_mid_x_sections_info_src = pd.concat(
-                [fid_mid_x_sections_info_src, xs_us_fid, xs_ds_fid], axis=1
+                [model_id2, fid_mid_x_sections_info_src, xs_us_fid, xs_ds_fid], axis=1
             )
 
             str_file_name = str_feature_id + "_rating_curve.png"
@@ -380,8 +388,13 @@ def fn_create_rating_curves(huc8, path_unit_folder):
     )
     stage_diff_gt_1foot.to_csv(path_stage_diff, index=False)
 
-    RLOG.lprint("")
+    print()
     RLOG.success("Complete")
+    end_time = dt.datetime.utcnow()
+    dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    RLOG.lprint(f"Ended : {dt_string}")
+    time_duration = end_time - overall_start_time
+    RLOG.lprint(f"Duration: {str(time_duration).split('.')[0]}")
 
 
 # -------------------------------------------------

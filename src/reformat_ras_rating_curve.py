@@ -321,13 +321,15 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
         RLOG.critial("ERROR: No 'all_xs_info_fid_*' files found in rating curve path list.")
         sys.exit(1)
 
+    RLOG.lprint(f"Number of models rating curves to process is {len(rc_path_list)}")
+    print()
     for i in range(len(rc_path_list)):
         rc_path = rc_path_list[i]
 
         parent_dir = os.path.dirname(rc_path).split("\\")[-1]
         file_name = os.path.basename(rc_path)
         file_and_parent = parent_dir + "\\" + file_name
-        RLOG.lprint(f"-- Processing: {file_and_parent}")
+        RLOG.trace(f"-- Processing: {file_and_parent}")
 
         # ---------------------------------------------------------------------------------
         # Read compiled rating curve and append huc8 from intersections
@@ -354,8 +356,8 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
         # Check that merge worked
         if len(rc_geospatial_df) == 0:
             msg = f"No rows survived the merge of rc_geospatial with the rating curve rows for {rc_path}."
-            RLOG.critical(msg)
-            sys.exit(1)
+            RLOG.error(msg)
+            # sys.exit(1)
 
         # rlog.trace('text') ## goes to the log file but doesn't print!!
 
