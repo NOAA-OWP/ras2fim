@@ -94,7 +94,6 @@ def run_unit_benchmark_tests(
     print("NOTE: All output inundation and benchmark results files will be overwritten")
     print()
 
-
     RLOG.notice("********************************************************************")
     RLOG.notice("***  IMPORTANT NOTE about roll up metrics files\n")
     print(" Each unit (ie. 12030105_2276_ble) can have multiple versions over time.")
@@ -121,6 +120,7 @@ def run_unit_benchmark_tests(
     print(r"       ie) C:\ras2fim_data\gval\evaluations\PROD\eval_PROD_metrics.csv")
     print("     If you have used the ")
     print()
+    
     print()
     print("HOWEVER... The attempt is to have a growing master 'eval_(PROD/DEV)_metrics.csv' file.")
     print("And at this time the tools does not have the ability to get or load one.")
