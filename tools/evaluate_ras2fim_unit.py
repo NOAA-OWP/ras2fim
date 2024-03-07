@@ -105,11 +105,11 @@ def evaluate_unit_results(
     agreement_map = agreement_map.rio.write_nodata(10)
 
     # assign metadata
-    dt_now = datetime.now().strftime('%Y-%m-%d %H:%M')
+    dt_now = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
     agreement_map.attrs['process datetime'] = dt_now
     agreement_map.attrs['unit_name'] = unit_name
-    metric_table.insert(0, 'procces datetime', dt_now)
-    metadata_csv = pd.DataFrame({'process datetime': [dt_now], 'unit_name': [unit_name]})
+    metric_table.insert(0, 'process_datetime', dt_now)
+    metadata_csv = pd.DataFrame({'process_datetime': [dt_now], 'unit_name': [unit_name]})
 
     # Create output directory if it does not exist
     if not os.path.exists(output_dir):

@@ -148,8 +148,6 @@ def unit_to_s3(src_unit_dir_path, s3_bucket_name):
 
 
 ####################################################################
-
-
 def __process_upload(bucket_name, src_unit_dir, unit_folder_name, s3_output_path, skip_files):
     """
     Processing Steps:
@@ -227,10 +225,12 @@ def __process_upload(bucket_name, src_unit_dir, unit_folder_name, s3_output_path
         existing_name_dict = parse_unit_folder_name(s3_existing_folder_name)
         RLOG.trace(f"s3_existing_folder_name is {s3_existing_folder_name}")
 
+        existing_unit_folder_name = existing_name_dict["key_unit_folder_name"]
+
         action = ""
 
         # Comparing the existing to the incoming unit folder
-        if existing_name_dict["unit_folder_name"] == unit_folder_name:
+        if existing_unit_folder_name == unit_folder_name:
             # exact same folder name including date
             action = __ask_user_about_dup_folder_name(unit_folder_name, bucket_name)
 
@@ -242,7 +242,7 @@ def __process_upload(bucket_name, src_unit_dir, unit_folder_name, s3_output_path
                 is_existing_older = True
 
             action = __ask_user_about_different_date_folder_name(
-                unit_folder_name, bucket_name, existing_name_dict["unit_folder_name"], is_existing_older
+                unit_folder_name, bucket_name, existing_name_dict["key_unit_folder_name"], is_existing_older
             )
 
         # --------------------------
@@ -258,7 +258,7 @@ def __process_upload(bucket_name, src_unit_dir, unit_folder_name, s3_output_path
 
             # move pre-existing to archive
             __move_s3_folder_to_archive(
-                bucket_name, src_unit_dir, existing_name_dict["unit_folder_name"], new_s3_folder_name
+                bucket_name, src_unit_dir, existing_name_dict["key_unit_folder_name"], new_s3_folder_name
             )
 
             # upload new one to output (yes.. unit_folder_name is used twice)
@@ -631,7 +631,7 @@ def __get_s3_unit_folder_list(bucket_name, src_name_dict, s3_output_path):
                 key_source_code,
                 key_unit_version_as_str (date string eg: 230811),
                 key_unit_version_as_dt (date obj for 230811)
-                unit_folder_name (12090301_2277_ble_230811) (cleaned version)
+                key_unit_folder_name (12090301_2277_ble_230811) (cleaned version)
         - s3_output_path:
 
     Output
