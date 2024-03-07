@@ -477,7 +477,7 @@ def progress_bar_handler(executor_dict, verbose, desc):
         total=len(executor_dict),
         disable=(not verbose),
         desc=desc,
-        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
+        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
         ncols=100,
     ):
         try:

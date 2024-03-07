@@ -46,7 +46,6 @@ def fn_cut_dems_from_shapes(
     conflated_models_file_path,
     terrain_file_path,
     output_dir,
-    int_buffer,
     model_unit="",
 ):
     flt_start_run = time.time()
@@ -75,7 +74,6 @@ def fn_cut_dems_from_shapes(
     RLOG.lprint(f"  ---(x) XS SHAPEFILE PATH: {cross_sections_file_path}")
     RLOG.lprint(f"  ---(conflate) CONFLATED MODELS LIST PATH: {conflated_models_file_path}")
     RLOG.lprint(f"  ---(o) DEM OUTPUT PATH: {output_dir}")
-    RLOG.lprint(f"  ---[b] Optional: BUFFER: {int_buffer}")
 
     if "[]" in terrain_file_path:
         terrain_file_path = sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM.replace("[]", huc8)
@@ -148,7 +146,7 @@ def fn_cut_dems_from_shapes(
         conflated_model_ids,
         total=len(conflated_model_ids),
         desc="Clipping DEMs",
-        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%\n",
+        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}%",
         ncols=65,
     ):
         RLOG.trace(f"Processing model_id of {model_id}")
@@ -161,11 +159,6 @@ def fn_cut_dems_from_shapes(
         if len(gdf_intersected_hucs) > 1:
             gdf_intersected_hucs.loc[:, 'dissolve_index'] = 1
             gdf_intersected_hucs = gdf_intersected_hucs.dissolve(by="dissolve_index").reset_index()
-
-        # add the buffer
-        # TODO do we need this buffer anymore?
-        #  because using all intersected HUC12s ensured all xsections have dem coverage
-        gdf_intersected_hucs.loc[:, "geometry"] = gdf_intersected_hucs.geometry.buffer(int_buffer)
 
         # now clip dem with rio and the intersected HUC12s
         clipped_dem = dem.rio.clip(gdf_intersected_hucs.geometry.apply(mapping))
@@ -266,16 +259,6 @@ if __name__ == "__main__":
         metavar="",
         default=sv.INPUT_3DEP_DEFAULT_TERRAIN_DEM,
         type=str,
-    )
-
-    parser.add_argument(
-        "-b",
-        dest="int_buffer",
-        help="OPTIONAL: buffer for each polygon (input shape units): Default=300",
-        required=False,
-        default=300,
-        metavar="INTEGER",
-        type=int,
     )
 
     args = vars(parser.parse_args())

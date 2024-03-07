@@ -4,7 +4,6 @@ import os
 import sys
 import traceback
 
-import colored as cl
 import geopandas as gpd
 
 
@@ -55,37 +54,7 @@ def fn_extend_huc8_domain(target_huc8, path_wbd_huc12s_gpkg, output_path, run_by
         file_name = f"HUC8_{target_huc8}_domain.gpkg"
         output_file = os.path.join(output_path, file_name)
 
-        # See if file exists and ask if they want to overwrite it.
-        if os.path.exists(output_file):  # file, not folder
-            print()
-            msg = (
-                f"{cl.fore.SPRING_GREEN_2B}"
-                f"The domain file already exists at {output_file}. \n"
-                "Do you want to overwrite it?\n\n"
-                f"{cl.style.RESET}"
-                f"   -- Type {cl.fore.SPRING_GREEN_2B}'overwrite'{cl.style.RESET}"
-                " if you want to overwrite the current file.\n"
-                f"   -- Type {cl.fore.SPRING_GREEN_2B}'skip'{cl.style.RESET}"
-                " if you want to skip overwriting the file but continue running the program.\n"
-                f"   -- Type {cl.fore.SPRING_GREEN_2B}'abort'{cl.style.RESET}"
-                " to stop the program.\n"
-                f"{cl.fore.LIGHT_YELLOW}  ?={cl.style.RESET}"
-            )
-            resp = input(msg).lower()
-
-            if (resp) == "abort":
-                RLOG.lprint(f"\n.. You have selected {resp}. Program stopped.\n")
-                sys.exit(0)
-
-            elif (resp) == "skip":
-                return output_file
-            else:
-                if (resp) != "overwrite":
-                    RLOG.lprint(f"\n.. You have entered an invalid response of {resp}. Program stopped.\n")
-                    sys.exit(0)
-                # else.. continue
-        else:  # the file might not exist but the folder needs to, so we create it as necessary (full path)
-            os.makedirs(output_path, exist_ok=True)
+        os.makedirs(output_path, exist_ok=True)
 
         # ------------
         print()

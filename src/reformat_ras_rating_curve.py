@@ -288,7 +288,7 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
     intersection_gdf["wse_units"] = "ft"
 
     # we have some columns we don't need.
-    intersection_gdf.drop(['ras_path_1', 'ras_path_2', 'huc12', 'huc10','active'], axis=1, inplace=True)
+    intersection_gdf.drop(['ras_path_1', 'ras_path_2', 'huc12', 'huc10', 'active'], axis=1, inplace=True)
 
     # Reproject intersection_gdf_all to output SRC
     shared_variables_crs = sv.DEFAULT_RASTER_OUTPUT_CRS
@@ -321,13 +321,15 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
         RLOG.critial("ERROR: No 'all_xs_info_fid_*' files found in rating curve path list.")
         sys.exit(1)
 
+    RLOG.lprint(f"Number of models rating curves to process is {len(rc_path_list)}")
+    print()
     for i in range(len(rc_path_list)):
         rc_path = rc_path_list[i]
 
         parent_dir = os.path.dirname(rc_path).split("\\")[-1]
         file_name = os.path.basename(rc_path)
         file_and_parent = parent_dir + "\\" + file_name
-        RLOG.lprint(f"-- Processing: {file_and_parent}")
+        RLOG.trace(f"-- Processing: {file_and_parent}")
 
         # ---------------------------------------------------------------------------------
         # Read compiled rating curve and append huc8 from intersections
@@ -354,8 +356,8 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
         # Check that merge worked
         if len(rc_geospatial_df) == 0:
             msg = f"No rows survived the merge of rc_geospatial with the rating curve rows for {rc_path}."
-            RLOG.critical(msg)
-            sys.exit(1)
+            RLOG.error(msg)
+            # sys.exit(1)
 
         # rlog.trace('text') ## goes to the log file but doesn't print!!
 
@@ -382,7 +384,7 @@ def dir_reformat_ras_rc(src_unit_dir_path, active, verbose):
                 "feature_id": rc_geospatial_df["feature_id"],
                 "xsection_name": rc_geospatial_df["Xsection_name"],  # used to be Xsection_name
                 "flow_cfs": rc_geospatial_df["discharge_cfs"],
-                "wse_ft": rc_geospatial_df["wse_ft"], 
+                "wse_ft": rc_geospatial_df["wse_ft"],
                 "flow_cms": rc_geospatial_df["discharge_cfs"] * 0.3048,
                 "wse_m": rc_geospatial_df["wse_ft"] * 0.3048,
                 "location_type": source_code,  # str

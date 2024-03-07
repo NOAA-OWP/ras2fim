@@ -113,6 +113,9 @@ def fn_convert_tif_to_ras_hdf5(
     list_processed_dems = fn_get_filepaths(STR_CONVERT_FILEPATH, "tif")
     len_processed_dems = len(list_processed_dems)
 
+    RLOG.lprint(f"Number of dems to convert to hdf5 is {len(list_processed_dems)}")
+    print()
+
     str_prefix = "Converting Terrains: "
     fn_print_progress_bar(0, len_processed_dems, prefix=str_prefix, suffix="Complete", length=29)
 
