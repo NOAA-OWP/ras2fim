@@ -41,7 +41,7 @@ TODO: Later, do we optionally load this back up to S3?
 
 # ***********************
 # NOTICE:
-#    Feb 2024: Due to time constraints, most testings of combinations of input arguments have not yet
+#    March 5 2024: Due to time constraints, most testings of combinations of input arguments have not yet
 #        not been done. Testing has only be done against the default happy path with all defaults
 #        for optional args.
 # ***********************
@@ -220,6 +220,8 @@ def run_unit_benchmark_tests(
     # ----------
         # merge this wil the unit master csv
     __merge_metrics_files(metric_files_lst,
+                          rd["unit_id"],
+                          rd["unit_version_as_str"],
                           rd["trg_inundation_metrics_file"],
                           rd["trg_enviro_metrics_file_path"])
 
@@ -355,11 +357,11 @@ def __run_tests(
         metrics_df = pd.read_csv(metrics_file_path)
         if "unit_name" not in metrics_df.columns:
             col_id = 0
-            metrics_df.insert(col_id, "unit_name", ud["key_unit_id"])
+            metrics_df.insert(col_id, "unit_name", unit_details_dct["key_unit_id"])
 
         if "unit_version" not in metrics_df.columns:
             col_id = 1            
-            metrics_df.insert(col_id, "unit_version", ud["key_unit_version_as_str"])
+            metrics_df.insert(col_id, "unit_version", unit_details_dct["key_unit_version_as_str"])
             metrics_df["unit_version"] = metrics_df["unit_version"].astype("string")
 
         if "code_version" not in metrics_df.columns:
@@ -368,7 +370,7 @@ def __run_tests(
 
         if "huc" not in metrics_df.columns:
             col_id = 3
-            metrics_df.insert(col_id, "huc", ud["key_huc"])
+            metrics_df.insert(col_id, "huc", unit_details_dct["key_huc"])
 
         if "benchmark_source" not in metrics_df.columns:
             col_id = 4
@@ -386,10 +388,6 @@ def __run_tests(
             col_id = 7
             metrics_df.insert(col_id, "enviro", enviro)
 
-
-
-            
-
         metrics_df.to_csv(metrics_file_path, index=False)
 
         metric_files.append(metrics_file_path)
@@ -399,105 +397,120 @@ def __run_tests(
 
 # -------------------------------------------------
 def __merge_metrics_files(metric_files,
-                          unit_id, 
-                          unit_version_date_as_str,
-                          trg_enviro_metrics_file_path,
-                          trg_unit_version_metrics_path):
+                          unit_id,
+                          version_date_as_str,
+                          trg_inundation_metrics_file,
+                          trg_enviro_metrics_file_path):
     """
     All of the individual benchmark tests folder have their own metrics,
-    but we will roll them up to a enviro level "master" metrics.
-    If it finds records that already exist with that version (ie. 230914),
-    it will delete them first so we don't have dup sets of one version records
+    which is rolled up into a metrics file for this processing run. It should be in the folder
+    immediately above where all of the individual benchmark test folders are at.
+    If one aleady exist, it will be removed and re-created.
+
+    Another rollup csv may be create. This is a master metrics for the enviro (PROD or DEV)
+    Depending on parameters, the trg_enviro_metrics_file_path may be blank. If it does exist
+    We will attempt to write to it (usually just append but can replace some of its own unit/version
+    records if they exist)
 
     Inputs:
         - metric_files: a list of the full pathed just created metrics (one per sourc / magnitude)
         - unit_id: 12030105_2276_ble
         - version_date_as_str: e.g. 230923
-        - trg_enviro_metrics_file_path:
-             e.g. C:\ras2fim_data\gval\evaluations\PROD\eval_PROD_metrics.csv
-        - trg_unit_version_metrics_path: A full path to the unit version level metrics.
+        - trg_inundation_metrics_file: A full path to the unit version level metrics.
              e.g. C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble
                     \230923\12030105_2276_ble_230923_metrics.csv
+        - trg_enviro_metrics_file_path:
+             e.g. C:\ras2fim_data\gval\evaluations\PROD\eval_PROD_metrics.csv
 
         (Note: Users can override the name of the version level metrics file, just the root local gval path)
     Output:
-        There two metrics file that will be created. One at the enviro level
-            see trg_enviro_metrics_file_path above
-            (but there might not be a master if the eval output path was overridden)
-        And a second one at the unit_version level (for just this run)
-            see trg_unit_version_metrics_path above
+        There two metrics file that will be created (at least one).
 
+        The first is at inundation path level (for just this run) (unit_id and version)
+            see trg_inundation_metrics_file above
+
+        The second is at the enviro level
+            if the trg_enviro_metrics_file_path is not empty:
+               See if one already exists, and load it if it does exist, create a new one if not.
+            else:
+                we are not going to be working with a master enviro file
+            
+            When writing to an existing master metrics, and it sees records already existing for the
+            current unit_id and version, it will drop them as it is about to replace them.
     """
 
-    #unit_version_metrics_file_path = f"{unit_name}_{unit_version}_metrics.csv"
-    #unit_version_metrics_path = os.path.join(trg_unit_folder, unit_version, unit_version_metrics_file_path)    
-
     # if the unit_version_metrics_file exists, delete it as we will rebuild it.
-    if os.path.exist(trg_unit_version_metrics_path):
-        os.remove(trg_unit_version_metrics_path)
+    if os.path.exist(trg_inundation_metrics_file):
+        os.remove(trg_inundation_metrics_file)
 
-    if os.path.exists(trg_enviro_metrics_file_path) is True:
-        RLOG.lprint(
-            f"Merging new metrics files to enviro master csv at {trg_enviro_metrics_file_path}"
-        )
+    if trg_enviro_metrics_file_path != "":
+        if os.path.exists(trg_enviro_metrics_file_path) is True:
+            RLOG.lprint(
+                f"Merging new metrics files to enviro master csv at {trg_enviro_metrics_file_path}"
+            )
+        else:
+            RLOG.trace("Enviro master metrics file does not exist. Creating new one"
+                       f"at {trg_enviro_metrics_file_path}")
         
     enviro_metrics_df = pd.DataFrame()
-    metrics_df = pd.DataFrame() # unit_version
+    inun_metrics_df = pd.DataFrame() # unit_version
     for idx, metrics_file in enumerate(metric_files):
         if idx == 0:
-            if os.path.exists(trg_enviro_metrics_file_path) is True:
-                enviro_metrics_df = pd.read_csv(trg_enviro_metrics_file_path)
-                RLOG.trace(f"Merging new metrics file of {metrics_file}")
+            # load the master metrics if one exists and a path exist
+            if trg_enviro_metrics_file_path != "":
+                if os.path.exists(trg_enviro_metrics_file_path) is True:
+                    enviro_metrics_df = pd.read_csv(trg_enviro_metrics_file_path)
+                    RLOG.trace(f"Merging new metrics file of {metrics_file}")
 
-                # drop pre-existing records for this unit and its version
-                indexes_lst = unit_metrics_df[ 
-                        (unit_metrics_df['unit_version'].astype("string") == unit_version_date_as_str) &
-                        (unit_metrics_df['unit_id'] == unit_id)
-                        ].index
-                enviro_metrics_df.drop(indexes_lst , inplace=True)
+                    # drop pre-existing records for this unit and its version
+                    indexes_lst = enviro_metrics_df[ 
+                            (enviro_metrics_df['unit_version'].astype("string") == version_date_as_str) &
+                            (enviro_metrics_df['unit_id'] == unit_id)
+                            ].index
+                    enviro_metrics_df.drop(indexes_lst , inplace=True)
 
-                metrics_df = pd.read_csv(metrics_file)
-                # I heard it not good to write directly back to a df progress of concat
-                con_df = pd.concat([enviro_metrics_df, metrics_df], ignore_index=True)
-                enviro_metrics_df = con_df
+                    # Concat to master if one exists
+                    con_df = pd.concat([enviro_metrics_df, metrics_df], ignore_index=True)
+                    enviro_metrics_df = con_df
+                else:
+                    RLOG.trace(f"Loading the first one, metrics file of {metrics_file}")
+                    enviro_metrics_df = pd.read_csv(metrics_file)
             else:
+                # load the first metrics, load it straight to the inun metrics parent
+                inun_metrics_df = pd.read_csv(metrics_file)
 
-                # load the first metrics
-                RLOG.trace("Enviro master metrics file does not exist.")
-                RLOG.trace(f"Loading the first one, metrics file of {metrics_file}")
-                unit_metrics_df = pd.read_csv(metrics_file)
-
-                # and for the version level too (which we will overwrite if it exists)
-                unit_version_metrics_df = pd.read_csv(metrics_file)
         else:
             RLOG.trace(f"Concatenating metrics file of {metrics_file}")
             metrics_df = pd.read_csv(metrics_file)
 
             # I heard it not good to write directly back to a df progress of concat
-            con_df = pd.concat([unit_metrics_df, metrics_df], ignore_index=True)
-            unit_metrics_df = con_df
+            con_df = pd.concat([inun_metrics_df, metrics_df], ignore_index=True)
+            inun_metrics_df = con_df
 
+            if trg_enviro_metrics_file_path != "": # if there is a master (migth not be)
             # concat to the version level metrics as well.
-            con_df = pd.concat([unit_version_metrics_df, metrics_df], ignore_index=True)
-            unit_version_metrics_df = con_df            
-
-    if len(unit_metrics_df) == 0:
-        raise Exception("The unit master metrics file is empty. Please review code")
+                con_df = pd.concat([enviro_metrics_df, metrics_df], ignore_index=True)
+                enviro_metrics_df = con_df            
 
     print()
-    unit_metrics_df.to_csv(unit_metrics_path, index=False)
-    RLOG.notice(
-        "Created or updated the rolled up unit level metrics file"
-        f" at {unit_metrics_path}. All new metrics files have been added to this file."
-    )
+    if len(trg_inundation_metrics_file) == 0:
+        RLOG.critical("Error: no records were added to the inundation level metrics"
+                      " (unit id and version)")
+        sys.exit(1)
 
-    print()
-    unit_version_metrics_df.to_csv(unit_version_metrics_path, index=False)
+    inun_metrics_df.to_csv(trg_inundation_metrics_file, index=False)
     RLOG.notice(
         "The rolled up metrics file for this specific unit and unit version have"
-        f" been created as well. It has been saved to {unit_version_metrics_path}."
+        f" been created as well. It has been saved to {trg_inundation_metrics_file}."
     )    
-
+    print()
+    if trg_enviro_metrics_file_path != "":
+        enviro_metrics_df.to_csv(trg_enviro_metrics_file_path, index=False)
+        RLOG.notice(
+            "Created or updated the rolled up enviro master level metrics file"
+            f" at {trg_enviro_metrics_file_path}. All new metrics files have been added to this file."
+        )
+    print()
 
 # -------------------------------------------------
 def parse_bench_file_name(file_path, local_benchmark_data_path):
@@ -721,6 +734,7 @@ def __validate_input(
     Output: dictionary
         - rtn_dict["huc"]:
         - rtn_dict["unit_id"]: 12090301_2277_ble
+        - rtn_dict["unit_version_as_str"]: 230914
 
         - rtn_dict["enviro"] = case corrected: PROD or DEV
 
@@ -777,6 +791,7 @@ def __validate_input(
 
     rtn_dict["huc"] = src_name_dict["key_huc"]
     rtn_dict["unit_id"] = src_name_dict["key_unit_id"]  # (12090301_2277_ble)
+    rtn_dict["unit_version_as_str"] = src_name_dict["key_unit_version_as_str"]  # 230914
     src_unit_folder_name = src_name_dict["key_unit_folder_name"] # 12090301_2277_ble_230914        
 
     if dt.date(2023, 12,31) < src_name_dict["key_unit_version_as_dt"]: 

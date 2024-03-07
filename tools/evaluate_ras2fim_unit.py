@@ -108,6 +108,7 @@ def evaluate_unit_results(
     dt_now = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
     agreement_map.attrs['process datetime'] = dt_now
     agreement_map.attrs['unit_name'] = unit_name
+
     metric_table.insert(0, 'process_datetime', dt_now)
     metadata_csv = pd.DataFrame({'process_datetime': [dt_now], 'unit_name': [unit_name]})
 
