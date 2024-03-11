@@ -326,7 +326,6 @@ def fn_run_ras2fim(
 
     # run the third script
     if int_step <= 3:
-
         # provide conflation qc file to mark the parent models that conflated to NWM reaches
         conflation_csv_path = os.path.join(dir_shapes_from_conflation, "conflated_ras_models.csv")
 
@@ -441,6 +440,9 @@ def fn_run_ras2fim(
     shutil.copy2(model_huc_catalog_path, r2f_final_dir)
     run_arguments_filepath = os.path.join(unit_output_path, "run_arguments.txt")
     shutil.copy2(run_arguments_filepath, r2f_final_dir)
+
+    # move the log folder into "final/logs"
+    shutil.copytree(RLOG.LOG_DEFAULT_FOLDER, os.path.join(r2f_final_dir, "logs"), dirs_exist_ok=True)
 
     RLOG.lprint("+=================================================================+")
     RLOG.success("  RUN RAS2FIM - Completed                                         |")

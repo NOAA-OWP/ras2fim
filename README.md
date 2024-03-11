@@ -83,11 +83,14 @@ This download will include the following files / folders:
 3. National Water Model (NWM) Flowline Hydrofabric: nwm_flows.gpkg
 4. National Water Model to Watershed Boundary Lookup: nwm_wbd_lookup.nc
 5. National Water Model (NWM) Catchments file: nwm_catchments.gpkg
+6. You will need a HUC specific DEM which should exist in s3://noaa-nws-owp-fim/ras2fim/inputs/dems/ras_3dep_HUC8_10m/HUC8_{your huc number}_dem.tif. You can save it anywhere on your computer but it is suggested to save it at C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m.
+<br>
+If that HUC8 DEM does not exist, you can create one using the tools/acquire_and_preprocess_3dep_dems.py. Include the argument of -skips3 so it does not attemp to upload it to an S3 bucket unless you have your own. ras2fim.py has an parameter to point to this file if not in the default path.
 <br><br>
 
 ### (2) Get AWS Folder - OWP_ras_models folder and OWP_ras_models_catalog.csv
 
-At this point, ras2fim.py needs a file named OWP_ras_models_catalog.csv, or similar, and we have loaded a sample for you. It has some meta data that is used in the final output files. While the file must exist with the correct schema, it will not fail if records in it do not match.  This file may become optional at a later point, but for now, please include it and also add the `-mc` argument to `ras2fim.py`. eg. `-mc c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog.csv` (or pathing of your choice of course, as is with most arguments).
+At this point, ras2fim.py needs a file named OWP_ras_models_catalog.csv, or similar, and we have loaded a sample for you. It has some meta data that is used in the final output files. Thee file must have records that match models being processed. For the 'model_id' add any unique numbers you like, if you haven't used the tools/s3_get_models.py tool to download from an S3 bucket. Please include it and also add the `-mc` argument to `ras2fim.py`. eg. `-mc c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_{the huc8 number}_.csv` (or pathing of your choice of course, as is with most arguments).
 
 To download the `OWP_ras_models` folder, you AWS CLI command will be (adjusting for path overrides if you like):
 ```
@@ -103,14 +106,9 @@ The install package can be downloaded from [the USACE website](https://github.co
 ### (4) Clone the Git-hub repository
 <img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/Git_logo.png" align="right" alt="git logo" height="80"> Install [git](https://git-scm.com/downloads) onto your Windows machine. Next, clone this ras2fim reporitory on to your Windows machine (see note below). Path to the windows folder of your choice, then type:
 ```
-git clone https://github.com/NOAA-OWP/ras2fim.git (see note below)
+git clone https://github.com/NOAA-OWP/ras2fim.git
 ```
-**Note: ras2fim V2 series has started development as of early November 2023. Initial check-ins for the default branch will fail for the short term future until an advanced version is ready.** When the CHANGELOG.md shows version check-ins starting with the phrase `V2.0.beta.x`, means the branch is not yet operational but you are still welcome to contibute to the new WIP branch. Once the usable versions have been merged, the CHANGELOG.md will start with the number of `v2.0.0.0`.
 <br>
-**If you want to view the last stable `V1` series, use the following git clone command which will come from the ras2fim `main (V1)` branch.**
-```
-git clone https://github.com/NOAA-OWP/ras2fim.git -b V1
-```
 
 ### (5) Building and Testing ras2fim
 

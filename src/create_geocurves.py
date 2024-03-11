@@ -284,7 +284,7 @@ def create_geocurves(unit_output_path: str, code_version: str):
     print()
     print(
         "This parts of this section can be a bit slow. Most can take just a minute or less,"
-        " but we have seen a few anonomlies take over one hour."
+        " but we have seen a few anomolies take over one hour."
     )
     print()
 
@@ -307,6 +307,7 @@ def create_geocurves(unit_output_path: str, code_version: str):
             f"Creating geo rating curves for model {name_mid}"
             f"  (Number {index + 1} of {len_conflated_ras_models})"
         )
+
         model_name0 = name_mid.split("_")[1:]
         model_name = "_".join(model_name0)
         model_depths_dir = Path(model_output_dir, model_name)
@@ -427,8 +428,8 @@ def create_geocurves(unit_output_path: str, code_version: str):
         geocurve_df_list = []
         len_depth_tifs = len(depth_grid_args)
         if len_depth_tifs > 0:
-            #num_processors = mp.cpu_count() - 2
-            num_processors = round(math.floor(mp.cpu_count() * 0.85))            
+            # num_processors = mp.cpu_count() - 2
+            num_processors = round(math.floor(mp.cpu_count() * 0.85))
             geocurve_df_list = []
             with ProcessPoolExecutor(max_workers=num_processors) as executor:
                 with tqdm.tqdm(
@@ -452,15 +453,21 @@ def create_geocurves(unit_output_path: str, code_version: str):
             RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
 
         if len(geocurve_df_list) != 0:
-            path_geocurve = os.path.join(
-                unit_output_path,
-                sv.R2F_OUTPUT_DIR_FINAL,
-                sv.R2F_OUTPUT_DIR_GEOCURVES,
-                f'{name_mid}_geocurve.csv',
-            )
-
             geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
             geocurve_df = geocurve_df.sort_values(by=['feature_id', 'discharge_cfs'])
+
+            # The feature id inside the geocurve file may not be the feature id that was part of
+            # the original model id.
+            # We need to pull it out of the first line of the geodataframe as it will be accurate there.
+            # In theory it shoul always be unique
+
+            # ras2inundation needs the first part of the geocurve to be the feature ID
+            feature_id = geocurve_df.iloc[0]["feature_id"]
+            geocurve_file_name = f"{feature_id}_{name_mid}_geocurve.csv"
+            path_geocurve = os.path.join(
+                unit_output_path, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES, geocurve_file_name
+            )
+
             geocurve_df.to_csv(path_geocurve, index=False)
         else:
             RLOG.warning(f"geocurve_df_list is empty for {name_mid}")

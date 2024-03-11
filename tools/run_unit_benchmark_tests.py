@@ -4,23 +4,24 @@ import argparse
 import datetime as dt
 import glob
 import os
-import shutil
 import sys
-import time
 import traceback
 from pathlib import Path
 
+import colored as cl
 import geopandas as gpd
 import pandas as pd
+import rioxarray.exceptions as rxe
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import ras2inundation as ri
+import s3_shared_functions as s3_sf
+from evaluate_ras2fim_unit import evaluate_unit_results
+
 import shared_functions as sf
 import shared_variables as sv
-import s3_shared_functions as s3_sf
 
-from evaluate_ras2fim_unit import evaluate_unit_results
 
 # Global Variables
 RLOG = sv.R2F_LOG
@@ -33,9 +34,9 @@ This tool can already work in auto mode. No runtime questions are asked.
 
 TODO: Later, do we optionally load this back up to S3?
    For now.. manually upload C:\ras2fim_data\gval\evaluations\eval_PROD_metrics.csv (to the eval level)
-   Also upload the unit level master metrics to S3. e.g. 
-      C:\ras2fim_data\gval\evaluations\PROD\12030103_2276_ble\12030105_2276_ble_unit_metrics.csv  (notice not 
-      in the version subfolder.)
+   Also upload the unit level master metrics to S3. e.g.
+      C:\ras2fim_data\gval\evaluations\PROD\12030103_2276_ble\12030105_2276_ble_unit_metrics.csv
+        (notice not in the version subfolder.)
 
 """
 
@@ -54,21 +55,20 @@ def run_unit_benchmark_tests(
     src_unit_final_path,
     trg_gval_root,
     trg_output_override_path,
-    src_benchmark_data_path
+    src_benchmark_data_path,
 ):
-
     """
     TODO Processing notes (lots of permuations)
 
     Inputs:
         - unit_folder_name: e.g. 12030101_2276_ble_230925
         - enviro: e.g. PROD or DEV
-        - src_unit_final_path: 
+        - src_unit_final_path:
            e.g. C:\ras2fim_data\output_ras2fim\12030101_2276_ble_230925\final
            and could be empty
         - trg_gval_root: e.g. c:\ras2fim_data\gval
         - trg_output_override_path: e.g.(blank) or c:\my_ras\inundation_files
-        - src_benchmark_data_path: 
+        - src_benchmark_data_path:
             e.g. C:\ras2fim_data\gval\benchmark_data or an s3 url
     """
 
@@ -88,62 +88,86 @@ def run_unit_benchmark_tests(
         RLOG.lprint(f"  (-tg): Local target gval root path: {trg_gval_root}")
     if trg_output_override_path != "":
         RLOG.lprint(f"  (-to): Local target eval output path: {trg_output_override_path}")
-    
+
     RLOG.lprint(f" Started (UTC): {sf.get_stnd_date()}")
     print()
-    print("NOTE: All output inundation and benchmark results files will be overwritten")
+    print("NOTE: All output inundation and benchmark results files will be overwritten.")
     print()
 
     RLOG.notice("********************************************************************")
     RLOG.notice("***  IMPORTANT NOTE about roll up metrics files\n")
     print(" Each unit (ie. 12030105_2276_ble) can have multiple versions over time.")
-    print("     ie) 230923 or 240217")    
+    print("     ie) 230923  or   240217")
     print(" This tool processes one unit and version at this time.")
-    print("     ie) 12030105_2276_ble_230923 or 12030105_2276_ble_240217")
-    print(" Saved at: ")
-    print(r"    ie). C:\ras2fim_data\output_ras2fim\12030105_2276_ble_230923.")
+    print("     ie) 12030105_2276_ble_230923   or   12030105_2276_ble_240217")
+    print(
+        " Here is an example of a pre-existing source unit path is" " (unless the path is overridden (-sg)):"
+    )
+    print(r"     ie). C:\ras2fim_data\output_ras2fim\12030105_2276_ble_230923.")
     print()
-    print(" When it is completing the evaluations, the eval outputs will be saved"
-          " in a unit version subfolder.")
+    print(
+        " When the tool has completed the evaluations, the eval outputs will be saved"
+        " in an unit version subfolder (or override argument (-to)."
+    )
     print(r"     ie) C:\ras2fim_data\gval\evaluations\PROD\12030103_2276_ble\230923")
     print()
-    print(" This tool create a couple of metrics (.csv) files created.")
+    print(" This tool creates a couple of metrics (.csv) files.")
 
-    print("   - One file file is at the unit and version level which covers all metrics created"
-                " during the running of this script.")
-    print(r"       ie) C:\ras2fim_data\gval\evaluations\PROD"
-                r"\12030105_2276_ble\240228\12030105_2276_ble_240228_metrics.csv")
-
-    print("   - The second is a rollup at the 'PROD' or 'DEV' level, called a master metrics, "
-          " which covers all metrics for all evaluations"
-          "  (benchmark and magnitude) and unit versions (ie. 230923, 240228) in that enviro.")
+    print(
+        "   - One file is at the unit and version level which covers all metrics created"
+        " during the running of this script."
+    )
+    print(
+        r"       ie) C:\ras2fim_data\gval\evaluations\PROD"
+        r"\12030105_2276_ble\240228\12030105_2276_ble_240228_metrics.csv"
+    )
+    print()
+    print(
+        "   - The second is a rollup csv at the 'PROD' or 'DEV' level, called a master enviro metrics."
+        " It covers all metrics for all evaluations for that enviro."
+    )
     print(r"       ie) C:\ras2fim_data\gval\evaluations\PROD\eval_PROD_metrics.csv")
-    print("     If you have used the ")
+    print(
+        "     If you have used the local target eval output path (-to), the master enviro"
+        " file will not be created or updated."
+    )
+
     print()
-    
+    print(" HOWEVER... The intent is to have a growing master 'eval_(PROD/DEV)_metrics.csv' file.")
+    print(
+        " And at this time, this script does not have the ability to get the file from somewhere else.\n"
+        " You may need to copy it in from somewhere else or let the program build a new one master metrics"
+        " file which you can optionally merge manually later."
+    )
     print()
-    print("HOWEVER... The attempt is to have a growing master 'eval_(PROD/DEV)_metrics.csv' file.")
-    print("And at this time the tools does not have the ability to get or load one.")
-    print("If you have overridden the output folder, no master metrics will be created or updated.")
+    print(" *** Remember to save the new or updated master PROD/DEV metrics to s3 or similar for next time.")
     print()
-    print("Please abort this program if you want to go get a pre-existing master metrics"
-          "that can be updated")
-    print("OR let this program create a new one and you can manually merge the two csv's.")
-    print("Remember to save the master PROD metrics to s3 or similar for next time.")
+
+    msg = (
+        f"{cl.fore.SPRING_GREEN_2B}"
+        " Do you want to continue?\n\n"
+        f"{cl.style.RESET}"
+        f"   -- Type {cl.fore.SPRING_GREEN_2B}'yes'{cl.style.RESET}\n"
+        f"   -- Type {cl.fore.SPRING_GREEN_2B}'no' (or any key){cl.style.RESET}"
+        " to stop the program.\n"
+        f"{cl.fore.SPRING_GREEN_2B}  ?={cl.style.RESET}"
+    )
+
     print()
+    resp = input(msg).lower()
+    if resp != "yes":
+        RLOG.lprint("\n.. Program stopped.\n")
+        sys.exit(0)
 
     RLOG.notice("********************************************************************")
 
     # TODO: test permuations of the input args
-
     print()
-    RLOG.notice("NOTE: As of Mar 5, 2025, some of the testing for non-defaulted args has"
-                " not yet been completed")
+    RLOG.notice(
+        "NOTE: As of Mar 5, 2025, some of the testing for non-defaulted args has" " not yet been completed."
+    )
     print()
     print()
-
-    # give the users 30 seconds to read this before continuing
-    time.sleep(30)
 
     # ----------------
     # validate input variables and setup key variables
@@ -166,8 +190,8 @@ def run_unit_benchmark_tests(
     if bench_data_root.endswith("\\") is False:
         bench_data_root += "\\"
 
-    lst_bench_files = glob.glob(f"{bench_data_root}**\\*{huc}*.csv", recursive=True)
-    if len(lst_bench_files) == 0:
+    lst_bench_flow_files = glob.glob(f"{bench_data_root}**\\*{huc}_flows_*.csv", recursive=True)
+    if len(lst_bench_flow_files) == 0:
         RLOG.critical(
             "No csv benchmark data files were found recursively in the folder"
             f" of {bench_data_root} with the huc of {huc}"
@@ -179,52 +203,49 @@ def run_unit_benchmark_tests(
     # bench_flow_files = [ i for i in lst_bench_files if Path(i).suffix == ".csv"]
     # Now we iterate the bench_files to find the valid flow files we need.
     bench_flow_files = []
-    for b_file in lst_bench_files:
-        if Path(b_file).suffix != ".csv":
-            continue
+    for b_file in lst_bench_flow_files:
         parent_path = Path(b_file)
         parent_dir_name = parent_path.parent.name
         if parent_dir_name in sv.GVAL_VALID_STAGES:
             bench_flow_files.append(b_file)
 
-    inundate_files(
-        bench_flow_files,
-        huc,
-        rd["src_geocurves_path"],
-        rd["trg_inundation_path"],
-        rd["local_benchmark_data_path"],
+    inundated_files = inundate_files(
+        bench_flow_files, rd["src_geocurves_path"], rd["trg_inundation_path"], rd["local_benchmark_data_path"]
     )
 
-    # ----------------
-    # lst_bench_files is all files (not just .csv's)
-    # Yes.. this is not optimum to find csv, then calc path
-    # then do extent files, and re-calc those paths.
-    bench_extent_files = []
-    for b_file in lst_bench_files:
-        if Path(b_file).suffix != ".tif":
-            continue
-        b_file_name = os.path.basename(b_file)
-        if "extent" not in b_file_name:
-            continue
-        bench_extent_files.append(b_file)
+    # There may not necessarily any file after inundation.
+    if len(inundated_files) == 0:
+        print()
+        RLOG.notice(
+            "No files were inundated. This occurs generally when there are small amounts"
+            "number of geo curve files and no matching features were found in the flow files."
+        )
+    else:
+        # ----------
+        metric_files_lst = __run_tests(
+            bench_flow_files,
+            unit_folder_name,
+            rd["src_models_domain_extent_file"],
+            rd["trg_inundation_path"],
+            rd["local_benchmark_data_path"],
+            rd["enviro"],
+        )
 
-    # ----------
-    metric_files_lst = __run_tests(bench_extent_files,
-                                   unit_folder_name,
-                                   rd["src_models_file"],
-                                   rd["trg_inundation_path"],
-                                   rd["local_benchmark_data_path"],
-                                   rd["enviro"]
-                                   )
-
-    # ----------
+        # ----------
         # merge this wil the unit master csv
-    __merge_metrics_files(metric_files_lst,
-                          rd["unit_id"],
-                          rd["unit_version_as_str"],
-                          rd["trg_inundation_metrics_file"],
-                          rd["trg_enviro_metrics_file_path"])
-
+        if len(metric_files_lst) == 0:
+            RLOG.notice(
+                "No metrics files were created. This can occur when there are small amounts"
+                "number of geo curve files and no matching features were found in the flow files."
+            )
+        else:
+            __merge_metrics_files(
+                metric_files_lst,
+                rd["unit_id"],
+                rd["unit_version_as_str"],
+                rd["trg_inundation_metrics_file"],
+                rd["trg_enviro_metrics_file_path"],
+            )
 
     print()
     print("===================================================================")
@@ -240,20 +261,20 @@ def run_unit_benchmark_tests(
 
 # -------------------------------------------------
 def __run_tests(
-    bench_extent_files,
+    bench_flow_files,
     unit_folder_name,
-    src_models_file,
+    src_models_domain_extent_file,
     trg_inun_file_path,
     local_benchmark_data_path,
-    enviro):
-
+    enviro,
+):
     """
     Process: Iterates the incoming local benchmark and run them against evaluate_ras2fim_unit.py
     Input:
-        - bench_extent_files: simple list of all huc applicable benchmark extent files
+        - bench_flow_files: The list of raw benchmark flow files.
         - unit_folder_name:  12090301_2277_ble_230923
-        - src_models_file: e.g. C:\ras2fim_data\output_ras2fim\
-             12090301_2277_ble_230923\final\models_domain\dissolved_conflated_models.gpkg 
+        - src_models_domain_extent_file: e.g. C:\ras2fim_data\output_ras2fim\
+             12090301_2277_ble_230923\final\models_domain\dissolved_conflated_models.gpkg
         - trg_inun_file_path:
             e.g. C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\230923
         - local_benchmark_data_path: (we use this to re-calc pathing for the output folders)
@@ -262,33 +283,28 @@ def __run_tests(
     """
 
     print("--------------------------")
-    RLOG.notice("Runnning unit benchmarks based on unit model domain"
-               f" from {src_models_file}")
+    RLOG.notice(
+        "Runnning unit benchmarks based on unit model domain" f" from  {src_models_domain_extent_file}"
+    )
     RLOG.lprint(f"  All output evaluations files will created in {trg_inun_file_path}")
     print()
 
     # don't let if fail if one errors out, unless all fail.
-    bench_extent_files.sort()
-
-    # The benchmark extent files are at gval/benchmark_data..
-    # ie) C:\ras2fim_data\gval\benchmark_data\ble\12030105\100py\ble_huc_12030105_extent_100yr.tif
-    # or  C:\ras2fim_data\gval\benchmark_data\nws\12030105
-    #       \cart2\minor\ahps_cart2_huc_12030103_extent_major.tif
+    bench_flow_files.sort()
 
     # get root of benchmark as it can be overwridden from cmd line.
 
     # get the version from the dissolved_conflated_models.gpkg or models_domain.gpkg (from V1)
     # NOTE: I went back and manually added that column and values to the v1 models_domain.gpkg
 
-    unit_details_dct = sv.parse_unit_folder_name(unit_folder_name)
+    unit_details_dct = sf.parse_unit_folder_name(unit_folder_name)
 
-    models_gdf = gpd.read_file(src_models_file)
+    models_gdf = gpd.read_file(src_models_domain_extent_file)
     code_version = models_gdf.iloc[0]["version"]
     metric_files = []
     trg_inun_file_path = trg_inun_file_path
-    for bench_extent_raster in bench_extent_files:
-        bench_name_details = parse_bench_file_name(bench_extent_raster,
-                                                   local_benchmark_data_path)
+    for b_flow_file in bench_flow_files:
+        bench_name_details = parse_bench_file_name(b_flow_file, local_benchmark_data_path)
 
         try:
             bench_prefix = bench_name_details["prefix"]
@@ -296,8 +312,19 @@ def __run_tests(
 
             unit_eval_name = unit_folder_name + "--" + bench_prefix
             # becomes ie) 12030105_2276_ble_230923--ble_100yr  or 12030105_2276_ble_230923--nws_ahps_minor
-                        
+
             RLOG.trace(f"Running Benchmark tests for {unit_eval_name}")
+
+            # I know this isn't the prettiest but it will work for now.
+            # let's go get the associated .tif - Lets assume that the tif file is the same file
+            # name as the csv
+
+            # get folder path from csv
+            bench_folder = os.path.dirname(b_flow_file)
+            flow_file_name = os.path.basename(b_flow_file)
+            bench_extent_file_name = flow_file_name.replace(".csv", ".tif")
+            bench_extent_file_name = bench_extent_file_name.replace("_flows_", "_extent_")
+            bench_extent_raster_path = os.path.join(bench_folder, bench_extent_file_name)
 
             eval_output_folder = os.path.join(trg_inun_file_path, bench_prefix)
             # files names are added inside evaluate_unit_results
@@ -306,7 +333,10 @@ def __run_tests(
             inun_poly_name = f"{bench_prefix}_inundation.gpkg"
             inundation_poly_path = os.path.join(trg_inun_file_path, inun_poly_name)
             # C:\ras2fim_data\gval\evaluations\PROD\12030105_2276_ble\230923\ble_100yr_inundation.gpkg
-            # and should already exist on the local drives.
+
+            # A matching inundation file may not necessarily exists.
+            if not os.path.exists(inundation_poly_path):
+                continue
 
         except Exception as ex:
             err_msg = f"An error occured while setting up info unit benchmark tests for {unit_folder_name}"
@@ -318,19 +348,52 @@ def __run_tests(
         # Fix: run it via command line, come back, temp disable this part and continue.
         try:
             evaluate_unit_results(
-                inundation_poly_path, models_gdf, bench_extent_raster, unit_eval_name, eval_output_folder
+                inundation_poly_path,
+                src_models_domain_extent_file,
+                bench_extent_raster_path,
+                unit_eval_name,
+                eval_output_folder,
             )
+
+        except rxe.NoDataInBounds:
+            data_details = f" inundation_poly_path is {inundation_poly_path},"
+            f" src_models_domain_extent_file is {src_models_domain_extent_file},"
+            f" bench_extent_raster is {bench_extent_raster_path},"
+            f" unit_folder_name is {unit_folder_name}"
+
+            RLOG.warning(
+                f"An issue occured while running gval results for {unit_folder_name};"
+                " No data found in bounds. This is generally acceptable"
+                " especially when the number of processed models is small"
+            )
+            RLOG.warning(data_details)
+            continue
 
         except Exception as ex:
             # re-raise but check if it is includes phrase 'Rasters don't spatially intersect'
             # so we can give a better error message.
             # Add context data and RLOG.
-            err_msg = f"An error occured while running gval results for {unit_folder_name};"
-            f" inundation_poly_path is {inundation_poly_path},"
-            f" src_models_file is {src_models_file},"
-            f" bench_extent_raster is {bench_extent_raster},"
+
+            data_details = f" inundation_poly_path is {inundation_poly_path},"
+            f" src_models_domain_extent_file is {src_models_domain_extent_file},"
+            f" bench_extent_raster is {bench_extent_raster_path},"
             f" unit_folder_name is {unit_folder_name}"
-            RLOG.critical(err_msg)
+
+            # Some error messages coming from eval will say No data found in bounds.
+            # This is an acceptable and semi common error. It just means there are not
+            # any models that are fitting in the benchmark boundaries.
+            # We will just log them and continue
+            if "Rasters don't spatially intersec" in ex.args[0]:
+                RLOG.warning(
+                    f"An issue occured while running gval results for {unit_folder_name};"
+                    " The rasters don't spatially interset. This is generally acceptable"
+                    " especially when the number of processed models is small"
+                )
+                RLOG.warning(data_details)
+                continue
+
+            RLOG.critical(f"An error occured while running gval results for {unit_folder_name};")
+            RLOG.critical(data_details)
             raise ex
 
         # before coping around and merging HUC / GVAL results, pull the "version" column
@@ -338,10 +401,10 @@ def __run_tests(
         # and put it in the gval / results. Not availalbe in V1, but manually add to a V1 model_domain
         # metrics output needs the following columns added:
 
-        # huc  (112030105)        
+        # huc  (112030105)
         # unit_name   (112030105_2276_ble)
         # unit_version  (230923)
-        # code_version  (v2.0.0)        
+        # code_version  (v2.0.0)
         # benchmark_source  (nws)
         # magnitude  (major)
         # ahps_lid  ( na  or  dalt2)
@@ -360,7 +423,7 @@ def __run_tests(
             metrics_df.insert(col_id, "unit_name", unit_details_dct["key_unit_id"])
 
         if "unit_version" not in metrics_df.columns:
-            col_id = 1            
+            col_id = 1
             metrics_df.insert(col_id, "unit_version", unit_details_dct["key_unit_version_as_str"])
             metrics_df["unit_version"] = metrics_df["unit_version"].astype("string")
 
@@ -384,7 +447,7 @@ def __run_tests(
             col_id = 6
             metrics_df.insert(col_id, "ahps_lid", bench_name_details["ahps_lid"])
 
-        if "ahps_lid" not in metrics_df.columns:
+        if "enviro" not in metrics_df.columns:
             col_id = 7
             metrics_df.insert(col_id, "enviro", enviro)
 
@@ -396,11 +459,9 @@ def __run_tests(
 
 
 # -------------------------------------------------
-def __merge_metrics_files(metric_files,
-                          unit_id,
-                          version_date_as_str,
-                          trg_inundation_metrics_file,
-                          trg_enviro_metrics_file_path):
+def __merge_metrics_files(
+    metric_files, unit_id, version_date_as_str, trg_inundation_metrics_file, trg_enviro_metrics_file_path
+):
     """
     All of the individual benchmark tests folder have their own metrics,
     which is rolled up into a metrics file for this processing run. It should be in the folder
@@ -434,28 +495,32 @@ def __merge_metrics_files(metric_files,
                See if one already exists, and load it if it does exist, create a new one if not.
             else:
                 we are not going to be working with a master enviro file
-            
+
             When writing to an existing master metrics, and it sees records already existing for the
             current unit_id and version, it will drop them as it is about to replace them.
     """
 
     # if the unit_version_metrics_file exists, delete it as we will rebuild it.
-    if os.path.exist(trg_inundation_metrics_file):
+    if os.path.exists(trg_inundation_metrics_file):
         os.remove(trg_inundation_metrics_file)
 
     if trg_enviro_metrics_file_path != "":
         if os.path.exists(trg_enviro_metrics_file_path) is True:
-            RLOG.lprint(
-                f"Merging new metrics files to enviro master csv at {trg_enviro_metrics_file_path}"
-            )
+            RLOG.lprint(f"Merging new metrics files to enviro master csv at {trg_enviro_metrics_file_path}")
         else:
-            RLOG.trace("Enviro master metrics file does not exist. Creating new one"
-                       f"at {trg_enviro_metrics_file_path}")
-        
+            RLOG.trace(
+                "Enviro master metrics file does not exist. Creating new one"
+                f"at {trg_enviro_metrics_file_path}"
+            )
+
     enviro_metrics_df = pd.DataFrame()
-    inun_metrics_df = pd.DataFrame() # unit_version
+    inun_metrics_df = pd.DataFrame()  # unit_version
     for idx, metrics_file in enumerate(metric_files):
         if idx == 0:
+
+            # load the first metrics, load it straight to the inun metrics parent
+            inun_metrics_df = pd.read_csv(metrics_file)
+
             # load the master metrics if one exists and a path exist
             if trg_enviro_metrics_file_path != "":
                 if os.path.exists(trg_enviro_metrics_file_path) is True:
@@ -463,21 +528,18 @@ def __merge_metrics_files(metric_files,
                     RLOG.trace(f"Merging new metrics file of {metrics_file}")
 
                     # drop pre-existing records for this unit and its version
-                    indexes_lst = enviro_metrics_df[ 
-                            (enviro_metrics_df['unit_version'].astype("string") == version_date_as_str) &
-                            (enviro_metrics_df['unit_id'] == unit_id)
-                            ].index
-                    enviro_metrics_df.drop(indexes_lst , inplace=True)
+                    indexes_lst = enviro_metrics_df[
+                        (enviro_metrics_df['unit_version'].astype("string") == version_date_as_str)
+                        & (enviro_metrics_df['unit_id'] == unit_id)
+                    ].index
+                    enviro_metrics_df.drop(indexes_lst, inplace=True)
 
                     # Concat to master if one exists
-                    con_df = pd.concat([enviro_metrics_df, metrics_df], ignore_index=True)
+                    con_df = pd.concat([enviro_metrics_df, inun_metrics_df], ignore_index=True)
                     enviro_metrics_df = con_df
-                else:
-                    RLOG.trace(f"Loading the first one, metrics file of {metrics_file}")
-                    enviro_metrics_df = pd.read_csv(metrics_file)
-            else:
-                # load the first metrics, load it straight to the inun metrics parent
-                inun_metrics_df = pd.read_csv(metrics_file)
+                else:  # we are creating the first records for the master metrics
+                    enviro_metrics_df = inun_metrics_df.copy()
+            # else: - we are not creating an enviro master metrics
 
         else:
             RLOG.trace(f"Concatenating metrics file of {metrics_file}")
@@ -487,22 +549,21 @@ def __merge_metrics_files(metric_files,
             con_df = pd.concat([inun_metrics_df, metrics_df], ignore_index=True)
             inun_metrics_df = con_df
 
-            if trg_enviro_metrics_file_path != "": # if there is a master (migth not be)
-            # concat to the version level metrics as well.
+            if trg_enviro_metrics_file_path != "":  # if there is a master (migth not be)
+                # concat to the version level metrics as well.
                 con_df = pd.concat([enviro_metrics_df, metrics_df], ignore_index=True)
-                enviro_metrics_df = con_df            
+                enviro_metrics_df = con_df
 
     print()
     if len(trg_inundation_metrics_file) == 0:
-        RLOG.critical("Error: no records were added to the inundation level metrics"
-                      " (unit id and version)")
+        RLOG.critical("Error: no records were added to the inundation level metrics" " (unit id and version)")
         sys.exit(1)
 
     inun_metrics_df.to_csv(trg_inundation_metrics_file, index=False)
     RLOG.notice(
         "The rolled up metrics file for this specific unit and unit version have"
         f" been created as well. It has been saved to {trg_inundation_metrics_file}."
-    )    
+    )
     print()
     if trg_enviro_metrics_file_path != "":
         enviro_metrics_df.to_csv(trg_enviro_metrics_file_path, index=False)
@@ -511,6 +572,7 @@ def __merge_metrics_files(metric_files,
             f" at {trg_enviro_metrics_file_path}. All new metrics files have been added to this file."
         )
     print()
+
 
 # -------------------------------------------------
 def parse_bench_file_name(file_path, local_benchmark_data_path):
@@ -551,8 +613,8 @@ def parse_bench_file_name(file_path, local_benchmark_data_path):
         magnitude = split_paths[2]
     elif bench_source == "ras2fim":
         # becomes ras2f_100yr
-       bench_prefix = f"ras2fim_{split_paths[2]}"
-       magnitude = split_paths[2]
+        bench_prefix = f"ras2fim_{split_paths[2]}"
+        magnitude = split_paths[2]
     elif bench_source == "usgs":
         # becomes nws_nchn3_minor
         bench_prefix = f"usgs_{split_paths[2]}_{split_paths[3]}"
@@ -572,7 +634,7 @@ def parse_bench_file_name(file_path, local_benchmark_data_path):
 
 
 # -------------------------------------------------
-def inundate_files(flow_files, huc, src_geocurves_path, trg_inun_file_path, local_benchmark_data_path):
+def inundate_files(flow_files, src_geocurves_path, trg_inun_file_path, local_benchmark_data_path):
     """
     Process: Iterates the incoming local benchmark files and run's inundation on them
     Input:
@@ -591,10 +653,17 @@ def inundate_files(flow_files, huc, src_geocurves_path, trg_inun_file_path, loca
     RLOG.notice(f"Runnning inundation based on geocurves from {src_geocurves_path}")
     RLOG.lprint(f"  All output inundation files will created in subfolders at {trg_inun_file_path}")
 
+    if not src_geocurves_path.endswith("\\"):
+        src_geocurves_path += "\\"
+
     # don't let if fail if one errors out, unless all fail.
     flow_files.sort()
 
-    for b_file in flow_files:
+    # some units only have a few units in them so it may not automatically create any
+    # inundation files.
+    inundation_files = []
+
+    for bench_file in flow_files:
         # the key is that it is sort.
         # Figure out adjusted path
         #   e.g. incoming C:\ras2fim_data\gval\benchmark_data\ble\
@@ -604,11 +673,11 @@ def inundate_files(flow_files, huc, src_geocurves_path, trg_inun_file_path, loca
         #      PROD\12030105_2276_ble\230923\**.gkpg
 
         # a dictionary
-        bench_name_details = parse_bench_file_name(b_file, local_benchmark_data_path)
+        bench_name_details = parse_bench_file_name(bench_file, local_benchmark_data_path)
 
         print()
         RLOG.notice(
-            "----- Inundating files for benchmark source of"
+            "----- Inundating files for benchmark source :"
             f" {bench_name_details['source']} - {bench_name_details['magnitude']} ---------"
         )
 
@@ -621,10 +690,25 @@ def inundate_files(flow_files, huc, src_geocurves_path, trg_inun_file_path, loca
         # inun_file_name = inun_file_name.replace(strip_pattern, "")
         trg_file_path = os.path.join(trg_inun_file_path, inun_file_name)
 
-        print(f"... Inundation Starting : {b_file}")
+        print(f"... Inundation Starting for : {bench_file}")
         # it will display/log errors and critical errors
-        ri.produce_inundation_from_geocurves(src_geocurves_path, b_file, trg_file_path, False)
+        ri.produce_inundation_from_geocurves(src_geocurves_path, bench_file, trg_file_path, False)
         # print(f"... Inundation Complete : {b_file}")
+
+        # we need to assume it did inundate if applicable
+        # Not all will inundate depending if it found matching features in the flow files.
+        # Some batches are two small to find matching features.
+        if os.path.exists(trg_file_path):
+            inundation_files.append(trg_file_path)
+        else:
+            print()
+            RLOG.warning(
+                f"An inundation file was not created for {inun_file_name}. One possiblity is"
+                " that could be a result of a small number of unit output rating curves."
+                " This is not necessarily a concern."
+            )
+
+    return inundation_files
 
 
 # -------------------------------------------------
@@ -718,7 +802,7 @@ def __validate_input(
     src_unit_final_path,
     trg_gval_root,
     trg_output_override_path,
-    src_benchmark_data_path
+    src_benchmark_data_path,
 ):
     """
     Summary: Will raise Exception if some are found
@@ -738,11 +822,11 @@ def __validate_input(
 
         - rtn_dict["enviro"] = case corrected: PROD or DEV
 
-        - rtn_dict["trg_unit_version_path"]: 
+        - rtn_dict["trg_unit_version_path"]:
              e.g. C:\ras2fim_data\gval\evaluations\PROD\12030103_2276_ble\230923 or
              complete override from trg_output_override_path or adjustments for gval folder path
 
-        - rtn_dict["src_models_file"]
+        - rtn_dict["src_models_domain_extent_file"]
             C:\ras2fim_data\output_ras2fim\12030105_2276_ble_240304\final\models_domain\
               V1 = models_domain.gpkg    V2 = dissolved_conflated_models.gpkg
 
@@ -758,20 +842,20 @@ def __validate_input(
         - rtn_dict["trg_inundation_metrics_file"]
              e.g. C:\ras2fim_data\gval\evaluations\
                 PROD\12030103_2276_ble\230923\12030103_2276_ble_230923_metrics.csv
-     
-        - rtn_dict["trg_enviro_metrics_file_path"] 
+
+        - rtn_dict["trg_enviro_metrics_file_path"]
             enviro master metrics (could be empty if n/a)
             e.g. C:\ras2fim_data\gval\evaluations\PROD\eval_PROD_metrics.csv (or similar path)
             (if trg_output_override_path (cmd arg) was used, there is no master metrics to be updated)
 
         - rtn_dict["is_s3_path"] = True / False
 
-        - rtn_dict["s3_src_benchmark_data_path"] 
+        - rtn_dict["s3_src_benchmark_data_path"]
             could be empty or e.g s3://ras2fim/gval/benchmark_data
-        
+
         - rtn_dict["local_benchmark_data_path"]
             C:\ras2fim_data\gval\benchmark_data
-            It is either the override local location or an S3 path and we will need to copy those 
+            It is either the override local location or an S3 path and we will need to copy those
             files here.
 
     """
@@ -792,9 +876,9 @@ def __validate_input(
     rtn_dict["huc"] = src_name_dict["key_huc"]
     rtn_dict["unit_id"] = src_name_dict["key_unit_id"]  # (12090301_2277_ble)
     rtn_dict["unit_version_as_str"] = src_name_dict["key_unit_version_as_str"]  # 230914
-    src_unit_folder_name = src_name_dict["key_unit_folder_name"] # 12090301_2277_ble_230914        
+    src_unit_folder_name = src_name_dict["key_unit_folder_name"]  # 12090301_2277_ble_230914
 
-    if dt.date(2023, 12,31) < src_name_dict["key_unit_version_as_dt"]: 
+    if src_name_dict["key_unit_version_as_dt"] < dt.datetime(2023, 12, 31):
         # is v1
         geocurve_folder_name = "geocurves"
         model_domain_file_name = "models_domain.gkpg"
@@ -818,26 +902,30 @@ def __validate_input(
         if trg_gval_root == "":
             raise ValueError("target gval root folder (-tg) can not be empty")
 
-        trg_inundation_path = os.path.join(trg_gval_root,
-                                             sv.LOCAL_GVAL_EVALS,
-                                             enviro,
-                                             src_name_dict['key_unit_id'],
-                                             src_name_dict['key_unit_version_as_str'])
+        trg_inundation_path = os.path.join(
+            trg_gval_root,
+            sv.LOCAL_GVAL_EVALS,
+            enviro,
+            src_name_dict['key_unit_id'],
+            src_name_dict['key_unit_version_as_str'],
+        )
 
-    else: # DEV could still have an override path
-        is_output_path_override = (trg_output_override_path != "")
+    else:  # DEV could still have an override path
+        is_output_path_override = trg_output_override_path != ""
 
         if is_output_path_override:
             trg_inundation_path = trg_output_override_path
-        else: # Not overridden
+        else:  # Not overridden
             # not overridden so we need the gval_root (migth be defaulted)
             if trg_gval_root == "":
                 raise ValueError("target gval root folder (-tg) can not be empty")
-            trg_inundation_path = os.path.join(trg_gval_root,
-                                                 sv.LOCAL_GVAL_EVALS,
-                                                 enviro,
-                                                 src_name_dict['key_unit_id'],
-                                                 src_name_dict['key_unit_version_as_str'])
+            trg_inundation_path = os.path.join(
+                trg_gval_root,
+                sv.LOCAL_GVAL_EVALS,
+                enviro,
+                src_name_dict['key_unit_id'],
+                src_name_dict['key_unit_version_as_str'],
+            )
 
     rtn_dict["trg_inundation_path"] = trg_inundation_path
     # e.g. C:\ras2fim_data\gval\evaluations\PROD\12030103_2276_ble\230923 or
@@ -846,27 +934,31 @@ def __validate_input(
     # ----------------
     # geocurve and model domains paths
     if src_unit_final_path == "use_default":
-        src_unit_final_path = os.path.join(sv.R2F_DEFAULT_OUTPUT_MODELS,
-                                           src_unit_folder_name,
-                                           sv.R2F_OUTPUT_DIR_FINAL)
+        src_unit_final_path = os.path.join(
+            sv.R2F_DEFAULT_OUTPUT_MODELS, src_unit_folder_name, sv.R2F_OUTPUT_DIR_FINAL
+        )
 
-    src_unit_models_file_path = os.path.join(src_unit_final_path,
-                                             sv.R2F_OUTPUT_DIR_DOMAIN_POLYGONS,
-                                             model_domain_file_name)
-    
+    src_unit_models_file_path = os.path.join(
+        src_unit_final_path, sv.R2F_OUTPUT_DIR_DOMAIN_POLYGONS, model_domain_file_name
+    )
+
     src_unit_geocurves_path = os.path.join(src_unit_final_path, geocurve_folder_name)
-            
+
     if os.path.exists(src_unit_models_file_path) is False:
-        raise ValueError(f"Source models domain file at {src_unit_models_file_path}"
-                         " does not exist. Check arguments or pathing.")
-    rtn_dict["src_models_file"] = src_unit_models_file_path
-        # C:\ras2fim_data\output_ras2fim\12030105_2276_ble_240304\final\models_domain\
-        # V1 = models_domain.gpkg    V2 = dissolved_conflated_models.gpkg
+        raise ValueError(
+            f"Source models domain file at {src_unit_models_file_path}"
+            " does not exist. Check arguments or pathing."
+        )
+    rtn_dict["src_models_domain_extent_file"] = src_unit_models_file_path
+    # C:\ras2fim_data\output_ras2fim\12030105_2276_ble_240304\final\models_domain\
+    # V1 = models_domain.gpkg    V2 = dissolved_conflated_models.gpkg
 
     if os.path.exists(src_unit_geocurves_path) is False:
-        raise ValueError(f"Source geocurves folder at {src_unit_geocurves_path}"
-                         " does not exist. Check arguments or pathing.")
-   
+        raise ValueError(
+            f"Source geocurves folder at {src_unit_geocurves_path}"
+            " does not exist. Check arguments or pathing."
+        )
+
     ct_curves_path = len(list(Path(src_unit_geocurves_path).rglob("*.csv")))
     if ct_curves_path == 0:
         raise ValueError(
@@ -890,14 +982,13 @@ def __validate_input(
     # master metrics file for the enviro. It maybe be empty if n/a
     if is_output_path_override is False:
         # I am sure there is a smarter way to do this if/else test
-        trg_enviro_metrics_file_path = os.path.join(trg_gval_root,
-                                                    sv.LOCAL_GVAL_EVALS,
-                                                    enviro,
-                                                    f"eval_{enviro}_metrics.csv")
-    else: # is_output_path_override is True
-        trg_enviro_metrics_file_path = "" # no master metrics
+        trg_enviro_metrics_file_path = os.path.join(
+            trg_gval_root, sv.LOCAL_GVAL_EVALS, enviro, f"eval_{enviro}_metrics.csv"
+        )
+    else:  # is_output_path_override is True
+        trg_enviro_metrics_file_path = ""  # no master metrics
 
-    rtn_dict["trg_enviro_metrics_file_path"] = trg_enviro_metrics_file_path # could be empty
+    rtn_dict["trg_enviro_metrics_file_path"] = trg_enviro_metrics_file_path  # could be empty
 
     # ----------------
     # benchmark source
@@ -915,7 +1006,7 @@ def __validate_input(
         # if the folder exists, we will download it later.
         if s3_sf.is_valid_s3_folder(s3_src_benchmark_data_path) is False:
             raise ValueError(f"The s3 path entered of {s3_src_benchmark_data_path} does not exist")
-        
+
         rtn_dict["s3_src_benchmark_data_path"] = s3_src_benchmark_data_path
         rtn_dict["local_benchmark_data_path"] = os.path.join(trg_gval_root, sv.LOCAL_GVAL_BENCHMARK_DATA)
         # C:\ras2fim_data\gval\benchmark_data  - where it will be saved when pulled down from s3
@@ -924,7 +1015,7 @@ def __validate_input(
         if os.path.exists(src_benchmark_data_path) is False:
             raise ValueError("src benchmark data folder (-b) does not exist")
         rtn_dict["s3_src_benchmark_data_path"] = ""
-        rtn_dict["local_benchmark_data_path"] = src_benchmark_data_path          
+        rtn_dict["local_benchmark_data_path"] = src_benchmark_data_path
 
     return rtn_dict
 
@@ -967,8 +1058,9 @@ if __name__ == "__main__":
         "-sc",
         "--src_unit_final_path",
         help=f"OPTIONAL: Local unit folder were the 'final' folder is at.\n"
-        r"It needs to have the geocurves in final\geocurves"
-        f" a file named 'models_domain.gpkg' in the final\models_domain.\n"
+        r"It needs to have the geocurves in final\geocurves (or geo_rating_curves) folder."
+        f"It also needs a file named 'models_domain.gpkg' or 'dissolved_conflated_models.gpkg'"
+        " in the final\models_domain.\n"
         r" e.g C:\my_ras\12030101_2276_ble_230925\final."
         f"\nDefaults to {sv.R2F_DEFAULT_OUTPUT_MODELS}\[unit_name]\{sv.R2F_OUTPUT_DIR_FINAL}",
         default="use_default",

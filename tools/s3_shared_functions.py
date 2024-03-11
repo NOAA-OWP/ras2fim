@@ -317,8 +317,7 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
     try:
         RLOG.lprint("===================================================================")
         print("")
-        RLOG.notice(f"Moving folder from {s3_src_folder_path}"
-                    f"                to  {s3_target_folder_path}")
+        RLOG.notice(f"Moving folder from {s3_src_folder_path}" f"                to  {s3_target_folder_path}")
         print()
         print(
             f"{cl.fg('dodger_blue_1')}"
@@ -590,9 +589,9 @@ def download_single_folder(
 
             args = {
                 "bucket_name": bucket_name,
-                "s3_file": src_file,                
+                "s3_file": src_file,
                 "trg_file": trg_file,
-                "s3_client": s3_client
+                "s3_client": s3_client,
             }
             if use_multi_thread is False:  # no MT here, just serially
                 try:
@@ -648,9 +647,9 @@ def download_single_folder(
 
             args = {
                 "bucket_name": bucket_name,
-                "s3_file": src_file,                
+                "s3_file": src_file,
                 "trg_file": trg_file,
-                "s3_client": s3_client
+                "s3_client": s3_client,
             }
             if use_multi_thread is False:  # no MT here, just serially
                 try:
@@ -698,7 +697,6 @@ def download_files_from_list(bucket_name, lst_files, is_verbose):
     # so all calls share this client and it is much faster.
     s3_client = boto3.client('s3')
     for item in lst_files:
-
         src_file = item["s3_file"]
 
         # This might come in with the s3://bucket name or might
@@ -708,7 +706,7 @@ def download_files_from_list(bucket_name, lst_files, is_verbose):
         src_file = src_file.replace("S3://", "")
         src_file = src_file.replace("s3://", "")
         src_file = src_file.replace(bucket_name, "", 1)
-        
+
         if src_file.startswith("/"):
             src_file = src_file.lstrip("/")  # cut off the front slash
 
@@ -748,11 +746,10 @@ def download_one_file(bucket_name: str, s3_file: str, trg_file: str, s3_client: 
         bucket_name (str):
         s3_file (str): S3 object name (full s3 path less bucket name)
             e.g. output_ras2fim/12030101_2276_ble_230925/myfile.txt
-        trg_file (str):            
+        trg_file (str):
         s3_client (boto3.client):
     """
     try:
-
         # Why extract the directory name? the key might have subfolder
         # names right in the key
         # print(f"... trg_file is {trg_file}")
@@ -766,11 +763,10 @@ def download_one_file(bucket_name: str, s3_file: str, trg_file: str, s3_client: 
         s3_file = s3_file.replace("\\", "/")
 
         if s3_client is None:
-            
             # TODO:  MAKE SURE THIS isn't used by download_files_from_list
             # It should provide it
             RLOG.error("Opps.. (maybe).. s3 client create")
-            
+
             s3_client = boto3.client('s3')
 
         with open(trg_file, 'wb') as f:

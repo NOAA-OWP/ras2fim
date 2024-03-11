@@ -3,7 +3,7 @@ We follow the [Semantic Vers
 
 NOTE To Rob / Carson when merging to dev. There are at least two sections with beta.x in it. One section is for the new 
 
-## v2.0.beta.xx - 2024-02-21 - [PR#283](https://github.com/NOAA-OWP/ras2fim/pull/283)
+## v2.0.1 - 2024-02-21 - [PR#283](https://github.com/NOAA-OWP/ras2fim/pull/283)
 
 This is a new tool, run_unit_benchmark_tests.py, named  which can use a single unit to:
 - pull down from S3 the exact HUC related benchmark files
@@ -51,6 +51,9 @@ Closes Issue [262](https://github.com/NOAA-OWP/ras2fim/issues/262) and Issue [27
    - `s3_model_mgm.py`: found a better way to pass args into the "validation" functions.
    - `s3_search_tools.py`: found a better way to pass args into the "validation" functions. Small s3_shared_funtion.py function name change.
    - `s3_shared_functions.py`:  Added a few more arg fixes. Added some tqdm. Upgraded how files and folders are downloaded, found a problem with it for the new tool.
+
+<br/><br/>
+
 ## v2.0.0 - 2024-03-07 - [PR#305](https://github.com/NOAA-OWP/ras2fim/pull/305)
 
 This PR covers a wide range of last minute bug fixes or critical enhancements including:

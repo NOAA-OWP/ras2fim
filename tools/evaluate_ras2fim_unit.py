@@ -110,6 +110,9 @@ def evaluate_unit_results(
     agreement_map.attrs['unit_name'] = unit_name
 
     metric_table.insert(0, 'process_datetime', dt_now)
+    if "process date" in metric_table.columns:
+        metric_table.drop("process date", axis=1)
+
     metadata_csv = pd.DataFrame({'process_datetime': [dt_now], 'unit_name': [unit_name]})
 
     # Create output directory if it does not exist

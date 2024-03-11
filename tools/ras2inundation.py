@@ -76,72 +76,73 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
         os.makedirs(os.path.split(output_inundation_poly)[0])
 
     # Create dictionary of available feature_id geocurve full paths.
-    geocurves_list = list(Path(geocurves_dir).glob("*_rating_curve_geo.csv"))
-
+    geocurves_list = list(Path(geocurves_dir).glob("*curve*.csv"))
     if len(geocurves_list) == 0:
         msg = "Error: Make sure you have specified a correct directory with at least one geocurve csv file."
         RLOG.critical(msg)
         raise Exception(msg)
 
-    # -------------------------
-    geocurve_path_dictionary = []
+    geocurve_path_dictionary = {}
+    available_feature_id_list = []
     for geocurve_path in geocurves_list:
         feature_id = geocurve_path.name.split("_")[0]
-        item = {"feature_id": feature_id, "path": str(geocurve_path)}
-        geocurve_path_dictionary.append(item)
+        available_feature_id_list.append(feature_id)
+        geocurve_path_dictionary.update({feature_id: {"path": str(geocurve_path)}})
 
-    if verbose is True:
-        RLOG.lprint("Completed creating a dictionary of available feature_ids and geocurve files.")
+    RLOG.lprint("Completed creating a dictionary of available feature_ids and geocurve files.")
 
-    # -------------------------
     # get ras2fim version from just one of the geocurve files
     ras2fim_version = None
-    for item in geocurve_path_dictionary:
-        sample_geocurve_data = pd.read_csv(item["path"])
+    for _, geocurve_file_path in geocurve_path_dictionary.items():
+        sample_geocurve_data = pd.read_csv(geocurve_file_path["path"])
         ras2fim_version = sample_geocurve_data.loc[0, "version"]
         break
 
     if ras2fim_version:
-        RLOG.trace(f"Derived ras2fim version {ras2fim_version} from geocurve files.")
+        RLOG.lprint(f"Derived ras2fim version {ras2fim_version} from geocurve files.")
     else:
         RLOG.warning("Failed to derive ras2fim version from geocurve files.")
 
-    # -------------------------
     # Open flow_file to detemine feature_ids to process
     flow_file_df = pd.read_csv(flow_file)
     flow_file_df['feature_id'] = flow_file_df['feature_id'].astype(str)
-
-    df_geocurve_files = pd.DataFrame.from_dict(geocurve_path_dictionary)
-    df_merged = pd.merge(flow_file_df, df_geocurve_files, how="inner", on='feature_id')
+    flow_file_df.set_index('feature_id', inplace=True)
 
     # compile each feature id info (discharge, stage, and geometry) into a dictionary
-    # RLOG.lprint("Compiling feature_ids info (discharge, stage, geometry) ... ")
+    if verbose is True:
+        RLOG.lprint("Compiling feature_ids info (discharge, stage, geometry) ... ")
     feature_id_polygon_path_dict = {}
 
-    # -------------------------
-    for ind in df_merged.index:
+    for feature_id in available_feature_id_list:
         # Get discharge and path to geometry file
-        feature_id = df_merged.iloc[ind]["feature_id"]
-        discharge_cms = df_merged.iloc[ind]["discharge"]
-        geocurve_file_path = df_merged.iloc[ind]["path"]
-
-        RLOG.trace(
-            f"Get discharge and path for feature id: {feature_id};"
-            f" discharge_cms: {discharge_cms}; geocurve_file_path: {geocurve_file_path}"
-        )
+        try:
+            # see if the a record exists for this feature id (lots won't)
+            flow_discharge_cms = flow_file_df.loc[feature_id, "discharge"]
+            geocurve_file_path = geocurve_path_dictionary[str(feature_id)]["path"]
+        except KeyError:
+            # don't log it.. there will be tons
+            continue
 
         # Use interpolation to find the row in geocurve_df that corresponds to the discharge_value
         geocurve_df = pd.read_csv(geocurve_file_path)
-        row_idx = geocurve_df["discharge_cms"].sub(discharge_cms).abs().idxmin()
+        row_idx = geocurve_df["discharge_cms"].sub(flow_discharge_cms).abs().idxmin()
         subset_geocurve = geocurve_df.iloc[row_idx]
         polygon_geometry = wkt.loads(subset_geocurve["geometry"])
         stage_m = subset_geocurve["stage_m"]
 
         feature_id_polygon_path_dict.update(
-            {feature_id: {"discharge_cms": discharge_cms, "geometry": polygon_geometry, "stage_m": stage_m}}
+            {
+                feature_id: {
+                    "discharge_cms": flow_discharge_cms,
+                    "geometry": polygon_geometry,
+                    "stage_m": stage_m,
+                }
+            }
         )
 
-    # -------------------------
+    if len(feature_id_polygon_path_dict) == 0:
+        return
+
     RLOG.lprint("Creating output gpkg file: " + output_inundation_poly)
     df = pd.DataFrame.from_dict(feature_id_polygon_path_dict, orient='index').reset_index()
     df.rename(columns={'index': 'feature_id'}, inplace=True)
@@ -149,6 +150,7 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
 
     # add version number before saving
     gdf['version'] = ras2fim_version
+    gdf['process_date'] = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M")
     gdf.to_file(output_inundation_poly, driver="GPKG")
 
     dur_msg = get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
