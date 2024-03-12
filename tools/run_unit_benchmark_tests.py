@@ -10,6 +10,7 @@ from pathlib import Path
 
 import colored as cl
 import geopandas as gpd
+import gval.utils.exceptions as gue
 import pandas as pd
 import rioxarray.exceptions as rxe
 
@@ -347,6 +348,12 @@ def __run_tests(
         # it throws exceptions for evaluate_unit_results.
         # Fix: run it via command line, come back, temp disable this part and continue.
         try:
+
+            data_details = f" inundation_poly_path is {inundation_poly_path},"
+            f" src_models_domain_extent_file is {src_models_domain_extent_file},"
+            f" bench_extent_raster is {bench_extent_raster_path},"
+            f" unit_folder_name is {unit_folder_name}"
+
             evaluate_unit_results(
                 inundation_poly_path,
                 src_models_domain_extent_file,
@@ -355,11 +362,16 @@ def __run_tests(
                 eval_output_folder,
             )
 
+        except gue.RastersDontIntersect:
+
+            RLOG.warning(
+                f"An issue occured while running gval results for {unit_folder_name};"
+                " Rasters don't spatially intersect. This will be very common with ras2fim."
+            )
+            RLOG.warning(data_details)
+            continue
+
         except rxe.NoDataInBounds:
-            data_details = f" inundation_poly_path is {inundation_poly_path},"
-            f" src_models_domain_extent_file is {src_models_domain_extent_file},"
-            f" bench_extent_raster is {bench_extent_raster_path},"
-            f" unit_folder_name is {unit_folder_name}"
 
             RLOG.warning(
                 f"An issue occured while running gval results for {unit_folder_name};"
@@ -373,11 +385,6 @@ def __run_tests(
             # re-raise but check if it is includes phrase 'Rasters don't spatially intersect'
             # so we can give a better error message.
             # Add context data and RLOG.
-
-            data_details = f" inundation_poly_path is {inundation_poly_path},"
-            f" src_models_domain_extent_file is {src_models_domain_extent_file},"
-            f" bench_extent_raster is {bench_extent_raster_path},"
-            f" unit_folder_name is {unit_folder_name}"
 
             # Some error messages coming from eval will say No data found in bounds.
             # This is an acceptable and semi common error. It just means there are not
@@ -530,7 +537,7 @@ def __merge_metrics_files(
                     # drop pre-existing records for this unit and its version
                     indexes_lst = enviro_metrics_df[
                         (enviro_metrics_df['unit_version'].astype("string") == version_date_as_str)
-                        & (enviro_metrics_df['unit_id'] == unit_id)
+                        & (enviro_metrics_df['unit_name'] == unit_id)
                     ].index
                     enviro_metrics_df.drop(indexes_lst, inplace=True)
 
@@ -738,6 +745,12 @@ def get_s3_benchmark_data(huc, s3_src_benchmark_data_path, local_benchmark_data_
 
     bench_files = s3_sf.get_file_list(bucket_name, s3_folder_path, "*" + huc + "*", False)
 
+    if len(bench_files) == 0:
+        print()
+        RLOG.critical(F"No benchmark files were found for HUC {huc}")
+        print()
+        sys.exit(1)
+
     # sort out to keep the .csv
     #    files_to_download = []
     #    for bench_file in bench_files:  # Iterate dictionary items
@@ -881,7 +894,7 @@ def __validate_input(
     if src_name_dict["key_unit_version_as_dt"] < dt.datetime(2023, 12, 31):
         # is v1
         geocurve_folder_name = "geocurves"
-        model_domain_file_name = "models_domain.gkpg"
+        model_domain_file_name = "models_domain.gpkg"
     else:
         # is v2 or higher
         geocurve_folder_name = "geo_rating_curves"
