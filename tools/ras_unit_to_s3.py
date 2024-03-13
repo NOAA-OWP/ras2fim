@@ -263,7 +263,7 @@ def __process_upload(bucket_name, src_unit_dir, unit_folder_name, s3_output_path
 
             # upload new one to output (yes.. unit_folder_name is used twice)
             __upload_s3_folder(
-                bucket_name, src_unit_dir, unit_folder_name, action, sv.S3_RAS_UNITS_OUTPUT_FOLDER, skip_files
+                bucket_name, src_unit_dir, unit_folder_name, new_s3_folder_name, action, sv.S3_RAS_UNITS_OUTPUT_FOLDER, skip_files
             )
 
         elif action == TRACKER_ACTIONS[2]:  # (overwriting_prev)
@@ -480,7 +480,7 @@ def __upload_s3_folder(
     new_s3_unit_folder_name,
     action,
     target_s3_folder,
-    skip_files,
+    skip_files = [],
 ):
     """
     Overview:
