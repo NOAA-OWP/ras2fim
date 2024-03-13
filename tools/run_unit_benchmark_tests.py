@@ -348,7 +348,6 @@ def __run_tests(
         # it throws exceptions for evaluate_unit_results.
         # Fix: run it via command line, come back, temp disable this part and continue.
         try:
-
             data_details = f" inundation_poly_path is {inundation_poly_path},"
             f" src_models_domain_extent_file is {src_models_domain_extent_file},"
             f" bench_extent_raster is {bench_extent_raster_path},"
@@ -363,7 +362,6 @@ def __run_tests(
             )
 
         except gue.RastersDontIntersect:
-
             RLOG.warning(
                 f"An issue occured while running gval results for {unit_folder_name};"
                 " Rasters don't spatially intersect. This will be very common with ras2fim."
@@ -372,7 +370,6 @@ def __run_tests(
             continue
 
         except rxe.NoDataInBounds:
-
             RLOG.warning(
                 f"An issue occured while running gval results for {unit_folder_name};"
                 " No data found in bounds. This is generally acceptable"
@@ -524,7 +521,6 @@ def __merge_metrics_files(
     inun_metrics_df = pd.DataFrame()  # unit_version
     for idx, metrics_file in enumerate(metric_files):
         if idx == 0:
-
             # load the first metrics, load it straight to the inun metrics parent
             inun_metrics_df = pd.read_csv(metrics_file)
 
