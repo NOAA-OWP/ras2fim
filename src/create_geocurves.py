@@ -477,7 +477,7 @@ def create_geocurves(unit_output_path: str, code_version: str):
                 geocurve_df = geocurve_df.sort_values(by=['feature_id', 'discharge_cfs'])
 
                 # reproject
-                geocurves_new_crs_df = geocurve_df.to_crs(DEFAULT_RASTER_OUTPUT_CRS)
+                geocurves_new_crs_df = geocurve_df.to_crs(sv.DEFAULT_RASTER_OUTPUT_CRS)
 
                 # The feature id inside the geocurve file may not be the feature id that was part of
                 # the original model id.
