@@ -476,19 +476,22 @@ def create_geocurves(unit_output_path: str, code_version: str):
                 geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
                 geocurve_df = geocurve_df.sort_values(by=['feature_id', 'discharge_cfs'])
 
+                # reproject
+                geocurves_new_crs_df = geocurve_df.to_crs(DEFAULT_RASTER_OUTPUT_CRS)
+
                 # The feature id inside the geocurve file may not be the feature id that was part of
                 # the original model id.
                 # We need to pull it out of the first line of the geodataframe as it will be accurate there.
                 # In theory it shoul always be unique
 
                 # ras2inundation needs the first part of the geocurve to be the feature ID
-                feature_id = geocurve_df.iloc[0]["feature_id"]
+                feature_id = geocurves_new_crs_df.iloc[0]["feature_id"]
                 geocurve_file_name = f"{feature_id}_{name_mid}_geocurve.csv"
                 path_geocurve = os.path.join(
                     unit_output_path, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES, geocurve_file_name
                 )
 
-                geocurve_df.to_csv(path_geocurve, index=False)
+                geocurves_new_crs_df.to_csv(path_geocurve, index=False)
             else:
                 RLOG.warning(f"geocurve_df_list is empty for {name_mid}")
         except:

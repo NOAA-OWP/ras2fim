@@ -79,7 +79,7 @@ def run_unit_benchmark_tests(
 
     RLOG.lprint("")
     RLOG.lprint("=================================================================")
-    RLOG.notice("          RUN Unit Benchmark Test ")
+    RLOG.notice("          Run Unit Benchmark Test ")
     RLOG.lprint(f"  (-u):  Source unit folder name: {unit_folder_name} ")
     RLOG.lprint(f"  (-sg): Source unit local path for the 'final' folder: {src_unit_final_path}")
     RLOG.lprint(f"  (-b):  Source benchmark data path: {src_benchmark_data_path}")
