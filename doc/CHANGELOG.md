@@ -17,6 +17,7 @@ This is a new tool, named `run_unit_benchmark_tests.py` can use a single unit to
 
     - **Very Important Note**:  The new benchmark tool has no ability to retrieve a master copy of each environment metrics file. It is encouraged to keep a copy in S3 as a master copy, download it to the appropriate folder, ie) C:\ras2fim_data\gval\evaluations\PROD\eval_PROD_metrics.csv, before processing new benchmark data. The enviro metrics will be updated as each unit processed. At the end of processing one or multiple units benchmark data, you should save it back to S3 manually. Best to just sync the entire enviro folder recursively including the metrics file. 
 
+
 NOTE: Due to time constraint, only the minimum arguments for cmd line have been tested. More tests using non default arguments and combinations of args are needed. See Issue [294](https://github.com/NOAA-OWP/ras2fim/issues/294).
 
 Some new symbology .lyr and .qml files have been added to make it easier to view to output agreement rasters and other files.
@@ -31,6 +32,10 @@ There are a few other misc fixes and enhancements which include:
 ***Note: The `environment.yml` file has been updated, so please remove and recreate the ras2fim conda environment. See past PR details in the `CHANGELOG.md` for information about how to do this.***
 
 There are also some TODO's that are in many of the files in the `tools` directory related to this PR that need to be addressed. Some are higher priority than others.
+
+### BAD_MODELS_LST
+There is a wide number of ways that a model can fail in ras2fim.py. Many scenarios are being programatically caught and logged throughout the code. However, if all else fails, there is a new system called the `bad_models_lst` system. Bad models, based on the model folder name, can be added to this list and will be dropped if found. The bad models list line items are the model folder name minus the last part of the folder name which is a time stamp. For now, they are hardcoded into `create_shapes_from_hecras.py` where you can search for the phrase `bad_models_lst`. If you are using default OWP_ras_models, you may want to check in this file. Later, this system will be changed to a config file and hardcoded into the script.
+<br/>
 
 Closes Issue [262](https://github.com/NOAA-OWP/ras2fim/issues/262) and Issue [273](https://github.com/NOAA-OWP/ras2fim/issues/273) and [312](https://github.com/NOAA-OWP/ras2fim/issues/312)
 
