@@ -1,5 +1,5 @@
 All notable changes to this project will be documented in this file.
-We follow the [Semantic Vers
+We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
 ## v2.0.1 - 2024-03-20 - [PR#283](https://github.com/NOAA-OWP/ras2fim/pull/283)
 
@@ -214,36 +214,6 @@ This PR focuses on creating geo rating curves for each conflated RAS model.
 ### Testing
 Tested on all RAS models in HUC 12090301.
   
-
-<br/><br/>
-
-
-## v2.0.beta.xx - 2024-02-22 - [PR#295](https://github.com/NOAA-OWP/ras2fim/pull/295)
-
-This tool, named s3_get_unit_inputs.py, can take in a HUC8 at a minimum, scan the local driver to see exactly files ras2fim.py needs for input files and goes get the files from S3.  For some files that are HUC specific like inputs\dems\ras_3dep_HUC8_10m\, it will pull down only the file that applies to the given HUC. It can process only one HUC at a time (per script run).
-
-This file simplifies getting setup for a ras2fim.py run and will also be helpful with automation.
-
-The files to be downloaded are based on a config file named s3_unit_download_files.lst for quick updates or testing.
-
-Closes Issue [290](https://github.com/NOAA-OWP/ras2fim/issues/290).
-
-### Additions  
-
-- `config`
-    - `s3_unit_download_files.lst`: The changeable list of which files need to be downloaded for ras2fim.py run.
-- `tools`
-    - `s3_get_unit_inputs.py`: As described above.
-
-### Changes  
-- `src`
-    - `clip_dem_from_shape.py`: variable name change.
-    - `ras2fim.py`: variable name change.
-    - `shared_variables.py`:  one variable name change plus a few new one ones for this tool.
-- `tools`
-    - `acquire_and_preprocess_3dep_dems.py`: variable name change.
-    - `run_unit_benchmark_tests.py`: Some linting, updated some notes and text.
-    - `s3_shared_functions.py`: minor text adjustments
 
 <br/><br/>
 
