@@ -1,4 +1,4 @@
-## Relative to an S3 'inputs' path  - use {} for huc subsitution.
+## Relative to an S3 'inputs' path  - use [] for huc subsitution.
 ## Case sensitive for the S3 paths
 X-National_Datasets\nwm_flows.gpkg
 X-National_Datasets\nwm_wbd_lookup.nc
