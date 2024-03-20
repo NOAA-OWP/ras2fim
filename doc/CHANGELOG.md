@@ -17,6 +17,10 @@ This is a new tool, named `run_unit_benchmark_tests.py` can use a single unit to
 
     - **Very Important Note**:  The new benchmark tool has no ability to retrieve a master copy of each environment metrics file. It is encouraged to keep a copy in S3 as a master copy, download it to the appropriate folder, ie) C:\ras2fim_data\gval\evaluations\PROD\eval_PROD_metrics.csv, before processing new benchmark data. The enviro metrics will be updated as each unit processed. At the end of processing one or multiple units benchmark data, you should save it back to S3 manually. Best to just sync the entire enviro folder recursively including the metrics file. 
 
+### BAD_MODELS_LST
+There is a wide number of ways that a model can fail in ras2fim. Many scenarios are being programitically caught and logged through the code. However, if all else fails, there is a new system called the `bad_models_lst` system. Bad model, based on the model folder name, can be added to this list and will be dropped if found. Note: The list is the model folder name minus the last part of the folder name which is a time stamp. For now, they are hardcoded into `create_shapes_from_hecras.py` where you can search for the phrase `bad_models_lst`. If you are using default OWP_ras_models, you may want to check in this file. Later, this system will be changed to a config file and hardcoded into the script.
+
+
 NOTE: Due to time constraint, only the minimum arguments for cmd line have been tested. More tests using non default arguments and combinations of args are needed. See Issue [294](https://github.com/NOAA-OWP/ras2fim/issues/294).
 
 Some new symbology .lyr and .qml files have been added to make it easier to view to output agreement rasters and other files.
