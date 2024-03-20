@@ -7,6 +7,7 @@ import os
 import pathlib
 import re
 import shutil
+import sys
 import traceback
 
 import numpy as np
@@ -1125,6 +1126,13 @@ def create_hecras_files(huc8_num, int_fn_starting_flow, int_number_of_steps, uni
         ls_path_to_geo_file_nd,
     ] = create_list_of_paths_flow_geometry_files_4each_BCs(path_to_conflated_streams_csv)
 
+    if (len(ls_path_to_flow_file_wse) == 0) and (len(ls_path_to_flow_file_nd) == 0):
+        RLOG.critical(
+            "There are no conflated models with normal depth and"
+            " water surface elevation boundary conditions"
+        )
+        sys.exit(1)
+
     # Compute boundray condition for models with normal depth BCs
     list_first_pass_flows_xs_nd, list_str_slope_bc_nd = compute_boundray_condition_nd(
         int_fn_starting_flow, int_number_of_steps, ls_path_to_flow_file_nd
@@ -1840,7 +1848,9 @@ def fn_run_one_ras_model(
         log_file_name = f"{log_file_prefix}-{file_id}.log"
         MP_LOG.setup(os.path.join(log_default_folder, log_file_name))
 
-        MP_LOG.lprint(f"Starting Processing {model_folder} Model")
+        msg = f"Pass # {pass_num} - Starting processing {model_folder}"
+        f" model in worker fim rasters  :  {index_number}  of  {total_number_models}"
+        MP_LOG.lprint(msg)
         MP_LOG.trace(str_ras_projectpath)
 
         all_x_sections_info = fn_run_hecras(str_ras_projectpath, int_number_of_steps)
@@ -1861,7 +1871,7 @@ def fn_run_one_ras_model(
 
         all_x_sections_info.to_csv(path_all_x_sections_info)
 
-        MP_LOG.lprint(f"Processing {model_folder} Model Completed")
+        MP_LOG.lprint(f"Processing {model_folder} model completed")
 
     except Exception:
         if ras2fim_logger.LOG_SYSTEM_IS_SETUP is True:

@@ -72,6 +72,8 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
                 ie) s3://ras2fim-dev/OWP_ras_models/models-12030105-full/1262811_UNT 211.... Washd.prj
     """
 
+    arg_values = locals().copy()
+
     start_time = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
@@ -86,13 +88,13 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
 
     # --------------------
     # It will throw it's own exceptions if required
-    rtn_dict = __validate_input(s3_path, search_key, output_folder_path)
-    bucket_name = rtn_dict["bucket_name"]
-    s3_search_folder = rtn_dict["s3_search_folder"]
+    rd = __validate_input(**arg_values)
+    bucket_name = rd["bucket_name"]
+    s3_search_folder = rd["s3_search_folder"]
 
     # ----------
     # Call S3 for wildcard search (get list of keys and urls back)
-    s3_items = s3_sf.get_records_list(bucket_name, s3_search_folder, search_key, True)
+    s3_items = s3_sf.get_file_list(bucket_name, s3_search_folder, search_key, True)
     if len(s3_items) == 0:
         RLOG.error(f"No files or folders found in source folder of {s3_path}")
     else:
@@ -120,7 +122,9 @@ def s3_search(s3_path, search_key, output_folder_path=sv.LOCAL_TOOLS_OUTPUT_PATH
     # Calculate duration
     time_duration = end_time - start_time
     RLOG.lprint(f"Duration: {str(time_duration).split('.')[0]}")
-    RLOG.lprint("")
+    print()
+    print(f"log files saved to {RLOG.LOG_FILE_PATH}")
+    print()
 
 
 ####################################################################

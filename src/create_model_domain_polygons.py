@@ -139,7 +139,8 @@ def fn_make_domain_polygons(
     # add conflation info
     conflate_qc_df = pd.read_csv(conflation_qc_path)
     models_polygons_gdf["conflated"] = np.where(
-        models_polygons_gdf[model_name_field].isin(conflate_qc_df[model_name_field]).values, "yes", "no")
+        models_polygons_gdf[model_name_field].isin(conflate_qc_df[model_name_field]).values, "yes", "no"
+    )
 
     # also get HUC8 number from qc file name
     models_polygons_gdf["HUC8"] = os.path.basename(conflation_qc_path).split("_stream_qc_fid_xs.csv")[0]

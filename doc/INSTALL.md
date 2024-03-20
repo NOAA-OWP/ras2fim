@@ -16,12 +16,6 @@ If you have not already done so, ensure `git` has been installed and clone a cop
 ```
 git clone https://github.com/NOAA-OWP/ras2fim.git (see note below)
 ```
-**Note: ras2fim V2 series has started development as of early November 2023. Initial check-ins for the default branch will fail for the short term future until an advanced version is ready.** When the CHANGELOG.md shows version check-ins starting with the phrase `V2.0.beta.x`, means the branch is not yet operational but you are still welcome to contibute to the new WIP branch. Once the usable versions have been merged, the CHANGELOG.md will start with the number of `v2.0.0.0`.
-<br>
-**If you want to view the last stable `V1` series, use the following git clone command which will come from the ras2fim `main (V1)` branch.**
-```
-git clone https://github.com/NOAA-OWP/ras2fim.git -b V1
-```
 
 ### Step 3:
 Open an **Anaconda Powershell Prompt** and navigate to the cloned directory.  Your path may vary.<br>
@@ -37,7 +31,11 @@ conda env create -f environment.yml
 ### Step 5:
 You will now need some data.
 
-If you have not already done so, you will need to downloaded some files/folders from ESIP. You now need the `inputs` and `OWP_ras_models` folders as mentioned in the [README](../README.md). Downloading these two folders will give you some default data that is required. Of course, you are welcome to override or experiment with some of this data as you see fit.
+If you have not already done so, you will need to downloaded some files/folders from ESIP. See the [README](../README.md) file for more details on ESIP access. 
+
+You now need the `inputs` and `OWP_ras_models` folders as mentioned in the [README](../README.md). Downloading these two folders will give you some default data that is required. Of course, you are welcome to override or experiment with some of this data as you see fit.
+
+More details are coming soon.
 <br>
 
 Here are some notes describing the two folders.
@@ -49,6 +47,7 @@ ie)<br>
 ![ras2fim default models folder structure image](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/default_models_folder_structure.png)
 <br><br>
 
+### ------------------------------------------------------------
 ### --- You are now ready to start processing ras2fim models ---
 <br>
 
@@ -62,11 +61,6 @@ conda activate ras2fim
 ![](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/conda_activate.png)
 
 ### Step 7:
-
-To begin processing, change directories into the source git code `src` subfolder.<br>
-
-![](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/conda_src.png)
-
 
 The main script is titled `ras2fim.py`.  **All scripts have a helper flag of `-h`**.  It is recommended that you run the script with the helper flag first to determine the required input. Also read the sample usage notes near the bottom of `ras2fim.py` code file.<br><br>
 ![](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/conda_python_run.png)
@@ -87,3 +81,9 @@ You can use any editor you like, but if you are a fan of VSCode and have it inst
 
 <br>
 <br>
+
+### Additional Tools
+
+There are a wide range of other tools, in the `tools` directory, you may use that can help with processing and data gathering. Most of them are generally for NOAA/OWP use only as it relies on having access to our S3 bucket. However, if you have your own S3 and set it up with a matching default folder structure, you are welcome to use the scripts. Please read informaton in those scripts carefully, notes at the top of the script and bottom especially.
+
+

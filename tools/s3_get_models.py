@@ -171,13 +171,13 @@ class Get_Models_By_Catalog:
         RLOG.lprint(f" -- HUC: {huc_number}")
         RLOG.lprint(f" -- CRS: {projection}")
         RLOG.lprint(f" -- Source Code: {source_code}")
-        RLOG.lprint("")
+        print()
         RLOG.lprint(f" -- Source path for models catalog: {self.s3_path_to_catalog_file}")
         RLOG.lprint(f" -- Source download path for models: {self.src_owp_model_folder_path}")
         RLOG.lprint(f" -- Target file name and path for the filtered csv: {self.target_filtered_csv_path}")
         RLOG.lprint(f" -- Target path for models: {self.target_owp_ras_models_path}")
         RLOG.lprint(f" -- List only is {list_only}")
-        RLOG.lprint("")
+        print()
 
         self.list_only = list_only
         self.is_verbose = is_verbose
@@ -369,6 +369,8 @@ class Get_Models_By_Catalog:
 
         dur_msg = get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
         RLOG.lprint(dur_msg)
+        print()
+        print(f"log files saved to {RLOG.LOG_FILE_PATH}")
         print()
 
     # -------------------------------------------------

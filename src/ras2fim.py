@@ -140,7 +140,8 @@ def init_and_run_ras2fim(
         if os.path.exists(terrain_file_path) is False:
             raise ValueError(
                 f"The calculated terrain DEM path of {terrain_file_path} does not appear exist.\n"
-                f"For NOAA/OWP staff.... this file can likely be downloaded from {sv.S3_INPUTS_3DEP_DEMS}"
+                "For NOAA/OWP staff.... this file can likely be"
+                f" downloaded from {sv.S3_INPUTS_3DEP_DEMS_PATH}"
             )
     elif terrain_file_path != "":
         if os.path.exists(terrain_file_path) is False:  # might be a full path
@@ -325,7 +326,6 @@ def fn_run_ras2fim(
 
     # run the third script
     if int_step <= 3:
-
         # provide conflation qc file to mark the parent models that conflated to NWM reaches
         conflation_csv_path = os.path.join(dir_shapes_from_conflation, "conflated_ras_models.csv")
 
@@ -441,6 +441,9 @@ def fn_run_ras2fim(
     run_arguments_filepath = os.path.join(unit_output_path, "run_arguments.txt")
     shutil.copy2(run_arguments_filepath, r2f_final_dir)
 
+    # move the log folder into "final/logs"
+    shutil.copytree(RLOG.LOG_DEFAULT_FOLDER, os.path.join(r2f_final_dir, "logs"), dirs_exist_ok=True)
+
     RLOG.lprint("+=================================================================+")
     RLOG.success("  RUN RAS2FIM - Completed                                         |")
     dur_msg = sf.get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
@@ -550,13 +553,11 @@ if __name__ == "__main__":
         type=str,
     )
 
-    # Note: As of Jan 2024, 'ble' is the only acceptable value but this could change at any time.
-    # Validated against config/source_codes.csv
     parser.add_argument(
         "-sc",
         "--source_code",
         help="REQUIRED: Enter the source code value to be applied to output folder names."
-        " e.g. ble  [case-sensitive].",
+        " e.g. ble, nws  [case-sensitive].",
         required=True,
         metavar="",
         type=str,

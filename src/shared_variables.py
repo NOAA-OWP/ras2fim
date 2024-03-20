@@ -50,27 +50,21 @@ R2F_OUTPUT_DIR_HECRAS_TERRAIN = "04_hecras_terrain"
 R2F_OUTPUT_DIR_HECRAS_OUTPUT = "05_hecras_output"
 R2F_OUTPUT_DIR_CREATE_RATING_CURVES = "06_create_rating_curves"
 
-# TODO: Jan 22, 2024: These next three variables are likely no longer needed
-# R2F_OUTPUT_DIR_SIMPLIFIED_GRIDS = "Depth_Grid"
 R2F_OUTPUT_DIR_METRIC_RATING_CURVES = "Rating_Curve"
 R2F_OUTPUT_DIR_METRIC_CROSS_SECTIONS = "Cross_Sections"
-
-
-R2F_OUTPUT_DIR_RAS2REM = "ras2rem"
-R2F_OUTPUT_DIR_RAS2CALIBRATION = "ras2calibration"  # TODO: Update?
 R2F_OUTPUT_DIR_FINAL = "final"
 R2F_OUTPUT_DIR_GEOCURVES = "geo_rating_curves"
 R2F_OUTPUT_DIR_DOMAIN_POLYGONS = "models_domain"
 R2F_OUTPUT_DIR_RAS2RELEASE = os.path.join(DEFAULT_BASE_DIR, "ras2fim_releases")
 
+R2F_OUTPUT_DIR_RAS2CALIBRATION = "ras2calibration"  # TODO: Update?
+R2F_OUTPUT_FILE_RAS2CAL_CSV = "reformat_ras_rating_curve_table.csv"
+R2F_OUTPUT_FILE_RAS2CAL_GPKG = "reformat_ras_rating_curve_points.gpkg"
+R2F_OUTPUT_FILE_RAS2CAL_LOG = "ras2calibration_log.txt"
+
 # LOGS
 LOCAL_TOOLS_OUTPUT_PATH = os.path.join(DEFAULT_BASE_DIR, "tool_outputs")
 DEFAULT_LOG_FOLDER_PATH = os.path.join(LOCAL_TOOLS_OUTPUT_PATH, "logs")
-
-
-# OUTPUT FILES
-R2F_OUTPUT_FILE_RAS2CAL_CSV = "reformat_ras_rating_curve_table.csv"
-R2F_OUTPUT_FILE_RAS2CAL_GPKG = "reformat_ras_rating_curve_points.gpkg"
 
 # S3 PATHS
 S3_DEFAULT_BUCKET_NAME = "ras2fim"
@@ -81,8 +75,35 @@ S3_RAS_UNITS_OUTPUT_PATH = S3_DEFAULT_BUCKET_PATH + S3_RAS_UNITS_OUTPUT_FOLDER
 S3_OUTPUT_TRACKER_FILE = "ras_output_tracker.csv"
 S3_OWP_RAS_MODELS_FOLDER = S3_DEFAULT_BUCKET_PATH + "OWP_ras_models/models"
 S3_DEFAULT_MODELS_CATALOG_PATH = S3_DEFAULT_BUCKET_PATH + "OWP_ras_models/OWP_ras_models_catalog.csv"
-S3_INPUTS_3DEP_DEMS = S3_DEFAULT_BUCKET_PATH + "inputs/dems/ras_3dep_HUC8_10m"
+S3_INPUTS_PATH = S3_DEFAULT_BUCKET_PATH + "inputs/"
+S3_INPUTS_3DEP_DEMS_PATH = S3_INPUTS_PATH + "dems/ras_3dep_HUC8_10m"
 S3_DEFAULT_RAS2RELEASE_FOLDER = S3_DEFAULT_BUCKET_PATH + "ras2fim_releases"
+
+
+# GVAL PATHS AND VARIABLES
+LOCAL_GVAL_ROOT = os.path.join(DEFAULT_BASE_DIR, "gval")
+LOCAL_GVAL_BENCHMARK_DATA = "benchmark_data"
+LOCAL_GVAL_EVALS = "evaluations"
+
+S3_GVAL_BENCHMARK_FOLDER = "gval/benchmark_data"
+S3_GVAL_EVALS_FOLDER = "gval/evaluations"
+S3_GVAL_BENCHMARK_PATH = S3_DEFAULT_BUCKET_PATH + S3_GVAL_BENCHMARK_FOLDER
+S3_GVAL_EVALS_PATH = S3_DEFAULT_BUCKET_PATH + S3_GVAL_EVALS_FOLDER
+
+GVAL_VALID_STAGES = [
+    "2yr",
+    ",5yr",
+    "10yr",
+    "25yr",
+    "50y",
+    "100yr",
+    "200yr",
+    "500yr",
+    "action",
+    "minor",
+    "moderate",
+    "major",
+]
 
 # NODATA VALUE
 DEFAULT_NODATA_VAL = 0 - 9999

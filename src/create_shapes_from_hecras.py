@@ -60,7 +60,7 @@ def fn_open_hecras(rlog_file_path, rlog_file_prefix, str_ras_project_path):
     hec = None
     has_exception = False
 
-    is_multi_proc = (rlog_file_prefix != "")
+    is_multi_proc = rlog_file_prefix != ""
 
     try:
         if is_multi_proc:
@@ -196,7 +196,7 @@ def fn_get_active_geom(str_path_hecras_project_fn2):
 
         str_path_to_current_geom = str_path_hecras_project_fn2[:-3] + str_current_geom
 
-        return str_path_to_current_geom # file name with the extension stripped off
+        return str_path_to_current_geom  # file name with the extension stripped off
 
     except Exception:
         RLOG.error(f"An error occurred while processing {str_path_hecras_project_fn2}")
@@ -216,7 +216,7 @@ def fn_geodataframe_cross_sections(str_path_hecras_project_fn, STR_CRS_MODEL):
     if file_name == "":
         RLOG.warning("failure while getting active geometry")
         return gpd.GeoDataFrame()
-    
+
     str_path_to_geom_hdf = file_name + ".hdf"
 
     if path.exists(str_path_to_geom_hdf):
@@ -723,12 +723,28 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
     # Some models can not be processed and we are unable to trap them at this time, so we will
     # manually add an exception list to drop them
 
-    bad_models_lst = ["1292972_BECK BRANCH_g01_1701646035", "1293152_DUCK CREEK_g01_1701646019"]
+    """
+    Not all models are easy to tell if they are corrupt. If you manually run the huc through the
+    HECRAS UI tool (not via code), it can give you errors to show you so you can put it on this list.
+    Don't just assume that if a model doesn't go through that is bad as it might be our code that
+    didn't process it correctly for a good model permuation.
+    """
+
+    # This really need to become an config someday. Ran short of time
+    bad_models_lst = [
+        "1292972_BECK BRANCH_g01",
+        "1293152_DUCK CREEK_g01",
+        "1305829_UNT163 Eagle Mountain Watershed_g01",
+    ]
 
     list_prj_files = []
     for root, dirs, __ in os.walk(input_models_path):
         for folder_name in dirs:
-            if folder_name in bad_models_lst:
+            # we have to iterate as we are using part of the model name (time stipped off the end)
+            model_name_time = folder_name.rsplit("_", 1)
+            model_name = folder_name.replace("_" + model_name_time[-1], "")
+
+            if model_name in bad_models_lst:
                 RLOG.warning(f"model folder name is on the 'bad model list' ({folder_name})")
                 continue
 
@@ -738,6 +754,9 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
             if "_g01_" not in folder_name and "_G01_)" not in folder_name:
                 RLOG.warning(f"model folder name is not a 'g01' folder ({folder_name})")
                 continue
+
+            # we need to drop the time off the end of the folder name and ensure their are no
+            # duplicate models (in theory only one )
 
             # load its child files
             model_path = os.path.join(root, folder_name)

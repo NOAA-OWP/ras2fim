@@ -316,9 +316,12 @@ def fn_create_rating_curves(huc8, path_unit_folder):
                 columns={'wse': 'wse_ft', 'discharge': 'discharge_cfs', 'max_depth': 'stage_ft'}
             )
 
-            # Adding Discharg_CMS column
+            # Adding Discharge_CMS column
             Discharge_CMS = (x_sections_info_fid['discharge_cfs'] * 0.0283168).round(4)
             x_sections_info_fid.insert(7, "discharge_cms", Discharge_CMS, True)
+
+            stage_m = (x_sections_info_fid['stage_ft'] * 0.3048).round(4)
+            x_sections_info_fid.insert(10, "stage_m", stage_m, True)
 
             # Saving the dataframe
             x_sections_info_fid.to_csv(path_to_all_xs_info_fid)
@@ -332,6 +335,7 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             )
             wse2 = pd.DataFrame(fid_mid_x_sections_info_src['wse'], columns=['wse']).round(2)
             depth2 = pd.DataFrame(fid_mid_x_sections_info_src['max_depth'], columns=['max_depth']).round(2)
+            stage_m = pd.DataFrame(fid_mid_x_sections_info_src['max_depth'], columns=['max_depth']).round(2)
             discharge_wse_depth2 = pd.concat([discharge2, wse2, depth2], axis=1)
 
             fid_mid_x_sections_info_src = fid_mid_x_sections_info_src.drop(
@@ -348,6 +352,10 @@ def fn_create_rating_curves(huc8, path_unit_folder):
             # Adding Discharg_CMS column
             Discharge_CMS_RC = (fid_mid_x_sections_info_src['discharge_cfs'] * 0.0283168).round(4)
             fid_mid_x_sections_info_src.insert(4, "discharge_cms", Discharge_CMS_RC, True)
+
+            # adding stage_m column
+            stage_m = (fid_mid_x_sections_info_src['stage_ft'] * 0.3048).round(4)
+            fid_mid_x_sections_info_src.insert(7, "stage_m", stage_m, True)
 
             # Saving the rating curve
             fid_mid_x_sections_info_src.to_csv(str_xsection_path, index=True)

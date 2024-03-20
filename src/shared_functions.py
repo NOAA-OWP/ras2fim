@@ -567,9 +567,10 @@ def parse_unit_folder_name(unit_folder_name):
                        key_huc,
                        key_crs_number,
                        key_source_code,
-                       key_date_as_str (date string eg: 230811),
-                       key_date_as_dt  (date obj for 230811)
-                       unit_folder_name (12090301_2277_ble_230811) (without path if it came in)
+                       key_unit_id,  (12090301_2277_ble)
+                       key_unit_folder_name (12090301_2277_ble_230811) (without path if it came in)
+                       key_unit_version_as_str (date string eg: 230811),
+                       key_unit_version_as_dt  (date obj for 230811)
         OR
         If in error, dictionary will have only one key of "error", saying why it the
            reason for the error. It lets the calling code to decide if it wants to raise
@@ -644,8 +645,9 @@ def parse_unit_folder_name(unit_folder_name):
     rtn_dict["key_huc"] = key_huc
     rtn_dict["key_crs_number"] = key_crs
     rtn_dict["key_source_code"] = key_source_code
-    rtn_dict["key_date_as_str"] = key_date
-    rtn_dict["key_date_as_dt"] = dt_key_date
-    rtn_dict["unit_folder_name"] = unit_folder_name  # cleaned version
+    rtn_dict["key_unit_id"] = f"{key_huc}_{key_crs}_{key_source_code}"  # 12090301_2277_ble
+    rtn_dict["key_unit_folder_name"] = unit_folder_name  # 12090301_2277_ble_230914
+    rtn_dict["key_unit_version_as_str"] = key_date  # (both as str and date version are used)
+    rtn_dict["key_unit_version_as_dt"] = dt_key_date
 
     return rtn_dict

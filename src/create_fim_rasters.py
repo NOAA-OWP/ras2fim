@@ -133,6 +133,14 @@ def fn_create_fim_rasters(
     RLOG.lprint("  ---(w) HUC-8 WATERSHED: " + huc8_num)
     RLOG.lprint("  ---(o) OUTPUT PATH: " + unit_output_folder)
     print()
+    print()
+    msg = "If a model hangs in this stage for multiple mins  (ie > 5), it is probably a bad"
+    " model. You can prove that by using the actual HECRAS UI tool directly and running that"
+    " model through it. If it fails, add it to the exception list in the"
+    " 'create_shapes_from_hecras.py' -> bad_models_lst list."
+    RLOG.notice(msg)
+    print()
+    print()
 
     flt_interval = 0.5  # feet
 

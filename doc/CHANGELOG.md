@@ -1,6 +1,90 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.1 - 2024-03-20 - [PR#283](https://github.com/NOAA-OWP/ras2fim/pull/283)
+
+This is a new tool, named `run_unit_benchmark_tests.py` can use a single unit to:
+- pull down from S3 the exact HUC related benchmark files.
+- use the benchmark data and the geocurves from the unit to create inundation files.
+- using the new inundations files, the unit extent files, the benchmark extent files and the benchmark raster's to put through the GVAL engine to get benchmark test results and create a unit/version metrics file.
+- using the newly created metrics files, rolls them into a "environment" level (not unit and version) which has all metrics for all runs against it including earlier versions. A "environment" is either "PROD" or "DEV", and is designed to **include all units and versions in the PROD or DEV respective environments**. This allows any combinations of comparisons such as units by code version, a unit against it's own versions, a benchmark comparison across multiple units, etc.
+    - Fields available in the environment metrics, allowing for various comparisons include:
+         - unit_name:  ie) 12040101
+         - unit_version:  ie) 230922
+         - code_version:  ie) v.1.29.0  or v2.0.1
+         - huc,
+         - benchmark_source and wide range of statics, magnitudes and other criteria.
+
+    - **Very Important Note**:  The new benchmark tool has no ability to retrieve a master copy of each environment metrics file. It is encouraged to keep a copy in S3 as a master copy, download it to the appropriate folder, ie) C:\ras2fim_data\gval\evaluations\PROD\eval_PROD_metrics.csv, before processing new benchmark data. The enviro metrics will be updated as each unit processed. At the end of processing one or multiple units benchmark data, you should save it back to S3 manually. Best to just sync the entire enviro folder recursively including the metrics file. 
+
+NOTE: Due to time constraint, only the minimum arguments for cmd line have been tested. More tests using non default arguments and combinations of args are needed. See Issue [294](https://github.com/NOAA-OWP/ras2fim/issues/294).
+
+Some new symbology .lyr and .qml files have been added to make it easier to view to output agreement rasters and other files.
+
+During testing, an unrelated bug was found relating to step 5 and failing HUCs due to boundary conditions. A temp fix is included adding a test to gracefully abort if it means the failing conditions.
+
+There are a few other misc fixes and enhancements which include:
+- Addition of a `stage_m` column/data to output csv's as it was needed in the final geo_curves for inundation to work.
+- Another new tool is named `s3_get_unit_inputs.py`:  With minimum arguments, a user can call the script with just a HUC number, script will go to S3 to download all of the required input files for ras2fim to run for that HUC.  When relevant it will download HUC specific files only, such as `dems\ras_3dep_HUC8_10m\HUC8_[]_dem.tif`. A config file exists to determine which files to download and by default will only download them if the files do not already exist on the file system.
+- Some updates to the `README.md` and `INSTALL.md` for v2 notes have been included. Due to time constraints, not the documents are not fully updated.
+
+***Note: The `environment.yml` file has been updated, so please remove and recreate the ras2fim conda environment. See past PR details in the `CHANGELOG.md` for information about how to do this.***
+
+There are also some TODO's that are in many of the files in the `tools` directory related to this PR that need to be addressed. Some are higher priority than others.
+
+Closes Issue [262](https://github.com/NOAA-OWP/ras2fim/issues/262) and Issue [273](https://github.com/NOAA-OWP/ras2fim/issues/273) and [312](https://github.com/NOAA-OWP/ras2fim/issues/312)
+
+### Additions  
+
+- `git-ignore`: Adjust to allow new symbology files.
+- `config`: 
+    - There are a number of new files have been for symbology in a subfolder of config.
+    - `s3_unit_download_files.lst`: To support the new tool `s3_get_unit_inputs.py` mentioned above.
+- `tools`
+    - `run_unit_benchmark_tests.py`: New tool as described above.
+    - `s3_get_unit_inputs.py`: New tool as described above.
+
+### Files Renamed:
+ - `tools`
+     - `evaluate_ras2fim_unit.py` was renamed from `evaluate_ras2fim_model.py` which was incorrectly named.  Updates were also made to function names and variable to talk about units and not models as models are data from RRASSLER. Other updates include enhanced tracing and error handling.
+
+### Removed:
+- `doc
+    - `conda_src.png`:  No longer relevant after changes to the `README.md` and `INSTALL.md`.
+
+### Changes  
+
+- `README.md`: Text changes to reflect new V2 functionality.
+- `config`
+    - `source_codes.csv`: Updated to included all 5 benchmark source; codes and descriptions.
+- `doc`
+    - `INSTALL.MD`: Partial text changes to reflect new V2 functionality.
+- `environment.yml`: Updated to reflect package changes.
+- `src`
+    - `clip_dem_from_shape.py`: Linting fix.
+    - `create_fim_rasters.py`: Enhanced output/logging.
+    - `create_geocurves.py`:
+        - text and error handling updates
+        - Fixes for various error conditions such as assuming that inundation files exist, changing the projection for the geometry column in the output geocurves csv files, boundary condition issues, and adjustments to multi-proc.
+    - `create_model_domain_polygons.py`: linting fix.
+    - `create_rating_curves.py`: linting fix, plus adding new `stage_m` column for ras2inundation.py script.
+    - `create_shapes_from_hecras.py`: fix small multi-proc issue, text and tracing upgrades, upgrades to the `bad_models_ls` system. The earlier edition has the model folder time stamp in the name, which would have created problems if newer version of those models came out. Now, it ignores the timestamp.
+    - `ras2fim.py`: Text changes based on new benchmark sources plus make a copy of the output log folder into  the "final" folder at last minute for long term traceability.
+    - `shared_functions.py`: Upgraded the `parse_unit_folder_name` function.
+    - `shared_variables.py`: Updated a few variables and added new ones for the new tool. Small adjustments to some variable names. Added know acceptable benchmark magnitude / stages.
+    - `worker_fim_rasters.py`: Upgraded error handling, text and logging. 
+- `tools`
+    - `acquire_and_preprocess_3dep_dems.py`: small changes for updated variable names from `shared_variables.py`.
+    - `ras2inundation.py`: Added standard output headers, timers and durations. Updated some inline comments. Also upgraded a few bugs and error handling.
+   -  `ras_unit_to_s3.py`: Changes some terminology to talk use the new phrase of `units`, `unit_names` and `unit_versions`. Some variable names were changed as well for better readability.
+   - `s3_batch_evaluations.py`:  Added standard output headers, timers and durations. Updated some inline comments. Made some linting changes.  Fixed a hardcoded output pathing issue which was referential the code file (it could use a bit more upgrading but works now). Some minor text and layout fixes. Adjustments were also made to handle differences between ble and nws benchmark sources. Note: At this point, it can not handle any other benchmark sources other than ble and nws.
+   - `s3_get_models.py`: linting fix and added an logging output line.
+   - `s3_model_mgmt.py`: found a better way to pass args into the "validation" functions. Also added some minor text and tracing fixes.
+   - `s3_search_tools.py`: found a better way to pass args into the "validation" functions. Small s3_shared_funtion.py function name change.
+   - `s3_shared_functions.py`:  Added a few more arg fixes. Added some tqdm. Upgraded how files and folders are downloaded, found a problem with it for the new tool. Fixed a minor multi-proc bug.
+
+<br/><br/>
+
 ## v2.0.0 - 2024-03-07 - [PR#305](https://github.com/NOAA-OWP/ras2fim/pull/305)
 
 This PR covers a wide range of last minute bug fixes or critical enhancements including:

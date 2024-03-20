@@ -66,6 +66,8 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
 
     """
 
+    arg_values = locals().copy()
+
     start_dt = dt.datetime.utcnow()
     dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
 
@@ -81,10 +83,10 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
 
     # --------------------
     # It will throw it's own exceptions if required
-    rtn_dict = __validate_input(s3_master_csv_path, s3_models_path, output_folder_path)
+    rd = __validate_input(**arg_values)
 
-    bucket_name = rtn_dict["bucket_name"]
-    s3_folder_path = rtn_dict["s3_models_output_folder"]
+    bucket_name = rd["bucket_name"]
+    s3_folder_path = rd["s3_models_output_folder"]
     csv_file_name = f"s3_model_mgmt_report_{get_date_with_milli(False)}.csv"
     target_report_path = os.path.join(output_folder_path, csv_file_name)
 
@@ -202,9 +204,10 @@ def manage_models(s3_master_csv_path, s3_models_path, output_folder_path):
     RLOG.lprint("--------------------------------------")
     RLOG.success(f"Process completed: {get_stnd_date()}")
     RLOG.success(f"Report csv saved to: {target_report_path}")
-    print()
     dur_msg = get_date_time_duration_msg(start_dt, dt.datetime.utcnow())
     RLOG.lprint(dur_msg)
+    print()
+    print(f"log files saved to {RLOG.LOG_FILE_PATH}")
     print()
 
 
@@ -376,7 +379,6 @@ def __validate_input(s3_master_csv_path, s3_models_path, output_folder_path):
     bucket_name, s3_output_folder = s3_sf.parse_bucket_and_folder_name(s3_models_path)
     rtn_dict["bucket_name"] = bucket_name
     rtn_dict["s3_models_output_folder"] = s3_output_folder
-
     # see if the master csv exists
     if s3_sf.is_valid_s3_file(s3_master_csv_path) is False:
         raise ValueError(

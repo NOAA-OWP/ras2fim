@@ -16,9 +16,6 @@ import tqdm
 from botocore.client import ClientError
 
 
-# from math import round
-
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 import shared_variables as sv
 from shared_functions import get_date_time_duration_msg
@@ -47,7 +44,7 @@ def upload_file_to_s3(src_path, full_s3_path_and_file_name):
         if full_s3_path_and_file_name == "":
             raise Exception("full s3 path and file name is not defined")
 
-        full_s3_path_and_file_name = full_s3_path_and_file_name.replace("\\", "/")
+        full_s3_path_and_file_name = full_s3_path_and_file_name.replace("S3://", "s3://")
 
         # we need the "s3 part stripped off for now" (if it is even there)
         adj_s3_path = full_s3_path_and_file_name.replace("s3://", "")
@@ -101,6 +98,7 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
     RLOG.notice(f"Uploading folder from {src_path}")
     RLOG.notice(f"                 to  {s3_full_target_path}")
     print()
+    RLOG.notice("Hang in there. This can take between 2 to 10 mins depending on folder size")
 
     # nested function
     def __upload_file(s3_client, bucket_name, src_file_path, target_file_path):
@@ -113,7 +111,7 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
 
         s3_files = []  # a list of dictionaries (src file path, targ file path)
 
-        for subdir, dirs, files in os.walk(src_path, followlinks=False):
+        for subdir, ___, files in os.walk(src_path, followlinks=False):
             for file in files:
                 src_file_path = os.path.join(src_path, subdir, file)
 
@@ -157,18 +155,28 @@ def upload_folder_to_s3(src_path, bucket_name, s3_folder_path, unit_folder_name,
         print(" ... This may take a few minutes, stand by")
         RLOG.lprint(f" ... Uploading with {num_workers} workers")
 
-        with futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
-            executor_dict = {}
+        with tqdm.tqdm(total=len(s3_files)) as pbar:
+            with futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+                executor_dict = {}
 
-            for upload_file_args in s3_files:
-                try:
-                    future = executor.submit(__upload_file, **upload_file_args)
-                    executor_dict[future] = upload_file_args['src_file_path']
+                for upload_file_args in s3_files:
+                    try:
+                        future = executor.submit(__upload_file, **upload_file_args)
+                        executor_dict[future] = upload_file_args['src_file_path']
 
-                except Exception:
-                    RLOG.critical(f"Critical error while uploading {upload_file_args['src_file_path']}")
-                    RLOG.critical(traceback.format_exc())
-                    sys.exit(1)
+                    except Exception:
+                        RLOG.critical(f"Critical error while uploading {upload_file_args['src_file_path']}")
+                        RLOG.critical(traceback.format_exc())
+                        sys.exit(1)
+
+                for future_result in futures.as_completed(executor_dict):
+                    if future_result is not None:
+                        future_exception = future_result.exception()
+                        if future_exception:
+                            RLOG.error(future_exception)
+                            # raise future_exception
+                            # supress error
+                    pbar.update(1)
 
         RLOG.lprint(" ... Uploading complete")
         print()
@@ -309,8 +317,7 @@ def move_s3_folder_in_bucket(bucket_name, s3_src_folder_path, s3_target_folder_p
     try:
         RLOG.lprint("===================================================================")
         print("")
-        RLOG.notice(f"Moving folder from {s3_src_folder_path}")
-        RLOG.notice(f"              to  {s3_target_folder_path}")
+        RLOG.notice(f"Moving folder from {s3_src_folder_path}" f"                to  {s3_target_folder_path}")
         print()
         print(
             f"{cl.fg('dodger_blue_1')}"
@@ -423,6 +430,12 @@ def download_folders(list_folders):
             - "download_success" as either
                 the string value of 'True' or 'False'
             - "error_details" - why did it fail
+          encouraged to pre-delete the child folders if required.
+
+        - Multi-threading: We use a pool of 100 thread workers.
+             If there is more than 100 folders incoming, then we MT that and only give one per file.
+             If there is less than 100 folders incoming, we loop it and give all of the MT's
+             to the children
 
     """
     rtn_threads = []
@@ -526,7 +539,7 @@ def download_single_folder(
         - num_of_workers: Number of concurrent multi-threads
         - bucket_name:  eg. ras2fim-dev
         - folder_id:  e.g 12090301_2277_ble_230923  (or really anything unique)
-        - src_s3_folder: e.g. output_ras2fim\\12090301_2277_ble_230923
+        - src_s3_folder: e.g. output_ras2fim/12090301_2277_ble_230923
         - target_local_folder: e.g . C:\\ras2fim_data\\output_ras2fim\\12090301_2277_ble_230923
             or something like: C:\\ras2fim_data\\ras2fim_releases\\r102-test\\units\\12090301_2277_ble_230923
 
@@ -544,14 +557,12 @@ def download_single_folder(
     if num_of_workers <= 0:
         raise Exception("Invalid number of workers submitted")
 
-    s3_src_folder = s3_src_folder.replace("\\", "/")
-
     full_src_path = f"s3://{bucket_name}/{s3_src_folder}"
 
     # add a duration system
     start_time = dt.datetime.utcnow()
 
-    s3_items = get_records_list(bucket_name, s3_src_folder, "", False)
+    s3_items = get_file_list(bucket_name, s3_src_folder, "", False)
     num_s3_items = len(s3_items)
 
     if num_s3_items == 0:
@@ -578,9 +589,9 @@ def download_single_folder(
 
             args = {
                 "bucket_name": bucket_name,
+                "s3_file": src_file,
                 "trg_file": trg_file,
                 "s3_client": s3_client,
-                "s3_file": src_file,
             }
             if use_multi_thread is False:  # no MT here, just serially
                 try:
@@ -632,6 +643,22 @@ def download_single_folder(
             if is_verbose:
                 RLOG.success(f"All {num_s3_items} files/folders were downloaded successfully")
             result = {"folder_id": folder_id, "is_success": True, "err_msg": ""}
+            trg_file = trg_file.replace("/", "\\")
+
+            args = {
+                "bucket_name": bucket_name,
+                "s3_file": src_file,
+                "trg_file": trg_file,
+                "s3_client": s3_client,
+            }
+            if use_multi_thread is False:  # no MT here, just serially
+                try:
+                    download_one_file(**args)
+                except Exception:
+                    # assumes download_one_file logged it
+                    num_fails = +1
+            else:  # use MT on the files
+                download_args.append(args)
 
     except Exception as ex:
         RLOG.error(f"--- Download Failed for {full_src_path}")
@@ -646,15 +673,81 @@ def download_single_folder(
 
 
 # -------------------------------------------------
-def download_one_file(bucket_name: str, trg_file: str, s3_client: boto3.client, s3_file: str):
+def download_files_from_list(bucket_name, lst_files, is_verbose):
+    """
+    This will iterate over the incoming list of dictionaries to download
+    requested file to stated location.
+    This list is usually a filtered list with files in all sorts of locations.
+    e.g. specific benchmark files.
+
+    Input:
+        bucket_name:
+        lst_files: A list of dictionary items (e.g. ...
+            - "s3_file": "output_ras2fim/12090301_2277_ble_230923/run_arguments.txt"
+            - "trg_file: "C:\ras2fim_data\output_ras2fim\12090301_2277_ble_240206\run_arguments.txt"
+    Output:
+        - Same list of dictionaries returned with two new fields.
+            - "success": "True" / "False" (string version)
+            - "fail_reason": empty or whatever ever msg
+    """
+
+    if len(lst_files) == 0:
+        raise Exception("No files requested for download")
+
+    # so all calls share this client and it is much faster.
+    s3_client = boto3.client('s3')
+    for item in lst_files:
+        src_file = item["s3_file"]
+
+        # This might come in with the s3://bucket name or might
+        # start after the bucket name. We need to cut off the
+        # s3 and bucket
+        # may or may not have s3 in front (and worry about case)
+        src_file = src_file.replace("S3://", "")
+        src_file = src_file.replace("s3://", "")
+        src_file = src_file.replace(bucket_name, "", 1)
+
+        if src_file.startswith("/"):
+            src_file = src_file.lstrip("/")  # cut off the front slash
+
+        trg_file = item["trg_file"]
+
+        # just catch them and log why they failed, we don't want to assume
+        # the calling function wants to shut down the process
+        msg = f"Downloading s3://{bucket_name}/{src_file} to {trg_file}"
+        try:
+            download_one_file(bucket_name, src_file, trg_file, s3_client)
+            item["success"] = "True"
+            item["fail_reason"] = ""
+            msg = "Success : " + msg
+            if is_verbose:
+                RLOG.lprint(msg)
+            else:
+                RLOG.trace(msg)
+
+        except Exception:
+            err_msg = f"An error occurred while download {item['src_file']}\n"
+            err_msg += traceback.format_exc()
+            item["success"] = "False"
+            item["fail_reason"] = err_msg
+            if is_verbose:
+                RLOG.error(err_msg)
+            else:
+                RLOG.trace(msg)
+
+    return lst_files
+
+
+# -------------------------------------------------
+def download_one_file(bucket_name: str, s3_file: str, trg_file: str, s3_client: boto3 = None):
     """
     Download a single file from S3
     Args:
         bucket_name (str):
-        trg_file (str):
-        s3_client (boto3.client):
         s3_file (str): S3 object name (full s3 path less bucket name)
             e.g. output_ras2fim/12030101_2276_ble_230925/myfile.txt
+        trg_file (str):
+        s3_client (boto3.client):
     """
     try:
         # Why extract the directory name? the key might have subfolder
@@ -669,6 +762,13 @@ def download_one_file(bucket_name: str, trg_file: str, s3_client: boto3.client, 
         # raise Exception("Rob you goofer") Testing exceptions
         s3_file = s3_file.replace("\\", "/")
 
+        if s3_client is None:
+            # TODO:  MAKE SURE THIS isn't used by download_files_from_list
+            # It should provide it
+            RLOG.error("Opps.. (maybe).. s3 client create")
+
+            s3_client = boto3.client('s3')
+
         with open(trg_file, 'wb') as f:
             s3_client.download_fileobj(Bucket=bucket_name, Key=s3_file, Fileobj=f)
 
@@ -680,14 +780,16 @@ def download_one_file(bucket_name: str, trg_file: str, s3_client: boto3.client, 
 
 
 # -------------------------------------------------
-def get_records_list(bucket_name, s3_src_folder_path, search_key, is_verbose=False):
+def get_file_list(bucket_name, s3_src_folder_path, search_key="", is_verbose=False):
     """
     Process:
         - uses a S3 paginator to recursively look for matches (non case-sensitive)
+        - You can optionally use a search key to filter records
     Inputs:
         - bucket_name: e.g mys3bucket_name
         - s3_src_folder_path: e.g. OWP_ras_models/models (case-sensitive)
-        - search_key: phrase (str) to be searched: e.g *Trinity River*
+        - search_key: OPTIONAL: phrase (str) to be searched: e.g *Trinity River*
+
     Output
         - A list of dictionary items matching records.
             - first value is the match "key":
@@ -695,6 +797,18 @@ def get_records_list(bucket_name, s3_src_folder_path, search_key, is_verbose=Fal
             - The second value is the full "url" of it
                 ie) s3://ras2fim-dev/OWP_ras_models/models-12030105-full/1262811_UNT...r01
     """
+
+    # Examples:
+    # search_key = "TRINITY*"  (none... only work if no chars in front of Trinity)
+    # search_key = "*TRINITY*"
+    # search_key = "*trinity river*"
+    # search_key = "*caney*.prj"
+    # search_key = "*caney*.g01"
+    # search_key = "*caney*.g01*"
+    # search_key = "*.g01*"
+    # search_key = "*.g01"
+    # search_key = "12611*"
+    # search_key = "*12090301*"
 
     try:
         s3_src_folder_path = s3_src_folder_path.replace("\\", "/")
@@ -719,17 +833,6 @@ def get_records_list(bucket_name, s3_src_folder_path, search_key, is_verbose=Fal
 
         default_kwargs = {"Bucket": bucket_name, "Prefix": s3_src_folder_path}
 
-        # Examples:
-        # search_key = "TRINITY*"  (none... only work if no chars in front of Trinity)
-        # search_key = "*TRINITY*"
-        # search_key = "*trinity river*"
-        # search_key = "*caney*.prj"
-        # search_key = "*caney*.g01"
-        # search_key = "*caney*.g01*"
-        # search_key = "*.g01*"
-        # search_key = "*.g01"
-        # search_key = "1262811*"
-
         next_token = ""
 
         while next_token is not None:
@@ -752,7 +855,7 @@ def get_records_list(bucket_name, s3_src_folder_path, search_key, is_verbose=Fal
                 if search_key == "":
                     item = {"key": key_adj, "url": f"s3://{bucket_name}/{s3_src_folder_path}{key_adj}"}
                     s3_items.append(item)
-                elif fnmatch.fnmatch(key_adj, search_key):
+                elif fnmatch.fnmatch(key_adj, search_key) is True:
                     item = {"key": key_adj, "url": f"s3://{bucket_name}/{s3_src_folder_path}{key_adj}"}
                     s3_items.append(item)
                 # no else needed
@@ -935,20 +1038,8 @@ def is_valid_s3_folder(s3_full_folder_path):
 
     s3_full_folder_path = s3_full_folder_path.replace("\\", "/")
 
-    if s3_full_folder_path.endswith("/"):
-        s3_full_folder_path = s3_full_folder_path[:-1]
-
-    # we need the "s3 part stripped off for now" (if it is even there)
-    adj_s3_path = s3_full_folder_path.replace("s3://", "")
-    path_segs = adj_s3_path.split("/")
-    bucket_name = path_segs[0]
-
-    # will throw it's own exceptions if in error
-    if does_s3_bucket_exist(bucket_name) is False:
-        raise Exception(f"S3 bucket name of '{bucket_name}' does not exist")
-
-    s3_folder_path = adj_s3_path.replace(bucket_name, "", 1)
-    s3_folder_path = s3_folder_path.lstrip("/")
+    s3_full_folder_path = s3_full_folder_path.replace("S3://", "s3://")
+    bucket_name, s3_folder_path = parse_bucket_and_folder_name(s3_full_folder_path)
 
     client = boto3.client("s3")
 
@@ -990,13 +1081,11 @@ def is_valid_s3_file(s3_full_file_path):
     if s3_full_file_path.endswith("/"):
         raise Exception("s3 file path is invalid as it ends with as forward slash")
 
+    s3_full_file_path = s3_full_file_path.replace("S3://", "s3://")
+
     RLOG.lprint(f"Validating s3 file of {s3_full_file_path}")
 
-    # we need the "s3 part stripped off for now" (if it is even there)
-    adj_s3_path = s3_full_file_path.replace("s3://", "")
-    path_segs = adj_s3_path.split("/")
-    bucket_name = path_segs[0]
-    s3_file_path = adj_s3_path.replace(bucket_name + "/", "", 1)
+    bucket_name, s3_file_path = parse_bucket_and_folder_name(s3_full_file_path)
 
     try:
         if does_s3_bucket_exist(bucket_name) is False:
@@ -1053,10 +1142,9 @@ def parse_bucket_and_folder_name(s3_full_folder_path):
         A tuple:  bucket name, s3_folder_path
     """
 
-    s3_full_folder_path = s3_full_folder_path.replace("\\", "/")
-
     if s3_full_folder_path.endswith("/"):
         s3_full_folder_path = s3_full_folder_path[:-1]
+    s3_full_folder_path = s3_full_folder_path.replace("S3://", "s3://")
 
     # we need the "s3 part stripped off for now" (if it is even there)
     adj_s3_path = s3_full_folder_path.replace("s3://", "")
