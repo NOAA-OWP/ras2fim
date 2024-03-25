@@ -730,12 +730,7 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
     didn't process it correctly for a good model permuation.
     """
 
-    # This really need to become an config someday. Ran short of time
-    bad_models_lst = [
-        "1292972_BECK BRANCH_g01",
-        "1293152_DUCK CREEK_g01",
-        "1305829_UNT163 Eagle Mountain Watershed_g01",
-    ]
+    bad_models_lst = sf.get_bad_models_list()
 
     list_prj_files = []
     for root, dirs, __ in os.walk(input_models_path):
