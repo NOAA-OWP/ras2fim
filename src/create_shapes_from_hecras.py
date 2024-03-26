@@ -735,11 +735,7 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
     list_prj_files = []
     for root, dirs, __ in os.walk(input_models_path):
         for folder_name in dirs:
-            # we have to iterate as we are using part of the model name (time stipped off the end)
-            model_name_time = folder_name.rsplit("_", 1)
-            model_name = folder_name.replace("_" + model_name_time[-1], "")
-
-            if model_name in bad_models_lst:
+            if folder_name in bad_models_lst:
                 RLOG.warning(f"model folder name is on the 'bad model list' ({folder_name})")
                 continue
 

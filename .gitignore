@@ -89,7 +89,7 @@ config/**
 !config/r2f_config.env
 !config/*.lst
 !config/source_codes.csv
-!config/bad_models_list.csv
+!config/bad_models_list.lst
 !config/symbology/
 
 # Base data #

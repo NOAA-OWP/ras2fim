@@ -107,7 +107,6 @@ def mp_process_depth_grid_tif(var_d: dict):
         name_mid = var_d["name_mid"]
         unit_output_path = var_d["unit_output_path"]
         code_version = var_d["code_version"]
-        huc_name = var_d["huc_name"]
         unit_name = var_d["unit_name"]
         unit_version = var_d["unit_version"]
         source_code = var_d["source_code"]
@@ -125,12 +124,13 @@ def mp_process_depth_grid_tif(var_d: dict):
         flow_search = re.search('\(flow\d*\.*\d*_', depth_tif_win_path.name).group()
         profile_num = float(re.search('\d+\.*\d*', flow_search).group())
 
+        geocurve_df_list = []
         with rasterio.open(depth_tif_win_path) as depth_grid_rast:
             depth_grid_nodata = depth_grid_rast.profile['nodata']
-            depth_grid_crs = depth_grid_rast.crs
+            # depth_grid_crs = depth_grid_rast.crs
 
             # Mask raster using rasterio for each NWM reach
-            for index, nwm_feature in all_nwm_reach_inundation_masks_gdf.iterrows():
+            for ___, nwm_feature in all_nwm_reach_inundation_masks_gdf.iterrows():
                 # Load the rating curve
                 MP_LOG.trace(
                     f"Processing {name_mid} for {depth_tif_win_path}:"
@@ -183,7 +183,7 @@ def mp_process_depth_grid_tif(var_d: dict):
                 poly_coordinates_df = pd.DataFrame(poly_coordinates, columns=["geometry"])
 
                 # Convert list of shapes to polygon, then dissolve
-                extent_poly = gpd.GeoDataFrame(poly_coordinates_df, crs=depth_grid_crs)
+                extent_poly = gpd.GeoDataFrame(poly_coordinates_df, crs=sv.DEFAULT_RASTER_OUTPUT_CRS)
                 try:
                     # extent_poly_diss = extent_poly.dissolve(by="extent")
                     extent_poly_diss = extent_poly.dissolve()
@@ -199,15 +199,12 @@ def mp_process_depth_grid_tif(var_d: dict):
 
                 except AttributeError as ae:
                     # TODO (from v1) why does this happen? I suspect bad geometry. Small extent?
-                    MP_LOG.lprint("^^^^^^^^^^^^^^^^^^")
                     msg = "Warning...\n"
-                    msg += f"  huc is {huc_name}; "
                     msg += f"feature_id = {nwm_feature.feature_id}; "
                     msg += f"depth_grid = {depth_tif_win_path}\n"
                     msg += f"  Details: {ae}"
                     MP_LOG.warning(msg)
                     MP_LOG.warning(traceback.format_exc())
-                    MP_LOG.lprint("^^^^^^^^^^^^^^^^^^")
                     continue
 
                 # Add the feature_id, profile_num, and code_version columns
@@ -236,12 +233,16 @@ def mp_process_depth_grid_tif(var_d: dict):
                 rating_curve_df = pd.read_csv(rating_curve_dir)
 
                 # Join the geometry to the rating curve
+                # changes to dataframe here
                 feature_id_rating_curve_geo = pd.merge(
                     rating_curve_df, extent_poly_diss, on="profile_num", how="right"
                 )
-                # geocurve_df_list.append(feature_id_rating_curve_geo)
+                geocurve_df_list.append(feature_id_rating_curve_geo)
 
-        return feature_id_rating_curve_geo
+        # MP does not like return a list, but a single df is good
+        geocurve_df = pd.concat(geocurve_df_list)
+
+        return geocurve_df
 
     except Exception:
         if MP_LOG.LOG_SYSTEM_IS_SETUP is True:
@@ -303,7 +304,9 @@ def create_geocurves(unit_output_path: str, code_version: str):
 
             # Load max depth boundary
             hecras_output = Path(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
-            model_output_dir = [f for f in hecras_output.iterdir() if re.match(f"^{model.model_id}_", f.name)][0]
+            model_output_dir = [
+                f for f in hecras_output.iterdir() if re.match(f"^{model.model_id}_", f.name)
+            ][0]
             name_mid = model_output_dir.name
             RLOG.lprint(
                 f"Creating geo rating curves for model {name_mid}"
@@ -328,17 +331,23 @@ def create_geocurves(unit_output_path: str, code_version: str):
             discon_inund_poly = gpd.read_file(max_inundation_shp)
             disconnected_inundation_poly = discon_inund_poly.explode(ignore_index=True, index_parts=False)
             model_crs = disconnected_inundation_poly.crs
-            main_inundation_poly = disconnected_inundation_poly.iloc[disconnected_inundation_poly.length.idxmax()]
+            main_inundation_poly = disconnected_inundation_poly.iloc[
+                disconnected_inundation_poly.length.idxmax()
+            ]
             disconnected_inundation_poly = disconnected_inundation_poly.drop(
                 index=disconnected_inundation_poly.length.idxmax()
             )
 
             RLOG.lprint(f"Loading the max inundation extent for each NWM reach for model {name_mid}")
 
+            # We will get one csv for each of these nwm_reaches (feature IDs)
+            # assuming there is no problems
+
             # Create max flow inundation masks for each NWM reach
             nwm_reach_inundation_masks = []
             for index, nwm_reach in model_nwm_streams_ln.iterrows():
-                RLOG.trace(f"-- model_nwm_streams_ln index [{index} - {nwm_reach.feature_id}")
+                feature_id = nwm_reach.feature_id
+                RLOG.trace(f"-- model_nwm_streams_ln index [{index} - {feature_id}")
 
                 nwm_reach = gpd.GeoDataFrame(nwm_reach.to_dict(), index=[0]).set_geometry(
                     'geometry', crs=model_nwm_streams_ln.crs
@@ -351,7 +360,9 @@ def create_geocurves(unit_output_path: str, code_version: str):
                 boundary_cross_sections_df = model_cross_section_ln.loc[
                     model_cross_section_ln['stream_stn'].isin(boundary_cross_section_ids)
                 ]
-                boundary_cross_sections_df = boundary_cross_sections_df.assign(feature_id=nwm_reach.feature_id)
+                boundary_cross_sections_df = boundary_cross_sections_df.assign(
+                    feature_id=nwm_reach.feature_id
+                )
 
                 # Extend boundary cross-sections because they sometimes don't breach the inundation polygon
                 boundary_cross_sections_df.loc[:, 'geometry'] = boundary_cross_sections_df.geometry.apply(
@@ -364,12 +375,14 @@ def create_geocurves(unit_output_path: str, code_version: str):
                 )
 
                 if len(split1_inundation_geom.geoms) == 0:
-                    RLOG.error(f"Error: model {name_mid}: model_nwm_streams_ln index [{index}"
-                            f" - {nwm_reach.feature_id}"
-                                " has no geometry in split1_inundation_geom. It appears to be"
-                                " assuming the first cross section is inside the inundation"
-                                " poly which appears to be false."
-                                " More research is required.")
+                    RLOG.error(
+                        f"Error: model {name_mid}: model_nwm_streams_ln index [{index}"
+                        f" - {feature_id}"
+                        " has no geometry in split1_inundation_geom. It appears to be"
+                        " assuming the first cross section is inside the inundation"
+                        " poly which appears to be false."
+                        " More research is required."
+                    )
                     continue
 
                 split1_inundation = gpd.GeoDataFrame(split1_inundation_geom.geoms)
@@ -412,15 +425,33 @@ def create_geocurves(unit_output_path: str, code_version: str):
 
             # nwm_reach_inundation_masks at this point is a list, but using pd.concat
             # it is rolling it up to one dataframe which is fed into a geodataframe
-            all_nwm_reach_inundation_masks_gdf = gpd.GeoDataFrame(
-                pd.concat(nwm_reach_inundation_masks, ignore_index=True)
-            )
+            # No longers like this syntax below
+            # nwm_reach_inundation_masks = gpd.GeoDataFrame(
+            # pd.concat(nwm_reach_inundation_masks, ignore_index=True)
+            # )
+            all_nwm_reach_inundation_masks_gdf = gpd.GeoDataFrame()
+            for idx, inn_poly_gdf in enumerate(nwm_reach_inundation_masks):
+                if idx == 0:
+                    all_nwm_reach_inundation_masks_gdf = inn_poly_gdf
+                else:
+                    # not good to assign back to itself
+                    tmp_gdf = pd.concat([all_nwm_reach_inundation_masks_gdf, inn_poly_gdf])
+                    all_nwm_reach_inundation_masks_gdf = tmp_gdf
 
             depth_tif_list = [f for f in model_depths_dir.iterdir() if f.suffix == '.tif']
+
+            RLOG.lprint("Getting the inundation extents from each flow (depth grids)")
+
+            if len(depth_tif_list) == 0:
+                RLOG.error(
+                    f"No depth grids were found for {name_mid}:"
+                    f" model_nwm_streams_ln index [{index}]:"
+                    f" feature id is {feature_id}"
+                )
+                continue
+
             depth_tif_list.sort()
 
-            # Use max depth extent polygon as mask for other depths
-            RLOG.lprint("Getting the inundation extents from each flow (depth grids)")
             RLOG.lprint(f"Number of depth grid tifs to process is {len(depth_tif_list)}")
             print()
 
@@ -433,7 +464,6 @@ def create_geocurves(unit_output_path: str, code_version: str):
                     "name_mid": name_mid,
                     "unit_output_path": unit_output_path,
                     "code_version": code_version,
-                    "huc_name": huc_name,
                     "unit_name": unit_name,
                     "unit_version": unit_version,
                     "source_code": source_code,
@@ -443,58 +473,54 @@ def create_geocurves(unit_output_path: str, code_version: str):
                 }
                 depth_grid_args.append(arg_item)
 
+            # num_processors = mp.cpu_count() - 2
+            num_processors = round(math.floor(mp.cpu_count() * 0.85))
             geocurve_df_list = []
-            len_depth_tifs = len(depth_grid_args)
-            if len_depth_tifs > 0:
-                # num_processors = mp.cpu_count() - 2
-                num_processors = round(math.floor(mp.cpu_count() * 0.85))
-                geocurve_df_list = []
-                with ProcessPoolExecutor(max_workers=num_processors) as executor:
-                    with tqdm.tqdm(
-                        total=len_depth_tifs,
-                        bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}% ",
-                        desc="Processing Depth Grids",
-                        ncols=80,
-                    ) as pbar:
-                        futures = {}
-                        for idx, dict_args in enumerate(depth_grid_args):
-                            future = executor.submit(mp_process_depth_grid_tif, dict_args)
-                            futures[future] = idx
+            with ProcessPoolExecutor(max_workers=num_processors) as executor:
+                with tqdm.tqdm(
+                    total=len(depth_grid_args),
+                    bar_format="{desc}:({n_fmt}/{total_fmt})|{bar}| {percentage:.1f}% ",
+                    desc="Processing Depth Grids",
+                    ncols=80,
+                ) as pbar:
+                    futures = {}
+                    for idx, dict_args in enumerate(depth_grid_args):
+                        future = executor.submit(mp_process_depth_grid_tif, dict_args)
+                        futures[future] = idx
 
-                        for future in as_completed(futures):
-                            if future is not None:
-                                if not future.exception():
-                                    gc_df = future.result()
-                                    if len(gc_df) > 0:
-                                        geocurve_df_list.append(future.result())
-                            pbar.update(1)  # advance by 1
+                    for future in as_completed(futures):
+                        if future is not None:
+                            if not future.exception():
+                                gc_df = future.result()
+                                if len(gc_df) > 0:
+                                    geocurve_df_list.append(gc_df)
+                        pbar.update(1)  # advance by 1
 
-                # Now that multi-proc is done, lets merge all of the independent log file from each
-                RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
+            # Now that multi-proc is done, lets merge all of the independent log file from each
+            RLOG.merge_log_files(RLOG.LOG_FILE_PATH, log_file_prefix)
 
-            if len(geocurve_df_list) != 0:
-                geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
-                geocurve_df = geocurve_df.sort_values(by=['feature_id', 'discharge_cfs'])
-
-                # reproject
-                geocurves_new_crs_df = geocurve_df.to_crs(sv.DEFAULT_RASTER_OUTPUT_CRS)
-
-                # The feature id inside the geocurve file may not be the feature id that was part of
-                # the original model id.
-                # We need to pull it out of the first line of the geodataframe as it will be accurate there.
-                # In theory it shoul always be unique
-
-                # ras2inundation needs the first part of the geocurve to be the feature ID
-                feature_id = geocurves_new_crs_df.iloc[0]["feature_id"]
-                geocurve_file_name = f"{feature_id}_{name_mid}_geocurve.csv"
-                path_geocurve = os.path.join(
-                    unit_output_path, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES, geocurve_file_name
+            if len(geocurve_df_list) == 0:
+                RLOG.error(
+                    "An internal error has occured."
+                    f" No geocurves gdf's were found for {name_mid}:"
+                    f" model_nwm_streams_ln index [{index}]:"
+                    f" feature id is {nwm_reach.feature_id}"
                 )
+                continue
 
-                geocurves_new_crs_df.to_csv(path_geocurve, index=False)
-            else:
-                RLOG.warning(f"geocurve_df_list is empty for {name_mid}")
-        except:
+            # these a list of dataframes
+            geocurve_df = pd.concat(geocurve_df_list, axis=0)
+            geocurve_df.sort_values(by=["discharge_cms"], inplace=True)
+
+            # ras2inundation needs the first part of the geocurve to be the feature ID
+            geocurve_file_name = f"{feature_id}_{name_mid}_geocurve.csv"
+            path_geocurve = os.path.join(
+                unit_output_path, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES, geocurve_file_name
+            )
+
+            geocurve_df.to_csv(path_geocurve, index=False)
+
+        except Exception:
             RLOG.error(f"An error occurred while creating geocurves for {model.final_name_key}")
             RLOG.error(traceback.format_exc())
 

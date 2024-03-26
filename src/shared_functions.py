@@ -548,34 +548,35 @@ def get_source_info(source_code):
 
     return df_source["source_name"].iloc[0]
 
+
 # -------------------------------------------------
 def get_bad_models_list():
     """
     Overview:
-        - Loads the file /config/bad_models_list.csv
+        - Loads the file /config/bad_models_list.lst
     Output
-        List of models names (all shoul ahve the timestamp removed)
+        List of models names (leaving timestamp in for now)
     """
 
-    referential_path = os.path.join(os.path.dirname(__file__), "..", "config", "bad_models_list.csv")
+    referential_path = os.path.join(os.path.dirname(__file__), "..", "config", "bad_models_list.lst")
     source_code_file = os.path.abspath(referential_path)
 
     if os.path.exists(source_code_file) is False:
         raise FileNotFoundError(f"bad models list file not found as {source_code_file}")
 
-    df_model_names = pd.read_csv(source_code_file, sep=",", header=None, names=["model_name"])
-    if df_model_names.empty:
-        raise Exception(f"{source_code_file} appears to be empty")
-    
-    bad_models = []
-    for inx in df_model_names.index:
-        model_val = df_model_names["model_name"][inx].strip()
-        if model_val.startswith("#") or model_val == "":
-            continue
+    lines = []
+    with open(source_code_file) as bm_file:
+        lines = bm_file.readlines()
 
-        bad_models.append(model_val)
+    bad_models = []
+    for line in lines:
+        line = line.strip()
+        if line.startswith("#") or line == "":
+            continue
+        bad_models.append(line)
 
     return bad_models
+
 
 # -------------------------------------------------
 def parse_unit_folder_name(unit_folder_name):
