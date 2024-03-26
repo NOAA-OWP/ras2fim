@@ -424,11 +424,12 @@ def create_geocurves(unit_output_path: str, code_version: str):
                 continue
 
             # nwm_reach_inundation_masks at this point is a list, but using pd.concat
-            # it is rolling it up to one dataframe which is fed into a geodataframe
-            # No longers like this syntax below
-            # nwm_reach_inundation_masks = gpd.GeoDataFrame(
-            # pd.concat(nwm_reach_inundation_masks, ignore_index=True)
-            # )
+
+            all_nwm_reach_inundation_masks_gdf = gpd.GeoDataFrame(
+                pd.concat(nwm_reach_inundation_masks, ignore_index=True)
+            )
+
+            """
             all_nwm_reach_inundation_masks_gdf = gpd.GeoDataFrame()
             for idx, inn_poly_gdf in enumerate(nwm_reach_inundation_masks):
                 if idx == 0:
@@ -437,6 +438,8 @@ def create_geocurves(unit_output_path: str, code_version: str):
                     # not good to assign back to itself
                     tmp_gdf = pd.concat([all_nwm_reach_inundation_masks_gdf, inn_poly_gdf])
                     all_nwm_reach_inundation_masks_gdf = tmp_gdf
+
+            """
 
             depth_tif_list = [f for f in model_depths_dir.iterdir() if f.suffix == '.tif']
 
@@ -512,13 +515,19 @@ def create_geocurves(unit_output_path: str, code_version: str):
             geocurve_df = pd.concat(geocurve_df_list, axis=0)
             geocurve_df.sort_values(by=["discharge_cms"], inplace=True)
 
-            # ras2inundation needs the first part of the geocurve to be the feature ID
-            geocurve_file_name = f"{feature_id}_{name_mid}_geocurve.csv"
-            path_geocurve = os.path.join(
-                unit_output_path, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES, geocurve_file_name
-            )
+            # This list of features is not automatically same nwm_reach feature id
+            # and there can be more than one now.
+            for feature_id in geocurve_df.feature_id.unique():
+                subset_geocurve_df = geocurve_df.iloc[geocurve_df.feature_id == feature_id]
 
-            geocurve_df.to_csv(path_geocurve, index=False)
+                # ras2inundation needs the first part of the geocurve to be the feature ID
+                geocurve_file_name = f"{feature_id}_{name_mid}_geocurve.csv"
+                path_geocurve = os.path.join(
+                    unit_output_path, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES, geocurve_file_name
+                )
+
+                subset_geocurve_df.to_csv(path_geocurve, index=False)
+
 
         except Exception:
             RLOG.error(f"An error occurred while creating geocurves for {model.final_name_key}")
