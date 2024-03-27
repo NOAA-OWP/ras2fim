@@ -550,6 +550,35 @@ def get_source_info(source_code):
 
 
 # -------------------------------------------------
+def get_bad_models_list():
+    """
+    Overview:
+        - Loads the file /config/bad_models_list.lst
+    Output
+        List of models names (leaving timestamp in for now)
+    """
+
+    referential_path = os.path.join(os.path.dirname(__file__), "..", "config", "bad_models_list.lst")
+    source_code_file = os.path.abspath(referential_path)
+
+    if os.path.exists(source_code_file) is False:
+        raise FileNotFoundError(f"bad models list file not found as {source_code_file}")
+
+    lines = []
+    with open(source_code_file) as bm_file:
+        lines = bm_file.readlines()
+
+    bad_models = []
+    for line in lines:
+        line = line.strip()
+        if line.startswith("#") or line == "":
+            continue
+        bad_models.append(line)
+
+    return bad_models
+
+
+# -------------------------------------------------
 def parse_unit_folder_name(unit_folder_name):
     """
     Overview:

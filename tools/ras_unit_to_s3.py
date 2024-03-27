@@ -266,7 +266,7 @@ def __process_upload(bucket_name, src_unit_dir, unit_folder_name, s3_output_path
                 bucket_name,
                 src_unit_dir,
                 unit_folder_name,
-                new_s3_folder_name,
+                unit_folder_name,
                 action,
                 sv.S3_RAS_UNITS_OUTPUT_FOLDER,
                 skip_files,

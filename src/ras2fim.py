@@ -164,7 +164,8 @@ def init_and_run_ras2fim(
     # -------------------
     # make the folder only if all other valudation tests pass.
     # pathing has already been validated and ensure the child folder does not pre-exist
-    os.mkdir(unit_output_path)
+    if os.path.exists(unit_output_path) is False:
+        os.mkdir(unit_output_path)
 
     # -------------------
     # adjust the model_catalog file name if applicable
@@ -281,6 +282,9 @@ def fn_run_ras2fim(
     )
     RLOG.lprint(f"  --- ras2fim started: {sf.get_stnd_date()}")
 
+    # NOTE: Step system does not work as the folder name relies
+    # on dates and that can get out of sync when re-running steps.
+
     # -------------------------------------------
     # ---- Make the "final" folder now as some modules will write to it through the steps
     #      why test if it exists with makedir for output above? We are going to be retarting
@@ -376,7 +380,8 @@ def fn_run_ras2fim(
     RLOG.notice("+++++++ Processing: STEP 6 (create rating curves per fid) +++++++")
     RLOG.lprint(f"Module Started: {sf.get_stnd_date()}")
 
-    fn_create_rating_curves(huc8, unit_output_path)
+    if int_step <= 6:
+        fn_create_rating_curves(huc8, unit_output_path)
 
     # -------------------------------------------------
     # calculate terrain statistics for HEC-RAS models

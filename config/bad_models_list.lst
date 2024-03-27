@@ -1,0 +1,12 @@
+# Depending on where a model breaks -- you may not automatically know the right full model name.
+# In most folder names the file / folder names start with the 5 digit model_id which is in
+# the huc level models catalog. Using that value will help you find the "final_name_key".
+
+1292972_BECK BRANCH_g01_1701646035
+1293152_DUCK CREEK_g01_1701646019
+5789418_ALUM 182_g01_1700261640
+4133215_Navarro-Mills Stream053_g01_1701693925
+1487524_UNT 102 in LKiC_g01_1700530964
+1498912_SULPHUR CREEK_g01_1700530893
+1487436_UNT 091 in LKiC_g01_1700530964
+5789418_ALUM CREEK_g01_1700261650
