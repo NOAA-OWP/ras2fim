@@ -215,7 +215,6 @@ def mp_process_depth_grid_tif(var_d: dict):
                     unit_version=unit_version,
                     source_code=source_code,
                     source=source1,
-                    crs=depth_grid_crs,
                 )
                 extent_poly_diss = extent_poly_diss.reindex(
                     columns=[
@@ -224,7 +223,6 @@ def mp_process_depth_grid_tif(var_d: dict):
                         'unit_version',
                         'source_code',
                         'source',
-                        'crs',
                         'geometry',
                         'profile_num',
                     ]
