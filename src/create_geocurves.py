@@ -127,7 +127,7 @@ def mp_process_depth_grid_tif(var_d: dict):
         geocurve_df_list = []
         with rasterio.open(depth_tif_win_path) as depth_grid_rast:
             depth_grid_nodata = depth_grid_rast.profile['nodata']
-            # depth_grid_crs = depth_grid_rast.crs
+            depth_grid_crs = depth_grid_rast.crs
 
             # Mask raster using rasterio for each NWM reach
             for ___, nwm_feature in all_nwm_reach_inundation_masks_gdf.iterrows():
@@ -181,9 +181,9 @@ def mp_process_depth_grid_tif(var_d: dict):
                     poly_coordinates.append(coords)
 
                 poly_coordinates_df = pd.DataFrame(poly_coordinates, columns=["geometry"])
+                
+                extent_poly = gpd.GeoDataFrame(poly_coordinates_df, crs=depth_grid_crs)
 
-                # Convert list of shapes to polygon, then dissolve
-                extent_poly = gpd.GeoDataFrame(poly_coordinates_df, crs=sv.DEFAULT_RASTER_OUTPUT_CRS)
                 try:
                     # extent_poly_diss = extent_poly.dissolve(by="extent")
                     extent_poly_diss = extent_poly.dissolve()
@@ -215,6 +215,7 @@ def mp_process_depth_grid_tif(var_d: dict):
                     unit_version=unit_version,
                     source_code=source_code,
                     source=source1,
+                    crs=depth_grid_crs,
                 )
                 extent_poly_diss = extent_poly_diss.reindex(
                     columns=[
@@ -223,6 +224,7 @@ def mp_process_depth_grid_tif(var_d: dict):
                         'unit_version',
                         'source_code',
                         'source',
+                        'crs',
                         'geometry',
                         'profile_num',
                     ]
@@ -423,23 +425,9 @@ def create_geocurves(unit_output_path: str, code_version: str):
                 )
                 continue
 
-            # nwm_reach_inundation_masks at this point is a list, but using pd.concat
-
             all_nwm_reach_inundation_masks_gdf = gpd.GeoDataFrame(
                 pd.concat(nwm_reach_inundation_masks, ignore_index=True)
             )
-
-            """
-            all_nwm_reach_inundation_masks_gdf = gpd.GeoDataFrame()
-            for idx, inn_poly_gdf in enumerate(nwm_reach_inundation_masks):
-                if idx == 0:
-                    all_nwm_reach_inundation_masks_gdf = inn_poly_gdf
-                else:
-                    # not good to assign back to itself
-                    tmp_gdf = pd.concat([all_nwm_reach_inundation_masks_gdf, inn_poly_gdf])
-                    all_nwm_reach_inundation_masks_gdf = tmp_gdf
-
-            """
 
             depth_tif_list = [f for f in model_depths_dir.iterdir() if f.suffix == '.tif']
 
@@ -518,21 +506,19 @@ def create_geocurves(unit_output_path: str, code_version: str):
             # This list of features is not automatically same nwm_reach feature id
             # and there can be more than one now.
             for feature_id in geocurve_df.feature_id.unique():
-                subset_geocurve_df = geocurve_df.iloc[geocurve_df.feature_id == feature_id]
+                subset_geocurve_df = geocurve_df.loc[geocurve_df.feature_id == feature_id]
 
                 # ras2inundation needs the first part of the geocurve to be the feature ID
                 geocurve_file_name = f"{feature_id}_{name_mid}_geocurve.csv"
                 path_geocurve = os.path.join(
                     unit_output_path, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES, geocurve_file_name
                 )
-
+                RLOG.trace(f"Saving: {path_geocurve}")
                 subset_geocurve_df.to_csv(path_geocurve, index=False)
-
 
         except Exception:
             RLOG.error(f"An error occurred while creating geocurves for {model.final_name_key}")
             RLOG.error(traceback.format_exc())
-
 
 # -------------------------------------------------
 def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
