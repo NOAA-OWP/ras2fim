@@ -111,6 +111,7 @@ def mp_process_depth_grid_tif(var_d: dict):
         unit_version = var_d["unit_version"]
         source_code = var_d["source_code"]
         source1 = var_d["source1"]
+        crs = var_d["crs"]
         log_file_prefix = var_d["log_file_prefix"]
         rlog_file_path = var_d["rlog_file_path"]
 
@@ -124,7 +125,6 @@ def mp_process_depth_grid_tif(var_d: dict):
         flow_search = re.search('\(flow\d*\.*\d*_', depth_tif_win_path.name).group()
         profile_num = float(re.search('\d+\.*\d*', flow_search).group())
 
-        geocurve_df_list = []
         with rasterio.open(depth_tif_win_path) as depth_grid_rast:
             depth_grid_nodata = depth_grid_rast.profile['nodata']
             depth_grid_crs = depth_grid_rast.crs
@@ -181,9 +181,9 @@ def mp_process_depth_grid_tif(var_d: dict):
                     poly_coordinates.append(coords)
 
                 poly_coordinates_df = pd.DataFrame(poly_coordinates, columns=["geometry"])
-                
-                extent_poly = gpd.GeoDataFrame(poly_coordinates_df, crs=depth_grid_crs)
 
+                # Convert list of shapes to polygon, then dissolve
+                extent_poly = gpd.GeoDataFrame(poly_coordinates_df, crs=depth_grid_crs)
                 try:
                     # extent_poly_diss = extent_poly.dissolve(by="extent")
                     extent_poly_diss = extent_poly.dissolve()
@@ -215,6 +215,7 @@ def mp_process_depth_grid_tif(var_d: dict):
                     unit_version=unit_version,
                     source_code=source_code,
                     source=source1,
+                    crs=crs,
                 )
                 extent_poly_diss = extent_poly_diss.reindex(
                     columns=[
@@ -223,6 +224,7 @@ def mp_process_depth_grid_tif(var_d: dict):
                         'unit_version',
                         'source_code',
                         'source',
+                        'crs',
                         'geometry',
                         'profile_num',
                     ]
@@ -233,16 +235,15 @@ def mp_process_depth_grid_tif(var_d: dict):
                 rating_curve_df = pd.read_csv(rating_curve_dir)
 
                 # Join the geometry to the rating curve
-                # changes to dataframe here
                 feature_id_rating_curve_geo = pd.merge(
                     rating_curve_df, extent_poly_diss, on="profile_num", how="right"
                 )
-                geocurve_df_list.append(feature_id_rating_curve_geo)
+                # geocurve_df_list.append(feature_id_rating_curve_geo)
 
         # MP does not like return a list, but a single df is good
-        geocurve_df = pd.concat(geocurve_df_list)
-
-        return geocurve_df
+        # geocurve_df = pd.concat(geocurve_df_list)
+        return feature_id_rating_curve_geo
+        # return geocurve_df
 
     except Exception:
         if MP_LOG.LOG_SYSTEM_IS_SETUP is True:
@@ -271,12 +272,13 @@ def create_geocurves(unit_output_path: str, code_version: str):
         unit_output_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, "conflated_ras_models.csv"
     )
     conflated_ras_models = pd.read_csv(conflated_ras_models_csv, index_col=0)
-    conflated_ras_models.sort_values(by=['final_name_key'])
+    conflated_ras_models.sort_values(by=['model_id'])
 
     nwm_streams_ln_shp = os.path.join(
         unit_output_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_CONF, f"{huc_name}_nwm_streams_ln.shp"
     )
     nwm_streams_ln = gpd.read_file(nwm_streams_ln_shp)
+    nwm_streams_ln.sort_values(by=["feature_id"], inplace=True)
 
     cross_section_ln_shp = os.path.join(
         unit_output_path, sv.R2F_OUTPUT_DIR_SHAPES_FROM_HECRAS, "cross_section_LN_from_ras.shp"
@@ -301,6 +303,8 @@ def create_geocurves(unit_output_path: str, code_version: str):
 
             model_nwm_streams_ln = nwm_streams_ln[nwm_streams_ln.ras_path == model.ras_path]
             model_cross_section_ln = cross_section_ln[cross_section_ln.ras_path == model.ras_path]
+
+            model_nws_streams_crs_val = model_nwm_streams_ln.crs
 
             # Load max depth boundary
             hecras_output = Path(unit_output_path, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
@@ -340,9 +344,7 @@ def create_geocurves(unit_output_path: str, code_version: str):
 
             RLOG.lprint(f"Loading the max inundation extent for each NWM reach for model {name_mid}")
 
-            # We will get one csv for each of these nwm_reaches (feature IDs)
-            # assuming there is no problems
-
+            # One nwm stream might be split via models to multiple seperate geocurve records
             # Create max flow inundation masks for each NWM reach
             nwm_reach_inundation_masks = []
             for index, nwm_reach in model_nwm_streams_ln.iterrows():
@@ -423,6 +425,8 @@ def create_geocurves(unit_output_path: str, code_version: str):
                 )
                 continue
 
+            # nwm_reach_inundation_masks at this point is a list, but using pd.concat
+            # it is rolling it up to one dataframe which is fed into a geodataframe
             all_nwm_reach_inundation_masks_gdf = gpd.GeoDataFrame(
                 pd.concat(nwm_reach_inundation_masks, ignore_index=True)
             )
@@ -441,6 +445,7 @@ def create_geocurves(unit_output_path: str, code_version: str):
 
             depth_tif_list.sort()
 
+            # Use max depth extent polygon as mask for other depths
             RLOG.lprint(f"Number of depth grid tifs to process is {len(depth_tif_list)}")
             print()
 
@@ -457,12 +462,12 @@ def create_geocurves(unit_output_path: str, code_version: str):
                     "unit_version": unit_version,
                     "source_code": source_code,
                     "source1": source1,
+                    "crs": model_nws_streams_crs_val,
                     "log_file_prefix": log_file_prefix,
                     "rlog_file_path": RLOG.LOG_DEFAULT_FOLDER,
                 }
                 depth_grid_args.append(arg_item)
 
-            # num_processors = mp.cpu_count() - 2
             num_processors = round(math.floor(mp.cpu_count() * 0.85))
             geocurve_df_list = []
             with ProcessPoolExecutor(max_workers=num_processors) as executor:
@@ -497,9 +502,15 @@ def create_geocurves(unit_output_path: str, code_version: str):
                 )
                 continue
 
+            geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
+            geocurve_df = geocurve_df.sort_values(by=['feature_id', 'discharge_cfs'])
+
+            # reproject
+            # geocurves_new_crs_df = geocurve_df.to_crs(sv.DEFAULT_RASTER_OUTPUT_CRS)
+
             # these a list of dataframes
-            geocurve_df = pd.concat(geocurve_df_list, axis=0)
-            geocurve_df.sort_values(by=["discharge_cms"], inplace=True)
+            # geocurve_df = pd.concat(geocurve_df_list, axis=0)
+            # geocurve_df.sort_values(by=["discharge_cms"], inplace=True)
 
             # This list of features is not automatically same nwm_reach feature id
             # and there can be more than one now.
@@ -517,6 +528,7 @@ def create_geocurves(unit_output_path: str, code_version: str):
         except Exception:
             RLOG.error(f"An error occurred while creating geocurves for {model.final_name_key}")
             RLOG.error(traceback.format_exc())
+
 
 # -------------------------------------------------
 def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):

@@ -91,11 +91,13 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
 
     RLOG.lprint("Completed creating a dictionary of available feature_ids and geocurve files.")
 
-    # get ras2fim version from just one of the geocurve files
+    # get ras2fim version and cs from just one of the geocurve files
     ras2fim_version = None
+    features_crs = None
     for _, geocurve_file_path in geocurve_path_dictionary.items():
         sample_geocurve_data = pd.read_csv(geocurve_file_path["path"])
         ras2fim_version = sample_geocurve_data.loc[0, "version"]
+        features_crs = sample_geocurve_data.loc[0, "crs"]
         break
 
     if ras2fim_version:
@@ -146,7 +148,12 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
     RLOG.lprint("Creating output gpkg file: " + output_inundation_poly)
     df = pd.DataFrame.from_dict(feature_id_polygon_path_dict, orient='index').reset_index()
     df.rename(columns={'index': 'feature_id'}, inplace=True)
-    gdf = gpd.GeoDataFrame(df, geometry='geometry', crs=sv.DEFAULT_RASTER_OUTPUT_CRS)
+    gdf = gpd.GeoDataFrame(df, geometry='geometry', crs=features_crs)
+
+    # We know the flow files are based in 5070, so we wil make sure the geocurves are as well
+    # they may not necessarily
+    # Reproject the gdf to our default crs
+    gdf = gdf.to_crs(sv.DEFAULT_RASTER_OUTPUT_CRS)
 
     # add version number before saving
     gdf['version'] = ras2fim_version
