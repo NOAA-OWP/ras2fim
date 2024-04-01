@@ -125,6 +125,9 @@ def mp_process_depth_grid_tif(var_d: dict):
         flow_search = re.search('\(flow\d*\.*\d*_', depth_tif_win_path.name).group()
         profile_num = float(re.search('\d+\.*\d*', flow_search).group())
 
+       
+        geocurve_df_list = []
+
         with rasterio.open(depth_tif_win_path) as depth_grid_rast:
             depth_grid_nodata = depth_grid_rast.profile['nodata']
             depth_grid_crs = depth_grid_rast.crs
@@ -238,12 +241,10 @@ def mp_process_depth_grid_tif(var_d: dict):
                 feature_id_rating_curve_geo = pd.merge(
                     rating_curve_df, extent_poly_diss, on="profile_num", how="right"
                 )
-                # geocurve_df_list.append(feature_id_rating_curve_geo)
+                geocurve_df_list.append(feature_id_rating_curve_geo)
 
-        # MP does not like return a list, but a single df is good
-        # geocurve_df = pd.concat(geocurve_df_list)
-        return feature_id_rating_curve_geo
-        # return geocurve_df
+        geocurve_df = pd.concat(geocurve_df_list)
+        return geocurve_df
 
     except Exception:
         if MP_LOG.LOG_SYSTEM_IS_SETUP is True:
@@ -503,6 +504,7 @@ def create_geocurves(unit_output_path: str, code_version: str):
                 continue
 
             geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
+            geocurve_df.crs = model_crs  # not a reproject, just setting it as it did not know
             geocurve_df = geocurve_df.sort_values(by=['feature_id', 'discharge_cfs'])
 
             # reproject
