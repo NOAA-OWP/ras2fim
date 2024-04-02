@@ -43,7 +43,7 @@ def find_boundary_xs(nwm_seg_gdf, cross_section_gdf, station_column='stream_stn'
     fid_cross_sections = gpd.sjoin(nwm_seg_gdf, cross_section_gdf, how='right')
     # Filter to only the intersecting ones
     fid_cross_sections = fid_cross_sections.loc[~np.isnan(fid_cross_sections.feature_id)]
-    if len(fid_cross_sections) < 2:
+    if len(fid_cross_sections) < 1:
         return None, None
     # Find upper and lower stream stations
     down_xs = fid_cross_sections[station_column].min()

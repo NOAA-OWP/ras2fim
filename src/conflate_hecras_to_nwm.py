@@ -393,10 +393,10 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
     gdf_points_snap_to_ble = gdf_points_snap_to_ble.set_crs(gdf_segments.crs)
 
     # write the shapefile
-    # str_filepath_ras_points = os.path.join(shp_out_path, f"{str_huc8}_ras_snap_points_PT.shp")
+    str_filepath_ras_points = os.path.join(conflated_shp_dir, f"{huc8}_ras_snap_points_PT.shp")
 
     # TODO: Nov 1, 2023. Somewhere in here is a bug?
-    # gdf_points_snap_to_ble.to_file(str_filepath_ras_points)
+    gdf_points_snap_to_ble.to_file(str_filepath_ras_points)
 
     # -------------------------------------------------
     # Buffer the Base Level Engineering streams 0.1 feet (line to polygon)
@@ -480,15 +480,19 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
         # Creates a set of points where the streams intersect
         points = df_stream.unary_union.intersection(df_xs.unary_union)
 
-        if points.geom_type == "MultiPoint":
+        if points.geom_type != "LineString": #if it is not empty
             # Create a shapefile of the intersected points
 
             schema = {"geometry": "Point", "properties": {}}
 
             with collection(str_xs_on_feature_id_pt, "w", "ESRI Shapefile", schema, crs=ras_prj) as output:
                 # Slice ras_prj to remove the "epsg:"
-                for i in points.geoms:
-                    output.write({"properties": {}, "geometry": mapping(Point(i.x, i.y))})
+                if points.geom_type == "MultiPoint":
+                    for i in points.geoms:
+                        output.write({"properties": {}, "geometry": mapping(Point(i.x, i.y))})
+
+                elif points.geom_type == "Point":
+                     output.write({"properties": {}, "geometry": mapping(points)})
 
             df_points = gpd.read_file(str_xs_on_feature_id_pt)
 
