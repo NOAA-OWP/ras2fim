@@ -1,7 +1,37 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.1 - 2024-03-20 - [PR#283](https://github.com/NOAA-OWP/ras2fim/pull/283)
+## v2.0.2.0 - 2024-04-04 - [PR#318](https://github.com/NOAA-OWP/ras2fim/pull/318)
+
+During some testing, it was discovered that some feature geocurves csv's were not being created.  We also found some more error conditions that could stop the entire processing run and have addressed those here. We also discovered some inconsistencies of projections at different parts of post processing such as inundation and benchmark tools.
+
+We have also taken the opportunity to upgrade the `bad models list` system. This is now driven by a configuration file and not hardcoded anymore, which was initially temporary. Note: The phrase `bad model` isn't technically correct. More accurately, it is a model who had trouble being processed through ras2fim which does not automatically mean it is bad.
+
+Closes Issue [317](https://github.com/NOAA-OWP/ras2fim/issues/317)
+
+### Additions  
+
+- `config\bad_models_list.lst`: Now config driven versus hardcode from previous temp releases. Putting model folder names on this list, means that model will be skipped during processing.
+
+### Changes  
+- `.gitignore`: git override to add the new config .lst file.
+- `src`
+    - `conflate_hecras_to_nwm.py`: geocurve fixes.
+    - `create_geocurves.py`: geocurve fixes.
+    - `create_shapes_from_hecras.py`: changed hardcoded model list to new config file.
+    - `ras2fim.py`: Minor adjustments for re-running a HUC/CRS into ras2fim.
+    - `shared_functions.py`: Added a method to load the new bad models config file.
+    - `worker_fim_rasters.py`: Upgrade log tracing and one minor processing bug fix.
+- `tools`
+    - `evaluate_ras2fim_unit.py`: minor fixes to fix CRS compatibility issues. 
+    - `ras2inundation.py`: minor fixes to fix CRS compatibility issues.
+    - `ras_unit_to_s3.py`: variable rename bug fix.
+    - `run_unit_benchmark_tests.py`:  change which models domain file is used for v2 going into `evaluate_ras2fim_unit.py`
+    - `s3_get_models.py`: Text fix.
+
+<br/><br/>
+
+## v2.0.1.0 - 2024-03-20 - [PR#283](https://github.com/NOAA-OWP/ras2fim/pull/283)
 
 This is a new tool, named `run_unit_benchmark_tests.py` can use a single unit to:
 - pull down from S3 the exact HUC related benchmark files.
@@ -90,7 +120,7 @@ Closes Issue [262](https://github.com/NOAA-OWP/ras2fim/issues/262) and Issue [27
 
 <br/><br/>
 
-## v2.0.0 - 2024-03-07 - [PR#305](https://github.com/NOAA-OWP/ras2fim/pull/305)
+## v2.0.0.0 - 2024-03-07 - [PR#305](https://github.com/NOAA-OWP/ras2fim/pull/305)
 
 This PR covers a wide range of last minute bug fixes or critical enhancements including:
 

@@ -52,6 +52,10 @@ def evaluate_unit_results(
     model_results_df = gpd.read_file(inundation_polygons)
     model_domain_df = gpd.read_file(model_domain_polygons)
 
+    # make sure the crs's are the same. models_domain_db shoudl be reprojected to models_results_df.
+    model_domain_df = model_domain_df.to_crs(sv.DEFAULT_RASTER_OUTPUT_CRS)
+    model_results_df = model_results_df.to_crs(sv.DEFAULT_RASTER_OUTPUT_CRS)
+
     # Create the raster candidate map
     RLOG.lprint("Creating the raster candidate maps")
     model_results_df['extent'] = 1

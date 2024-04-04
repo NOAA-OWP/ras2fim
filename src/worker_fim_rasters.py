@@ -1533,6 +1533,8 @@ def create_all_2ndpass_flow_files(
     ls_slope_bc_nd,
     ls_wse_2nd_last_xs,
 ):
+    RLOG.trace("Start create_all_2ndpass_flow_files")
+
     path_to_1st_pass_output = os.path.join(unit_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
 
     folder_1stpass_models = os.listdir(path_to_1st_pass_output)
@@ -1544,6 +1546,7 @@ def create_all_2ndpass_flow_files(
         path_all_x_sections_info = os.path.join(
             path_to_1st_pass_output, folder, "all_x_sections_info_" + folder + ".csv"
         )
+        RLOG.trace(f"all_x_section_info_(folder).csv is {path_all_x_sections_info}")
         all_x_sections_info = pd.read_csv(path_all_x_sections_info)
 
         # Number of the cross sections on the river
@@ -1660,6 +1663,7 @@ def create_all_2ndpass_flow_files(
             file_flow_1st3.close()
 
         counter1 += 1
+    RLOG.trace("End create_all_2ndpass_flow_files")
 
 
 # -------------------------------------------------
@@ -1676,6 +1680,8 @@ def create_2ndpass_rasmap_file(
 ):
     # Name of 2nd-pass depth grids
     list_step_profiles_xml_fn = ["flow_" + str(nms) for nms in range(int_number_of_steps_2ndpass)]
+
+    # if len(list_step_profiles_xml_fn) == 0:
 
     # Writing the rasmapp file
     str_ras_mapper_file = ""
@@ -1802,10 +1808,13 @@ def create_2ndpass_rasmap_file(
 def create_all_2ndpass_rasmap_files(unit_output_folder, huc8_num, model_unit, ls_number_of_steps_2ndpass):
     path_to_1st_pass_output = os.path.join(unit_output_folder, sv.R2F_OUTPUT_DIR_HECRAS_OUTPUT)
 
+    RLOG.trace("start create_all_2ndpass_rasmap_files")
+
     folder_1stpass_models = os.listdir(path_to_1st_pass_output)
 
     nsindx = 0
     for folder in folder_1stpass_models:
+        RLOG.trace(f"-- idx = {nsindx} -- folder = {folder}")
         str_river_id_fn = folder[6:]
         terrain_names = folder[:5]
 
@@ -1817,6 +1826,13 @@ def create_all_2ndpass_rasmap_files(unit_output_folder, huc8_num, model_unit, ls
         path_rasmap = os.path.join(path_to_1st_pass_output, folder, folder[6:] + ".rasmap")
 
         int_number_of_steps_2ndpass = ls_number_of_steps_2ndpass[nsindx]
+        if int_number_of_steps_2ndpass == 0:
+            RLOG.error(
+                f"create_all_2ndpass_rasmap_files [folder index = {nsindx}] :"
+                " has no int_number_of_steps_2ndpass elements"
+            )
+            continue
+
         create_2ndpass_rasmap_file(
             model_unit,
             int_number_of_steps_2ndpass,
