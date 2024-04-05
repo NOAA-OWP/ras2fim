@@ -68,11 +68,8 @@ To get all of the sample specific data please run:
 aws s3 sync s3://noaa-nws-owp-fim/ras2fim/sample/ C:\ras2fim_data\ --requester-pays
 ```
 
-- Data: A collection of various inputs files, some DEMS, some available models and outputs. Note: This is not an exhaustive collection of all OWP_ras_models, DEMs, catalog files, etc that are available for testing other models sets and HUCs. The additional data available for other HUCs, can be found and download at:
+- Data: A collection of various inputs files, some DEMS, some available models and outputs. Note: This is not an exhaustive collection of all OWP_ras_models, DEMs, catalog files, etc that are available for testing other models sets and HUCs. The additional data available for other HUCs, can be found and download at s3://noaa-nws-owp-fim/ras2fim/
 
-```
-aws s3 sync s3://noaa-nws-owp-fim/ras2fim/data/ C:\ras2fim_data\ --requester-pays
-```
 It is also encourage to download the default folder structure `c:\ras2fim_data\` (as per image above). It is fine to downloading the `sample` and `data` S3 folders into the default. The full `data` S3 folder can be very large, so it is recommended to pick just key inputs and respective HUCs instead of the entire folder.
 
 
