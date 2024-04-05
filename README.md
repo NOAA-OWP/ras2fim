@@ -51,9 +51,11 @@ You will need permission from ESIP to access this data. Please contact Carson Pr
 
 ### To test AWS CLI and access to ESIP
 
-To list folders prior to download:
+Before attempts to download, you will need ESIP aws cli credentials (Access key ID and Secret Access Key). We can provide those for you if you do not already have some. Please contact Carson Pruitt (carson.pruitt@noaa.gov) or Fernando Salas (fernando.salas@noaa.gov). We can show you how to load the keys via the "aws configure" command, or similar if you already have a set of keys from other AWS sources.
+
+With the keys in place, you can get a list folders prior to download:
 ```
-aws s3 ls s3://noaa-nws-owp-fim --request-payer requester
+aws s3 ls s3://noaa-nws-owp-fim
 ```
 
 ## ESIP Data Available
@@ -65,7 +67,7 @@ In the s3 bucket are two groupings of data.
 To get all of the sample specific data please run:
 
 ```
-aws s3 sync s3://noaa-nws-owp-fim/ras2fim/sample/ C:\ras2fim_data\ --request-payer requester
+aws s3 sync s3://noaa-nws-owp-fim/ras2fim/sample/ C:\ras2fim_data\ 
 ```
 
 - Data: A collection of various inputs files, some DEMS, some available models and outputs. Note: This is not an exhaustive collection of all OWP_ras_models, DEMs, catalog files, etc that are available for testing other models sets and HUCs. The additional data available for other HUCs, can be found and download at s3://noaa-nws-owp-fim/ras2fim/
