@@ -93,6 +93,9 @@ If that HUC8 DEM does not exist, you can create one using the `tools/acquire_and
 
 At this point, `ras2fim.py` needs a file named `OWP_ras_models_catalog_{HUC8 Number}.csv`, and we have loaded `OWP_ras_models\OWP_ras_models_12090301.csv` for you in the S3 samples folder. It has some meta data that is used in the final output files. The file must have records that match models being processed. For the 'model_id' add any unique numbers you like. Please include it and also add the `-mc` argument to `ras2fim.py`. eg. `-mc c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_{the huc8 number}.csv` (or pathing of your choice of course, as is with most arguments). It is fine if the catalog has extra files as long as it has records to match the model folders names. 
 
+### Testing ras2fim
+If you like to setup your environment and run some sample tests, see the [INSTALL.md](doc/INSTALL.md) page.
+
 
 ## Dependency Sources
 
