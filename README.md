@@ -53,7 +53,7 @@ You will need permission from ESIP to access this data. Please contact Carson Pr
 
 To list folders prior to download:
 ```
-aws s3 ls s3://noaa-nws-owp-fim --requester-pays
+aws s3 ls s3://noaa-nws-owp-fim --request-payer requester
 ```
 
 ## ESIP Data Available
@@ -65,7 +65,7 @@ In the s3 bucket are two groupings of data.
 To get all of the sample specific data please run:
 
 ```
-aws s3 sync s3://noaa-nws-owp-fim/ras2fim/sample/ C:\ras2fim_data\ --requester-pays
+aws s3 sync s3://noaa-nws-owp-fim/ras2fim/sample/ C:\ras2fim_data\ --request-payer requester
 ```
 
 - Data: A collection of various inputs files, some DEMS, some available models and outputs. Note: This is not an exhaustive collection of all OWP_ras_models, DEMs, catalog files, etc that are available for testing other models sets and HUCs. The additional data available for other HUCs, can be found and download at s3://noaa-nws-owp-fim/ras2fim/
