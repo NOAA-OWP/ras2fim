@@ -1,16 +1,19 @@
-## Creating a RAS2FIM environment
+## Using and testing ras2fim.py
 
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/ras2fim_logo_20211018.png" align="right"
+<img src="ras2fim_logo_20211018.png" align="right"
      alt="ras2fim logo" width="120" height="120">
+
+### Follow the steps below to get your environment setup and run some tests.
+<br/>
      
-## (1) Default Folder Structure
+### 1: Default Folder Structure
 
 It is strongly encourage to create the following folder structure on the `c:` of your windows machine. Almost all scripts in this system allow for optional overrides for differnt pathing, but most notes in this document will use defaulted, minimum arguments.
 
-![ras2fim default folder structure image](doc/default_folder_structure.png)
+![ras2fim default folder structure image](default_folder_structure.png)
 
 
-## Prior to Downloading and Running the Code
+#### Prior to Downloading and Running the Code
 
 If you have not already done so, download data from ESIP as per the `README.md` page. 
 
@@ -21,20 +24,20 @@ To keep models organized on your local machine, it is common to create subfolder
 As mentioned on previous pages, you are also welcome to create some of your own OWP_ras_models using RRASSLER or your own tools. 
 <br><br>
 
-### (2) Install HEC-RAS verion 6.3
+### 2: Install HEC-RAS verion 6.3
 <img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/RAS_logo.png" align="right" alt="hec-ras logo" height="80">These RAS2FIM scripts are written to utilize the computational engine and supporting APIs from the U.S Army Corp of Engineers' [Hydrologic Engineering Center's River Analysis System {HEC-RAS}](https://www.hec.usace.army.mil/software/hec-ras/).  Download and install **HEC-RAS version 6.3** to your local machine.  Note: **the version (6.3) matters!**
 <br><br>
 The install package can be downloaded from [the USACE website](https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.25/HEC-RAS_63_Setup.exe). Once installed, **open HEC-RAS on that machine** to accept the terrms and conditions and ensure that it will function on that machine prior to running any RAS2FIM scripts. Close HEC-RAS.
 <br><br>
 
-### (3) Clone the Git-hub repository
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/Git_logo.png" align="right" alt="git logo" height="80"> Install [git](https://git-scm.com/downloads) onto your Windows machine. Next, clone this ras2fim reporitory on to your Windows machine (see note below). Path to the windows folder of your choice. e.g. C:\Users\my_user\Documents\NOAA-OWP\Projects\test\, then type:
+### 3: Clone the Git-hub repository
+<img src="Git_logo.png" align="right" alt="git logo" height="80"> Install [git](https://git-scm.com/downloads) onto your Windows machine. Next, clone this ras2fim reporitory on to your Windows machine (see note below). Path to the windows folder of your choice. e.g. C:\Users\my_user\Documents\NOAA-OWP\Projects\test\, then type:
 ```
 git clone https://github.com/NOAA-OWP/ras2fim.git
 ```
 <br>
 
-### (4) Building the Anaconda Environment
+### 4: Building the Anaconda Environment
 
 You will need to set up an Anaconda/Python environment for developing `ras2fim` that is separate from the "default" environment that you use in your own work/research.  This will allow you to utilize `ras2fim` without worrying about corrupting the Anaconda/Python environment on which your other work depends.
 
@@ -43,24 +46,23 @@ Below are instructions for building a separate development environment for using
 Download and Install [Anaconda](https://www.anaconda.com/products/individual) to your machine.<br>
 <br>
 
-### (5) Creating and Activating conda ras2fim
+### 5: Creating and Activating conda ras2fim
 
 Open an **Anaconda Powershell Prompt** and navigate to the cloned directory. e.g. C:\Users\my_user\Documents\NOAA-OWP\Projects\test\ras2fim.  Your path may vary.<br>
 
-![](doc/conda_prompt.png)
+![](conda_prompt.png)
 
 Next create the `ras2fim` conda environment from the cloned `environment.yml` (it can take a few minutes to complete).<br>
 ```
 conda env create -f environment.yml
 ```
-![](doc/conda_create_env.png)
+![](conda_create_env.png)
 
 Now activate it for use.
 ```
 conda activate ras2fim
 ```
-![](doc/conda_activate_env.png)
-
+![](conda_activate_env.png)
 ### Rebuilding the ras2fim conda environment
 
 Sometimes new releases will require the ras2fim conda environment to be updated. Using then Anaconda Powershell Prompt tool, again navigate to your cloned directory. e.g. C:\Users\my_user\Documents\NOAA-OWP\Projects\test\ras2fim_agency_20211018
@@ -68,45 +70,36 @@ Sometimes new releases will require the ras2fim conda environment to be updated.
     ```
     conda deactivate
     ```
-    ![](doc/conda_deactivate_ras2fim.png)
-
+    ![](conda_deactivate_ras2fim.png)
 - Remove the ras2fim environment (it can take a few minutes to complete)<br>
     ```
     conda remove --name ras2fim --all -y
     ```
-    ![](doc/conda_remove_env.png)
-
-
+    ![](conda_remove_env.png)
 - Recreate the environment (it can take a few minutes to complete)<br>
     ```
     conda env create -f environment.yml
     ```
-    ![](doc/conda_create_env.png)
-
+    ![](conda_create_env.png)
 - Reactivate the enviroment<br>
     ```
     conda env create -f environment.yml
     ```
-    ![](doc/conda_activate_env.png)
+    ![](conda_activate_env.png)
 
-
-
-### Step 5:
+### 6: Get Data
 You will now need some data.
 
 If you have not already done so, you will need to downloaded some files/folders from ESIP. See the [README](../README.md) file for more details on ESIP access. 
 
 You now need the `inputs` and `OWP_ras_models` folders and the HUC8 specific `OWP_ras_models_catalog_{HUC8 Number}.csv` as mentioned in the [README](../README.md). Downloading these two folders will give you some default data that is required. Of course, you are welcome to override or experiment with some of this data as you see fit.
-
 <br><br>
-
 ### ------------------------------------------------------------
 ### --- You are now ready to start processing ras2fim models ---
 <br>
-
 ### Bad Models System
 
-The name `Bad Models` does automatically mean there is bad date in a given folder, it just means there are potentially some incompatability with `ras2fim.py`.
+The name `Bad Models` does automatically mean there is bad data in a given folder, it just means there are potentially some incompatability with `ras2fim.py`.
 
 There is a wide number of ways that a model can fail in `ras2fim.py`. Many scenarios are being programatically caught and logged throughout the code. However, if all else fails, you can put that folder name in the souce code `config\bad_models_list.lst` which will skip that folder during processing.
 <br/><br/>
@@ -114,17 +107,15 @@ There is a wide number of ways that a model can fail in `ras2fim.py`. Many scena
 ## Usage
 
 
-### Step 6
+### 7: Running ras2fim.py
 Each time you want to run ras2fim.py or other tools, you need to activate your ras2fim conda environment.
 ```
 conda activate ras2fim
 ```
-![](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/conda_activate.png)
-
-### Step 7:
+![](conda_activate.png)
 
 The main script is titled `ras2fim.py`.  **All scripts have a helper flag of `-h`**.  It is recommended that you run the script with the helper flag first to determine the required input. Also read the sample usage notes near the bottom of `ras2fim.py` code file.<br><br>
-![](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/conda_python_run.png)
+![](conda_python_run.png)
 <br>
 ***--- Image may be out of date slightly as parameters are being adjusted currently ---***
 <br><br>
