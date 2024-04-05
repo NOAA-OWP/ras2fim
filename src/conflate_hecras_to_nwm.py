@@ -480,7 +480,7 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
         # Creates a set of points where the streams intersect
         points = df_stream.unary_union.intersection(df_xs.unary_union)
 
-        if points.geom_type != "LineString": #if it is not empty
+        if points.geom_type != "LineString":  # if it is not empty
             # Create a shapefile of the intersected points
 
             schema = {"geometry": "Point", "properties": {}}
@@ -492,7 +492,7 @@ def fn_conflate_hecras_to_nwm(huc8, ras_shp_file_dir, conflated_shp_dir, dir_dat
                         output.write({"properties": {}, "geometry": mapping(Point(i.x, i.y))})
 
                 elif points.geom_type == "Point":
-                     output.write({"properties": {}, "geometry": mapping(points)})
+                    output.write({"properties": {}, "geometry": mapping(points)})
 
             df_points = gpd.read_file(str_xs_on_feature_id_pt)
 

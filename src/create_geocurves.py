@@ -125,7 +125,6 @@ def mp_process_depth_grid_tif(var_d: dict):
         flow_search = re.search('\(flow\d*\.*\d*_', depth_tif_win_path.name).group()
         profile_num = float(re.search('\d+\.*\d*', flow_search).group())
 
-       
         geocurve_df_list = []
 
         with rasterio.open(depth_tif_win_path) as depth_grid_rast:
