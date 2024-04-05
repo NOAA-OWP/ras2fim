@@ -26,14 +26,14 @@ More detail regarding RAS2FIM is located on the project's Wiki page.
 </p>
 
 **Overview**:
-![](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/ras2fim_overview.png)
-![](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/ras2fim_sample_output.png)
+![](doc/ras2fim_overview.png)
+![](doc/ras2fim_sample_output.png)
 
 ## Default Folder Structure
 
 While ras2fim.py and other tools have optional parameters allowing pathing to any folder(s), we do recommended folder structure as shown below based on your `c:` drive.
 
-![ras2fim default folder structure image](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/default_folder_structure.png)
+![ras2fim default folder structure image](doc/default_folder_structure.png)
 
 All documentation in this repo are based on the default folder structure.
 
@@ -60,7 +60,7 @@ aws s3 ls s3://noaa-nws-owp-fim --requester-pays
 
 In the s3 bucket are two groupings of data.
 
-- Sample: One is a full sample set of inputs required to run a small sample of ras2fim.py based on 12090301. It is recommended to download to the default folder structure against your `c:`. This will allow you to run the `ras2fim.py` script with minimum arguments. It has a small sample of OWP_ras_models to allow for testing. This site does not talk about how to create OWP_ras_models but information can be found at the [RRASSLER tools](https://github.com/NOAA-OWP/RRASSLER) repo. 
+- Sample: One is a full sample set of inputs required to run a small sample of ras2fim.py based on 12090301. It is recommended to download to the default folder structure against your `c:`, as per image above. This will allow you to run the `ras2fim.py` script with minimum arguments. It has a small sample of OWP_ras_models to allow for testing. This site does not talk about how to create OWP_ras_models but information can be found at the [RRASSLER tools](https://github.com/NOAA-OWP/RRASSLER) repo. 
 
 To get all of the sample specific data please run:
 
@@ -78,13 +78,13 @@ It is also encourage to download the default folder structure `c:\ras2fim_data\`
 
 ### AWS ESIP ras2fim Inputs Folder
 
-The inputs folder, from either `sample` or `data`, includes the following files / folders listed below. Some are manditory for all `ras2fim.py` processing. Others require HUC8 specific files in key locations.
+The inputs folder, from either `sample` or `data`, includes the following files / folders listed below. Some files are shared for all `ras2fim.py` processing. Others require HUC8 specific files in key locations.
 
-1. ALL: Watershed Boundary Dataset (WBD): WBD_National.gpkg
-2. PER HUC8: The WBD_National.gkpg split into different gpkg files by HUC8: /WBD_HUC8/*. Get the HUC8 specif gkpg you need and save it inside the /WBD_HUC8/ folder
-3. ALL: National Water Model (NWM) Flowline Hydrofabric: nwm_flows.gpkg
-4. ALL: National Water Model to Watershed Boundary Lookup: nwm_wbd_lookup.nc
-6. PER HUC8: You will need a HUC specific ras2fim DEM which may exist in s3://noaa-nws-owp-fim/ras2fim/data/inputs/dems/ras_3dep_HUC8_10m/HUC8_{your huc number}_dem.tif. You can save it anywhere on your computer but it is suggested to save it at C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m. `ras2fim.py` has optional arguments to path to this file in any location if you do not choose the default location.
+1. ALL: Watershed Boundary Dataset (WBD): WBD_National.gpkg.
+2. PER HUC8: The WBD_National.gkpg split into different gpkg files by HUC8: /WBD_HUC8/*. Get the HUC8 specific gpkg you need and save it inside the \inputs\X-National_Datasets\WBD_HUC8\ folder.
+3. ALL: National Water Model (NWM) Flowline Hydrofabric: nwm_flows.gpkg.
+4. ALL: National Water Model to Watershed Boundary Lookup: nwm_wbd_lookup.nc.
+6. PER HUC8: You will need a HUC specific ras2fim DEM which may exist in s3://noaa-nws-owp-fim/ras2fim/data/inputs/dems/ras_3dep_HUC8_10m/HUC8_{your huc number}_dem.tif. You can save it anywhere on your computer but it is suggested to save it at C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m. `ras2fim.py` has optional arguments to path to this file in any location if you do not choose the default location. Note: The S3 "sample" folders already include the 12090301 DEM.
 <br>
 If that HUC8 DEM does not exist, you can create one using the `tools/acquire_and_preprocess_3dep_dems.py`. Include the argument of `-skips3` so it does not attempt to upload it to an S3 bucket unless you have your own. 
 
@@ -98,7 +98,7 @@ At this point, `ras2fim.py` needs a file named `OWP_ras_models_catalog_{HUC8 Num
 
 * [HEC-RAS Version 6.3](https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.25/HEC-RAS_63_Setup.exe).
 * [Anaconda](https://www.anaconda.com/products/individual) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) for Windows.
-* National datasets - from AWS - See "Get AWS Folder - Inputs" section above.
+* National datasets - from AWS - See "AWS ESIP ras2fim Inputs Folder" section above.
 * Runs on a Windows OS only - Tested on Windows 10.
 * Tested on HEC-RAS 6.3 and default pathing is also set against v6.3.
 
