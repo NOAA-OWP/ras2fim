@@ -1,6 +1,28 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.x.x - 2024-04-09 - [PR#319](https://github.com/NOAA-OWP/ras2fim/pull/319)
+
+We had a need to upgrade README.md and INSTALL.md to be fully match v2 code and patterns. This also triggered some images updates and additions. The file changes based on this adjustments are not listed here.
+
+There are a couple of linting changes as well:
+
+The new `eval_bench_data.py` is a temporarily WIP file.
+
+Note: This release does require a conda environment remove and (re)create.
+
+### Additions
+- `tools`
+   - `eval_bench_data.py`: This is a very rough WIP file for evaluating benchmark test output data.
+
+### Changes  
+- `src`
+    - `conflate_hecras_to_nwm.py`: linting
+    - `create_geocurves.py`: linting
+
+<br/><br/>
+
+
 ## v2.0.2.0 - 2024-04-04 - [PR#318](https://github.com/NOAA-OWP/ras2fim/pull/318)
 
 During some testing, it was discovered that some feature geocurves csv's were not being created.  We also found some more error conditions that could stop the entire processing run and have addressed those here. We also discovered some inconsistencies of projections at different parts of post processing such as inundation and benchmark tools.
