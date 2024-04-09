@@ -277,40 +277,21 @@ def eval_data():
     """
 
     # ----------------------------------
-    """
-    filter_dt = { "unit_name": ["12090301_2277_ble"]}
-    file_name = "12090301_2277_ble_all_versions_all_bench_240402_1435.png"
+    unit_name = "12040101_102739_ble"
+    file_create_date = dt.datetime.now().strftime("%Y%m%d_%H%M")
+    filter_dt = { "unit_name": [unit_name]}
+    file_name = f"{unit_name}_all_unit_versions_all_bench_{file_create_date}.png"
     db_filtered_metrics = filter_db(metrics_df, filter_dt)
 
+    # ----------------------------------    
     barplot(dataframe=db_filtered_metrics,
             x_field='magnitude',
             x_order=['100yr', '500yr','action', 'minor', 'moderate', 'major'],
             y_field='critical_success_index',
             hue_field='code_version',
             ordered_hue=['v1.29.0','v2.0.1'],
-            title_text='12090301_2277_ble - all versions - all bench sources',
-            dest_file=f"C:\\ras2fim_data\\gval\\evaluations\\PROD\\eval_bench_results\\{file_name}")
-    """
-
-    # ----------------------------------
-    filter_dt = {"unit_name": ["12090301_2277_ble"]}
-
-    str_date = dt.datetime.now().strftime("%Y%m%d-%H%M")
-
-    file_name = f"all_unit_versions_{str_date}.png"
-    db_filtered_metrics = filter_db(metrics_df, filter_dt)
-
-    barplot(
-        dataframe=db_filtered_metrics,
-        x_field='magnitude',
-        x_order=['100yr', '500yr', 'action', 'minor', 'moderate', 'major'],
-        y_field='critical_success_index',
-        hue_field='code_version',
-        ordered_hue=['v1.29.0', 'v2.0.1'],
-        title_text='12090301_2277_ble - all unit versions - 2024-04-04',
-        dest_file="C:\\ras2fim_data\\gval\\evaluations\\PROD\\"
-        f"12090301_2277_ble\\eval_bench_results\\20240404\\{file_name}",
-    )
+            title_text=f"{unit_name} - all unit versions - all bench sources",
+            dest_file=f"C:\\ras2fim_data\\gval\\evaluations\\PROD\\{unit_name}\\eval_bench_results\\{file_name}")
 
     print("all done, yay")
 
