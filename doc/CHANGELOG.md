@@ -9,6 +9,8 @@ There are a couple of linting changes as well:
 
 The new `eval_bench_data.py` is a temporarily WIP file.
 
+Note: This release does require a conda environment remove and (re)create.
+
 ### Additions
 - `tools`
    - `eval_bench_data.py`: This is a very rough WIP file for evaluating benchmark test output data.
