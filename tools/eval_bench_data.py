@@ -153,6 +153,10 @@ def barplot(
     # If figure to be saved to disk, then do so, otherwise return fig
 
     if dest_file:
+        parent_dir = os.path.dirname(dest_file)
+        if os.path.exists(parent_dir) is False:
+            os.makedirs(parent_dir, exist_ok=True)
+
         fig.savefig(dest_file)
         print(f"plot file saved to {dest_file}")
         plt.close(fig)
@@ -282,6 +286,7 @@ def eval_data():
     filter_dt = { "unit_name": [unit_name]}
     file_name = f"{unit_name}_all_unit_versions_all_bench_{file_create_date}.png"
     db_filtered_metrics = filter_db(metrics_df, filter_dt)
+    ordered_hue_filter = ['v1.29.0','v2.0.2.0']
 
     # ----------------------------------    
     barplot(dataframe=db_filtered_metrics,
@@ -289,7 +294,7 @@ def eval_data():
             x_order=['100yr', '500yr','action', 'minor', 'moderate', 'major'],
             y_field='critical_success_index',
             hue_field='code_version',
-            ordered_hue=['v1.29.0','v2.0.1'],
+            ordered_hue=ordered_hue_filter,
             title_text=f"{unit_name} - all unit versions - all bench sources",
             dest_file=f"C:\\ras2fim_data\\gval\\evaluations\\PROD\\{unit_name}\\eval_bench_results\\{file_name}")
 
