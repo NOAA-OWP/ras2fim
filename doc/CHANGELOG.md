@@ -7,14 +7,6 @@ We had a need to upgrade README.md and INSTALL.md to be fully match v2 code and 
 
 There are a couple of linting changes as well:
 
-The new `eval_bench_data.py` is a temporarily WIP file.
-
-Note: This release does require a conda environment remove and (re)create.
-
-### Additions
-- `tools`
-   - `eval_bench_data.py`: This is a very rough WIP file for evaluating benchmark test output data.
-
 ### Changes  
 - `src`
     - `conflate_hecras_to_nwm.py`: linting
