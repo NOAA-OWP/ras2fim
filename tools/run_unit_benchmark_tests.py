@@ -165,7 +165,7 @@ def run_unit_benchmark_tests(
     # TODO: test permuations of the input args
     print()
     RLOG.notice(
-        "NOTE: As of Mar 5, 2024, some of the testing for non-defaulted args has" " not yet been completed."
+        "NOTE: As of Mar 5, 2025, some of the testing for non-defaulted args has" " not yet been completed."
     )
     print()
     print()
