@@ -281,12 +281,12 @@ def eval_data():
     """
 
     # ----------------------------------
-    unit_name = "12040101_102739_ble"
+    unit_name = "12090301_2277_ble"
     file_create_date = dt.datetime.now().strftime("%Y%m%d_%H%M")
     filter_dt = { "unit_name": [unit_name]}
     file_name = f"{unit_name}_all_unit_versions_all_bench_{file_create_date}.png"
     db_filtered_metrics = filter_db(metrics_df, filter_dt)
-    ordered_hue_filter = ['v1.29.0','v2.0.2.0']
+    ordered_hue_filter = ['v1', 'v1.29.0','v2.0.1']
 
     # ----------------------------------    
     barplot(dataframe=db_filtered_metrics,
