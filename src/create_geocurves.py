@@ -162,6 +162,7 @@ def mp_process_depth_grid_tif(var_d: dict):
                 #       f"depth_grid of {depth_tif} does not have any heights above surface.")
                 #     continue
 
+
                 results = (
                     {"properties": {"extent": 1}, "geometry": s}
                     for i, (s, v) in enumerate(
@@ -174,18 +175,31 @@ def mp_process_depth_grid_tif(var_d: dict):
                     )
                 )
 
-                results_ls = list(results)
-                results_df = pd.DataFrame(results_ls)
+                #results_ls = list(results)
+                #results_df = pd.DataFrame(results_ls)
 
+    
+                """
                 poly_coordinates = []
                 for pc in range(len(results_df)):
                     coords = Polygon(results_df['geometry'][pc]['coordinates'][0])
                     poly_coordinates.append(coords)
 
-                poly_coordinates_df = pd.DataFrame(poly_coordinates, columns=["geometry"])
+                # might be pulling just the outer ring and not the rest of the rings
+                # was: coords = Polygon(results_df['geometry'][pc]['coordinates'][0])
+                """
+
+                # poly_coordinates_df = pd.DataFrame(poly_coordinates, columns=["geometry"])
 
                 # Convert list of shapes to polygon, then dissolve
-                extent_poly = gpd.GeoDataFrame(poly_coordinates_df, crs=depth_grid_crs)
+                # extent_poly = gpd.GeoDataFrame(poly_coordinates_df, crs=depth_grid_crs)
+                
+                # extent_poly = gpd.GeoDataFrame.from_features(list(results), crs=depth_grid_crs)
+
+                # see if the polygon rings are gone
+                extent_poly = gpd.GeoDataFrame.from_features(results, crs=depth_grid_crs)
+                # see if the polygon rings are gone
+
                 try:
                     # extent_poly_diss = extent_poly.dissolve(by="extent")
                     extent_poly_diss = extent_poly.dissolve()

@@ -26,6 +26,10 @@ RLOG = sv.R2F_LOG
 Note: Apr 5, 2024: This is a starting prototype tool. It has alot of hardcoding and
 debug testing in it. This tool will evolve over time.
 
+Also: Keep an eye on FIM eval_plots.py which has a "bad 'aphs' sites" list and at least one
+rule for rejecting nws, usgs sites (maybe others)
+     - re:  "BAD_SITES"  and  "DISCARD_AHPS_QUERY"
+     
 '''
 
 
