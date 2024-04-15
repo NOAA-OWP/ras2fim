@@ -39,23 +39,28 @@ All documentation in this repo are based on the default folder structure.
 
 ## Downloading Data from ESIP
 
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/esip-logo.png" align="right" alt="esip logo" height="50">There are folders and files that will need to be downloaded locally prior to running the RAS2FIM code.  This data can be found in an Amazon S3 Bucket hosted by [Earth Science Information Partners (ESIP)](https://www.esipfed.org/). The data can be accessed using the AWS Command Line Interface (CLI) tools. AWS CLI installation details are shown below. This S3 Bucket (`s3://noaa-nws-owp-fim`) is set up as a "Requester Pays" bucket. Read more about what that means [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html).
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/esip-logo.png" align="right" alt="esip logo" height="50">There are folders and files that will need to be downloaded locally prior to running the RAS2FIM code.  This data can be found in an Amazon S3 Bucket hosted by [Earth Science Information Partners (ESIP)](https://www.esipfed.org/). The data can be accessed using the AWS Command Line Interface (CLI) tools. Please contact Carson Pruitt (carson.pruitt@noaa.gov) or Fernando Salas (fernando.salas@noaa.gov) if you experience issues with permissions.
 
-You will need permission from ESIP to access this data. Please contact Carson Pruitt (carson.pruitt@noaa.gov) or Fernando Salas (fernando.salas@noaa.gov) for assistance.
-
+AWS Region: `US East (N. Virginia) us-east-1`
 
 ### Configuring the AWS CLI
 
 1. [Install AWS CLI tools](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
 2. [Configure AWS CLI tools](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
 
-### To test AWS CLI and access to ESIP
+### Accessing Data using the AWS CLI
 
-Before attempts to download, you will need ESIP AWS cli credentials (Access key ID and Secret Access Key). We can provide those for you if you do not already have some. Please contact Carson Pruitt (carson.pruitt@noaa.gov) or Fernando Salas (fernando.salas@noaa.gov). We can show you how to load the keys via the "aws configure" command, or similar if you already have a set of keys from other AWS sources. Installing AWS credentials, you will need to install them on your machine. See [Configuration and credential file settings](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html). Generally the easiest way to run a command that starts with `aws configure`.  There are some nuances about installing your keys so feel free reach out to us if you need help.
+Before attempting to download, you will need ESIP AWS cli credentials (Access key ID and Secret Access Key). You do not have to have your own AWS account. Please contact Carson Pruitt (carson.pruitt@noaa.gov) or Fernando Salas (fernando.salas@noaa.gov). 
+
+Once you get AWS credentials, open your terminal window and type:
+```
+aws configure --profile esip
+```
+It will ask you for the Access key ID, Secret Access Key, Region and default language (just hit tab for that entry).
 
 With the keys in place, you can test your credentials get a list folders prior to download as well as execute other S3 cli commands:
 ```
-aws s3 ls s3://noaa-nws-owp-fim
+aws s3 ls s3://noaa-nws-owp-fim/ras2fim --profile esip
 ```
 
 ## ESIP Data Available
@@ -67,7 +72,7 @@ In the s3 bucket are two groupings of data.
 To get all of the sample specific data please run:
 
 ```
-aws s3 sync s3://noaa-nws-owp-fim/ras2fim/sample/ C:\ras2fim_data\ 
+aws s3 sync s3://noaa-nws-owp-fim/ras2fim/sample/ C:\ras2fim_data\  --profile esip
 ```
 
 - Data: A collection of various inputs files, some DEMS, some available models and outputs. Note: This is not an exhaustive collection of all OWP_ras_models, DEMs, catalog files, etc that are available for testing other models sets and HUCs. The additional data available for other HUCs, can be found and download at s3://noaa-nws-owp-fim/ras2fim/
