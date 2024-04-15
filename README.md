@@ -26,101 +26,86 @@ More detail regarding RAS2FIM is located on the project's Wiki page.
 </p>
 
 **Overview**:
-![](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/ras2fim_overview.png)
-![](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/ras2fim_sample_output.png)
+![](doc/ras2fim_overview.png)
+![](doc/ras2fim_sample_output.png)
 
 ## Default Folder Structure
 
 While ras2fim.py and other tools have optional parameters allowing pathing to any folder(s), we do recommended folder structure as shown below based on your `c:` drive.
 
-![ras2fim default folder structure image](https://github.com/NOAA-OWP/ras2fim/blob/dev/doc/default_folder_structure.png)
+![ras2fim default folder structure image](doc/default_folder_structure.png)
 
 All documentation in this repo are based on the default folder structure.
 
 ## Downloading Data from ESIP
 
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/esip-logo.png" align="right" alt="esip logo" height="50">There are folders and files that will need to be downloaded locally prior to running the RAS2FIM code.  This data can be found in an Amazon S3 Bucket hosted by [Earth Science Information Partners (ESIP)](https://www.esipfed.org/). The data can be accessed using the AWS Command Line Interface (CLI) tools. AWS CLI installation details are shown below. This S3 Bucket (`s3://noaa-nws-owp-fim`) is set up as a "Requester Pays" bucket. Read more about what that means [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/RequesterPaysBuckets.html).
+<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/esip-logo.png" align="right" alt="esip logo" height="50">There are folders and files that will need to be downloaded locally prior to running the RAS2FIM code.  This data can be found in an Amazon S3 Bucket hosted by [Earth Science Information Partners (ESIP)](https://www.esipfed.org/). The data can be accessed using the AWS Command Line Interface (CLI) tools. Please contact Carson Pruitt (carson.pruitt@noaa.gov) or Fernando Salas (fernando.salas@noaa.gov) if you experience issues with permissions.
 
-You will need permission from ESIP to access this data. Please contact Carson Pruitt (carson.pruitt@noaa.gov) or Fernando Salas (fernando.salas@noaa.gov) for assistance.
-
+AWS Region: `US East (N. Virginia) us-east-1`
 
 ### Configuring the AWS CLI
 
 1. [Install AWS CLI tools](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
 2. [Configure AWS CLI tools](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
 
-### To test AWS CLI and access to ESIP
+### Accessing Data using the AWS CLI
 
-To list folders prior to download:
+Before attempting to download, you will need ESIP AWS cli credentials (Access key ID and Secret Access Key). You do not have to have your own AWS account. Please contact Carson Pruitt (carson.pruitt@noaa.gov) or Fernando Salas (fernando.salas@noaa.gov). 
+
+Once you get AWS credentials, open your terminal window and type:
 ```
-aws s3 ls s3://noaa-nws-owp-fim --requester-pays
+aws configure --profile esip
+```
+It will ask you for the Access key ID, Secret Access Key, Region and default language (just hit tab for that entry).
+
+With the keys in place, you can test your credentials get a list folders prior to download as well as execute other S3 cli commands:
+```
+aws s3 ls s3://noaa-nws-owp-fim/ras2fim --profile esip
 ```
 
-## Output Samples
-If you want to review a sample output for ras2fim.py, you can dowload a folder that was generated using five models in 12090301 HUC8.
+## ESIP Data Available
+
+In the s3 bucket are two groupings of data.
+
+- Sample: One is a full sample set of inputs required to run a small sample of ras2fim.py based on 12090301. It is recommended to download to the default folder structure against your `c:`, as per image above. This will allow you to run the `ras2fim.py` script with minimum arguments. It has a small sample of OWP_ras_models to allow for testing. This site does not talk about how to create OWP_ras_models but information can be found at the [RRASSLER tools](https://github.com/NOAA-OWP/RRASSLER) repo. 
+
+To get all of the sample specific data please run:
+
 ```
-aws s3 sync s3://noaa-nws-owp-fim/ras2fim/output_ras2fim C:\ras2fim_data\output_ras2fim --requester-pays
+aws s3 sync s3://noaa-nws-owp-fim/ras2fim/sample/ C:\ras2fim_data\  --profile esip
 ```
 
-## Prior to Running the Code (if you choose to do some processing)
+- Data: A collection of various inputs files, some DEMS, some available models and outputs. Note: This is not an exhaustive collection of all OWP_ras_models, DEMs, catalog files, etc that are available for testing other models sets and HUCs. The additional data available for other HUCs, can be found and download at s3://noaa-nws-owp-fim/ras2fim/
 
-To do some test processing, you will need to download additional ESIP folders which include the `inputs` and the `OWP_ras_models` folders. We have provided a small sample set of five `models` based on 12090301 HUC8.  The `model` folder includes a number of sub-folders, one per model, that has gone through preprocessing steps to convert some raw HEC-RAS data to data which can be processed by `ras2fim.py`. `ras2fim.py` will create output rating curves, REMs and other output files.
+It is also encourage to download the default folder structure `c:\ras2fim_data\` (as per image above). It is fine to downloading the `sample` and `data` S3 folders into the default. The full `data` S3 folder can be very large, so it is recommended to pick just key inputs and respective HUCs instead of the entire folder.
 
-While not yet determined, we may publish more `models` later, however, you are also welcome to create our own `models` and use the `ras2fim.py` tools.
 
-The OWP tools to preprocess HEC-RAS data to OWP_ras_models is not yet available.
-<br><br>
+### AWS ESIP ras2fim Inputs Folder
 
-### (1) Get AWS Folder - Inputs
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/AWS_logo.png" align="right" alt="aws logo" height="50"> The downloaded inputs folder is appx 14.3 Gb.
-```
-aws s3 sync s3://noaa-nws-owp-fim/ras2fim/inputs c:\ras2fim_data\inputs --requester-pays
-```
-This download will include the following files / folders:
+The inputs folder, from either `sample` or `data`, includes the following files / folders listed below. Some files are shared for all `ras2fim.py` processing. Others require HUC8 specific files in key locations.
 
-1. Watershed Boundary Dataset (WBD): WBD_National.gpkg
-2. The WBD_National.gkpg split into different gpkg files by HUC8: /WBD_HUC8/*
-3. National Water Model (NWM) Flowline Hydrofabric: nwm_flows.gpkg
-4. National Water Model to Watershed Boundary Lookup: nwm_wbd_lookup.nc
-5. National Water Model (NWM) Catchments file: nwm_catchments.gpkg
-6. You will need a HUC specific DEM which should exist in s3://noaa-nws-owp-fim/ras2fim/inputs/dems/ras_3dep_HUC8_10m/HUC8_{your huc number}_dem.tif. You can save it anywhere on your computer but it is suggested to save it at C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m.
+1. ALL: Watershed Boundary Dataset (WBD): WBD_National.gpkg.
+2. PER HUC8: The WBD_National.gkpg split into different gpkg files by HUC8: /WBD_HUC8/*. Get the HUC8 specific gpkg you need and save it inside the \inputs\X-National_Datasets\WBD_HUC8\ folder.
+3. ALL: National Water Model (NWM) Flowline Hydrofabric: nwm_flows.gpkg.
+4. ALL: National Water Model to Watershed Boundary Lookup: nwm_wbd_lookup.nc.
+6. PER HUC8: You will need a HUC specific ras2fim DEM which may exist in s3://noaa-nws-owp-fim/ras2fim/data/inputs/dems/ras_3dep_HUC8_10m/HUC8_{your huc number}_dem.tif. You can save it anywhere on your computer but it is suggested to save it at C:\ras2fim_data\inputs\dems\ras_3dep_HUC8_10m. `ras2fim.py` has optional arguments to path to this file in any location if you do not choose the default location. Note: The S3 "sample" folders already include the 12090301 DEM.
 <br>
-If that HUC8 DEM does not exist, you can create one using the tools/acquire_and_preprocess_3dep_dems.py. Include the argument of -skips3 so it does not attemp to upload it to an S3 bucket unless you have your own. ras2fim.py has an parameter to point to this file if not in the default path.
-<br><br>
+If that HUC8 DEM does not exist, you can create one using the `tools/acquire_and_preprocess_3dep_dems.py`. Include the argument of `-skips3` so it does not attempt to upload it to an S3 bucket unless you have your own. 
 
-### (2) Get AWS Folder - OWP_ras_models folder and OWP_ras_models_catalog.csv
 
-At this point, ras2fim.py needs a file named OWP_ras_models_catalog.csv, or similar, and we have loaded a sample for you. It has some meta data that is used in the final output files. Thee file must have records that match models being processed. For the 'model_id' add any unique numbers you like, if you haven't used the tools/s3_get_models.py tool to download from an S3 bucket. Please include it and also add the `-mc` argument to `ras2fim.py`. eg. `-mc c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_{the huc8 number}_.csv` (or pathing of your choice of course, as is with most arguments).
+### OWP_ras_models_catalog.csv
 
-To download the `OWP_ras_models` folder, you AWS CLI command will be (adjusting for path overrides if you like):
-```
-aws s3 sync s3://noaa-nws-owp-fim/ras2fim/OWP_ras_models c:\ras2fim_data\OWP_ras_models --requester-pays
-```
+At this point, `ras2fim.py` needs a file named `OWP_ras_models_catalog_{HUC8 Number}.csv`, and we have loaded `OWP_ras_models\OWP_ras_models_12090301.csv` for you in the S3 samples folder. It has some meta data that is used in the final output files. The file must have records that match models being processed. For the 'model_id' add any unique numbers you like. Please include it and also add the `-mc` argument to `ras2fim.py`. eg. `-mc c:\ras2fim_data\OWP_ras_models\OWP_ras_models_catalog_{the huc8 number}.csv` (or pathing of your choice of course, as is with most arguments). It is fine if the catalog has extra files as long as it has records to match the model folders names. 
 
-### (3) Install HEC-RAS verion 6.3
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/RAS_logo.png" align="right" alt="hec-ras logo" height="80">These RAS2FIM scripts are written to utilize the computational engine and supporting APIs from the U.S Army Corp of Engineers' [Hydrologic Engineering Center's River Analysis System {HEC-RAS}](https://www.hec.usace.army.mil/software/hec-ras/).  Download and install **HEC-RAS version 6.3** to your local machine.  Note: **the version (6.3) matters!**
-<br><br>
-The install package can be downloaded from [the USACE website](https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.25/HEC-RAS_63_Setup.exe). Once installed, **open HEC-RAS on that machine** to accept the terrms and conditions and ensure that it will function on that machine prior to running any RAS2FIM scripts. Close HEC-RAS.
-<br><br>
+### Testing ras2fim
+If you like to setup your environment and run some sample tests, see the [INSTALL.md](doc/INSTALL.md) page.
 
-### (4) Clone the Git-hub repository
-<img src="https://github.com/NOAA-OWP/ras2fim/blob/main/doc/Git_logo.png" align="right" alt="git logo" height="80"> Install [git](https://git-scm.com/downloads) onto your Windows machine. Next, clone this ras2fim reporitory on to your Windows machine (see note below). Path to the windows folder of your choice, then type:
-```
-git clone https://github.com/NOAA-OWP/ras2fim.git
-```
-<br>
 
-### (5) Building and Testing ras2fim
-
-Detailed instructions on setting up a ras2fim anaconda environment and running the ras2fim script can be in the [INSTALL](doc/INSTALL.md) document.
-<br><br>
-
-----
 ## Dependency Sources
 
 * [HEC-RAS Version 6.3](https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.25/HEC-RAS_63_Setup.exe).
 * [Anaconda](https://www.anaconda.com/products/individual) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) for Windows.
-* National datasets - from AWS - See "Get AWS Folder - Inputs" section above.
+* National datasets - from AWS - See "AWS ESIP ras2fim Inputs Folder" section above.
 * Runs on a Windows OS only - Tested on Windows 10.
 * Tested on HEC-RAS 6.3 and default pathing is also set against v6.3.
 
