@@ -1,7 +1,7 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
-## v2.0.x.x - 2024-04-09 - [PR#319](https://github.com/NOAA-OWP/ras2fim/pull/319)
+## v2.0.2.1 - 2024-04-15 - [PR#319](https://github.com/NOAA-OWP/ras2fim/pull/319)
 
 We had a need to upgrade README.md and INSTALL.md to be fully match v2 code and patterns. This also triggered some images updates and additions. The file changes based on this adjustments are not listed here.
 
