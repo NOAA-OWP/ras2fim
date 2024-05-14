@@ -155,15 +155,8 @@ def mp_process_depth_grid_tif(var_d: dict):
                 binary_arr = np.where(
                     (masked_inundation > 0) & (masked_inundation != depth_grid_nodata), 1, 0
                 ).astype("uint8")
-                # TODO: # if the array only has values of zero, then skip it
-                # (aka.. no heights above surface)
-                # if np.min(binary_arr) == 0 and np.max(binary_arr) == 0:
-                #     RLOG.warning(
-                #       f"depth_grid of {depth_tif} does not have any heights above surface.")
-                #     continue
 
-
-                results = (
+                depth_poly_args = (
                     {"properties": {"extent": 1}, "geometry": s}
                     for i, (s, v) in enumerate(
                         shapes(
@@ -175,8 +168,49 @@ def mp_process_depth_grid_tif(var_d: dict):
                     )
                 )
 
-                #results_ls = list(results)
+                # cur dev (2.0.2.1)
+                results_ls = list(depth_poly_args)
+
+                if len(results_ls) == 0:
+                    continue
+
                 #results_df = pd.DataFrame(results_ls)
+
+                #poly_coordinates = []
+                #for pc in range(len(results_df)):
+                     # likly missing the inter right aka (0)
+                    
+                    #for coord in results_df['geometry'][pc]['coordinates']:
+                    #    coords = Polygon(coord)
+                    #    poly_coordinates.append(coords)
+                    #if len(results_df['geometry'][pc]['coordinates']) > 1:
+                    #    RLOG.warning(f"More than one coords for {profile_num} - {depth_grid_rast}")
+
+
+                    # if nwm_feature.feature_id == 5791930:
+                    #     file_name = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_FINAL,
+                    #                             sv.R2F_OUTPUT_DIR_GEOCURVES, "rob_test_2.csv")
+                    #     poly_coordinates_df.to_csv(file_name)
+                    #     print("hi")
+
+
+                   # coords = Polygon(results_df['geometry'][pc]['coordinates'][0])
+                   # poly_coordinates.append(coords)                    
+
+                #poly_coordinates_df = pd.DataFrame(poly_coordinates, columns=["geometry"])
+
+
+
+                # Convert list of shapes to polygon, then dissolve
+                #extent_poly = gpd.GeoDataFrame(poly_coordinates_df, crs=depth_grid_crs)
+
+                extent_poly = gpd.GeoDataFrame.from_features(results_ls, crs=depth_grid_crs)
+
+
+
+                #results_ls = list(depth_poly_args)
+                #results_df = pd.DataFrame.from_dict(depth_poly_args)
+                #results_df = pd.DataFrame(list(depth_poly_args))
 
     
                 """
@@ -192,17 +226,37 @@ def mp_process_depth_grid_tif(var_d: dict):
                 # poly_coordinates_df = pd.DataFrame(poly_coordinates, columns=["geometry"])
 
                 # Convert list of shapes to polygon, then dissolve
-                # extent_poly = gpd.GeoDataFrame(poly_coordinates_df, crs=depth_grid_crs)
+                #extent_poly = gpd.GeoDataFrame(results_df, crs=depth_grid_crs)
                 
                 # extent_poly = gpd.GeoDataFrame.from_features(list(results), crs=depth_grid_crs)
 
                 # see if the polygon rings are gone
-                extent_poly = gpd.GeoDataFrame.from_features(results, crs=depth_grid_crs)
-                # see if the polygon rings are gone
+                # Fails: results is not a dataframe
+                #      Assigning CRS to a GeoDataFrame without a geometry column is not supported.
+
+                # extent_poly = gpd.GeoDataFrame.from_features(list(depth_poly_args), crs=depth_grid_crs).to_crs(crs)
+
+                # ------------------
+                # from V1 example 
+                # https://github.com/NOAA-OWP/ras2fim/blob/9f56d2d60abd6c28e94f8e77ad522434a5b5719e/src/create_geocurves.py
+                # V1: results = __ has been upgraded here a bit and renamed to depth_poly_args
+
+                #results_ls = list(depth_poly_args)
+
+                # V1: Convert list of shapes to polygon, then dissolve
+                # but won't quite work here (crs is wrong)
+                #extent_poly = gpd.GeoDataFrame.from_features(results_ls, crs=depth_grid_crs)
+
+                # -----------------
+                #results_df = pd.DataFrame.from_dict(depth_poly_args)
+                #gs = gpd.GeoSeries.from_wkt(results_df['wkt'])
+                #gdf = geopandas.GeoDataFrame(df, geometry=gs, crs="EPSG:4326")
+
+                # -----------------
 
                 try:
-                    # extent_poly_diss = extent_poly.dissolve(by="extent")
-                    extent_poly_diss = extent_poly.dissolve()
+                    extent_poly_diss = extent_poly.dissolve(by="extent")
+                    # extent_poly_diss = extent_poly.dissolve()
                     # multipoly_inundation = [
                     #     MultiPolygon([feature]) if type(feature) == Polygon else feature
                     #     for feature in extent_poly_diss["geometry"]
@@ -309,6 +363,9 @@ def create_geocurves(unit_output_path: str, code_version: str):
     RLOG.trace("Start processing conflated models for each model")
     RLOG.lprint(f"-- Number of models to process are {len(conflated_ras_models)}")
     # Loop through each model
+    path_geocurve_folder = os.path.join(
+                    unit_output_path, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES)
+
     len_conflated_ras_models = len(conflated_ras_models)
     for index, model in conflated_ras_models.iterrows():
         try:
@@ -483,6 +540,7 @@ def create_geocurves(unit_output_path: str, code_version: str):
                 depth_grid_args.append(arg_item)
 
             num_processors = round(math.floor(mp.cpu_count() * 0.85))
+            #num_processors = 1
             geocurve_df_list = []
             with ProcessPoolExecutor(max_workers=num_processors) as executor:
                 with tqdm.tqdm(
@@ -502,6 +560,8 @@ def create_geocurves(unit_output_path: str, code_version: str):
                                 gc_df = future.result()
                                 if len(gc_df) > 0:
                                     geocurve_df_list.append(gc_df)
+                            else:
+                                raise future.exception()
                         pbar.update(1)  # advance by 1
 
             # Now that multi-proc is done, lets merge all of the independent log file from each
@@ -515,8 +575,13 @@ def create_geocurves(unit_output_path: str, code_version: str):
                     f" feature id is {nwm_reach.feature_id}"
                 )
                 continue
+            else:
+                geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
 
-            geocurve_df = gpd.GeoDataFrame(pd.concat(geocurve_df_list, ignore_index=True))
+            if len(geocurve_df) == 0:
+                RLOG.critical("No geocurves records to be saved. Check for geocurve errors")
+                sys.exit(1)
+
             geocurve_df.crs = model_crs  # not a reproject, just setting it as it did not know
             geocurve_df = geocurve_df.sort_values(by=['feature_id', 'discharge_cfs'])
 
@@ -534,15 +599,19 @@ def create_geocurves(unit_output_path: str, code_version: str):
 
                 # ras2inundation needs the first part of the geocurve to be the feature ID
                 geocurve_file_name = f"{feature_id}_{name_mid}_geocurve.csv"
-                path_geocurve = os.path.join(
-                    unit_output_path, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES, geocurve_file_name
-                )
+                path_geocurve = os.path.join(path_geocurve_folder, geocurve_file_name)
                 RLOG.trace(f"Saving: {path_geocurve}")
                 subset_geocurve_df.to_csv(path_geocurve, index=False)
 
         except Exception:
             RLOG.error(f"An error occurred while creating geocurves for {model.final_name_key}")
             RLOG.error(traceback.format_exc())
+
+    # Test to see if any geocurves were created. Each can independenly fail, but if all fail
+    # then we have a larger issue
+    if len(os.listdir(path_geocurve_folder)) == 0:
+        RLOG.critical("No geocurve files were created. Program terminated")
+        sys.exit(1)
 
 
 # -------------------------------------------------

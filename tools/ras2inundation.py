@@ -97,7 +97,11 @@ def produce_inundation_from_geocurves(geocurves_dir, flow_file, output_inundatio
     for _, geocurve_file_path in geocurve_path_dictionary.items():
         sample_geocurve_data = pd.read_csv(geocurve_file_path["path"])
         ras2fim_version = sample_geocurve_data.loc[0, "version"]
-        features_crs = sample_geocurve_data.loc[0, "crs"]
+
+        if "crs" in sample_geocurve_data.columns:
+            features_crs = sample_geocurve_data.loc[0, "crs"]
+        else:
+            features_crs = sv.DEFAULT_RASTER_OUTPUT_CRS
         break
 
     if ras2fim_version:
