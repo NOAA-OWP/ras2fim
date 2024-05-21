@@ -20,7 +20,7 @@ import rasterio
 import tqdm
 from rasterio.features import shapes
 from rasterio.mask import mask
-from shapely.geometry import LineString, MultiPolygon, Point, Polygon
+from shapely.geometry import LineString, MultiPolygon, Point
 from shapely.ops import split
 
 import ras2fim_logger
@@ -174,98 +174,12 @@ def mp_process_depth_grid_tif(var_d: dict):
                 if len(results_ls) == 0:
                     continue
 
-                #results_df = pd.DataFrame(results_ls)
-
-                #poly_coordinates = []
-                #for pc in range(len(results_df)):
-                     # likly missing the inter right aka (0)
-                    
-                    #for coord in results_df['geometry'][pc]['coordinates']:
-                    #    coords = Polygon(coord)
-                    #    poly_coordinates.append(coords)
-                    #if len(results_df['geometry'][pc]['coordinates']) > 1:
-                    #    RLOG.warning(f"More than one coords for {profile_num} - {depth_grid_rast}")
-
-
-                    # if nwm_feature.feature_id == 5791930:
-                    #     file_name = os.path.join(unit_output_path, sv.R2F_OUTPUT_DIR_FINAL,
-                    #                             sv.R2F_OUTPUT_DIR_GEOCURVES, "rob_test_2.csv")
-                    #     poly_coordinates_df.to_csv(file_name)
-                    #     print("hi")
-
-
-                   # coords = Polygon(results_df['geometry'][pc]['coordinates'][0])
-                   # poly_coordinates.append(coords)                    
-
-                #poly_coordinates_df = pd.DataFrame(poly_coordinates, columns=["geometry"])
-
-
-
                 # Convert list of shapes to polygon, then dissolve
-                #extent_poly = gpd.GeoDataFrame(poly_coordinates_df, crs=depth_grid_crs)
-
                 extent_poly = gpd.GeoDataFrame.from_features(results_ls, crs=depth_grid_crs)
-
-
-
-                #results_ls = list(depth_poly_args)
-                #results_df = pd.DataFrame.from_dict(depth_poly_args)
-                #results_df = pd.DataFrame(list(depth_poly_args))
-
-    
-                """
-                poly_coordinates = []
-                for pc in range(len(results_df)):
-                    coords = Polygon(results_df['geometry'][pc]['coordinates'][0])
-                    poly_coordinates.append(coords)
-
-                # might be pulling just the outer ring and not the rest of the rings
-                # was: coords = Polygon(results_df['geometry'][pc]['coordinates'][0])
-                """
-
-                # poly_coordinates_df = pd.DataFrame(poly_coordinates, columns=["geometry"])
-
-                # Convert list of shapes to polygon, then dissolve
-                #extent_poly = gpd.GeoDataFrame(results_df, crs=depth_grid_crs)
-                
-                # extent_poly = gpd.GeoDataFrame.from_features(list(results), crs=depth_grid_crs)
-
-                # see if the polygon rings are gone
-                # Fails: results is not a dataframe
-                #      Assigning CRS to a GeoDataFrame without a geometry column is not supported.
-
-                # extent_poly = gpd.GeoDataFrame.from_features(list(depth_poly_args), crs=depth_grid_crs).to_crs(crs)
-
-                # ------------------
-                # from V1 example 
-                # https://github.com/NOAA-OWP/ras2fim/blob/9f56d2d60abd6c28e94f8e77ad522434a5b5719e/src/create_geocurves.py
-                # V1: results = __ has been upgraded here a bit and renamed to depth_poly_args
-
-                #results_ls = list(depth_poly_args)
-
-                # V1: Convert list of shapes to polygon, then dissolve
-                # but won't quite work here (crs is wrong)
-                #extent_poly = gpd.GeoDataFrame.from_features(results_ls, crs=depth_grid_crs)
-
-                # -----------------
-                #results_df = pd.DataFrame.from_dict(depth_poly_args)
-                #gs = gpd.GeoSeries.from_wkt(results_df['wkt'])
-                #gdf = geopandas.GeoDataFrame(df, geometry=gs, crs="EPSG:4326")
-
                 # -----------------
 
                 try:
                     extent_poly_diss = extent_poly.dissolve(by="extent")
-                    # extent_poly_diss = extent_poly.dissolve()
-                    # multipoly_inundation = [
-                    #     MultiPolygon([feature]) if type(feature) == Polygon else feature
-                    #     for feature in extent_poly_diss["geometry"]
-                    # ]
-
-                    # # TODO: 'list' object has no attribute 'is_valid'
-                    # if not multipoly_inundation[0].is_valid:
-                    #     multipoly_inundation[0] = make_valid(multipoly_inundation[0])
-                    # extent_poly_diss["geometry"] = multipoly_inundation
 
                 except AttributeError as ae:
                     # TODO (from v1) why does this happen? I suspect bad geometry. Small extent?
@@ -364,7 +278,8 @@ def create_geocurves(unit_output_path: str, code_version: str):
     RLOG.lprint(f"-- Number of models to process are {len(conflated_ras_models)}")
     # Loop through each model
     path_geocurve_folder = os.path.join(
-                    unit_output_path, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES)
+        unit_output_path, sv.R2F_OUTPUT_DIR_FINAL, sv.R2F_OUTPUT_DIR_GEOCURVES
+    )
 
     len_conflated_ras_models = len(conflated_ras_models)
     for index, model in conflated_ras_models.iterrows():
@@ -540,7 +455,7 @@ def create_geocurves(unit_output_path: str, code_version: str):
                 depth_grid_args.append(arg_item)
 
             num_processors = round(math.floor(mp.cpu_count() * 0.85))
-            #num_processors = 1
+            # num_processors = 1
             geocurve_df_list = []
             with ProcessPoolExecutor(max_workers=num_processors) as executor:
                 with tqdm.tqdm(
@@ -587,10 +502,6 @@ def create_geocurves(unit_output_path: str, code_version: str):
 
             # reproject
             # geocurves_new_crs_df = geocurve_df.to_crs(sv.DEFAULT_RASTER_OUTPUT_CRS)
-
-            # these a list of dataframes
-            # geocurve_df = pd.concat(geocurve_df_list, axis=0)
-            # geocurve_df.sort_values(by=["discharge_cms"], inplace=True)
 
             # This list of features is not automatically same nwm_reach feature id
             # and there can be more than one now.
@@ -662,8 +573,8 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
     if os.path.exists(geocurves_dir):
         shutil.rmtree(geocurves_dir)
 
-    # Either way.. we are makign a new geocurve folder. e.g. If it is overwrite, we deleted
-    #  before replacing it so we don't have left over garbage
+    # Either way.. we are making a new geocurve folder. e.g. If it is overwrite, we deleted
+    # before replacing it so we don't have left over garbage
     os.makedirs(geocurves_dir)
 
     # Feed into main geocurve creation function
@@ -682,8 +593,7 @@ def manage_geo_rating_curves_production(ras2fim_huc_dir, overwrite):
 # -------------------------------------------------
 if __name__ == "__main__":
     # Sample:
-    # python create_geocurves.py -p 'c:\ras2fim_data\output_ras2fim\12090301_2277_ble_240216'
-    #  -o
+    # python create_geocurves.py -p 'c:\ras2fim_data\output_ras2fim\12090301_2277_ble_240216' -o
 
     parser = argparse.ArgumentParser(description="== Produce Geo Rating Curves for RAS2FIM ==")
 

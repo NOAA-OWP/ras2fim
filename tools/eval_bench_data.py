@@ -17,19 +17,18 @@ import shared_variables as sv
 
 # import shared_variables as sf
 
-
 # Global Variables
 RLOG = sv.R2F_LOG
-
 
 '''
 Note: Apr 5, 2024: This is a starting prototype tool. It has alot of hardcoding and
 debug testing in it. This tool will evolve over time.
 
+This is a very incomplete tool but does have some interium value for now.
+
 Also: Keep an eye on FIM eval_plots.py which has a "bad 'aphs' sites" list and at least one
 rule for rejecting nws, usgs sites (maybe others)
      - re:  "BAD_SITES"  and  "DISCARD_AHPS_QUERY"
-     
 '''
 
 
@@ -47,6 +46,12 @@ def barplot(
     display_values=False,
     dest_file=False,
 ):
+    """
+    Note: May 20, 2024
+    This was copied and pasted right from  FIM eval plots and only has a few minor adjustments
+    at this time. Lots of upgrades and fixes required.
+    """
+
     '''
     Create barplots.
 
@@ -173,6 +178,16 @@ def barplot(
 #########################################################################
 def filter_db(dframe, filters):
     """
+    Note: May 20, 2024:  This function is fairly well advanced but not done. I was trying to
+    find ways to have a compare at just a unit name level with each of its version below
+    or huc to huc, benchmark type to units, etc. All sorts of combinations. I think I was
+    trying to make it too much and too many combinations but two of the most important ones are
+    1) unit across multipe versions: 12040101_102739_ble, v2.0.1 + v1 (or unit_versions)
+    2) all unit across multiple versions (ie.. all units for v.2.0.1 to v1)
+
+    """
+
+    """
     Processing:
 
     Inputs:
@@ -253,6 +268,11 @@ def eval_data():
     metrics_file = r"C:\ras2fim_data\gval\evaluations\PROD\eval_PROD_metrics.csv"
     metrics_df = pd.read_csv(metrics_file)
 
+    # Note: May 20, 2024: This has not evolved to anything but the most redumentary level
+    # but it does have value. Should have params, but not sure exactly how to send params
+    # that meet our needs. Maybe report types, then single unit or unit plus a list of version?
+    # or all PROD units, etc.
+
     """
     filter_dt = { "unit_name": ["12040101_102739_ble"] }
     file_name = "12040101_102739_ble_v1.png"
@@ -285,7 +305,7 @@ def eval_data():
             title_text='12090301_2277_ble - all versions - ble',
             dest_file=f"C:\\ras2fim_data\\gval\\evaluations\\PROD\\eval_bench_results\\{file_name}")
     """
-
+    """
     # ----------------------------------
     unit_name = "12090301_2277_ble"
     file_create_date = dt.datetime.now().strftime("%Y%m%d_%H%M")
@@ -293,6 +313,14 @@ def eval_data():
     file_name = f"{unit_name}_all_unit_versions_all_bench_{file_create_date}.png"
     db_filtered_metrics = filter_db(metrics_df, filter_dt)
     ordered_hue_filter = ['v1', 'v1.29.0', 'v2.0.1']
+    """
+
+    unit_name = "12040101_102739_ble"
+    file_create_date = dt.datetime.now().strftime("%Y%m%d_%H%M")
+    filter_dt = {"unit_name": [unit_name]}
+    file_name = f"{unit_name}_all_unit_versions_all_bench_{file_create_date}.png"
+    db_filtered_metrics = filter_db(metrics_df, filter_dt)
+    ordered_hue_filter = ['v1.29.0', 'v2.0.1', 'v2.0.2.0']
 
     # ----------------------------------
     barplot(
@@ -312,6 +340,13 @@ def eval_data():
 #########################################################################
 if __name__ == "__main__":
     # ---- Samples Inputs
+
+    # Temp usage: Hand adjust the code above, mostly just the eval_data folder, then run
+    # python ./tools/eval_bench_data.py
+
+    # Make sure you run the tool to inundate files, run them through GVAL and get benchmark results
+    # such as agreement rasters.
+    # ie) clear ; python ./tools/run_unit_benchmark_tests.py -u 12030105_2276_ble_230923 -e PROD
 
     # referential_path = os.path.join(args["src_unit_dir_path"], "..", "ras_unit_to_s3_logs")
     # log_file_folder = os.path.abspath(referential_path)
