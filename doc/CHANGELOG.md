@@ -1,6 +1,34 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.3.0 - 2024-05-21 - [PR#320](https://github.com/NOAA-OWP/ras2fim/pull/320)
+
+During testing and comparing ras2fim output units to benchmark data, we discovered some problems with geocurves. Many were not being created as expected.
+
+Part of the evaluation of a unit is to use a new tool called `run_eval_bench_data.py`.  This is a WIP tool and requires a fair bit of hardcoding to be used at this time, but it is expected to evolve as time permits later.
+
+The normal "alpha testing" evaluation of a unit is to run the `run_test_cases.py` against a unit, then run `run_eval_bench_data.py` to see metrics and agreement rasters.
+
+**Note: This release does require a ras2fim Conda environment reload**
+
+### Additions  
+
+- `tools\run_eval_bench_data.py`: as described above.
+
+### File Renamed
+- Was: `tools\run_unit_benchmark_tests.py`,  Now: `run_test_cases.py`: This is the same name as used in the FIM product for this functionality and helps minimize confusion.
+
+### Changes  
+
+- `environment.yml`: Adding seaborn used for plots and updated a few other packages
+- `src`
+    - `conflate_hecras_to_nwm.py`: Linting fixes
+    - `create_geocurves.py`: A wide number of changes to fix the bug listed above. It also has significantly upgraded logging.
+    - `ras2inundation.py`: A validation fix.
+- `tools\run_test_cases.py`: (renamed as mentioned above): Some linting updates and some debugging cleanup
+
+<br/><br/>
+
 ## v2.0.2.0 - 2024-04-04 - [PR#318](https://github.com/NOAA-OWP/ras2fim/pull/318)
 
 During some testing, it was discovered that some feature geocurves csv's were not being created.  We also found some more error conditions that could stop the entire processing run and have addressed those here. We also discovered some inconsistencies of projections at different parts of post processing such as inundation and benchmark tools.
