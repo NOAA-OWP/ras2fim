@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import datetime as dt
 import os
 import sys
@@ -12,6 +13,7 @@ import seaborn as sns
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+import shared_functions as sf
 import shared_variables as sv
 
 
@@ -20,16 +22,21 @@ import shared_variables as sv
 # Global Variables
 RLOG = sv.R2F_LOG
 
-'''
-Note: Apr 5, 2024: This is a starting prototype tool. It has alot of hardcoding and
-debug testing in it. This tool will evolve over time.
 
-This is a very incomplete tool but does have some interium value for now.
+'''
+May 21, 2024: This is a starting prototype tool. It has alot of hardcoding and
+debug testing in it. This tool will evolve over time but does have some interium value for now.
 
 Also: Keep an eye on FIM eval_plots.py which has a "bad 'aphs' sites" list and at least one
 rule for rejecting nws, usgs sites (maybe others)
      - re:  "BAD_SITES"  and  "DISCARD_AHPS_QUERY"
 '''
+
+"""
+========================
+May 21, 2024 - Notes on possible implemenation and upgrades for later. See at bottom of the script.
+
+"""
 
 
 #########################################################################
@@ -46,12 +53,6 @@ def barplot(
     display_values=False,
     dest_file=False,
 ):
-    """
-    Note: May 20, 2024
-    This was copied and pasted right from  FIM eval plots and only has a few minor adjustments
-    at this time. Lots of upgrades and fixes required.
-    """
-
     '''
     Create barplots.
 
@@ -163,30 +164,22 @@ def barplot(
 
     # If figure to be saved to disk, then do so, otherwise return fig
 
-    if dest_file:
+    if dest_file != "":
         parent_dir = os.path.dirname(dest_file)
         if os.path.exists(parent_dir) is False:
             os.makedirs(parent_dir, exist_ok=True)
 
         fig.savefig(dest_file)
-        print(f"plot file saved to {dest_file}")
+        print()
+        print(f"Plot file saved to {dest_file}")
         plt.close(fig)
+        print()
     else:
         return fig
 
 
 #########################################################################
 def filter_db(dframe, filters):
-    """
-    Note: May 20, 2024:  This function is fairly well advanced but not done. I was trying to
-    find ways to have a compare at just a unit name level with each of its version below
-    or huc to huc, benchmark type to units, etc. All sorts of combinations. I think I was
-    trying to make it too much and too many combinations but two of the most important ones are
-    1) unit across multipe versions: 12040101_102739_ble, v2.0.1 + v1 (or unit_versions)
-    2) all unit across multiple versions (ie.. all units for v.2.0.1 to v1)
-
-    """
-
     """
     Processing:
 
@@ -207,7 +200,7 @@ def filter_db(dframe, filters):
                   f_score, matthews_correlation_coefficient, etc
 
                 examples of filters  A dictionary of with valuse who are lists
-                e.g - { "unit_name": ['12040101_102739_ble'], "unit_version": ["230922", "240321", "240602"] }
+                     "unit_version": ["230922", "240321", "240602"] }
                     - { "code_version": ['v2.0.1'] }
 
     Return:
@@ -224,117 +217,98 @@ def filter_db(dframe, filters):
     # -------------------
     df_filtered = dframe.copy()
     df_column_names = list(dframe.columns)
-    # ctr_filter_items = 0
-    # num_filters = len(filters.items())
-    df_query = ""
+
     for column_name, column_values in filters.items():
         # if not isinstance(column_values, list):
         #    column_values = list[column_values]
 
+        print(f"Filtering by {column_name} : values = {column_values}")
         if column_values == "":
+            print("Skipping filter, no column values")
             continue
 
         if column_name not in df_column_names:
+            print("Skipping filter, invalid column name")
             continue
 
-        if df_query != "":
-            df_query += " and "
+        df_filtered[column_name] = df_filtered[column_name].astype(str)
 
         num_column_values = len(column_values)
-        ctr_column_values = 0
 
-        df_query += f"{column_name}"
         if num_column_values == 1:
-            df_query += f" == '{column_values[0]}'"
-        else:
-            df_query += " in ["
+            df_query = f'{column_name} == "{column_values[0]}"'
+            df_filtered.query(df_query, inplace=True)
+            df_filtered.reset_index()
+            continue
 
-            for column_val in column_values:
-                if ctr_column_values > 0:
-                    df_query += ","
-                df_query += f"'{column_val}'"
+        # else.. more than one value for that column
+        df_query = f"{column_name}.isin(@column_values)"
+        df_filtered.query(df_query, inplace=True)
 
-                ctr_column_values += 1
-            df_query += "]"
-
-    print(f"df query is {df_query}")
-    df_filtered.query(df_query, inplace=True)
+        df_filtered.reset_index()
 
     return df_filtered
 
 
 #########################################################################
-def eval_data():
+def eval_data(unit_name):
     metrics_file = r"C:\ras2fim_data\gval\evaluations\PROD\eval_PROD_metrics.csv"
     metrics_df = pd.read_csv(metrics_file)
 
-    # Note: May 20, 2024: This has not evolved to anything but the most redumentary level
-    # but it does have value. Should have params, but not sure exactly how to send params
-    # that meet our needs. Maybe report types, then single unit or unit plus a list of version?
-    # or all PROD units, etc.
-
-    """
-    filter_dt = { "unit_name": ["12040101_102739_ble"] }
-    file_name = "12040101_102739_ble_v1.png"
-    db_filtered_metrics = filter_db(metrics_df, filter_dt)
-
-    barplot(dataframe=db_filtered_metrics,
-            x_field='magnitude',
-            x_order=['100yr', '500yr'],
-            y_field='critical_success_index',
-            hue_field='code_version',
-            ordered_hue=['v1.29.0','v2.0.1'],
-            title_text='Unit 12090301 versions - ble',
-            dest_file=f"C:\\ras2fim_data\\gval\\evaluations\\PROD\\eval_bench_results\\{file_name}")
-        # good
-    """
+    output_file = ""
 
     # ----------------------------------
-    """
-    filter_dt = { "unit_name": ["12090301_2277_ble"],
-                  "benchmark_source": ['ble'] }
-    file_name = "12090301_2277_ble_all_versions_ble_240402_1435.png"
-    db_filtered_metrics = filter_db(metrics_df, filter_dt)
+    # unit_name = "12090301_2277_ble"
+    # file_create_date = dt.datetime.now().strftime("%Y%m%d_%H%M")
+    # filter_dt = {"unit_name": [unit_name]}
+    # file_name = f"{unit_name}_ble_{file_create_date}.png"
+    # x_field='magnitude'
+    # x_order=['100yr', '500yr', 'action', 'minor', 'moderate', 'major']
+    # y_field='critical_success_index'
+    # hue_field='code_version'
+    # ordered_hue_filter = ['v1.29.0', 'v2.0.1']
+    # output_file = f"C:\\ras2fim_data\\gval\\evaluations\\PROD\\{unit_name}\\eval_plots\\{file_name}"
+    # title_text=f"{unit_name} - benchmark source = ble"
 
-    barplot(dataframe=db_filtered_metrics,
-            x_field='magnitude',
-            x_order=['100yr', '500yr'],
-            y_field='critical_success_index',
-            hue_field='code_version',
-            ordered_hue=['v1.29.0','v2.0.1'],
-            title_text='12090301_2277_ble - all versions - ble',
-            dest_file=f"C:\\ras2fim_data\\gval\\evaluations\\PROD\\eval_bench_results\\{file_name}")
-    """
-    """
+    # db_filtered_metrics = filter_db(metrics_df, filter_dt)
+
     # ----------------------------------
-    unit_name = "12090301_2277_ble"
+    # unit_name = "12040101_102739_ble"
     file_create_date = dt.datetime.now().strftime("%Y%m%d_%H%M")
-    filter_dt = {"unit_name": [unit_name]}
-    file_name = f"{unit_name}_all_unit_versions_all_bench_{file_create_date}.png"
-    db_filtered_metrics = filter_db(metrics_df, filter_dt)
-    ordered_hue_filter = ['v1', 'v1.29.0', 'v2.0.1']
-    """
+    file_name = f"{unit_name}_ble_{file_create_date}.png"
 
-    unit_name = "12040101_102739_ble"
-    file_create_date = dt.datetime.now().strftime("%Y%m%d_%H%M")
-    filter_dt = {"unit_name": [unit_name]}
-    file_name = f"{unit_name}_all_unit_versions_all_bench_{file_create_date}.png"
+    # had to switch to unit version instead of code version for now
+    versions = ['230922', '240520']
+
+    x_field = 'magnitude'
+    x_order = ['100yr', '500yr', 'action', 'minor', 'moderate', 'major']
+    y_field = 'critical_success_index'
+    hue_field = 'unit_version'
+    ordered_hue_filter = versions
+    filter_dt = {"unit_name": [unit_name], "unit_version": versions}
+    output_file = f"C:\\ras2fim_data\\gval\\evaluations\\PROD\\{unit_name}\\eval_plots\\{file_name}"
+    title_text = f"{unit_name} - benchmark source = ble"
+
     db_filtered_metrics = filter_db(metrics_df, filter_dt)
-    ordered_hue_filter = ['v1.29.0', 'v2.0.1', 'v2.0.2.0']
+
+    # ----------------------------------
+    if len(db_filtered_metrics) == 0:
+        print("no records were found based on the filter(s)")
+        sys.exit(1)
 
     # ----------------------------------
     barplot(
         dataframe=db_filtered_metrics,
-        x_field='magnitude',
-        x_order=['100yr', '500yr', 'action', 'minor', 'moderate', 'major'],
-        y_field='critical_success_index',
-        hue_field='code_version',
+        x_field=x_field,
+        x_order=x_order,
+        y_field=y_field,
+        hue_field=hue_field,
         ordered_hue=ordered_hue_filter,
-        title_text=f"{unit_name} - all unit versions - all bench sources",
-        dest_file=f"C:\\ras2fim_data\\gval\\evaluations\\PROD\\{unit_name}\\eval_bench_results\\{file_name}",
+        title_text=title_text,
+        dest_file=output_file,
     )
 
-    print("all done, yay")
+    print("Report completed")
 
 
 #########################################################################
@@ -342,14 +316,37 @@ if __name__ == "__main__":
     # ---- Samples Inputs
 
     # Temp usage: Hand adjust the code above, mostly just the eval_data folder, then run
-    # python ./tools/eval_bench_data.py
+    # python ./tools/eval_bench_data.py -un 12040101_102739_ble
 
-    # Make sure you run the tool to inundate files, run them through GVAL and get benchmark results
-    # such as agreement rasters.
+    # Make sure you run run_unit_benchmark_tests.py first to inundate files, run them through GVAL
+    # and get benchmark results such as agreement rasters and metrics data.
     # ie) clear ; python ./tools/run_unit_benchmark_tests.py -u 12030105_2276_ble_230923 -e PROD
+
+    parser = argparse.ArgumentParser(description='Acquires and pre-processes USGS 3Dep dems')
+
+    parser.add_argument(
+        "-un",
+        dest="unit_name",
+        help="REQUIRED: unit name without unit version date." " e.g. 12040101_102739_ble",
+        required=True,
+        metavar="",
+        type=str,
+    )
+
+    # parser.add_argument(
+    #     "-mt", dest="metrics_type", help="REQUIRED: column name from the metrics file."
+    #      " e.g. critical_success_index, f-score",
+    #     required=True,
+    #     metavar="",
+    #     type=str
+    # )
+
+    # Extract to dictionary and assign to variables.
+    args = vars(parser.parse_args())
 
     # referential_path = os.path.join(args["src_unit_dir_path"], "..", "ras_unit_to_s3_logs")
     # log_file_folder = os.path.abspath(referential_path)
+    log_file_folder = "C:\\ras2fim_data\\gval\\evaluations\\PROD\\logs"
 
     # input args coming
 
@@ -363,11 +360,44 @@ if __name__ == "__main__":
         # Creates the log file name as the script name
         script_file_name = os.path.basename(__file__).split('.')[0]
         # Assumes RLOG has been added as a global var.
-        # log_file_name = f"{script_file_name}_{get_date_with_milli(False)}.log"
-        # RLOG.setup(os.path.join(log_file_folder, log_file_name))
+        log_file_name = f"{script_file_name}_{sf.get_date_with_milli(False)}.log"
+        RLOG.setup(os.path.join(log_file_folder, log_file_name))
 
         # call main program
-        eval_data()
+        eval_data(**args)
 
     except Exception:
         RLOG.critical(traceback.format_exc())
+
+    """
+
+    Many of these args can be used in multipe types but the combinations have to be validated
+
+    1. -type  == add a type of log system   ie. -type ( un = unit name, bns = benchmark source)
+        - un  ( unit_name) - ie) 12040101_102739_ble  >> can be only one.
+        - cv (code_version (optional)  = "v1_0 v2_0" . If skipped assumed all
+        - uv  (unit_versions) (optional) = "230922 240519 240520)  - can use either -cv or -uv
+         output defaults to "eval" folder in  unit name folder
+        - rp (report_type) - ie (csi, far, ...)
+        - bns  (ble, nws,)  >> only one for now. Worry about aggregation later.
+
+    figure out sub folder naming system. aka.. one per run, each run needs its own output folder
+      as more reports will come later)
+
+    2. - bns  (benchmark_source)
+            - bsk  (benchmark_source_key)  = ble, nws, etc >>> can be only one.
+            - cv (code_version (optional)  = "v1_0 v2_0" . If skipped assumed all
+            - output defaults to eval folder at root of PROD or DEV
+    figure out sub folder naming system. aka.. one per run, each run needs its own output folder as more
+      reports will come later)
+
+
+    3. -to  == target_output  (optional. See notes in for -type and -bns on possible defaults
+        do we let them create their own folder name? aka. fully qualified folder name. )
+
+    4. -sm  = source_metrics_file (optional)
+
+    - Do we ened one for PROD versus DEV?  Yes, so it knows the path. What if we want to compare
+      a dev to a prod set?
+
+    """
