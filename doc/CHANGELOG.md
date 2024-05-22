@@ -24,8 +24,10 @@ The normal "alpha testing" evaluation of a unit is to run the `run_test_cases.py
 - `src`
     - `conflate_hecras_to_nwm.py`: Linting fixes
     - `create_geocurves.py`: A wide number of changes to fix the bug listed above. It also has significantly upgraded logging.
+- `tools`
     - `ras2inundation.py`: A validation fix.
-- `tools\run_test_cases.py`: (renamed as mentioned above): Some linting updates and some debugging cleanup
+    - `run_test_cases.py`: (renamed as mentioned above): Some linting updates and some debugging cleanup
+    - `acquire_and_preprocess_3dep_dems.py`: A small fix to disable the levee system in this script. The levee system is not fully operational system wide.
 
 <br/><br/>
 
