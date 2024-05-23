@@ -728,9 +728,22 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
     HECRAS UI tool (not via code), it can give you errors to show you so you can put it on this list.
     Don't just assume that if a model doesn't go through that is bad as it might be our code that
     didn't process it correctly for a good model permuation.
+
+    TODO: The bad_model list has a flaw in that is uses the full folder name and does not account for
+    the fact that it might be replaced with a newer version with a newer date (time stamp) on the end
+    of the folder name. But.. That model might be fixed now, so see what happens. Feel free to check
     """
 
     bad_models_lst = sf.get_bad_models_list()
+
+    """
+    TODO: There are upgrades we need to figure out the logic of which and when files such as
+    .g01, g02, gxx, fxx, pxx. Some models have different combinations and it is not always easy
+    to tell. We are trying to delimit models that we know will fail at this point.
+    When we send a model into the HECRAS engine, it does not fail gracefully and requires actual
+    screen windows "ok" clicks. And if you get to many of those HECRAS windows, you can crash the
+    machine.
+    """
 
     list_prj_files = []
     for root, dirs, __ in os.walk(input_models_path):
@@ -776,6 +789,15 @@ def fn_create_shapes_from_hecras(input_models_path, output_shp_files_path, proje
                 if (first_char in ['f', 'g', 'p']) and (remaining_str.isnumeric()):
                     if remaining_str != "01":
                         # remove the file and continue
+
+                        # TODO: in hindsight we should have not deleted this.
+                        # try changing the extension to add a z on the end. ie) .f01z
+                        # That way we can debug later and see what happened.
+                        # We are guessing with the extenstion change, HECRAS will not honor it.
+                        # and if we can find a way to filter it out before even going to HECRAS
+                        # all the better.
+                        # is.. no g**, f** or p** or other weird combintions. We don't know all
+                        # of the error possible model files yet.
                         os.remove(str_file_path)
                         RLOG.warning(f"model file of {str_file_path} deleted - invalid extension")
                         continue

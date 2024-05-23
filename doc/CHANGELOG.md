@@ -24,6 +24,7 @@ The normal "alpha testing" evaluation of a unit is to run the `run_test_cases.py
 - `src`
     - `conflate_hecras_to_nwm.py`: Linting fixes
     - `create_geocurves.py`: A wide number of changes to fix the bug listed above. It also has significantly upgraded logging.
+    - `create_shapes_from_hecras.py`: Added a note about an import fix required later. See Issue [323](https://github.com/NOAA-OWP/ras2fim/issues/323) Change logic of filtering out models and key model files.
 - `tools`
     - `ras2inundation.py`: A validation fix.
     - `run_test_cases.py`: (renamed as mentioned above): Some linting updates and some debugging cleanup
