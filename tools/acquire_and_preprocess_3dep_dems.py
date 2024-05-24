@@ -153,10 +153,11 @@ def acquire_and_preprocess_3dep_dems(
         # logging done inside function
         __download_usgs_dem(domain_file_path, dem_file_raw_path, target_projection)
 
+        # Appx Jan to Feb 2024 - put the levee system on hold.
         # mask levee protect areas into the raw DEM. It will also remove the temp file.
-        dem_levee_file_name = f"HUC8_{huc}_w_levee_dem.tif"
-        dem_levee_file_path = os.path.join(target_output_folder_path, dem_levee_file_name)
-        __mask_dem_w_levee_protected_areas(dem_file_raw_path, dem_levee_file_path)
+        # dem_levee_file_name = f"HUC8_{huc}_w_levee_dem.tif"
+        # dem_levee_file_path = os.path.join(target_output_folder_path, dem_levee_file_name)
+        # __mask_dem_w_levee_protected_areas(dem_file_raw_path, dem_levee_file_path)
 
         # ------------
         if inc_upload_outputs_to_s3 is True:
@@ -167,7 +168,7 @@ def acquire_and_preprocess_3dep_dems(
             # Now the DEM
             __upload_file_to_s3(s3_path, dem_file_raw_name, dem_file_raw_path)
             # Now the masked DEM
-            __upload_file_to_s3(s3_path, dem_levee_file_name, dem_levee_file_path)
+            # __upload_file_to_s3(s3_path, dem_levee_file_name, dem_levee_file_path)
 
             # now the levee version
 
@@ -349,8 +350,8 @@ def __validate_input(
 
     # ------------
     # Check the levee file name and path.
-    if os.path.exists(sv.INPUT_LEVEE_PROT_AREA_FILE_PATH) is False:
-        raise ValueError(f"File path to {sv.INPUT_LEVEE_PROT_AREA_FILE_PATH} does not exist")
+    # i f os.path.exists(sv.INPUT_LEVEE_PROT_AREA_FILE_PATH) is False:
+    #    raise ValueError(f"File path to {sv.INPUT_LEVEE_PROT_AREA_FILE_PATH} does not exist")
 
 
 # -------------------------------------------------

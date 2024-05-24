@@ -1,6 +1,37 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.3.0 - 2024-05-21 - [PR#320](https://github.com/NOAA-OWP/ras2fim/pull/320)
+
+During testing and comparing ras2fim output units to benchmark data, we discovered some problems with geocurves. Many were not being created as expected.
+
+Part of the evaluation of a unit is to use a new tool called `run_eval_bench_data.py`.  This is a WIP tool and requires a fair bit of hardcoding to be used at this time, but it is expected to evolve as time permits later.
+
+The normal "alpha testing" evaluation of a unit is to run the `run_test_cases.py` against a unit, then run `run_eval_bench_data.py` to see metrics and agreement rasters.
+
+**Note: This release does require a ras2fim Conda environment reload**
+
+### Additions  
+
+- `tools\run_eval_bench_data.py`: as described above.
+
+### File Renamed
+- Was: `tools\run_unit_benchmark_tests.py`,  Now: `run_test_cases.py`: This is the same name as used in the FIM product for this functionality and helps minimize confusion.
+
+### Changes  
+
+- `environment.yml`: Adding seaborn used for plots and updated a few other packages
+- `src`
+    - `conflate_hecras_to_nwm.py`: Linting fixes
+    - `create_geocurves.py`: A wide number of changes to fix the bug listed above. It also has significantly upgraded logging.
+    - `create_shapes_from_hecras.py`: Added a note about an import fix required later. See Issue [323](https://github.com/NOAA-OWP/ras2fim/issues/323) Change logic of filtering out models and key model files.
+- `tools`
+    - `ras2inundation.py`: A validation fix.
+    - `run_test_cases.py`: (renamed as mentioned above): Some linting updates and some debugging cleanup
+    - `acquire_and_preprocess_3dep_dems.py`: A small fix to disable the levee system in this script. The levee system is not fully operational system wide.
+
+<br/><br/>
+
 ## v2.0.2.1 - 2024-04-15 - [PR#319](https://github.com/NOAA-OWP/ras2fim/pull/319)
 
 We had a need to upgrade README.md and INSTALL.md to be fully match v2 code and patterns. This also triggered some images updates and additions. The file changes based on this adjustments are not listed here.

@@ -165,7 +165,7 @@ def run_unit_benchmark_tests(
     # TODO: test permuations of the input args
     print()
     RLOG.notice(
-        "NOTE: As of Mar 5, 2025, some of the testing for non-defaulted args has" " not yet been completed."
+        "NOTE: As of Mar 5, 2025, some of the testing for non-defaulted args has not yet been completed."
     )
     print()
     print()
@@ -219,7 +219,7 @@ def run_unit_benchmark_tests(
         print()
         RLOG.notice(
             "No files were inundated. This occurs generally when there are small amounts"
-            "number of geo curve files and no matching features were found in the flow files."
+            " number of geo curve files and no matching features were found in the flow files."
         )
     else:
         # ----------
@@ -237,7 +237,7 @@ def run_unit_benchmark_tests(
         if len(metric_files_lst) == 0:
             RLOG.notice(
                 "No metrics files were created. This can occur when there are small amounts"
-                "number of geo curve files and no matching features were found in the flow files."
+                " number of geo curve files and no matching features were found in the flow files."
             )
         else:
             __merge_metrics_files(
@@ -747,16 +747,6 @@ def get_s3_benchmark_data(huc, s3_src_benchmark_data_path, local_benchmark_data_
         print()
         sys.exit(1)
 
-    # sort out to keep the .csv
-    #    files_to_download = []
-    #    for bench_file in bench_files:  # Iterate dictionary items
-    #        if bench_file["url"].endswith(".csv") or :
-    #            files_to_download.append(bench_file)
-
-    #    if len(files_to_download) == 0:
-    #        RLOG.critical(f"There are no benchmark .csv files for the huc {huc}")
-    #        sys.exit(1)
-
     down_items = []
     # for s3_file in files_to_download (yes.. all files in those folders)
     for s3_file in bench_files:
@@ -775,7 +765,7 @@ def get_s3_benchmark_data(huc, s3_src_benchmark_data_path, local_benchmark_data_
 
         down_items.append(item)
 
-    # all of the ingoing down_items are going to be coming back. They all have
+    # All of the ingoing down_items are going to be coming back. They all have
     # two new keys:
     #       - "success": "True" / "False" (string version)
     #       - "fail_reason": empty or whatever ever msg
@@ -979,7 +969,6 @@ def __validate_input(
     # ------------
     # Setup the output metrics
 
-    # ----------------
     # metrics file for the uv metrics file
     uv_metrics_file_name = f"{src_unit_folder_name}_metrics.csv"
     # e.g  12030105_2276_ble_230923_metrics.csv
