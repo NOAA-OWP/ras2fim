@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse
-import datetime as dt
 import os
 import shutil
 import sys
 import traceback
+from datetime import datetime, timezone
 
 import colored as cl
 import geopandas as gpd
@@ -54,8 +54,8 @@ def create_ras2release(
     Outputs:
     """
 
-    start_time = dt.datetime.utcnow()
-    dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    start_time = datetime.now(timezone.utc)
+    dt_string = start_time.strftime("%m/%d/%Y %H:%M:%S")
 
     # TODO: might need some validatation here first ??
     # s3_release_path = s3_ras2release_path + "/" + rel_name
@@ -106,8 +106,8 @@ def create_ras2release(
     print()
     print("===================================================================")
     print("ras2release processing complete")
-    end_time = dt.datetime.utcnow()
-    dt_string = dt.datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")
+    end_time = datetime.now(timezone.utc)
+    dt_string = end_time.strftime("%m/%d/%Y %H:%M:%S")
     print(f"Ended (UTC): {dt_string}")
 
     # Calculate duration
@@ -136,7 +136,7 @@ def __download_units_from_s3(bucket, s3_path_to_output_folder, local_rel_units_f
     """
 
     # add a duration system
-    start_time = dt.datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     print()
     print("------------------------------------------")
@@ -207,15 +207,7 @@ def __download_units_from_s3(bucket, s3_path_to_output_folder, local_rel_units_f
         )  # TODO: Should this read "No valid unit folders were found..." ?
         sys.exit(1)
 
-    print(
-        f"{cl.fg('light_yellow')}"
-        f"Downloading units to {local_rel_units_folder}\n\n"
-        f"Note: Downloading can be pretty slow based on the number of unit folders"
-        " and the amount of files in them.\n\n"
-        "It can take 3 - 10 minutes or more per unit.\n"
-        "Multi-threading is included to help download the files as fast as we reasonably can."
-        f"{cl.attr(0)}"
-    )
+    print(f"{cl.fg('light_yellow')}" f"Downloading units to {local_rel_units_folder}" f"{cl.attr(0)}")
     print()
 
     # returns a list of dictionaries, with the following schema
@@ -231,7 +223,7 @@ def __download_units_from_s3(bucket, s3_path_to_output_folder, local_rel_units_f
 
     print()
     # Calculate duration
-    end_time = dt.datetime.utcnow()
+    end_time = datetime.now(timezone.utc)
     time_duration = end_time - start_time
     RLOG.lprint(f"Unit downloads duration is {str(time_duration).split('.')[0]}")
 
@@ -300,15 +292,26 @@ def __create_hydrovis_package(local_rel_folder, local_unit_folders):
     print()
 
     full_hv_folder = os.path.join(local_rel_folder, __HYDROVIS_FOLDER)
-    full_hv_gc_folder = os.path.join(full_hv_folder, sv.R2F_OUTPUT_DIR_GEOCURVES)
+    # full_hv_gc_folder = os.path.join(full_hv_folder, sv.R2F_OUTPUT_DIR_GEOCURVES)
 
     if os.path.exists(__HYDROVIS_FOLDER):
         shutil.rmtree(__HYDROVIS_FOLDER, ignore_errors=True)
 
     os.mkdir(full_hv_folder)
-    os.mkdir(full_hv_gc_folder)
+    # os.mkdir(full_hv_gc_folder)
 
     for unit_folder in local_unit_folders:
+        src_name_dict = parse_unit_folder_name(unit_folder)
+        if "error" in src_name_dict:
+            raise Exception(src_name_dict["error"])
+
+        huc8 = src_name_dict["key_huc"]
+        huc8_hv_folder = os.path.join(full_hv_folder, huc8)
+        os.makedirs(huc8_hv_folder, exist_ok=True)
+
+        full_hv_gc_folder = os.path.join(huc8_hv_folder, sv.R2F_OUTPUT_DIR_GEOCURVES)
+        # unit_gc_folder = os.path.join(unit_folder, sv.R2F_OUTPUT_DIR_GEOCURVES)
+
         unit_gc_folder = os.path.join(unit_folder, sv.R2F_OUTPUT_DIR_GEOCURVES)
         if os.path.exists(unit_gc_folder):
             shutil.copytree(unit_gc_folder, full_hv_gc_folder, dirs_exist_ok=True)
