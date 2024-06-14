@@ -1,6 +1,20 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.3.1 - 2024-06-03 - [PR#328](https://github.com/NOAA-OWP/ras2fim/pull/328)
+
+During build the v2.0 release package, a small bug was found/fixed. Also updated datetime.nowutc now deprecated calls to newer convention.
+
+This PR also includes all models that failed in the V2 release.
+
+### Changes  
+
+- `config\bad_models_list.lst`:  Updated for V2.0 release.
+- `tools\ras2release.py`: As described above.
+
+<br/><br/>
+
+
 ## v2.0.3.0 - 2024-05-21 - [PR#320](https://github.com/NOAA-OWP/ras2fim/pull/320)
 
 During testing and comparing ras2fim output units to benchmark data, we discovered some problems with geocurves. Many were not being created as expected.
