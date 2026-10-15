@@ -1,6 +1,17 @@
 All notable changes to this project will be documented in this file.
 We follow the [Semantic Versioning 2.0.0](http://semver.org/) format.
 
+## v2.0.3.2 - 2026-10-09 - [PR#334](https://github.com/NOAA-OWP/ras2fim/pull/334)
+
+A code change does not automatically mean every model has to be re-run, so each unit now records the code version that produced it. Fixes [Issue #327](https://github.com/NOAA-OWP/ras2fim/issues/327).
+
+### Changes  
+
+- `src/ras2fim.py`: `create_input_args_log` now writes a `code_version == <version>` line to `run_arguments.txt`, using the top entry of this changelog (`get_changelog_version`).
+
+<br/><br/>
+
+
 ## v2.0.3.1 - 2024-06-03 - [PR#328](https://github.com/NOAA-OWP/ras2fim/pull/328)
 
 During build the v2.0 release package, a small bug was found/fixed. Also updated datetime.nowutc now deprecated calls to newer convention.

@@ -480,12 +480,20 @@ def create_input_args_log(**kwargs):
     utc_now = dt.datetime.utcnow()
     str_date = utc_now.strftime("%Y-%m-%d")
 
+    # The code version that produced this unit (top entry of the changelog). A code change does not
+    # automatically mean that every model has to be re-run, so each unit records the version it used.
+    changelog_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), os.pardir, "doc", "CHANGELOG.md")
+    )
+    code_version = sf.get_changelog_version(changelog_path)
+
     # The file can be parsed later by using the two colons and the line break if ever required
     # We are already talking about using data in this file for metadata files
     # especially as the DEM's becomed versions in the input files which meta data
     # will need to know what fim version of the DEM was used.
     with open(arg_log_file, "w") as arg_file:
         arg_file.write(f"process_date == {str_date}\n")
+        arg_file.write(f"code_version == {code_version}\n")
         arg_file.write(f"command_line_submitted == {(' '.join(sys.argv))}\n")
 
         for key, value in kwargs.items():
